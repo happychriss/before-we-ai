@@ -1,11 +1,11 @@
 # M0 Fixture Corpus Validation Report
 
-**Generated:** 2026-07-11T20:11:34.675863
+**Generated:** 2026-07-11T20:12:17.822942
 **Seed:** 0
 
 ## Summary
 
-**Overall Status:** ❌ **FAIL**
+**Overall Status:** ✅ **PASS**
 
 - **Traps:** 32 (F1-F29 + 3 blind)
 - **Trap Classes:** 7 (K1-K7, K8)
@@ -334,18 +334,16 @@ Invariant Check Results:
 
 ### Reference Results Spot-Check
 
-**Status:** ❌ FAIL
+**Status:** ✅ PASS
 
 ```
 M0 Validation: Reference Results Spot-Check
 ============================================================
-REFERENCE RESULTS SPOT-CHECK: FAIL
-  ❌ Z3 US_in_EUR: computed=21862618.31, expected=21854415.47
-  ❌ Z3 group_total_EUR: computed=68216986.68, expected=68208783.84
-  ❌ Z4: computed=68216986.68, expected=68208783.84
+✅ REFERENCE RESULTS SPOT-CHECK: PASS
+  Computed Z-values match expected_verdicts.yaml
 
 ============================================================
-Spot-check result: ❌ FAIL
+Spot-check result: ✅ PASS
 
 ```
 
@@ -390,7 +388,9 @@ group_total_EUR: 68208783.84
 
 ## Conclusion
 
-❌ **Corpus validation FAILED.** Review checks above and regenerate.
+✅ **Corpus validation PASSED.** Ready to freeze and tag.
 
-Issues to address:
-- Reference results: Z1-Z4 spot-checks
+Next steps:
+1. Review this report
+2. `git tag -a m0-corpus-v1 -m "M0 fixture corpus frozen (seed=0, validated)"`
+3. Proceed to M1 development (epistemic core)
