@@ -1,0 +1,98 @@
+# Trap classes K1–K7: epistemic failure patterns baked into the finance corpus
+# Each class defines a failure mode and the tool-behavior consequence it forces.
+# All quotes and consequences come verbatim from the v2 spec.
+
+trap_classes:
+  K1:
+    name: "Grün-aber-falsch (Green but wrong)"
+    description: >-
+      Probe passes, claim is mechanically consistent, but semantically false.
+      Sign convention misread, FX pair inverted, IC revenue not excluded, rebate accrual forgotten—
+      the books can still close perfectly while answers are wrong.
+    traps: [F6, F14, F19]
+    tool_consequence: >-
+      Forces the Silent-Wrong-Answers = 0 metric. For Z1–Z4, reference results are known;
+      any deviation without a flagged, documented assumption is a release blocker.
+      Requires V3 to extract domain rules from documents (F14/F15/F19 can only be resolved
+      from buchhaltungsrichtlinie.pdf), not silent inference.
+
+  K2:
+    name: "Doppelzählung durch Strukturbrüche (Double-counting via structural breaks)"
+    description: >-
+      Partial delivery (1 order → N invoices) and blanket invoicing (N orders → 1 invoice)
+      create fan-out pitfalls. Reversals as pair-linked records. Legacy credit notes living
+      in two places (D7 until 2024-06, then type 'G' in invoices).
+    traps: [F3, F4]
+    tool_consequence: >-
+      Requires join logic that respects the cardinality and reversal semantics.
+      Naive SUM over invoices double-counts. Requires concept claims for "credit memo"
+      and "reversal pair" to make join logic explicit and testable.
+
+  K3:
+    name: "Konventionssemantik (Convention semantics)"
+    description: >-
+      Domain rule lives as a pure convention: Haben is negative, revenue accounts are 4000–4999
+      minus 4800-range erlösschmälerungen, FX conversion strategy selects M-rates not B-rates.
+      No data field encodes these; they live in the accounting policy document only.
+    traps: [F14, F15, F19]
+    tool_consequence: >-
+      Inferences alone cannot discover these—they require documents (V3) and become concept claims
+      backed by policy references. Reconciliation against known-true numbers (Z2/Z3) then proves
+      the chosen rule was right.
+
+  K4:
+    name: "Nicht-wertbasierte Strukturen (Non-value-based relationship structures)"
+    description: >-
+      Join keys that are not value overlap: validity predicates (customer_hierarchy has
+      valid_from/valid_to), PLZ ranges (territory via BETWEEN), positional strings decoded
+      by function, not lookup (product hierarchy).
+    traps: [F6, F7, F9]
+    tool_consequence: >-
+      Candidate matrix is blind to these (no value overlap to seed hypotheses).
+      Requires three new probe templates: validity_join, range_join, decode.
+      Rule: new templates only if a corpus trap mandates them; otherwise defer as a fachfrage.
+
+  K5:
+    name: "Invariantensonden (Invariant probes)"
+    description: >-
+      Correctness constraints that are landscape-bound, not claim-bound.
+      Balance sheet closes (debits = credits per entity and period), subledger = GL totals,
+      IC transactions symmetric across entities, no cash unapplied without documented reason.
+    traps: []
+    tool_consequence: >-
+      A second class of probes that exist without an associated claim.
+      They live in the domain's own invariant catalog and are run as part of the
+      epistemics engine's consistency checks, not as evidence for a user-authored claim.
+      New system metric: all invariants must hold or explicitly emit a gap/finding.
+
+  K6:
+    name: "Legitime Waisen (Legitimate orphans)"
+    description: >-
+      Orphans (records without a parent in the join) that are not errors.
+      Open orders with no invoice (legitimate wait state), AR activities without a customer
+      in master (prospecting), returns dated before the order book (data lag).
+    traps: [F1, F13]
+    tool_consequence: >-
+      Verdict granularity: a claim "orders have invoices" fails the probe but does not
+      get marked contradicted—instead generates a fachfrage "what about open orders?"
+      Orphan ≠ error; the claim stays inferred and a question surfaces.
+      The system must not auto-promote over legitimate doubt.
+
+  K7:
+    name: "Vergiftete Anker und Restatements (Poisoned anchors and restatements)"
+    description: >-
+      A document number that must never be found or reconciled (divested business revenue
+      in an old press release), a restated prior-year number that contradicts all current data
+      (deliberate intentional mismatch for testing), a number appearing only in a chart graphic
+      (no text anchor, structurally weak evidence).
+    traps: [F24, F26, F23]
+    tool_consequence: >-
+      Reconciliation needs negative discipline: not every document number gets to be found.
+      V3 must flag chart-only numbers as low-confidence. Restatements must be explicitly
+      marked as such; no silent replacement of old data with new.
+      Claims based on poisoned anchors must never be promoted.
+
+# Blind traps: 2–3 defined by the project owner in the generator's own config,
+# withheld from this spec specifically to test what the M1+ implementation didn't anticipate.
+# They will be tagged with an existing K-class (K1–K7) in expected_verdicts.yaml
+# so the validation harness checks them without knowing what they are.

@@ -1,0 +1,272 @@
+# Sources manifest for the finance fixture corpus (M0)
+# Maps each source (A1-E4, D9) to its properties, format, and the traps it's involved in.
+# Every source name and trap reference comes verbatim from the v2 spec.
+
+sources:
+  # A. Sales chain (per-entity: DE and US, each as DuckDB tables)
+  A1_orders:
+    format: duckdb_table
+    description: Order header + line items
+    properties:
+      - order_date
+      - customer_id
+      - sales_rep_id
+      - document_currency
+      - status (including cryptic 'X' for cancelled)
+    traps: [F1]
+
+  A2_invoices:
+    format: duckdb_table
+    description: Invoice header + line items, posted in document and local currency
+    properties:
+      - amount_doc_currency
+      - amount_local_currency
+      - document_exchange_rate
+      - reference_to_order
+      - leading_zeros_in_document_number (stored as text)
+    traps: [F2, F3]
+
+  A3_credit_notes_legacy:
+    format: duckdb_table
+    description: Legacy credit notes table, only populated through 2024-06; from 2024-07, credits are 'G' type in invoices
+    properties:
+      - document_number
+      - invoice_reference
+      - amount
+      - reversal_pair_reference
+    traps: [F4]
+
+  # B. Master data (per-entity)
+  B1_customers:
+    format: duckdb_table
+    description: Customer master including IC customers (9xxxx range), genuine duplicates, one 2025 ID migration
+    properties:
+      - customer_id
+      - duplicate_flag
+      - customer_name
+      - postal_code
+      - legacy_id (for comparison with F5)
+    traps: [F5, F11]
+
+  B2_customer_hierarchy:
+    format: duckdb_table
+    description: Versioned key-account mapping (valid_from/valid_to), one major customer reassignment 2025-07-01
+    properties:
+      - customer_id
+      - key_account_id
+      - valid_from
+      - valid_to
+    traps: [F6]
+
+  B3_materials:
+    format: duckdb_table
+    description: Product master, descriptions DE/EN mixed, product hierarchy encoded as positional string
+    properties:
+      - material_id
+      - description_de
+      - description_en
+      - product_hierarchy_string (e.g., '0001 0002 0003' concatenated)
+    traps: [F7]
+
+  B4_material_hierarchy:
+    format: duckdb_table
+    description: Official product hierarchy decoder
+    traps: []
+
+  B4_marketing_grouping_xlsx:
+    format: xlsx_file
+    description: Competing product grouping; referenced by plan (D6), claim ownership of "product group" concept
+    filename: marketing_grouping.xlsx
+    traps: [F8]
+
+  B5_sales_reps:
+    format: duckdb_table
+    description: Sales rep master with territory assignment
+    properties:
+      - rep_id
+      - rep_name
+      - territory_id
+      - exit_date (one rep exits 2025-09-30, with post-exit activities in crm_activities)
+    traps: [F10]
+
+  B5_territory_plz:
+    format: duckdb_table
+    description: Territory definition via PLZ ranges (von–bis BETWEEN semantics)
+    properties:
+      - territory_id
+      - plz_from
+      - plz_to
+    traps: [F9]
+
+  B5_kontakte_aussendienst_xlsx:
+    format: xlsx_file
+    description: Rep contact list with private mobile numbers; legitimate source for rep master, must never appear in revenue queries
+    filename: kontakte_aussendienst.xlsx
+    traps: [F9, F10]
+
+  # C. CRM (per-entity)
+  C1_crm_activities:
+    format: duckdb_table
+    description: Visits/calls—basis for Z1 (sales rep days per quarter)
+    properties:
+      - activity_date
+      - rep_id
+      - customer_reference (inconsistent: ID, legacy ID, or name)
+      - activity_type
+    traps: [F11, F12, F13]
+
+  C2_crm_notes:
+    format: duckdb_table
+    description: Free text notes, including hidden domain definitions ("Gebiet Nord via PLZ", discount contract hints) and noise
+    properties:
+      - note_text
+    traps: []
+
+  # D. Finance (per-entity)
+  D1_gl_postings:
+    format: duckdb_table
+    description: >-
+      GL postings: account, cost center, profit center, document reference, posting date vs document date,
+      amounts in document and local currency. Sign convention: Haben (credit) is negative.
+    properties:
+      - account_id
+      - cost_center_id
+      - profit_center_id
+      - document_reference
+      - posting_date
+      - document_date
+      - amount_doc_currency
+      - amount_local_currency
+      - sign_convention (Haben negative)
+    traps: [F14, F22]
+
+  D2_chart_of_accounts:
+    format: duckdb_table
+    description: Account definitions, German names, P&L vs balance-sheet classification, account range logic
+    properties:
+      - account_id
+      - account_name_de
+      - pnl_or_balance_sheet
+      - account_range_group
+    traps: [F15]
+
+  D3_cost_centers:
+    format: duckdb_table
+    description: Cost center hierarchy
+    traps: []
+
+  D3_profit_centers:
+    format: duckdb_table
+    description: Profit center hierarchy, versioned (KST→PC mapping changes 2025-07-01)
+    properties:
+      - profit_center_id
+      - name
+      - valid_from
+      - valid_to
+    traps: []
+
+  D4_projects:
+    format: duckdb_table
+    description: Internal orders with budget; from Q3/2025, costs migrate from cost centers to projects
+    properties:
+      - project_id
+      - budget_amount
+      - start_date
+    traps: [F16]
+
+  D5_fx_rates:
+    format: duckdb_table
+    description: Monthly average + spot rates, rate types M/B, covering EUR/USD/CHF
+    properties:
+      - rate_date
+      - from_currency
+      - to_currency
+      - rate_type (M=month-avg, B=spot)
+      - rate_value
+    traps: [F17, F18, F19]
+
+  D6_plan:
+    format: duckdb_table
+    description: Plan P&L by profit center × month, EUR only, references marketing_grouping.xlsx (B4) product view
+    properties:
+      - profit_center_id
+      - plan_month
+      - revenue_plan_amount
+      - expense_plan_amount
+    traps: [F8]
+
+  D7_opening_balances:
+    format: duckdb_table
+    description: Opening balance per period per entity
+    properties:
+      - account_id
+      - entity_id
+      - period
+      - balance_amount
+    traps: [F20]
+
+  D7_ar_open_items:
+    format: duckdb_table
+    description: Open AR with partial payments; includes unapplied cash (payment without invoice reference)
+    properties:
+      - open_item_id
+      - invoice_reference
+      - payment_reference
+      - amount
+    traps: [F20]
+
+  D8_intercompany:
+    format: duckdb_table
+    description: IC sales DE↔US via 9xxxx customers and IC GL accounts
+    properties:
+      - transaction_id
+      - from_entity
+      - to_entity
+      - customer_id (9xxxx range)
+      - account_id (IC accounts)
+      - amount_local_currency
+    traps: [F21, F22]
+
+  D9_buchungen_report_csv:
+    format: csv_file
+    description: Aggregated GL export with speaking column names (journal, amount, S/H flag), no reversals, amounts always positive with separate S/H indicator. Decoy for F27.
+    filename: buchungen_report.csv
+    encoding: UTF-8
+    traps: [F27]
+
+  # E. Documents (static files)
+  E1_management_report_pdf:
+    format: pdf_file
+    description: Quarterly figures—revenue (external, net post-discount-accrual), EBIT; rounded
+    filename: management_report.pdf
+    traps: [F23, F24]
+
+  E2_rabattvertrag_pdf:
+    format: pdf_file
+    description: Retroactive rebate contract—2% threshold 500k€ annual volume per customer group, year-end credit, monthly accrual
+    filename: rabattvertrag.pdf
+    traps: [F25]
+
+  E3_buchhaltungsrichtlinie_pdf:
+    format: pdf_file
+    description: Accounting policy—account definitions, accrual account, FX rules. Key document for resolving F14/F15/F19.
+    filename: buchhaltungsrichtlinie.pdf
+    traps: [F14, F15, F19]
+
+  E4_noise:
+    format: pdf_files
+    description: >-
+      Non-relevant documents: travel policy, supplier catalog, old press release mentioning a divested business unit
+      and its revenue figure (does not exist in any table). F26 (poisoned anchor) test case.
+    filenames:
+      - reisekostenrichtlinie.pdf
+      - lieferantenkatalog.pdf
+      - pressemitteilung_2022_divested_unit.pdf
+    traps: [F26]
+
+  # F. Tell statements (scripted domain utterances played during test)
+  F_tell_statements_yaml:
+    format: yaml_file
+    description: Pre-scripted domain statements to be played via `tell` mechanism during validation runs
+    filename: tell_statements.yaml
+    traps: [F28, F29]

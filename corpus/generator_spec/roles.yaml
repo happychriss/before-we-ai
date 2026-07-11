@@ -1,0 +1,56 @@
+# Finance domain role list (v1)
+# Curated set of semantic roles that appear across the corpus sources.
+# New roles only if a trap class or target question forces it (anti-sprawl rule).
+
+roles:
+  journal:
+    definition: >-
+      The accounting journal or posting source—the transactional ledger
+      where each posting (debit or credit) is recorded with an associated account, amount, and date.
+    examples: [D1_gl_postings]
+    note: >-
+      D9_buchungen_report.csv claims to be a journal source (attractive column names like "journal")
+      but is a decoy for F27. The canonical journal is D1_gl_postings, which carries the full
+      sign semantics (Haben negative).
+
+  amount_doc:
+    definition: >-
+      Monetary amount recorded in the document's original currency (e.g., USD invoice in a DE/EUR
+      entity). Often called "Belegwährung" (document currency).
+    examples: [A2_invoices.amount_doc_currency, D1_gl_postings.amount_doc_currency]
+
+  amount_local:
+    definition: >-
+      Monetary amount converted to the entity's local currency (EUR for DE, USD for US).
+      May differ from amount_doc if a currency conversion was applied at posting time.
+    examples: [A2_invoices.amount_local_currency, D1_gl_postings.amount_local_currency]
+
+  account:
+    definition: >-
+      The GL account (e.g., 4100 "Revenue—Sales") that classifies a posting.
+      Accounts are hierarchical; ranges (4000–4999) group account types (e.g., revenue accounts).
+    examples: [D1_gl_postings.account_id, D2_chart_of_accounts.account_id]
+
+  period:
+    definition: >-
+      Time bucket for aggregation and reporting, typically month (YYYY-MM) or quarter.
+      Must respect posting_date vs. document_date distinctions and handle period-end cutoffs.
+    examples: [month, quarter, fiscal_year]
+
+  doc_ref:
+    definition: >-
+      Reference from a GL posting back to its originating document (invoice, order, etc.),
+      linking the GL to the operational data. Critical for traceability and reconciliation.
+    examples: [D1_gl_postings.document_reference, A2_invoices.document_number]
+
+  entity:
+    definition: >-
+      Legal entity (subsidiary), each with its own currency, GL, and master data.
+      In this corpus: DE (EUR) and US (USD). IC (intercompany) transactions flow between entities.
+    examples: [DE, US]
+
+  subledger_ar:
+    definition: >-
+      Subledger for accounts receivable: a detail-level view of customer balances and open items,
+      distinct from the GL's control account. Must reconcile to the GL AR control balance.
+    examples: [D7_ar_open_items]

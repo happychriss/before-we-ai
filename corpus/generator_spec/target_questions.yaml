@@ -1,0 +1,166 @@
+# Target questions Z1–Z4: the four reference outcomes that define correctness for the finance corpus.
+# These drive the validation top-down per the spec: "Zielfragen definieren, was das Tool am Ende
+# leisten muss; der Generator berechnet für jede Frage das Referenzergebnis aus den Daten."
+#
+# Z1–Z3 are business questions on data; Z4 is a meta-invariant (the books must close).
+
+target_questions:
+  Z1:
+    id: Z1
+    label: "Field sales days per employee and quarter"
+    business_question: >-
+      For each sales rep and quarter (2024-Q1 through 2025-Q4), how many field activity days
+      (visits + calls) were recorded in crm_activities? Grain: rep × quarter.
+    sources: [C1_crm_activities, B5_sales_reps]
+    reference_outcome_unit: days
+    formula_notes: >-
+      Count of distinct activity_dates per rep and quarter from crm_activities.
+      Trap F10: rep activities after exit date must appear as a finding (data error),
+      not silently excluded.
+      Trap F11/F12: customer reference inconsistency (ID vs legacy ID vs name) must be resolved
+      to answer this, but the rep-day count itself is unambiguous once crm_activities is clean.
+    expected_reference_result: |-
+      {
+        "unit": "days",
+        "grain": "sales_rep_id × quarter",
+        "example_rows": [
+          {"rep_id": "R001", "quarter": "2024-Q1", "activity_days": 18},
+          {"rep_id": "R002", "quarter": "2024-Q2", "activity_days": 22},
+          ...
+        ]
+      }
+    acceptance_rule: >-
+      Reference result must be recalculated from the actual generated crm_activities data.
+      Any discrepancy between this recomputed value and the stored value is flagged.
+
+  Z2:
+    id: Z2
+    label: "Revenue and margin development per customer and key account"
+    business_question: >-
+      For each customer and assigned key account (with valid_from/valid_to versioning),
+      across 24 months, what is the net external revenue and gross margin (revenue minus COGS)?
+      Grain: customer × key account × month, in EUR.
+    sources:
+      - A1_orders
+      - A2_invoices
+      - A3_credit_notes_legacy
+      - B1_customers
+      - B2_customer_hierarchy
+      - B5_kunden_migration_xlsx  # F5 old→new mapping
+      - D5_fx_rates                 # Convert to EUR if needed
+      - D8_intercompany             # Exclude IC (F21)
+      - E2_rabattvertrag_pdf        # Rebate accrual (F25)
+      - E3_buchhaltungsrichtlinie_pdf  # Sign convention, account-range rules
+    reference_outcome_unit: EUR
+    formula_notes: >-
+      Revenue = SUM(invoices.amount_local_currency) where:
+        - account type is 4000–4999 (revenue) minus 4800-range (rebate/allowance) per policy
+        - Haben (credit) sign convention applied
+        - IC customers (9xxxx) excluded (F21)
+        - Legacy customer IDs mapped to current via kunden_migration.xlsx (F5)
+        - Monthly rebate accrual included (F25: 2% threshold, year-end true-up)
+      Grain is month × customer_id × key_account_id (with valid_from/valid_to applied).
+      Traps:
+        - F2/F3: partial delivery and reversal pairs must not double-count
+        - F4: credit notes in two places until 2024-06 must be reconciled
+        - F5: customer ID migration must be applied consistently
+        - F6: customer_hierarchy versioning (valid_from/valid_to) must be honored;
+              wrong key account for a date range produces silent wrong answer (K1)
+        - F14: Haben negative convention must be applied (K3)
+        - F15: account-range netting (4000–4999 minus 4800s) per policy (K3)
+        - F19: FX selection (monthly avg vs spot) must match policy (K3)
+        - F21: IC revenue must be excluded (F21)
+        - F25: rebate accrual must tie B2 (customer group), D1 (accrual posting), E2 (policy)
+    expected_reference_result: |-
+      {
+        "unit": "EUR",
+        "grain": "customer_id × key_account_id × month",
+        "derived_from": "generated DE/US erp.duckdb, fx_rates, E2_rabattvertrag.pdf policy",
+        "example_rows": [
+          {"customer_id": 1001, "key_account_id": "KA_001", "period": "2024-01", "revenue_eur": 125000, "margin_eur": 37500},
+          ...
+        ]
+      }
+    acceptance_rule: >-
+      Reference result must be independently recomputed from the generated data by the spot-check
+      in recompute_reference_results.py. Values for F14/F15/F19/F21/F25 sample records are
+      re-derived straight from the spec prose (not generator code) to catch semantic errors.
+
+  Z3:
+    id: Z3
+    label: "Profit expectation: plan vs. actual per profit center"
+    business_question: >-
+      For each profit center and month, what is the planned (D6_plan) vs. actual (derived from GL)
+      operating profit? The variance highlights forecast accuracy and cost control.
+      Grain: profit_center × month, EUR.
+    sources:
+      - D1_gl_postings
+      - D2_chart_of_accounts
+      - D3_profit_centers
+      - D4_projects              # From Q3/2025, costs migrate to projects (F16)
+      - D5_fx_rates
+      - D6_plan
+      - E3_buchhaltungsrichtlinie_pdf  # Sign/account-range rules
+    reference_outcome_unit: EUR
+    formula_notes: >-
+      Actual = SUM(gl_postings.amount_local_currency) for accounts in the P&L (pnl_or_balance_sheet='P&L')
+      filtered to the profit center and month, grouped by profit_center × month.
+      Planned = D6_plan.revenue_plan - expense_plan per profit center × month.
+      Variance = Planned - Actual.
+      Traps:
+        - F6: versioned profit_center assignment (valid_from/valid_to) must be applied (silent wrong answer if not)
+        - F14: Haben negative sign convention must be applied
+        - F15: account-range netting must be applied per policy
+        - F16: from Q3/2025, cost migration to projects creates a grain mismatch; Z3 needs both
+                cost_center and project dimensions; variance is not an error but a finding (K6)
+    expected_reference_result: |-
+      {
+        "unit": "EUR",
+        "grain": "profit_center_id × month",
+        "derived_from": "generated GL + plan",
+        "example_rows": [
+          {"profit_center_id": "PC_DE_01", "period": "2024-01", "planned_profit": 500000, "actual_profit": 485000, "variance": 15000},
+          ...
+        ]
+      }
+    acceptance_rule: >-
+      Reference result recomputed via spot-check. F6 (versioning) and F16 (project migration)
+      marked as known findings in the expected_verdicts if they produce documented assumption flags.
+
+  Z4:
+    id: Z4
+    label: "Balance sheet closure per entity and period"
+    business_question: >-
+      Meta-invariant: Do the books close for each legal entity (DE, US) in each period?
+      Assets = Liabilities + Equity? Subledger totals = GL totals?
+    sources:
+      - D1_gl_postings
+      - D7_opening_balances
+      - D7_ar_open_items
+    reference_outcome_unit: boolean_per_entity_period
+    formula_notes: >-
+      For each entity × period, verify:
+        1. SUM(debit postings) = SUM(credit postings) [Soll = Haben]
+        2. SUM(gl_postings) for AR/AP accounts matches SUM(ar_open_items + payments applied)
+      Generator itself runs "balance closes" as a self-test before freezing.
+      Trap F20: opening balance integrity and unapplied cash handling.
+      Trap F22: deliberate IC break (DE posts, US omits) to test invariant probe detection.
+    expected_reference_result: |-
+      {
+        "invariant": "balance_sheet_closes",
+        "grain": "entity × period",
+        "DE": {
+          "2024-01": true,
+          "2024-02": true,
+          ...
+        },
+        "US": {
+          "2024-01": true,
+          ...
+        }
+      }
+    acceptance_rule: >-
+      Z4 is not a question with a numeric answer; it is a landscape-level invariant (K5).
+      Must hold for all periods or emit a structural error (the generated data itself is broken).
+      The IC break trap (F22) is deliberately constructed to fail Z4 unless the invariant
+      probe correctly detects the symmetric rule violation and flags it as a finding.
