@@ -27,6 +27,7 @@ packages = [
     "before_we_ai.store",
     "before_we_ai.sources",
     "before_we_ai.profile",
+    "claim_viewer",
 ]
 
 [tool.pytest.ini_options]
