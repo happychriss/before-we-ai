@@ -1,0 +1,355 @@
+seed: 0
+deny_set:
+- F26
+recall_set:
+- F1
+- F2
+- F3
+- F4
+- F5
+- F6
+- F7
+- F8
+- F9
+- F10
+- F11
+- F12
+- F13
+- F14
+- F15
+- F16
+- F17
+- F18
+- F19
+- F20
+- F21
+- F22
+- F23
+- F24
+- F25
+- F26
+- F27
+- F28
+- F29
+- BLIND_1
+- BLIND_2
+- BLIND_3
+traps:
+  F1:
+    category: K6
+    description: Open orders without invoices (legitimate backlog, not an error) -
+      K6 lifecycle
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 20
+  F2:
+    category: K2
+    description: 'Partial delivery: one order maps to 2-3 invoices - K2 subledger
+      reconciliation'
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 30
+  F3:
+    category: K2
+    description: 'Reversal pairs: invoice + STORNO with same order reference - K2'
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 15
+  F4:
+    category: K2
+    description: 'Credit note process change: legacy table pre-2024-07, invoice_type=G
+      after - K2'
+    detected: true
+    deny_promotion: false
+    evidence:
+      legacy_count: 18
+      new_type_g_count: 63
+  F5:
+    category: K1,K4
+    description: Customer ID migration 1101-1105 -> 1201-1205 in 2025 - K1/K4 master
+      data continuity
+    detected: true
+    deny_promotion: false
+    evidence:
+      new_customer_count: 5
+  F6:
+    category: K1,K4
+    description: Customer hierarchy versioning for customer 1005 (KA_001 -> KA_002)
+      - K1/K4
+    detected: true
+    deny_promotion: false
+    evidence:
+      rows_for_1005: 2
+  F7:
+    category: K4
+    description: Product hierarchy encoded as positional string requiring decode -
+      K4
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F8:
+    category: K4
+    description: Competing marketing grouping vs official material hierarchy - K4/K8
+      grouping conflict
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F9:
+    category: K4
+    description: Territory assignment via PLZ range join, not stored directly - K4
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F10:
+    category: K6
+    description: Post-exit CRM activities logged for departed rep R008 - K6 lifecycle
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 5
+  F11:
+    category: K4
+    description: CRM customer_reference containing legacy (pre-migration) IDs - master
+      data drift
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 68
+  F12:
+    category: K4
+    description: CRM customer_reference containing customer name instead of ID
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 27
+  F13:
+    category: K6
+    description: CRM activities referencing prospects not in customer master (PROSPECT_001-005)
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 5
+  F14:
+    category: K1,K3
+    description: Haben (credit) convention stored as negative amounts - documented
+      only in E3 - K1/K3
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F15:
+    category: K3
+    description: Revenue definition = 4000-4999 minus 4800-4899 contra accounts -
+      K3 policy
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F16:
+    category: K4
+    description: 'Q3 2025 migration: some GL postings use project_id instead of cost_center_id'
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 1144
+  F17:
+    category: K3
+    description: 'Two FX rate types present: monthly average (M) and spot (B)'
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F18:
+    category: K3
+    description: Spot (B) rates missing for 2024-03, 2024-09, 2025-06
+    detected: true
+    deny_promotion: false
+    evidence:
+      missing_b_periods:
+      - 2024-03
+      - 2024-09
+      - 2025-06
+  F19:
+    category: K1,K3
+    description: Policy requires monthly average rate (M); M vs B differ 0.5-2% -
+      K1/K3
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F20:
+    category: K2
+    description: AR open items with unapplied cash (no invoice ref) or unpaid invoices
+      (no payment ref)
+    detected: true
+    deny_promotion: false
+    evidence:
+      unapplied_cash: 10
+      unpaid_invoices: 655
+  F21:
+    category: K3
+    description: IC customers 90001/90002 posted to 4300, excluded from external revenue
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 201
+  F22:
+    category: K1
+    description: 'Deliberate IC posting break: US 2024-06 missing CR 9002 leg -> imbalance
+      - K1'
+    detected: true
+    deny_promotion: false
+    evidence:
+      us_2024_06_sum: 50000.0
+  F23:
+    category: K7
+    description: Q3 2024 revenue figure (EUR 2,847,000) only appears in boxed chart
+      label, not text - K7
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F24:
+    category: K7
+    description: Poisoned prior-year figure (2023 restated revenue) with no supporting
+      table - K7
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F25:
+    category: K3
+    description: 'Rebate accrual: 2% on annual key-account volume > EUR 500,000, posted
+      monthly'
+    detected: true
+    deny_promotion: false
+    evidence:
+      accruals:
+      - key_account_id: KA_001
+        year: 2024
+        annual_revenue: 1490649.16
+      - key_account_id: KA_001
+        year: 2025
+        annual_revenue: 1682109.32
+      - key_account_id: KA_002
+        year: 2024
+        annual_revenue: 2550465.31
+      - key_account_id: KA_002
+        year: 2025
+        annual_revenue: 2242358.24
+      - key_account_id: KA_003
+        year: 2024
+        annual_revenue: 1792250.8
+      - key_account_id: KA_003
+        year: 2025
+        annual_revenue: 2013447.25
+      - key_account_id: KA_004
+        year: 2024
+        annual_revenue: 2114128.26
+      - key_account_id: KA_004
+        year: 2025
+        annual_revenue: 2104072.42
+      - key_account_id: KA_005
+        year: 2024
+        annual_revenue: 3349507.27
+      - key_account_id: KA_005
+        year: 2025
+        annual_revenue: 3100891.91
+      - key_account_id: KA_006
+        year: 2024
+        annual_revenue: 1823659.46
+      - key_account_id: KA_006
+        year: 2025
+        annual_revenue: 1981598.63
+      - key_account_id: KA_007
+        year: 2024
+        annual_revenue: 2675083.61
+      - key_account_id: KA_007
+        year: 2025
+        annual_revenue: 3054282.36
+      - key_account_id: KA_008
+        year: 2024
+        annual_revenue: 2109972.56
+      - key_account_id: KA_008
+        year: 2025
+        annual_revenue: 1897917.08
+      - key_account_id: KA_009
+        year: 2024
+        annual_revenue: 3234695.68
+      - key_account_id: KA_009
+        year: 2025
+        annual_revenue: 2971678.77
+      - key_account_id: KA_010
+        year: 2024
+        annual_revenue: 2557062.66
+      - key_account_id: KA_010
+        year: 2025
+        annual_revenue: 2548360.9
+  F26:
+    category: K7
+    description: 'Poisoned anchor: divested-unit press release figure (EUR 8,450,000)
+      - MUST NOT be promoted'
+    detected: true
+    deny_promotion: true
+    evidence:
+      deny: true
+  F27:
+    category: K1,K3
+    description: 'buchungen_report.csv decoy: positive amounts + separate S/H indicator,
+      contradicts GL sign convention'
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F28:
+    category: K8
+    description: 'Unverifiable tell statement from sales_team re: customer channel
+      restriction'
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  F29:
+    category: K8
+    description: 'Unverifiable tell statement re: US fiscal year May-April'
+    detected: true
+    deny_promotion: false
+    evidence: {}
+  BLIND_1:
+    category: K1
+    description: 3 DE invoices in USD with wrong FX direction (multiplied not divided)
+      - books still close but wrong - K1
+    detected: true
+    deny_promotion: false
+    evidence:
+      count: 3
+      docs:
+      - DE-INV-0000519
+      - DE-INV-0002542
+      - DE-INV-0001763
+  BLIND_2:
+    category: K4
+    description: PC_DE_03 profit center has a Q1 2025 validity gap, still referenced
+      by GL postings - K4
+    detected: true
+    deny_promotion: false
+    evidence:
+      row_count: 2
+  BLIND_3:
+    category: K7
+    description: Poisoned acquisition pipeline figure (EUR 1,200,000), no supporting
+      table - K7
+    detected: true
+    deny_promotion: false
+    evidence: {}
+balance_check:
+  all_periods_balanced_except:
+  - US:2024-06
+  all_balanced_as_expected: true
+z_reference:
+  Z1_naive_revenue_including_IC:
+    DE: 50728198.4
+    US: 25165797.66
+  Z2_external_revenue_excl_IC_and_rebates:
+    DE: 46354368.37
+    US: 23621377.5
+  Z3_group_revenue_correct_fx_M_rate:
+    US_in_EUR: 21854415.47
+    group_total_EUR: 68208783.84
+  Z4_consolidated_group_revenue:
+    group_total_EUR: 68208783.84
