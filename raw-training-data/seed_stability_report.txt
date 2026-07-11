@@ -1,0 +1,11 @@
+Seed stability report
+========================================
+
+✅ seed=1: all trap expected_status values identical to seed=0
+✅ seed=1: Z1-Z4 reference structure present (values legitimately vary with seed)
+✅ seed=2: all trap expected_status values identical to seed=0
+✅ seed=2: Z1-Z4 reference structure present (values legitimately vary with seed)
+✅ seed=3: all trap expected_status values identical to seed=0
+✅ seed=3: Z1-Z4 reference structure present (values legitimately vary with seed)
+
+Overall stability: PASS
