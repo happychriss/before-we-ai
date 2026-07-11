@@ -1,6 +1,6 @@
 # M0 Fixture Corpus Validation Report
 
-**Generated:** 2026-07-11T20:07:58.581560
+**Generated:** 2026-07-11T20:11:14.292946
 **Seed:** 0
 
 ## Summary
@@ -315,21 +315,19 @@ Trap-Class Check Results:
 
 ### Invariant Checks
 
-**Status:** ❌ FAIL
+**Status:** ✅ PASS
 
 ```
 M0 Validation: Invariant Checks
 ============================================================
 ✅ MONTHLY BALANCE CHECK: PASS (all periods balanced or in expected_exceptions)
-SUBLEDGER=GL CHECK: FAIL
-  ❌ DE: AR sum=8257795.540000004, GL 1200=8234484.109999999, diff=23311.43000000436
-  ❌ US: AR sum=3513912.84, GL 1200=3452339.2899999986, diff=61573.55000000121
+✅ SUBLEDGER=GL CHECK: PASS (F20 mismatch tolerance applied)
 ✅ IC SYMMETRY CHECK: PASS
 
 ============================================================
 Invariant Check Results:
   monthly_balance: ✅ PASS
-  subledger_gl: ❌ FAIL
+  subledger_gl: ✅ PASS
   ic_symmetry: ✅ PASS
 
 ```
@@ -342,13 +340,9 @@ Invariant Check Results:
 M0 Validation: Reference Results Spot-Check
 ============================================================
 REFERENCE RESULTS SPOT-CHECK: FAIL
-  ❌ Z1 DE: computed=49238299.22, expected=50728198.4
-  ❌ Z1 US: computed=24915693.72, expected=25165797.66
-  ❌ Z2 DE: computed=50728198.4, expected=46354368.37
-  ❌ Z2 US: computed=25165797.66, expected=23621377.5
-  ❌ Z3 US_in_EUR: computed=23292046.74, expected=21854415.47
-  ❌ Z3 group_total_EUR: computed=74020245.14, expected=68208783.84
-  ❌ Z4: computed=74020245.14, expected=68208783.84
+  ❌ Z3 US_in_EUR: computed=21862618.31, expected=21854415.47
+  ❌ Z3 group_total_EUR: computed=68216986.68, expected=68208783.84
+  ❌ Z4: computed=68216986.68, expected=68208783.84
 
 ============================================================
 Spot-check result: ❌ FAIL
@@ -399,5 +393,4 @@ group_total_EUR: 68208783.84
 ❌ **Corpus validation FAILED.** Review checks above and regenerate.
 
 Issues to address:
-- Invariants: balance closes, subledger=GL, IC symmetry
 - Reference results: Z1-Z4 spot-checks
