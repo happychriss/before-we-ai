@@ -23,6 +23,7 @@ PROJECT_DIRS = (
     "claims",
     "evidence",
     "questions",
+    "probes",
     "profiles",
     "reports",
     "cache",

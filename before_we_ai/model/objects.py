@@ -107,6 +107,7 @@ class EvidenceRecord(BaseModel):
     type: EvidenceType
     actor: Actor
     claim_id: str | None = None
+    probe_id: str | None = None  # the persisted Probe whose run produced this record
     verdict: ProbeVerdict | None = None
     scope: Scope | None = None
     statement: str | None = None  # verbatim user statement for testimonials

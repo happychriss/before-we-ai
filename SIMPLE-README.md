@@ -233,10 +233,81 @@ die nächste Stufe.
 
 ---
 
+## M3 — Die Sonden (✅ fertig, Tag `m3-probes-v1`)
+
+Jetzt kann das Tool Vermutungen **prüfen** — und zwar, indem es versucht,
+sie zu widerlegen. Immer noch keine KI im Spiel: Die Sonden liefen gegen
+handgeschriebene Karteikarten aus dem Antwortheft der Übungsfirma.
+
+### Was ist eine Sonde?
+
+Eine Sonde ist eine automatische Stichprobe: eine SQL-Abfrage aus einer
+festen Schablone plus eine feste Regel, die das Ergebnis in einen Stempel
+übersetzt. Kein Ermessen, kein Bauchgefühl — dieselbe Sonde auf denselben
+Daten liefert immer dasselbe Urteil. Jeder Lauf hinterlässt einen Beweis
+mit allem, was ein Prüfer braucht: die ausgeführte Abfrage, wie viele
+Zeilen geprüft, wie viele Ausnahmen, eine Handvoll Beispiele, und den
+Fingerabdruck der Daten zum Prüfzeitpunkt.
+
+Es gibt gut ein Dutzend Schablonen (Verweis-Prüfung, Dubletten, Abdeckung,
+Abstimmung, Gültigkeitszeiträume, Bereichs-Zuordnung, Decodierung …) —
+und eine eiserne Regel: **Eine neue Schablone gibt es nur, wenn ein Fall
+aus der Übungsfirma sie erzwingt.** Kein Vorratsbau.
+
+### Waise ist nicht Fehler
+
+Die wichtigste Feinheit: Eine Karteikarte sagt selbst, was Ausnahmen
+bedeuten. „Jeder Auftrag hat eine Rechnung" — offene Aufträge sind da
+**kein** Fehler, sondern ein Wartezustand. Solche Karten können durch
+Befunde niemals auf „widerlegt" springen; stattdessen entsteht eine
+**Fachfrage** an den Menschen („Datenschnitt oder Fehler?"). Echte
+Widersprüche dagegen werden laut: Die CRM-Referenzen, die sich nirgends
+auflösen, stempeln ihre Karte auf „widerlegt".
+
+### Die Wächter-Sonden
+
+Eine zweite Sorte prüft nicht einzelne Karten, sondern Erhaltungssätze
+der ganzen Landschaft: Gehen die Bücher je Beleg auf? Stimmt Nebenbuch
+mit Hauptbuch? Sind die Konzernbuchungen symmetrisch? Diese Wächter
+fanden die absichtlich eingebaute Lücke der Übungsfirma auf den Punkt:
+**genau ein** unausgeglichener Beleg, US-Gesellschaft, Juni 2024 — nicht
+mehr, nicht weniger. Und sie entschieden den Schönheitswettbewerb der
+Quellen: Der hübsch beschriftete Buchhaltungs-Report sieht wie das
+Journal aus, fällt aber durch die Bilanz-Prüfung durch — das sperrige
+Hauptbuch besteht. Der Report bleibt trotzdem wertvoll: als zweite
+Quelle zum Abstimmen, und genau das wurde auch bewiesen.
+
+### Toleranzen mit Begründung
+
+Manche Abweichungen sind fachlich erklärt (offene Zahlungen ohne
+Rechnungszuordnung). Dafür gibt es Toleranzen — aber nie versteckt im
+Code, sondern sichtbar in der Projekt-Konfiguration, mit Begründung.
+Niemals „Toleranz hochdrehen, bis der Test grün ist".
+
+### Die Abschlussprüfung
+
+Alle Fallentypen aus dem Antwortheft, durchgespielt mit echten Sonden auf
+echten Korpusdaten: führende Nullen bestehen nur **mit** dokumentierter
+Normalisierung (ohne sie fällt dieselbe Beziehung durch), Waisen werden
+Fachfragen, Widerspruch zwischen zwei Sonden macht die Karte „ungeklärt",
+das Zufalls-Echo aus M2 wird von der Kardinalitäts-Sonde entlarvt und
+kommt nie über „vermutet" hinaus. Und die härteste Zahl:
+**Falsch-Beförderungen = 0** — die Menge der „geprüft"-Karten ist exakt
+die erwartete, kein Stück mehr.
+
+### M3 in einem Satz
+
+Das Tool versucht jetzt systematisch, sich selbst zu widerlegen — mit
+deterministischen Stichproben, die Waisen von Fehlern unterscheiden,
+Erhaltungssätze wachen lassen und keine einzige Karte zu Unrecht
+befördern.
+
+---
+
 ## Wie geht es weiter?
 
-- **M3 — Die Sonden**: Automatische Stichproben prüfen die vermuteten
-  Regeln gegen die Daten — noch immer ganz ohne KI, gegen handgeschriebene
-  Karteikarten aus dem Antwortheft. *(Abschnitt folgt, wenn M3 gebaut ist.)*
-- M4–M8 folgen danach: LLM-Verträge, Dokumente, Fragenfluss, Veralterung,
-  Paketierung.
+- **M4 — Die KI kommt dazu**: Ein Sprachmodell darf Vermutungen
+  vorschlagen (aus den Steckbriefen von M2) und Sonden zuordnen — mehr
+  nicht. Gemessen wird, wie viele der eingebauten Beziehungen es findet.
+  *(Abschnitt folgt, wenn M4 gebaut ist.)*
+- M5–M8 folgen danach: Dokumente, Fragenfluss, Veralterung, Paketierung.

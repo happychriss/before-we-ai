@@ -1,0 +1,15 @@
+SELECT count(*) FROM "{{ child }}"
+-- ::exceptions::
+WITH child_keys AS (
+    SELECT {{ child_expr }} AS k FROM "{{ child }}"
+),
+parent_keys AS (
+    SELECT DISTINCT {{ parent_expr }} AS k FROM "{{ parent }}"
+    WHERE {{ parent_expr }} IS NOT NULL
+)
+SELECT c.k AS value, count(*) AS occurrences
+FROM child_keys c
+LEFT JOIN parent_keys p USING (k)
+WHERE c.k IS NOT NULL AND p.k IS NULL
+GROUP BY c.k
+ORDER BY occurrences DESC, value

@@ -1,0 +1,19 @@
+SELECT count(*) FROM "{{ table }}"
+-- ::exceptions::
+WITH vals AS (
+    SELECT DISTINCT {{ value_expr }} AS v
+    FROM "{{ table }}"
+    WHERE {{ value_expr }} IS NOT NULL{% if where %} AND ({{ where }}){% endif %}
+),
+matched AS (
+    SELECT v, count(*) AS n
+    FROM vals
+    JOIN "{{ ranges }}" r
+      ON TRY_CAST(v AS BIGINT) BETWEEN r."{{ range_from }}" AND r."{{ range_to }}"
+    GROUP BY v
+)
+SELECT vals.v AS value, coalesce(matched.n, 0) AS match_count
+FROM vals
+LEFT JOIN matched USING (v)
+WHERE coalesce(matched.n, 0) <> 1
+ORDER BY value

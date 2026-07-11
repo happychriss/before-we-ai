@@ -13,6 +13,7 @@ dependencies = [
     "python-ulid>=2.2",
     "duckdb>=1.0",
     "openpyxl>=3.1",
+    "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -27,8 +28,13 @@ packages = [
     "before_we_ai.store",
     "before_we_ai.sources",
     "before_we_ai.profile",
+    "before_we_ai.probes",
+    "before_we_ai.engine",
     "claim_viewer",
 ]
+
+[tool.setuptools.package-data]
+"before_we_ai.probes" = ["templates/*.sql.j2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

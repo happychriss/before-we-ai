@@ -6,7 +6,7 @@ are computed for later staleness detection, and all values meet the rest
 of the system in one canonical text form.
 """
 
-from before_we_ai.sources.attach import SourceSpec, build_catalog
+from before_we_ai.sources.attach import SourceSpec, build_catalog, load_specs, open_catalog
 from before_we_ai.sources.canonical import canonical_sql_expr, canonicalize, canonical_text
 from before_we_ai.sources.excel import read_workbook, sheet_to_parquet
 from before_we_ai.sources.fingerprint import file_fingerprint, schema_hash, table_fingerprint
@@ -18,6 +18,8 @@ __all__ = [
     "canonical_text",
     "canonicalize",
     "file_fingerprint",
+    "load_specs",
+    "open_catalog",
     "read_workbook",
     "schema_hash",
     "sheet_to_parquet",

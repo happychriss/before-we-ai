@@ -18,6 +18,7 @@ from before_we_ai.model.objects import (
     ColumnProfile,
     ConceptClaim,
     EvidenceRecord,
+    Probe,
     QuestionCard,
     RoleBindingClaim,
     Source,
@@ -68,6 +69,7 @@ class ProjectStore:
         self.questions: dict[str, QuestionCard] = {}
         self.sources: dict[str, Source] = {}
         self.profiles: dict[str, ColumnProfile] = {}
+        self.probes: dict[str, Probe] = {}
         self._load()
 
     # -- loading ---------------------------------------------------------
@@ -92,6 +94,9 @@ class ProjectStore:
         }
         self.profiles = {
             o.id: o for o in self._read_dir("profiles", ColumnProfile.model_validate)
+        }
+        self.probes = {
+            o.id: o for o in self._read_dir("probes", Probe.model_validate)
         }
 
     def _read_dir(self, dirname: str, parse, keep_type: bool = False) -> list:
@@ -172,6 +177,10 @@ class ProjectStore:
     def save_profile(self, profile: ColumnProfile) -> None:
         self._write("profiles", profile)
         self.profiles[profile.id] = profile
+
+    def save_probe(self, probe: Probe) -> None:
+        self._write("probes", probe)
+        self.probes[probe.id] = probe
 
     # -- convenience -----------------------------------------------------
 

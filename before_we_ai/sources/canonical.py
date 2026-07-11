@@ -65,14 +65,14 @@ def canonical_text(value: object) -> str | None:
     return canonicalize(value)[0]
 
 
-def canonical_sql_expr(column: str, duckdb_type: str) -> str:
+def canonical_sql_expr(column: str, duckdb_type: str, alias: str | None = None) -> str:
     """The SQL twin of :func:`canonical_text` for a DuckDB column.
 
     Must agree with the Python side on shared cases (unit-tested), so
     values from attached databases and values from normalized files land
-    in the same form.
+    in the same form. ``alias`` prefixes the column for joined queries.
     """
-    quoted = f'"{column}"'
+    quoted = f'"{alias}"."{column}"' if alias else f'"{column}"'
     base = duckdb_type.upper().split("(")[0].strip()
     if base in ("TINYINT", "SMALLINT", "INTEGER", "BIGINT", "HUGEINT",
                 "UTINYINT", "USMALLINT", "UINTEGER", "UBIGINT"):

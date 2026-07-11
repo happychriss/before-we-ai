@@ -1,0 +1,14 @@
+SELECT count(*) FROM "{{ left }}"
+-- ::exceptions::
+WITH l AS (
+    SELECT {{ left_period_expr }} AS period, count(*) AS legs FROM "{{ left }}" GROUP BY 1
+),
+r AS (
+    SELECT {{ right_period_expr }} AS period, count(*) AS legs FROM "{{ right }}" GROUP BY 1
+)
+SELECT coalesce(l.period, r.period) AS period,
+       coalesce(l.legs, 0) AS left_legs,
+       coalesce(r.legs, 0) AS right_legs
+FROM l FULL JOIN r USING (period)
+WHERE coalesce(l.legs, 0) <> coalesce(r.legs, 0)
+ORDER BY period

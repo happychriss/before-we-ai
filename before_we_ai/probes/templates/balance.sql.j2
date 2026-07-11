@@ -1,0 +1,7 @@
+SELECT count(*) FROM "{{ journal }}"
+-- ::exceptions::
+SELECT {{ group_expr }} AS grp, sum(CAST("{{ amount }}" AS DOUBLE)) AS balance
+FROM "{{ journal }}"
+GROUP BY 1
+HAVING abs(sum(CAST("{{ amount }}" AS DOUBLE))) > {{ tolerance }}
+ORDER BY abs(balance) DESC, grp

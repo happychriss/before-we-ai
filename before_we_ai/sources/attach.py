@@ -9,10 +9,13 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import duckdb
+import yaml
 from pydantic import BaseModel
 
 from before_we_ai.sources.excel import read_workbook, sheet_to_parquet
 from before_we_ai.sources.fingerprint import file_fingerprint, table_fingerprint
+from before_we_ai.store.layout import CONFIG_FILE
 
 RULE_CSV_ALL_VARCHAR = "csv_read_all_varchar"
 
@@ -41,6 +44,27 @@ class CatalogEntry:
 
 def _slug(name: str) -> str:
     return re.sub(r"[^0-9a-zA-Z]+", "_", name.strip()).strip("_").lower()
+
+
+def load_specs(root: str | Path) -> list[SourceSpec]:
+    """The ``sources:`` entries of a project's before-ai.yaml."""
+    config = yaml.safe_load((Path(root) / CONFIG_FILE).read_text(encoding="utf-8")) or {}
+    return [SourceSpec.model_validate(entry) for entry in config.get("sources", [])]
+
+
+def open_catalog(root: str | Path):
+    """Open the analysis catalog, rebuilding its views.
+
+    Views over ATTACHed databases do not survive a fresh connection, so
+    every consumer goes through here: connect to the cache database and
+    re-run the (idempotent, cheap) catalog build. The cache stays what it
+    is — a derivative.
+    """
+    root = Path(root)
+    (root / "cache").mkdir(exist_ok=True)
+    con = duckdb.connect(str(root / "cache" / "analysis.duckdb"))
+    build_catalog(root, load_specs(root), con)
+    return con
 
 
 def view_name(source: str, table: str) -> str:

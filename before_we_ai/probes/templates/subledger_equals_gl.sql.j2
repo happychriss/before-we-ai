@@ -1,0 +1,14 @@
+SELECT count(*) FROM "{{ subledger }}"
+-- ::exceptions::
+WITH sub AS (
+    SELECT coalesce(sum(CAST("{{ subledger_amount }}" AS DOUBLE)), 0) AS total
+    FROM "{{ subledger }}"
+),
+gl AS (
+    SELECT coalesce(sum(CAST("{{ journal_amount }}" AS DOUBLE)), 0) AS total
+    FROM "{{ journal }}"
+    WHERE "{{ account }}" IN ({{ account_list }})
+)
+SELECT sub.total AS subledger_total, gl.total AS gl_total, sub.total - gl.total AS diff
+FROM sub, gl
+WHERE abs(sub.total - gl.total) > {{ tolerance }}

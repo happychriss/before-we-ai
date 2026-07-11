@@ -16,14 +16,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import duckdb
-import yaml
 
 from before_we_ai.model.enums import Actor, EvidenceType
 from before_we_ai.model.objects import EvidenceRecord, Source
 from before_we_ai.profile.candidates import build_matrix, write_matrix
 from before_we_ai.profile.columns import profile_view
-from before_we_ai.sources.attach import SourceSpec, build_catalog
-from before_we_ai.store.layout import CONFIG_FILE
+from before_we_ai.sources.attach import build_catalog, load_specs
 from before_we_ai.store.repository import ProjectStore
 
 
@@ -36,11 +34,6 @@ class ScanResult:
     candidates: int = 0
     matrix_path: Path | None = None
     warnings: list[str] = field(default_factory=list)
-
-
-def load_specs(root: Path) -> list[SourceSpec]:
-    config = yaml.safe_load((root / CONFIG_FILE).read_text(encoding="utf-8")) or {}
-    return [SourceSpec.model_validate(entry) for entry in config.get("sources", [])]
 
 
 def scan(root: str | Path) -> ScanResult:
