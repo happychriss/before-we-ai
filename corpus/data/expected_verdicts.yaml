@@ -205,14 +205,14 @@ traps:
     description: Q3 2024 revenue figure (EUR 2,847,000) only appears in boxed chart
       label, not text - K7
     detected: true
-    deny_promotion: false
+    deny_promotion: true
     evidence: {}
   F24:
     category: K7
     description: Poisoned prior-year figure (2023 restated revenue) with no supporting
       table - K7
     detected: true
-    deny_promotion: false
+    deny_promotion: true
     evidence: {}
   F25:
     category: K3
@@ -335,7 +335,7 @@ traps:
     description: Poisoned acquisition pipeline figure (EUR 1,200,000), no supporting
       table - K7
     detected: true
-    deny_promotion: false
+    deny_promotion: true
     evidence: {}
 balance_check:
   all_periods_balanced_except:
