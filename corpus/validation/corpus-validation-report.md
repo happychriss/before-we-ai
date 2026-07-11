@@ -1,6 +1,6 @@
 # M0 Fixture Corpus Validation Report
 
-**Generated:** 2026-07-11T20:06:47.327575
+**Generated:** 2026-07-11T20:07:58.581560
 **Seed:** 0
 
 ## Summary
@@ -342,10 +342,13 @@ Invariant Check Results:
 M0 Validation: Reference Results Spot-Check
 ============================================================
 REFERENCE RESULTS SPOT-CHECK: FAIL
-  ❌ Z1 DE: computed=49238299.22, expected=0
-  ❌ Z1 US: computed=24915693.72, expected=0
-  ❌ Z2 DE: computed=-50728198.4, expected=0
-  ❌ Z2 US: computed=-25165797.66, expected=0
+  ❌ Z1 DE: computed=49238299.22, expected=50728198.4
+  ❌ Z1 US: computed=24915693.72, expected=25165797.66
+  ❌ Z2 DE: computed=50728198.4, expected=46354368.37
+  ❌ Z2 US: computed=25165797.66, expected=23621377.5
+  ❌ Z3 US_in_EUR: computed=23292046.74, expected=21854415.47
+  ❌ Z3 group_total_EUR: computed=74020245.14, expected=68208783.84
+  ❌ Z4: computed=74020245.14, expected=68208783.84
 
 ============================================================
 Spot-check result: ❌ FAIL

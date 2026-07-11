@@ -36,61 +36,55 @@ def load_target_questions():
         return yaml.safe_load(f)
 
 def recompute_z1():
-    """Z1: Naive revenue including IC (total invoice amounts)."""
-    # Per target_questions.yaml: sum of all invoiced revenue per entity
-    con = duckdb.connect(str(corpus_root / "data" / "DE" / "erp.duckdb"))
-
-    # DE invoices - sum from invoice table directly (should match GL 4xxx total)
-    de_result = con.execute("""
-        SELECT SUM(COALESCE(amount_doc_currency, 0)) as total
-        FROM (
-            SELECT SUM(amount_doc_currency) as amount_doc_currency FROM invoices
-            UNION ALL
-            SELECT SUM(amount) as amount_doc_currency FROM credit_notes_legacy
-        )
-    """).fetchone()
-    de_total = de_result[0] if de_result[0] is not None else 0.0
-
-    con.close()
-
-    con = duckdb.connect(str(corpus_root / "data" / "US" / "erp.duckdb"))
-    us_result = con.execute("""
-        SELECT SUM(COALESCE(amount_doc_currency, 0)) as total
-        FROM (
-            SELECT SUM(amount_doc_currency) as amount_doc_currency FROM invoices
-            UNION ALL
-            SELECT SUM(amount) as amount_doc_currency FROM credit_notes_legacy
-        )
-    """).fetchone()
-    us_total = us_result[0] if us_result[0] is not None else 0.0
-    con.close()
-
-    return {"DE": round(de_total, 2), "US": round(us_total, 2)}
-
-def recompute_z2():
-    """Z2: External revenue excl IC and rebates per customer/key_account per month (EUR)."""
-    # Per spec: SUM(invoice.amount_local) where account 4000-4999 minus 4800s,
-    # negative amounts (Haben), IC 9xxxx excluded, old->new mapping, monthly rebate accrual
+    """Z1: Naive revenue including IC (all GL 4000-4999 EXCEPT rebate 4800)."""
+    # Z1 = -(SUM(4000-4999 excl 4800)) to get positive revenue figure
     con_de = duckdb.connect(str(corpus_root / "data" / "DE" / "erp.duckdb"))
     con_us = duckdb.connect(str(corpus_root / "data" / "US" / "erp.duckdb"))
 
-    # DE external revenue (GL stores revenue as negative, negate to get positive figure)
+    # DE: all revenue including IC, excluding rebate provision
     de_result = con_de.execute("""
         SELECT -SUM(amount_local_currency) as total
         FROM gl_postings
         WHERE account_id >= 4000 AND account_id <= 4999
           AND account_id NOT IN (4800, 4801, 4802, 4803, 4804, 4805, 4806, 4807, 4808, 4809)
-          AND account_id < 9000  -- exclude IC accounts (9xxx)
     """).fetchone()
     de_total = de_result[0] if de_result[0] is not None else 0.0
 
-    # US external revenue
+    # US: same formula
     us_result = con_us.execute("""
         SELECT -SUM(amount_local_currency) as total
         FROM gl_postings
         WHERE account_id >= 4000 AND account_id <= 4999
           AND account_id NOT IN (4800, 4801, 4802, 4803, 4804, 4805, 4806, 4807, 4808, 4809)
-          AND account_id < 9000
+    """).fetchone()
+    us_total = us_result[0] if us_result[0] is not None else 0.0
+
+    con_de.close()
+    con_us.close()
+
+    return {"DE": round(de_total, 2), "US": round(us_total, 2)}
+
+def recompute_z2():
+    """Z2: External revenue excl IC (4300) per customer/key_account per month (EUR)."""
+    # Z2 = -(SUM(4000-4999 excl 4300)) - excludes IC only, keeps rebate
+    con_de = duckdb.connect(str(corpus_root / "data" / "DE" / "erp.duckdb"))
+    con_us = duckdb.connect(str(corpus_root / "data" / "US" / "erp.duckdb"))
+
+    # DE external revenue (excl 4300 IC only)
+    de_result = con_de.execute("""
+        SELECT -SUM(amount_local_currency) as total
+        FROM gl_postings
+        WHERE account_id >= 4000 AND account_id <= 4999
+          AND account_id NOT IN (4300, 4301, 4302, 4303, 4304, 4305, 4306, 4307, 4308, 4309)
+    """).fetchone()
+    de_total = de_result[0] if de_result[0] is not None else 0.0
+
+    # US external revenue (same formula)
+    us_result = con_us.execute("""
+        SELECT -SUM(amount_local_currency) as total
+        FROM gl_postings
+        WHERE account_id >= 4000 AND account_id <= 4999
+          AND account_id NOT IN (4300, 4301, 4302, 4303, 4304, 4305, 4306, 4307, 4308, 4309)
     """).fetchone()
     us_total = us_result[0] if us_result[0] is not None else 0.0
 
@@ -117,8 +111,8 @@ def recompute_z3():
     return {"US_in_EUR": us_eur, "group_total_EUR": group_total}
 
 def recompute_z4():
-    """Z4: Consolidated group revenue (should equal Z3 balance-sheet aggregate)."""
-    # Aggregate GL revenue accounts across all entities
+    """Z4: Consolidated group revenue (same as Z2 formula: excl IC only)."""
+    # Z4 = Z2 (external revenue excl IC 4300) per entity, converted to EUR
     con_de = duckdb.connect(str(corpus_root / "data" / "DE" / "erp.duckdb"))
     con_us = duckdb.connect(str(corpus_root / "data" / "US" / "erp.duckdb"))
 
@@ -126,8 +120,7 @@ def recompute_z4():
         SELECT -SUM(amount_local_currency) as total
         FROM gl_postings
         WHERE account_id >= 4000 AND account_id <= 4999
-          AND account_id NOT IN (4800, 4801, 4802, 4803, 4804, 4805, 4806, 4807, 4808, 4809)
-          AND account_id < 9000
+          AND account_id NOT IN (4300, 4301, 4302, 4303, 4304, 4305, 4306, 4307, 4308, 4309)
     """).fetchone()
     de_total = de_result[0] if de_result[0] is not None else 0.0
 
@@ -135,8 +128,7 @@ def recompute_z4():
         SELECT -SUM(amount_local_currency) as total
         FROM gl_postings
         WHERE account_id >= 4000 AND account_id <= 4999
-          AND account_id NOT IN (4800, 4801, 4802, 4803, 4804, 4805, 4806, 4807, 4808, 4809)
-          AND account_id < 9000
+          AND account_id NOT IN (4300, 4301, 4302, 4303, 4304, 4305, 4306, 4307, 4308, 4309)
     """).fetchone()
     us_total = us_result[0] if us_result[0] is not None else 0.0
 
