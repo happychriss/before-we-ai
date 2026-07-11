@@ -22,6 +22,7 @@ from before_we_ai.model.objects import (
     RoleBindingClaim,
     Source,
 )
+from before_we_ai.model.semantics import claim_key
 from before_we_ai.store.layout import CONFIG_FILE, init_project
 
 _CLAIM_TYPES = {
@@ -75,6 +76,11 @@ class ProjectStore:
         self.claims = {
             o.id: o for o in self._read_dir("claims", self._parse_claim, keep_type=True)
         }
+        self._claims_by_key = {}
+        for claim in self.claims.values():
+            key = claim_key(claim)
+            if key:
+                self._claims_by_key[key] = claim.id
         self.evidence = {
             o.id: o for o in self._read_dir("evidence", EvidenceRecord.model_validate)
         }
@@ -115,6 +121,27 @@ class ProjectStore:
     def save_claim(self, claim: Claim) -> None:
         self._write("claims", claim)
         self.claims[claim.id] = claim
+        key = claim_key(claim)
+        if key:
+            self._claims_by_key[key] = claim.id
+
+    def add_claim(self, claim: Claim) -> Claim:
+        """Save a claim, deduplicating on its semantic identity.
+
+        If a claim with the same key (predicate + scope + validity +
+        sources) already exists, that claim is returned and nothing is
+        written — the same rule proposed twice is one claim, whatever its
+        wording. Free-text claims (no predicate) always save.
+        """
+        key = claim_key(claim)
+        if key and key in self._claims_by_key:
+            return self.claims[self._claims_by_key[key]]
+        self.save_claim(claim)
+        return claim
+
+    def find_claim(self, key: str) -> Claim | None:
+        cid = self._claims_by_key.get(key)
+        return self.claims.get(cid) if cid else None
 
     def add_evidence(self, record: EvidenceRecord) -> None:
         path = self.root / "evidence" / f"{record.id}.yaml"

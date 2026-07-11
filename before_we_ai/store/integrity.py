@@ -21,6 +21,18 @@ def check_integrity(store: "ProjectStore") -> list[str]:
         for dep in claim.depends_on:
             if dep not in store.claims:
                 findings.append(f"claim {claim.id}: dangling dependency {dep}")
+        if claim.derived_from and claim.derived_from not in store.claims:
+            findings.append(
+                f"claim {claim.id}: dangling parent reference {claim.derived_from}"
+            )
+        if claim.derived_from_evidence and claim.derived_from_evidence not in store.evidence:
+            findings.append(
+                f"claim {claim.id}: dangling origin-evidence reference "
+                f"{claim.derived_from_evidence}"
+            )
+        for sid in claim.source_ids:
+            if sid not in store.sources:
+                findings.append(f"claim {claim.id}: dangling source reference {sid}")
 
     for record in store.evidence.values():
         if record.claim_id and record.claim_id not in store.claims:

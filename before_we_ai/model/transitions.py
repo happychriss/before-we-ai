@@ -16,7 +16,13 @@ the stored status field is a cached rendering of that derivation.
 """
 
 from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, ProbeVerdict
-from before_we_ai.model.objects import Claim, EvidenceRecord, Scope
+from before_we_ai.model.objects import (
+    Claim,
+    EvidenceRecord,
+    Predicate,
+    Scope,
+    Validity,
+)
 
 
 class PromotionError(Exception):
@@ -27,8 +33,11 @@ def create_claim(
     statement: str,
     created_by: Actor,
     *,
-    depends_on: list[str] | None = None,
+    predicate: Predicate | None = None,
     scope: Scope | None = None,
+    validity: Validity | None = None,
+    source_ids: list[str] | None = None,
+    depends_on: list[str] | None = None,
     open_assumptions: list[str] | None = None,
 ) -> Claim:
     """Create a claim. Every claim starts ``inferred`` — no exceptions.
@@ -39,9 +48,50 @@ def create_claim(
         statement=statement,
         created_by=created_by,
         status=ClaimStatus.INFERRED,
-        depends_on=depends_on or [],
+        predicate=predicate,
         scope=scope,
+        validity=validity,
+        source_ids=source_ids or [],
+        depends_on=depends_on or [],
         open_assumptions=open_assumptions or [],
+    )
+
+
+def escalate_exception(
+    parent: Claim,
+    evidence: EvidenceRecord,
+    *,
+    statement: str,
+    created_by: Actor,
+    predicate: Predicate | None = None,
+    scope: Scope | None = None,
+    validity: Validity | None = None,
+) -> Claim:
+    """Promote a materially different exception into a claim of its own.
+
+    Most exceptions stay what they are — bounded counterexamples inside
+    the parent's evidence. But when a pattern in the exceptions is a rule
+    in itself (a migrated ID range, a re-parented hierarchy branch), it
+    becomes a *new* claim: scoped to the exception and linked to its
+    origin via ``derived_from`` / ``derived_from_evidence``. That link is
+    provenance, not status-bearing evidence — the child starts at
+    ``inferred`` with an empty evidence list and must earn its own status.
+    Escalation is a hypothesis, not a promotion.
+    """
+    if evidence.id not in parent.evidence_ids:
+        raise ValueError(
+            f"evidence {evidence.id} is not attached to parent claim {parent.id}"
+        )
+    child = create_claim(
+        statement,
+        created_by,
+        predicate=predicate,
+        scope=scope or parent.scope,
+        validity=validity or parent.validity,
+        source_ids=list(parent.source_ids),
+    )
+    return child.model_copy(
+        update={"derived_from": parent.id, "derived_from_evidence": evidence.id}
     )
 
 

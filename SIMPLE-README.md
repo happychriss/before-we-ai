@@ -121,6 +121,25 @@ geklärt sein, **wofür es gilt**: Welche Gesellschaft? Welcher Zeitraum?
 Eine Bestätigung ohne diese Angabe wird abgelehnt. (Das ist genau die
 Falle F29 aus dem Korpus: Der Satz galt nur für die US-Firma.)
 
+### Eine Karte pro Regel, nicht pro Zeile
+
+Wichtig bei großen Datenmengen: Eine Karteikarte beschreibt immer eine
+**Regel** („jeder offene Posten hat eine Buchung im Hauptbuch"), nie eine
+einzelne Datenzeile. Prüft die Sonde 100.000 Zeilen und findet 37
+Ausreißer, entsteht **eine** Karte mit **einem** Beweis: geprüfte Menge,
+Anzahl Ausnahmen, eine Handvoll anschaulicher Beispiele — nicht 100.000
+Karten, die nie jemand durchsieht. Die vollständige Ausnahmeliste landet
+im wegwerfbaren Zwischenspeicher, nicht in den Akten.
+
+Zwei Schutzmechanismen gehören dazu: Wird dieselbe Regel doppelt
+vorgeschlagen (anders formuliert, andere Sitzung), erkennt der
+Aktenschrank sie an ihrem Inhalt und legt **keine zweite Karte** an. Und
+wenn sich hinter den Ausnahmen ein eigenes Muster verbirgt (z.B. „alle
+37 stammen aus der alten Nummernwelt"), kann ein Mensch daraus gezielt
+eine **neue Karte** machen — die mit der Ursprungskarte verknüpft ist,
+aber wieder bei „vermutet" anfängt und sich ihre Stempel selbst verdienen
+muss.
+
 ### Der Aktenschrank
 
 Alles liegt als einfache Textdateien in einem Projektordner — eine Datei
