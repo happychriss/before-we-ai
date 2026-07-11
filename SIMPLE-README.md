@@ -80,10 +80,76 @@ und Dokumenten herausfinden. Das Finanzwissen wohnt im Korpus, nicht im Tool.
 
 ---
 
+## M1 — Das Gedächtnis des Tools (✅ fertig, Tag `m1-core-v1`)
+
+Jetzt gibt es das erste Stück vom Tool selbst. Noch keine Datenanalyse,
+keine KI — nur das **Gedächtnis**: die Regeln, nach denen das Tool sich
+merkt, was es weiß, was es vermutet und was es nicht weiß.
+
+### Der Claim = die Karteikarte
+
+Jede Vermutung wird eine Karteikarte: „Ich glaube, Konto 4300 ist
+Innenumsatz." Auf der Karte steht immer, **wer sie geschrieben hat** und
+**welche Beweise dranhängen**. Eine Karte hat genau einen von fünf Stempeln:
+
+- **vermutet** (inferred) — jemand glaubt es, geprüft hat es keiner.
+- **geprüft** (tested) — eine automatische Stichprobe (Sonde) hat es bestätigt.
+- **widerlegt** (contradicted) — die Sonde sagt: stimmt nicht.
+- **ungeklärt** (unresolved) — die Beweise widersprechen sich. Laut, nicht leise!
+- **vom Chef bestätigt** (business-confirmed) — ein Mensch hat es abgesegnet.
+
+### Die drei eisernen Regeln
+
+1. **Die KI darf nur vermuten.** Egal wie überzeugt sie klingt — sie kann
+   Karten anlegen, aber niemals selbst einen besseren Stempel draufdrücken.
+   Befördern dürfen nur eine Sonde oder ein Mensch. Das ist keine
+   Vereinbarung, das ist eingebaut: Es gibt schlicht keinen Weg im Code.
+2. **Widerspruch macht laut.** Sagt eine Sonde „stimmt" und eine andere
+   „stimmt nicht", wird nicht gemittelt und nicht das Neueste geglaubt —
+   die Karte springt auf **ungeklärt**, und ein Mensch muss ran. Das gilt
+   sogar für Chef-bestätigte Karten: Findet eine Sonde später etwas
+   Gegenteiliges, ist auch die wieder ungeklärt.
+3. **Beweise sind ein Kassenbuch.** Jeder Beweis wird nur angehängt, nie
+   geändert, nie gelöscht. Höchstens als „veraltet" markiert — dann zählt
+   er nicht mehr, bleibt aber nachlesbar.
+
+### Die Spiegel-Schleife
+
+Sagt der Nutzer „Unser Geschäftsjahr läuft Mai bis April", speichert das
+Tool den Satz wörtlich — und bevor ein Mensch das bestätigen darf, muss
+geklärt sein, **wofür es gilt**: Welche Gesellschaft? Welcher Zeitraum?
+Eine Bestätigung ohne diese Angabe wird abgelehnt. (Das ist genau die
+Falle F29 aus dem Korpus: Der Satz galt nur für die US-Firma.)
+
+### Der Aktenschrank
+
+Alles liegt als einfache Textdateien in einem Projektordner — eine Datei
+pro Karteikarte, eine pro Beweis. Keine Datenbank, alles mit Git
+versionierbar. Ein Prüf-Kommando kontrolliert, dass keine Karte auf
+Beweise verweist, die es gar nicht gibt.
+
+### Und die Prüfung aus M0?
+
+Das Gedächtnis wurde direkt gegen das Antwortheft getestet: Für jede der
+32 Fallen wird durchgespielt, welche Beweise sie erzeugen würde — und
+geprüft, dass die Karteikarte auf dem richtigen Stempel landet. Vergiftete
+Zahlen (K7) bleiben **vermutet**, egal wie viele Dokumente sie erwähnen.
+Legitime Waisen (K6) werden **nicht** als widerlegt abgestempelt. Und der
+härteste Test: Mit nur KI-Beweisen wird **keine einzige** der 32 Fallen
+befördert — falsche Beförderungen: null.
+
+### M1 in einem Satz
+
+Das Tool hat jetzt ein ehrliches Gedächtnis: Karteikarten mit fünf
+Stempeln, bei denen die KI nur vermuten darf, Widerspruch laut wird und
+kein Beweis je verschwindet — geprüft gegen alle 32 Fallen der Übungsfirma.
+
+---
+
 ## Wie geht es weiter?
 
-- **M1 — Der epistemische Kern**: das Gedächtnis des Tools. Was ist eine
-  Behauptung (Claim), wann darf sie befördert werden, wann bleibt sie
-  Verdacht? *(Abschnitt folgt, wenn M1 gebaut ist.)*
-- M2–M8 folgen danach: Daten einlesen, Sonden (Probes), LLM-Verträge,
-  Dokumente, Fragenfluss, Veralterung, Paketierung.
+- **M2 — Daten einlesen und vermessen**: Das Tool lernt, die chaotischen
+  Quellen der Übungsfirma zu öffnen (Datenbanken, hässliches Excel, CSV)
+  und jede Spalte zu vermessen. *(Abschnitt folgt, wenn M2 gebaut ist.)*
+- M3–M8 folgen danach: Sonden (Probes), LLM-Verträge, Dokumente,
+  Fragenfluss, Veralterung, Paketierung.
