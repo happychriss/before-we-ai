@@ -6,16 +6,18 @@ import json
 
 from before_we_ai.model import (
     Actor,
+    ClaimStatus,
     EvidenceRecord,
     EvidenceType,
     Predicate,
     ProbeVerdict,
     QuestionCard,
     RoleBindingClaim,
-    Scope,
     Source,
     create_claim,
 )
+from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.model.objects import ColumnProfile
 from before_we_ai.store import ProjectStore, init_project
 from claim_viewer import render_project
 
@@ -54,9 +56,8 @@ def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
         source_fingerprints={"erp": "abc"},
     )
     store.add_evidence(probe)
-    parent.evidence_ids.append(probe.id)
-    parent.status = ProbeVerdict.FAIL  # type: ignore[assignment]
-    parent.status = parent.status.CONTRADICTED  # type: ignore[union-attr]
+    parent = attach_evidence(parent, probe, [])
+    assert parent.status is ClaimStatus.CONTRADICTED
     store.save_claim(parent)
 
     child = create_claim(
@@ -78,7 +79,7 @@ def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
 
     store.save_question(QuestionCard(question="Which invoices are missing orders?", claim_ids=[parent.id]))
     store.save_profile(
-        profile := __import__("before_we_ai.model", fromlist=["ColumnProfile"]).ColumnProfile(
+        profile := ColumnProfile(
             source_id=source.id,
             table="erp__invoices",
             column="invoice_id",
