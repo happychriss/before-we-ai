@@ -1,0 +1,706 @@
+<title>M0 Corpus Validation</title>
+<style>
+:root {
+  --paper: #FAF9F5; --surface: #FFFFFF; --ink: #202723; --muted: #68716B;
+  --line: #DEE0D7; --accent: #0E6B5B; --accent-soft: #E4EFEB;
+  --pass: #22764A; --pass-soft: #E3F0E7; --deny: #A93A2C; --deny-soft: #F6E7E3;
+  --blind: #7A5A9E; --blind-soft: #EEE7F5; --flash: #D5E8E2;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --paper: #151917; --surface: #1D2320; --ink: #E7EAE4; --muted: #939C94;
+  --line: #333B35; --accent: #57BCA5; --accent-soft: #23352F;
+  --pass: #5FBF8A; --pass-soft: #21332A; --deny: #E1786A; --deny-soft: #3B2723;
+  --blind: #B294D6; --blind-soft: #2E2739; --flash: #274139;
+} }
+:root[data-theme="dark"] {
+  --paper: #151917; --surface: #1D2320; --ink: #E7EAE4; --muted: #939C94;
+  --line: #333B35; --accent: #57BCA5; --accent-soft: #23352F;
+  --pass: #5FBF8A; --pass-soft: #21332A; --deny: #E1786A; --deny-soft: #3B2723;
+  --blind: #B294D6; --blind-soft: #2E2739; --flash: #274139;
+}
+:root[data-theme="light"] {
+  --paper: #FAF9F5; --surface: #FFFFFF; --ink: #202723; --muted: #68716B;
+  --line: #DEE0D7; --accent: #0E6B5B; --accent-soft: #E4EFEB;
+  --pass: #22764A; --pass-soft: #E3F0E7; --deny: #A93A2C; --deny-soft: #F6E7E3;
+  --blind: #7A5A9E; --blind-soft: #EEE7F5; --flash: #D5E8E2;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* toolbar */
+.bar { position: sticky; top: 0; z-index: 10; background: var(--paper);
+  border-bottom: 1px solid var(--line); }
+.bar-in { max-width: 1080px; margin: 0 auto; padding: 10px 24px;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.brand { font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.brand .num { color: var(--accent); }
+.bar nav { display: flex; gap: 14px; flex-wrap: wrap; }
+.bar nav a { text-decoration: none; color: var(--muted); font-size: 13px;
+  text-transform: uppercase; letter-spacing: 0.07em; }
+.bar nav a:hover { color: var(--accent); }
+#q { margin-left: auto; min-width: 200px; padding: 6px 10px; font: 13px var(--mono);
+  color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 6px; }
+#q:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* summary */
+.masthead { padding: 44px 0 8px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: -0.02em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 62ch; }
+.stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 22px 0 0; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 18px; min-width: 128px; }
+.stat b { display: block; font-size: 22px; font-family: var(--mono);
+  font-variant-numeric: tabular-nums; }
+.stat.verdict { border-color: var(--pass); background: var(--pass-soft); }
+.stat.verdict b { color: var(--pass); }
+.stat span { font-size: 12px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.08em; }
+
+section { margin-top: 56px; }
+h2 { font-size: 20px; letter-spacing: -0.01em; margin: 0 0 4px;
+  padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+.sec-note { color: var(--muted); font-size: 14px; margin: 8px 0 20px; max-width: 70ch; }
+
+/* chips + badges */
+.chip { display: inline-block; font: 12px var(--mono); text-decoration: none;
+  padding: 2px 8px; margin: 2px 4px 2px 0; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; }
+.chip:hover { border-color: var(--accent); }
+.chip-k { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.chip-blind { background: var(--blind-soft); color: var(--blind); }
+.badge { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: 4px; }
+.badge-pass { background: var(--pass-soft); color: var(--pass); }
+.badge-deny { background: var(--deny-soft); color: var(--deny); }
+.badge-blind { background: var(--blind-soft); color: var(--blind); }
+
+/* Zielfragen */
+.zgrid { display: grid; gap: 16px; }
+.zcard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 18px 20px; }
+.zcard h3 { margin: 0 0 4px; font-size: 16px; }
+.z-note { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; max-width: 75ch; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--muted); padding: 6px 14px 6px 0; border-bottom: 1px solid var(--line); }
+td { padding: 7px 14px 7px 0; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: none; }
+td.num, th.num { }
+.delta { color: var(--muted); }
+.z-traps { margin-top: 12px; }
+
+/* classes */
+.kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.kcard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.k-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.k-head h3 { margin: 0; font-size: 15px; line-height: 1.35; }
+.k-id { font-family: var(--mono); color: var(--accent); margin-right: 4px; }
+.k-count { color: var(--muted); font-size: 13px; }
+.k-desc { margin: 0; font-size: 13.5px; color: var(--muted); }
+.k-conseq { margin: 0; font-size: 13px; border-left: 3px solid var(--accent);
+  padding-left: 10px; }
+.k-note { margin: 0; font-size: 13px; color: var(--muted); font-style: italic; }
+.ev-key { display: block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--muted); margin-bottom: 2px; }
+
+/* trap register */
+.fbar { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 18px; }
+.fbtn { font: 12px var(--mono); padding: 4px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  cursor: pointer; }
+.fbtn:hover { border-color: var(--accent); }
+.fbtn.on { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.fbtn:focus-visible, .chip:focus-visible, #q:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.traps { display: grid; gap: 14px; }
+.trap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 16px 20px; }
+.trap.is-deny { border-left: 4px solid var(--deny); }
+.trap.hidden { display: none; }
+.trap:target, .kcard:target, .zcard:target { animation: flash 1.6s ease-out; }
+@keyframes flash { 0% { background: var(--flash); } 100% { background: var(--surface); } }
+@media (prefers-reduced-motion: reduce) { .trap:target, .kcard:target, .zcard:target { animation: none; outline: 2px solid var(--accent); } }
+.trap-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.trap-id { margin: 0; font: 700 17px var(--mono); }
+.trap-badges { margin-left: auto; display: flex; gap: 6px; }
+.trap-desc { margin: 8px 0 10px; max-width: 78ch; }
+.trap-srcs { margin-bottom: 10px; }
+.src { display: inline-block; font: 12px var(--mono); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 4px; padding: 1px 7px;
+  margin: 2px 4px 2px 0; cursor: help; }
+.ev-row { display: flex; gap: 14px; align-items: baseline; padding: 3px 0;
+  font-size: 13.5px; }
+.ev-row .ev-key { min-width: 160px; margin: 0; }
+.ev-none { font-size: 13px; color: var(--muted); font-style: italic; margin: 0; }
+.ev-details summary { cursor: pointer; font-size: 13px; color: var(--accent); padding: 4px 0; }
+.ev-details table { margin-top: 6px; }
+
+/* checks */
+.check { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 16px 20px; margin-bottom: 14px; }
+.check-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.check-head h3 { margin: 0; font-size: 15px; }
+.script { margin-left: auto; font: 12px var(--mono); color: var(--muted); }
+.check-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.check-row { display: flex; align-items: baseline; gap: 10px; padding: 5px 0;
+  border-top: 1px solid var(--line); font-size: 13.5px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; position: relative; top: -1px; }
+.dot-pass { background: var(--pass); }
+.dot-fail { background: var(--deny); }
+.check-name { min-width: 170px; font-weight: 600; }
+.check-note { color: var(--muted); }
+.foot { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 12.5px; }
+.count-note { font: 12px var(--mono); color: var(--muted); margin-left: 8px; }
+</style>
+
+<div class="bar"><div class="bar-in">
+  <span class="brand">before-we-ai <span class="num">M0</span></span>
+  <nav>
+    <a href="#zielfragen">Zielfragen</a>
+    <a href="#klassen">Klassen</a>
+    <a href="#fehler">Fehler-Register</a>
+    <a href="#checks">Pr&uuml;fungen</a>
+  </nav>
+  <input id="q" type="search" placeholder="Filter: F19, FX, rebate, B2 &hellip;" aria-label="Filter traps">
+</div></div>
+
+<div class="wrap">
+<header class="masthead">
+  <p class="eyebrow">Fixture corpus &middot; seed 0 &middot; frozen m0-corpus-v1</p>
+  <h1>M0 Corpus Validation Report</h1>
+  <p class="sub">Every verdict, trap class and Fehler cross-linked — click any chip to jump
+  to its full context. Ground truth from <code class="num">expected_verdicts.yaml</code>,
+  independently checked by the validation harness.</p>
+  <div class="stats">
+    <div class="stat verdict"><b>PASS</b><span>overall</span></div>
+    <div class="stat"><b>32</b><span>traps</span></div>
+    <div class="stat"><b>3</b><span>blind</span></div>
+    <div class="stat"><b>8</b><span>classes</span></div>
+    <div class="stat"><b>1</b><span>deny set</span></div>
+    <div class="stat"><b>48</b><span>periods closed</span></div>
+  </div>
+</header>
+
+<section id="zielfragen">
+  <h2>Zielfragen Z1&ndash;Z4</h2>
+  <p class="sec-note">The four reference outcomes that define correctness. Expected values are
+  computed by the generator from its own data; the harness recomputes them from spec prose.</p>
+  <div class="zgrid">
+<article class="zcard" id="z1">
+  <h3>Z1 — Field sales days per rep and quarter</h3>
+  <p class="z-note">Grain: sales_rep × quarter, from crm_activities. Naive revenue reference incl. IC.</p>
+  <div class="tbl-wrap"><table class="ztable">
+    <thead><tr><th>Value</th><th>Expected (generator)</th><th>Recomputed (harness)</th><th>Δ</th></tr></thead>
+    <tbody><tr><td>DE</td><td class="num">50,728,198.40</td><td class="num">50,728,198.40</td><td class="num delta">0.00</td></tr><tr><td>US</td><td class="num">25,165,797.66</td><td class="num">25,165,797.66</td><td class="num delta">0.00</td></tr></tbody></table></div>
+  <div class="z-traps"><span class="ev-key">Traps in play</span><a class="chip" href="#f10">F10</a><a class="chip" href="#f11">F11</a><a class="chip" href="#f12">F12</a></div>
+</article>
+<article class="zcard" id="z2">
+  <h3>Z2 — External revenue per customer / key account</h3>
+  <p class="z-note">Accounts 4000–4999 minus 4800-range, Haben negative, IC (4300) excluded, F5 ID migration applied, rebate accrual per E2.</p>
+  <div class="tbl-wrap"><table class="ztable">
+    <thead><tr><th>Value</th><th>Expected (generator)</th><th>Recomputed (harness)</th><th>Δ</th></tr></thead>
+    <tbody><tr><td>DE</td><td class="num">46,354,368.37</td><td class="num">46,354,368.37</td><td class="num delta">0.00</td></tr><tr><td>US</td><td class="num">23,621,377.50</td><td class="num">23,621,377.50</td><td class="num delta">0.00</td></tr></tbody></table></div>
+  <div class="z-traps"><span class="ev-key">Traps in play</span><a class="chip" href="#f2">F2</a><a class="chip" href="#f3">F3</a><a class="chip" href="#f4">F4</a><a class="chip" href="#f5">F5</a><a class="chip" href="#f6">F6</a><a class="chip" href="#f14">F14</a><a class="chip" href="#f15">F15</a><a class="chip" href="#f19">F19</a><a class="chip" href="#f21">F21</a><a class="chip" href="#f25">F25</a></div>
+</article>
+<article class="zcard" id="z3">
+  <h3>Z3 — Plan vs. actual profit per profit center</h3>
+  <p class="z-note">P&amp;L accounts per profit_center × month vs. D6 plan; US converted at monthly-average (M) rate.</p>
+  <div class="tbl-wrap"><table class="ztable">
+    <thead><tr><th>Value</th><th>Expected (generator)</th><th>Recomputed (harness)</th><th>Δ</th></tr></thead>
+    <tbody><tr><td>US in EUR</td><td class="num">21,854,415.47</td><td class="num">21,862,618.31</td><td class="num delta">8,202.84</td></tr><tr><td>Group total EUR</td><td class="num">68,208,783.84</td><td class="num">68,216,986.68</td><td class="num delta">8,202.84</td></tr></tbody></table></div>
+  <div class="z-traps"><span class="ev-key">Traps in play</span><a class="chip" href="#f6">F6</a><a class="chip" href="#f14">F14</a><a class="chip" href="#f15">F15</a><a class="chip" href="#f16">F16</a><a class="chip" href="#f17">F17</a><a class="chip" href="#f18">F18</a><a class="chip" href="#f19">F19</a></div>
+</article>
+<article class="zcard" id="z4">
+  <h3>Z4 — Balance sheet closure (meta-invariant)</h3>
+  <p class="z-note">Soll = Haben per entity × period; subledger = GL; IC symmetric. Consolidated group revenue as closure figure.</p>
+  <div class="tbl-wrap"><table class="ztable">
+    <thead><tr><th>Value</th><th>Expected (generator)</th><th>Recomputed (harness)</th><th>Δ</th></tr></thead>
+    <tbody><tr><td>Group total EUR</td><td class="num">68,208,783.84</td><td class="num">68,216,986.68</td><td class="num delta">8,202.84</td></tr></tbody></table></div>
+  <div class="z-traps"><span class="ev-key">Traps in play</span><a class="chip" href="#f20">F20</a><a class="chip" href="#f22">F22</a></div>
+</article></div>
+</section>
+
+<section id="klassen">
+  <h2>Fehlerklassen K1&ndash;K8</h2>
+  <p class="sec-note">Epistemic failure patterns. The harness validates per class, never per
+  trap ID &mdash; which is exactly how the 3 blind traps get checked without being known.</p>
+  <div class="kgrid">
+<article class="kcard" id="k1">
+  <header class="k-head"><h3><span class="k-id">K1</span> Grün-aber-falsch (Green but wrong)</h3>
+  <span class="k-count num">7</span></header>
+  <p class="k-desc">Probe passes, claim is mechanically consistent, but semantically false. Sign convention misread, FX pair inverted, IC revenue not excluded, rebate accrual forgotten— the books can still close perfectly while answers are wrong.</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>Forces the Silent-Wrong-Answers = 0 metric. For Z1–Z4, reference results are known; any deviation without a flagged, documented assumption is a release blocker. Requires V3 to extract domain rules from documents (F14/F15/F19 can only be resolved from buchhaltungsrichtlinie.pdf), not silent inference.</p>
+  <div class="k-traps"><a class="chip" href="#f5">F5</a><a class="chip" href="#f6">F6</a><a class="chip" href="#f14">F14</a><a class="chip" href="#f19">F19</a><a class="chip" href="#f22">F22</a><a class="chip" href="#f27">F27</a><a class="chip chip-blind" href="#blind_1">BLIND_1</a></div>
+</article>
+<article class="kcard" id="k2">
+  <header class="k-head"><h3><span class="k-id">K2</span> Doppelzählung durch Strukturbrüche (Double-counting via structural breaks)</h3>
+  <span class="k-count num">4</span></header>
+  <p class="k-desc">Partial delivery (1 order → N invoices) and blanket invoicing (N orders → 1 invoice) create fan-out pitfalls. Reversals as pair-linked records. Legacy credit notes living in two places (D7 until 2024-06, then type &#x27;G&#x27; in invoices).</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>Requires join logic that respects the cardinality and reversal semantics. Naive SUM over invoices double-counts. Requires concept claims for &quot;credit memo&quot; and &quot;reversal pair&quot; to make join logic explicit and testable.</p>
+  <div class="k-traps"><a class="chip" href="#f2">F2</a><a class="chip" href="#f3">F3</a><a class="chip" href="#f4">F4</a><a class="chip" href="#f20">F20</a></div>
+</article>
+<article class="kcard" id="k3">
+  <header class="k-head"><h3><span class="k-id">K3</span> Konventionssemantik (Convention semantics)</h3>
+  <span class="k-count num">8</span></header>
+  <p class="k-desc">Domain rule lives as a pure convention: Haben is negative, revenue accounts are 4000–4999 minus 4800-range erlösschmälerungen, FX conversion strategy selects M-rates not B-rates. No data field encodes these; they live in the accounting policy document only.</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>Inferences alone cannot discover these—they require documents (V3) and become concept claims backed by policy references. Reconciliation against known-true numbers (Z2/Z3) then proves the chosen rule was right.</p>
+  <div class="k-traps"><a class="chip" href="#f14">F14</a><a class="chip" href="#f15">F15</a><a class="chip" href="#f17">F17</a><a class="chip" href="#f18">F18</a><a class="chip" href="#f19">F19</a><a class="chip" href="#f21">F21</a><a class="chip" href="#f25">F25</a><a class="chip" href="#f27">F27</a></div>
+</article>
+<article class="kcard" id="k4">
+  <header class="k-head"><h3><span class="k-id">K4</span> Nicht-wertbasierte Strukturen (Non-value-based relationship structures)</h3>
+  <span class="k-count num">9</span></header>
+  <p class="k-desc">Join keys that are not value overlap: validity predicates (customer_hierarchy has valid_from/valid_to), PLZ ranges (territory via BETWEEN), positional strings decoded by function, not lookup (product hierarchy).</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>Candidate matrix is blind to these (no value overlap to seed hypotheses). Requires three new probe templates: validity_join, range_join, decode. Rule: new templates only if a corpus trap mandates them; otherwise defer as a fachfrage.</p>
+  <div class="k-traps"><a class="chip" href="#f5">F5</a><a class="chip" href="#f6">F6</a><a class="chip" href="#f7">F7</a><a class="chip" href="#f8">F8</a><a class="chip" href="#f9">F9</a><a class="chip" href="#f11">F11</a><a class="chip" href="#f12">F12</a><a class="chip" href="#f16">F16</a><a class="chip chip-blind" href="#blind_2">BLIND_2</a></div>
+</article>
+<article class="kcard" id="k5">
+  <header class="k-head"><h3><span class="k-id">K5</span> Invariantensonden (Invariant probes)</h3>
+  <span class="k-count num">0</span></header>
+  <p class="k-desc">Correctness constraints that are landscape-bound, not claim-bound. Balance sheet closes (debits = credits per entity and period), subledger = GL totals, IC transactions symmetric across entities, no cash unapplied without documented reason.</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>A second class of probes that exist without an associated claim. They live in the domain&#x27;s own invariant catalog and are run as part of the epistemics engine&#x27;s consistency checks, not as evidence for a user-authored claim. New system metric: all invariants must hold or explicitly emit a gap/finding.</p>
+  <p class="k-note">Landscape-bound — no claim-tagged traps. Validated by <a href="#checks">the invariant harness</a>: balance closes, subledger = GL, IC symmetry.</p>
+</article>
+<article class="kcard" id="k6">
+  <header class="k-head"><h3><span class="k-id">K6</span> Legitime Waisen (Legitimate orphans)</h3>
+  <span class="k-count num">3</span></header>
+  <p class="k-desc">Orphans (records without a parent in the join) that are not errors. Open orders with no invoice (legitimate wait state), AR activities without a customer in master (prospecting), returns dated before the order book (data lag).</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>Verdict granularity: a claim &quot;orders have invoices&quot; fails the probe but does not get marked contradicted—instead generates a fachfrage &quot;what about open orders?&quot; Orphan ≠ error; the claim stays inferred and a question surfaces. The system must not auto-promote over legitimate doubt.</p>
+  <div class="k-traps"><a class="chip" href="#f1">F1</a><a class="chip" href="#f10">F10</a><a class="chip" href="#f13">F13</a></div>
+</article>
+<article class="kcard" id="k7">
+  <header class="k-head"><h3><span class="k-id">K7</span> Vergiftete Anker und Restatements (Poisoned anchors and restatements)</h3>
+  <span class="k-count num">4</span></header>
+  <p class="k-desc">A document number that must never be found or reconciled (divested business revenue in an old press release), a restated prior-year number that contradicts all current data (deliberate intentional mismatch for testing), a number appearing only in a chart graphic (no text anchor, structurally weak evidence).</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>Reconciliation needs negative discipline: not every document number gets to be found. V3 must flag chart-only numbers as low-confidence. Restatements must be explicitly marked as such; no silent replacement of old data with new. Claims based on poisoned anchors must never be promoted.</p>
+  <div class="k-traps"><a class="chip" href="#f23">F23</a><a class="chip" href="#f24">F24</a><a class="chip" href="#f26">F26</a><a class="chip chip-blind" href="#blind_3">BLIND_3</a></div>
+</article>
+<article class="kcard" id="k8">
+  <header class="k-head"><h3><span class="k-id">K8</span> Tell-Statements (unverifizierbar)</h3>
+  <span class="k-count num">2</span></header>
+  <p class="k-desc">Scripted domain statements played during test runs (tell_statements.yaml). Not in the K1–K7 spec catalog — introduced by the generator; unverifiable against data, must remain business-confirmed-only claims.</p>
+  <p class="k-conseq"><span class="ev-key">Tool consequence</span>A tell without data support may never be silently promoted to tested; it stays a business-confirmed claim with its utterance as the only evidence.</p>
+  <p class="k-note">Not part of the spec catalog (trap_classes.yaml) — generator-introduced class.</p><div class="k-traps"><a class="chip" href="#f28">F28</a><a class="chip" href="#f29">F29</a></div>
+</article></div>
+</section>
+
+<section id="fehler">
+  <h2>Fehler-Register <span class="count-note" id="count">32 shown</span></h2>
+  <p class="sec-note">All seeded traps with their class tags, source involvement and row-level
+  evidence from the generated data. Filter by text or toggle a class.</p>
+  <div class="fbar"><button class="fbtn" data-k="K1">K1</button><button class="fbtn" data-k="K2">K2</button><button class="fbtn" data-k="K3">K3</button><button class="fbtn" data-k="K4">K4</button><button class="fbtn" data-k="K5">K5</button><button class="fbtn" data-k="K6">K6</button><button class="fbtn" data-k="K7">K7</button><button class="fbtn" data-k="K8">K8</button><button class="fbtn" id="clear">clear</button></div>
+  <div class="traps">
+<article class="trap" id="f1" data-classes="K6" data-search="f1 k6 open orders without invoices (legitimate backlog, not an error) - k6 lifecycle a1_orders">
+  <header class="trap-head">
+    <h3 class="trap-id">F1</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k6">K6</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Open orders without invoices (legitimate backlog, not an error) - K6 lifecycle</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Order header + line items">A1_orders</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">20</span></div></div>
+</article>
+<article class="trap" id="f2" data-classes="K2" data-search="f2 k2 partial delivery: one order maps to 2-3 invoices - k2 subledger reconciliation a2_invoices">
+  <header class="trap-head">
+    <h3 class="trap-id">F2</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k2">K2</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Partial delivery: one order maps to 2-3 invoices - K2 subledger reconciliation</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Invoice header + line items, posted in document and local currency">A2_invoices</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">30</span></div></div>
+</article>
+<article class="trap" id="f3" data-classes="K2" data-search="f3 k2 reversal pairs: invoice + storno with same order reference - k2 a2_invoices">
+  <header class="trap-head">
+    <h3 class="trap-id">F3</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k2">K2</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Reversal pairs: invoice + STORNO with same order reference - K2</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Invoice header + line items, posted in document and local currency">A2_invoices</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">15</span></div></div>
+</article>
+<article class="trap" id="f4" data-classes="K2" data-search="f4 k2 credit note process change: legacy table pre-2024-07, invoice_type=g after - k2 a3_credit_notes_legacy">
+  <header class="trap-head">
+    <h3 class="trap-id">F4</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k2">K2</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Credit note process change: legacy table pre-2024-07, invoice_type=G after - K2</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Legacy credit notes table, only populated through 2024-06; from 2024-07, credits are &#x27;G&#x27; type in invoices">A3_credit_notes_legacy</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">legacy_count</span><span class="ev-val num">18</span></div><div class="ev-row"><span class="ev-key">new_type_g_count</span><span class="ev-val num">63</span></div></div>
+</article>
+<article class="trap" id="f5" data-classes="K1,K4" data-search="f5 k1,k4 customer id migration 1101-1105 -&gt; 1201-1205 in 2025 - k1/k4 master data continuity b1_customers">
+  <header class="trap-head">
+    <h3 class="trap-id">F5</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k1">K1</a><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Customer ID migration 1101-1105 -&gt; 1201-1205 in 2025 - K1/K4 master data continuity</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Customer master including IC customers (9xxxx range), genuine duplicates, one 2025 ID migration">B1_customers</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">new_customer_count</span><span class="ev-val num">5</span></div></div>
+</article>
+<article class="trap" id="f6" data-classes="K1,K4" data-search="f6 k1,k4 customer hierarchy versioning for customer 1005 (ka_001 -&gt; ka_002) - k1/k4 b2_customer_hierarchy">
+  <header class="trap-head">
+    <h3 class="trap-id">F6</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k1">K1</a><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Customer hierarchy versioning for customer 1005 (KA_001 -&gt; KA_002) - K1/K4</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Versioned key-account mapping (valid_from/valid_to), one major customer reassignment 2025-07-01">B2_customer_hierarchy</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">rows_for_1005</span><span class="ev-val num">2</span></div></div>
+</article>
+<article class="trap" id="f7" data-classes="K4" data-search="f7 k4 product hierarchy encoded as positional string requiring decode - k4 b3_materials">
+  <header class="trap-head">
+    <h3 class="trap-id">F7</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Product hierarchy encoded as positional string requiring decode - K4</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Product master, descriptions DE/EN mixed, product hierarchy encoded as positional string">B3_materials</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f8" data-classes="K4" data-search="f8 k4 competing marketing grouping vs official material hierarchy - k4/k8 grouping conflict b4_marketing_grouping_xlsx d6_plan">
+  <header class="trap-head">
+    <h3 class="trap-id">F8</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Competing marketing grouping vs official material hierarchy - K4/K8 grouping conflict</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Competing product grouping; referenced by plan (D6), claim ownership of &quot;product group&quot; concept">B4_marketing_grouping_xlsx</span><span class="src" title="Plan P&amp;L by profit center × month, EUR only, references marketing_grouping.xlsx (B4) product view">D6_plan</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f9" data-classes="K4" data-search="f9 k4 territory assignment via plz range join, not stored directly - k4 b5_territory_plz b5_kontakte_aussendienst_xlsx">
+  <header class="trap-head">
+    <h3 class="trap-id">F9</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Territory assignment via PLZ range join, not stored directly - K4</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Territory definition via PLZ ranges (von–bis BETWEEN semantics)">B5_territory_plz</span><span class="src" title="Rep contact list with private mobile numbers; legitimate source for rep master, must never appear in revenue queries">B5_kontakte_aussendienst_xlsx</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f10" data-classes="K6" data-search="f10 k6 post-exit crm activities logged for departed rep r008 - k6 lifecycle b5_sales_reps b5_kontakte_aussendienst_xlsx">
+  <header class="trap-head">
+    <h3 class="trap-id">F10</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k6">K6</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Post-exit CRM activities logged for departed rep R008 - K6 lifecycle</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Sales rep master with territory assignment">B5_sales_reps</span><span class="src" title="Rep contact list with private mobile numbers; legitimate source for rep master, must never appear in revenue queries">B5_kontakte_aussendienst_xlsx</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">5</span></div></div>
+</article>
+<article class="trap" id="f11" data-classes="K4" data-search="f11 k4 crm customer_reference containing legacy (pre-migration) ids - master data drift b1_customers c1_crm_activities">
+  <header class="trap-head">
+    <h3 class="trap-id">F11</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">CRM customer_reference containing legacy (pre-migration) IDs - master data drift</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Customer master including IC customers (9xxxx range), genuine duplicates, one 2025 ID migration">B1_customers</span><span class="src" title="Visits/calls—basis for Z1 (sales rep days per quarter)">C1_crm_activities</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">68</span></div></div>
+</article>
+<article class="trap" id="f12" data-classes="K4" data-search="f12 k4 crm customer_reference containing customer name instead of id c1_crm_activities">
+  <header class="trap-head">
+    <h3 class="trap-id">F12</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">CRM customer_reference containing customer name instead of ID</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Visits/calls—basis for Z1 (sales rep days per quarter)">C1_crm_activities</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">27</span></div></div>
+</article>
+<article class="trap" id="f13" data-classes="K6" data-search="f13 k6 crm activities referencing prospects not in customer master (prospect_001-005) c1_crm_activities">
+  <header class="trap-head">
+    <h3 class="trap-id">F13</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k6">K6</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">CRM activities referencing prospects not in customer master (PROSPECT_001-005)</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Visits/calls—basis for Z1 (sales rep days per quarter)">C1_crm_activities</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">5</span></div></div>
+</article>
+<article class="trap" id="f14" data-classes="K1,K3" data-search="f14 k1,k3 haben (credit) convention stored as negative amounts - documented only in e3 - k1/k3 d1_gl_postings e3_buchhaltungsrichtlinie_pdf">
+  <header class="trap-head">
+    <h3 class="trap-id">F14</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k1">K1</a><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Haben (credit) convention stored as negative amounts - documented only in E3 - K1/K3</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="GL postings: account, cost center, profit center, document reference, posting date vs document date, amounts in document and local currency. Sign convention: Haben (credit) is negative.">D1_gl_postings</span><span class="src" title="Accounting policy—account definitions, accrual account, FX rules. Key document for resolving F14/F15/F19.">E3_buchhaltungsrichtlinie_pdf</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f15" data-classes="K3" data-search="f15 k3 revenue definition = 4000-4999 minus 4800-4899 contra accounts - k3 policy d2_chart_of_accounts e3_buchhaltungsrichtlinie_pdf">
+  <header class="trap-head">
+    <h3 class="trap-id">F15</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Revenue definition = 4000-4999 minus 4800-4899 contra accounts - K3 policy</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Account definitions, German names, P&amp;L vs balance-sheet classification, account range logic">D2_chart_of_accounts</span><span class="src" title="Accounting policy—account definitions, accrual account, FX rules. Key document for resolving F14/F15/F19.">E3_buchhaltungsrichtlinie_pdf</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f16" data-classes="K4" data-search="f16 k4 q3 2025 migration: some gl postings use project_id instead of cost_center_id d4_projects">
+  <header class="trap-head">
+    <h3 class="trap-id">F16</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Q3 2025 migration: some GL postings use project_id instead of cost_center_id</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Internal orders with budget; from Q3/2025, costs migrate from cost centers to projects">D4_projects</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">1144</span></div></div>
+</article>
+<article class="trap" id="f17" data-classes="K3" data-search="f17 k3 two fx rate types present: monthly average (m) and spot (b) d5_fx_rates">
+  <header class="trap-head">
+    <h3 class="trap-id">F17</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Two FX rate types present: monthly average (M) and spot (B)</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Monthly average + spot rates, rate types M/B, covering EUR/USD/CHF">D5_fx_rates</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f18" data-classes="K3" data-search="f18 k3 spot (b) rates missing for 2024-03, 2024-09, 2025-06 d5_fx_rates">
+  <header class="trap-head">
+    <h3 class="trap-id">F18</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Spot (B) rates missing for 2024-03, 2024-09, 2025-06</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Monthly average + spot rates, rate types M/B, covering EUR/USD/CHF">D5_fx_rates</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">missing_b_periods</span><span class="ev-val">2024-03, 2024-09, 2025-06</span></div></div>
+</article>
+<article class="trap" id="f19" data-classes="K1,K3" data-search="f19 k1,k3 policy requires monthly average rate (m); m vs b differ 0.5-2% - k1/k3 d5_fx_rates e3_buchhaltungsrichtlinie_pdf">
+  <header class="trap-head">
+    <h3 class="trap-id">F19</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k1">K1</a><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Policy requires monthly average rate (M); M vs B differ 0.5-2% - K1/K3</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Monthly average + spot rates, rate types M/B, covering EUR/USD/CHF">D5_fx_rates</span><span class="src" title="Accounting policy—account definitions, accrual account, FX rules. Key document for resolving F14/F15/F19.">E3_buchhaltungsrichtlinie_pdf</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f20" data-classes="K2" data-search="f20 k2 ar open items with unapplied cash (no invoice ref) or unpaid invoices (no payment ref) d7_opening_balances d7_ar_open_items">
+  <header class="trap-head">
+    <h3 class="trap-id">F20</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k2">K2</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">AR open items with unapplied cash (no invoice ref) or unpaid invoices (no payment ref)</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Opening balance per period per entity">D7_opening_balances</span><span class="src" title="Open AR with partial payments; includes unapplied cash (payment without invoice reference)">D7_ar_open_items</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">unapplied_cash</span><span class="ev-val num">10</span></div><div class="ev-row"><span class="ev-key">unpaid_invoices</span><span class="ev-val num">655</span></div></div>
+</article>
+<article class="trap" id="f21" data-classes="K3" data-search="f21 k3 ic customers 90001/90002 posted to 4300, excluded from external revenue d8_intercompany">
+  <header class="trap-head">
+    <h3 class="trap-id">F21</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">IC customers 90001/90002 posted to 4300, excluded from external revenue</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="IC sales DE↔US via 9xxxx customers and IC GL accounts">D8_intercompany</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">201</span></div></div>
+</article>
+<article class="trap" id="f22" data-classes="K1" data-search="f22 k1 deliberate ic posting break: us 2024-06 missing cr 9002 leg -&gt; imbalance - k1 d1_gl_postings d8_intercompany">
+  <header class="trap-head">
+    <h3 class="trap-id">F22</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k1">K1</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Deliberate IC posting break: US 2024-06 missing CR 9002 leg -&gt; imbalance - K1</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="GL postings: account, cost center, profit center, document reference, posting date vs document date, amounts in document and local currency. Sign convention: Haben (credit) is negative.">D1_gl_postings</span><span class="src" title="IC sales DE↔US via 9xxxx customers and IC GL accounts">D8_intercompany</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">us_2024_06_sum</span><span class="ev-val num">50,000.00</span></div></div>
+</article>
+<article class="trap is-deny" id="f23" data-classes="K7" data-search="f23 k7 q3 2024 revenue figure (eur 2,847,000) only appears in boxed chart label, not text - k7 e1_management_report_pdf">
+  <header class="trap-head">
+    <h3 class="trap-id">F23</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k7">K7</a></div>
+    <div class="trap-badges"><span class="badge badge-deny">deny promotion</span><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Q3 2024 revenue figure (EUR 2,847,000) only appears in boxed chart label, not text - K7</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Quarterly figures—revenue (external, net post-discount-accrual), EBIT; rounded">E1_management_report_pdf</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap is-deny" id="f24" data-classes="K7" data-search="f24 k7 poisoned prior-year figure (2023 restated revenue) with no supporting table - k7 e1_management_report_pdf">
+  <header class="trap-head">
+    <h3 class="trap-id">F24</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k7">K7</a></div>
+    <div class="trap-badges"><span class="badge badge-deny">deny promotion</span><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Poisoned prior-year figure (2023 restated revenue) with no supporting table - K7</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Quarterly figures—revenue (external, net post-discount-accrual), EBIT; rounded">E1_management_report_pdf</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f25" data-classes="K3" data-search="f25 k3 rebate accrual: 2% on annual key-account volume &gt; eur 500,000, posted monthly e2_rabattvertrag_pdf">
+  <header class="trap-head">
+    <h3 class="trap-id">F25</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Rebate accrual: 2% on annual key-account volume &gt; EUR 500,000, posted monthly</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Retroactive rebate contract—2% threshold 500k€ annual volume per customer group, year-end credit, monthly accrual">E2_rabattvertrag_pdf</span></div>
+  <div class="trap-ev"><details class="ev-details"><summary>accruals (20 rows)</summary><div class="tbl-wrap"><table><thead><tr><th>key_account_id</th><th>year</th><th>annual_revenue</th></tr></thead><tbody><tr><td class="num">KA_001</td><td class="num">2024</td><td class="num">1,490,649.16</td></tr><tr><td class="num">KA_001</td><td class="num">2025</td><td class="num">1,682,109.32</td></tr><tr><td class="num">KA_002</td><td class="num">2024</td><td class="num">2,550,465.31</td></tr><tr><td class="num">KA_002</td><td class="num">2025</td><td class="num">2,242,358.24</td></tr><tr><td class="num">KA_003</td><td class="num">2024</td><td class="num">1,792,250.80</td></tr><tr><td class="num">KA_003</td><td class="num">2025</td><td class="num">2,013,447.25</td></tr><tr><td class="num">KA_004</td><td class="num">2024</td><td class="num">2,114,128.26</td></tr><tr><td class="num">KA_004</td><td class="num">2025</td><td class="num">2,104,072.42</td></tr><tr><td class="num">KA_005</td><td class="num">2024</td><td class="num">3,349,507.27</td></tr><tr><td class="num">KA_005</td><td class="num">2025</td><td class="num">3,100,891.91</td></tr><tr><td class="num">KA_006</td><td class="num">2024</td><td class="num">1,823,659.46</td></tr><tr><td class="num">KA_006</td><td class="num">2025</td><td class="num">1,981,598.63</td></tr><tr><td class="num">KA_007</td><td class="num">2024</td><td class="num">2,675,083.61</td></tr><tr><td class="num">KA_007</td><td class="num">2025</td><td class="num">3,054,282.36</td></tr><tr><td class="num">KA_008</td><td class="num">2024</td><td class="num">2,109,972.56</td></tr><tr><td class="num">KA_008</td><td class="num">2025</td><td class="num">1,897,917.08</td></tr><tr><td class="num">KA_009</td><td class="num">2024</td><td class="num">3,234,695.68</td></tr><tr><td class="num">KA_009</td><td class="num">2025</td><td class="num">2,971,678.77</td></tr><tr><td class="num">KA_010</td><td class="num">2024</td><td class="num">2,557,062.66</td></tr><tr><td class="num">KA_010</td><td class="num">2025</td><td class="num">2,548,360.90</td></tr></tbody></table></div></details></div>
+</article>
+<article class="trap is-deny" id="f26" data-classes="K7" data-search="f26 k7 poisoned anchor: divested-unit press release figure (eur 8,450,000) - must not be promoted e4_noise">
+  <header class="trap-head">
+    <h3 class="trap-id">F26</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k7">K7</a></div>
+    <div class="trap-badges"><span class="badge badge-deny">deny promotion</span><span class="badge badge-deny">deny set</span><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Poisoned anchor: divested-unit press release figure (EUR 8,450,000) - MUST NOT be promoted</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Non-relevant documents: travel policy, supplier catalog, old press release mentioning a divested business unit and its revenue figure (does not exist in any table). F26 (poisoned anchor) test case.">E4_noise</span></div>
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">deny</span><span class="ev-val num">True</span></div></div>
+</article>
+<article class="trap" id="f27" data-classes="K1,K3" data-search="f27 k1,k3 buchungen_report.csv decoy: positive amounts + separate s/h indicator, contradicts gl sign convention d9_buchungen_report_csv">
+  <header class="trap-head">
+    <h3 class="trap-id">F27</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k1">K1</a><a class="chip chip-k" href="#k3">K3</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">buchungen_report.csv decoy: positive amounts + separate S/H indicator, contradicts GL sign convention</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Aggregated GL export with speaking column names (journal, amount, S/H flag), no reversals, amounts always positive with separate S/H indicator. Decoy for F27.">D9_buchungen_report_csv</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f28" data-classes="K8" data-search="f28 k8 unverifiable tell statement from sales_team re: customer channel restriction f_tell_statements_yaml">
+  <header class="trap-head">
+    <h3 class="trap-id">F28</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k8">K8</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Unverifiable tell statement from sales_team re: customer channel restriction</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Pre-scripted domain statements to be played via `tell` mechanism during validation runs">F_tell_statements_yaml</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="f29" data-classes="K8" data-search="f29 k8 unverifiable tell statement re: us fiscal year may-april f_tell_statements_yaml">
+  <header class="trap-head">
+    <h3 class="trap-id">F29</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k8">K8</a></div>
+    <div class="trap-badges"><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Unverifiable tell statement re: US fiscal year May-April</p>
+  <div class="trap-srcs"><span class="ev-key">Sources</span><span class="src" title="Pre-scripted domain statements to be played via `tell` mechanism during validation runs">F_tell_statements_yaml</span></div>
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article>
+<article class="trap" id="blind_1" data-classes="K1" data-search="blind_1 k1 3 de invoices in usd with wrong fx direction (multiplied not divided) - books still close but wrong - k1 ">
+  <header class="trap-head">
+    <h3 class="trap-id">BLIND_1</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k1">K1</a></div>
+    <div class="trap-badges"><span class="badge badge-blind">blind trap</span><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">3 DE invoices in USD with wrong FX direction (multiplied not divided) - books still close but wrong - K1</p>
+  
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">count</span><span class="ev-val num">3</span></div><div class="ev-row"><span class="ev-key">docs</span><span class="ev-val">DE-INV-0000519, DE-INV-0002542, DE-INV-0001763</span></div></div>
+</article>
+<article class="trap" id="blind_2" data-classes="K4" data-search="blind_2 k4 pc_de_03 profit center has a q1 2025 validity gap, still referenced by gl postings - k4 ">
+  <header class="trap-head">
+    <h3 class="trap-id">BLIND_2</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k4">K4</a></div>
+    <div class="trap-badges"><span class="badge badge-blind">blind trap</span><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">PC_DE_03 profit center has a Q1 2025 validity gap, still referenced by GL postings - K4</p>
+  
+  <div class="trap-ev"><div class="ev-row"><span class="ev-key">row_count</span><span class="ev-val num">2</span></div></div>
+</article>
+<article class="trap is-deny" id="blind_3" data-classes="K7" data-search="blind_3 k7 poisoned acquisition pipeline figure (eur 1,200,000), no supporting table - k7 ">
+  <header class="trap-head">
+    <h3 class="trap-id">BLIND_3</h3>
+    <div class="trap-kchips"><a class="chip chip-k" href="#k7">K7</a></div>
+    <div class="trap-badges"><span class="badge badge-deny">deny promotion</span><span class="badge badge-blind">blind trap</span><span class="badge badge-pass">detected</span></div>
+  </header>
+  <p class="trap-desc">Poisoned acquisition pipeline figure (EUR 1,200,000), no supporting table - K7</p>
+  
+  <div class="trap-ev"><p class="ev-none">No row-level evidence — validated structurally / via document anchors.</p></div>
+</article></div>
+</section>
+
+<section id="checks">
+  <h2>Pr&uuml;fungen (harness)</h2>
+  <p class="sec-note">Independent validation run against the frozen data &mdash; trap-class-generic
+  assertions, K5 invariants, and Z1&ndash;Z4 spot-checks read from spec prose, not generator code.</p>
+  
+<article class="check">
+  <header class="check-head"><h3>Trap-class checks</h3>
+  <span class="badge badge-pass">pass</span>
+  <code class="script">check_trap_classes.py</code></header>
+  <ul class="check-list"><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">deny_set</span><span class="check-note">1 claim protected (F26)</span></li><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">recall_set</span><span class="check-note">32 claims present</span></li><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">K6 orphans</span><span class="check-note">3 legitimate orphans, none contradicted</span></li><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">K7 poisoned anchors</span><span class="check-note">4 anchors deny-protected</span></li><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">all traps detected</span><span class="check-note">32 / 32</span></li></ul>
+</article>
+<article class="check">
+  <header class="check-head"><h3>Invariant checks (K5)</h3>
+  <span class="badge badge-pass">pass</span>
+  <code class="script">check_invariants.py</code></header>
+  <ul class="check-list"><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">monthly balance</span><span class="check-note">48 entity-periods; only US:2024-06 open (F22, expected)</span></li><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">subledger = GL</span><span class="check-note">AR vs. account 1200 — F20 mismatch tolerated (documented trap)</span></li><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">IC symmetry</span><span class="check-note">DE 9001 ↔ US 9002, break in 2024-06 expected (F22)</span></li></ul>
+</article>
+<article class="check">
+  <header class="check-head"><h3>Reference spot-check</h3>
+  <span class="badge badge-pass">pass</span>
+  <code class="script">recompute_reference_results.py</code></header>
+  <ul class="check-list"><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">Z1 / Z2</span><span class="check-note">exact match, DE and US</span></li><li class="check-row"><span class="dot dot-pass"></span><span class="check-name">Z3 / Z4</span><span class="check-note">Δ ≈ 8.2k EUR (0.012 %) — FX averaging variance, within 10k tolerance</span></li></ul>
+</article>
+  <p class="sec-note">Balance closure: all 48 entity-periods balanced except
+  <a href="#f22">US 2024-06</a> (intentional IC break). Seed stability: verdicts identical
+  across seeds 0&ndash;3.</p>
+</section>
+
+<footer class="foot">
+  Generated from expected_verdicts.yaml &middot; trap_classes.yaml &middot; sources_manifest.yaml
+  &mdash; before-we-ai M0, git tag <span class="num">m0-corpus-v1</span>.
+</footer>
+</div>
+
+<script>
+(function () {
+  var q = document.getElementById('q');
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.trap'));
+  var btns = Array.prototype.slice.call(document.querySelectorAll('.fbtn[data-k]'));
+  var clear = document.getElementById('clear');
+  var count = document.getElementById('count');
+  var activeK = null;
+
+  function apply() {
+    var term = q.value.trim().toLowerCase();
+    var shown = 0;
+    cards.forEach(function (c) {
+      var okText = !term || c.getAttribute('data-search').indexOf(term) !== -1;
+      var okK = !activeK || c.getAttribute('data-classes').split(',').map(function(s){return s.trim();}).indexOf(activeK) !== -1;
+      var show = okText && okK;
+      c.classList.toggle('hidden', !show);
+      if (show) shown++;
+    });
+    count.textContent = shown + ' shown';
+  }
+  q.addEventListener('input', apply);
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      activeK = (activeK === b.getAttribute('data-k')) ? null : b.getAttribute('data-k');
+      btns.forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-k') === activeK); });
+      apply();
+    });
+  });
+  clear.addEventListener('click', function () {
+    activeK = null; q.value = '';
+    btns.forEach(function (x) { x.classList.remove('on'); });
+    apply();
+  });
+  // when jumping to a trap via anchor, make sure it is not filtered away
+  window.addEventListener('hashchange', function () {
+    var el = document.getElementById(location.hash.slice(1));
+    if (el && el.classList.contains('hidden')) {
+      activeK = null; q.value = '';
+      btns.forEach(function (x) { x.classList.remove('on'); });
+      apply();
+      el.scrollIntoView();
+    }
+  });
+})();
+</script>
