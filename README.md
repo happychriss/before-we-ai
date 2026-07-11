@@ -1,15 +1,16 @@
-# before-we-ai (Expdash)
+# before-we-ai
 
 **Evidence-based context discovery — know what you know before you let an AI answer.**
 
-Expdash helps an analyst understand foreign, scattered data (databases, Excel files,
-CSVs, PDFs, notes) quickly — without silently trusting AI inference. The missing layer
-between fragmented data and powerful-but-unreliable LLMs is one that keeps track of
-*what is known, what is merely assumed, and what is unknown*. That layer is the product.
+before-we-ai (short: **before-ai**) helps an analyst understand foreign, scattered data
+(databases, Excel files, CSVs, PDFs, notes) quickly — without silently trusting AI
+inference. The missing layer between fragmented data and powerful-but-unreliable LLMs
+is one that keeps track of *what is known, what is merely assumed, and what is
+unknown*. That layer is the product.
 
 ## Core idea
 
-Most tools let the AI guess relationships and definitions. Expdash treats the
+Most tools let the AI guess relationships and definitions. before-we-ai treats the
 **knowledge status as a first-class object**:
 
 - **Claims** are versioned files with five statuses and an evidence list — no
@@ -29,7 +30,7 @@ The test suite punishes decisiveness where "unresolved" is the correct answer.
 
 ## Architecture in one paragraph
 
-One Python package, no services: `pipx install expdash`, point it at a directory.
+One Python package, no services: `pipx install before-we-ai`, point it at a directory.
 Files (YAML/Markdown) are the source of truth; everything under `cache/` is
 disposable and reconstructible. **DuckDB is the only execution engine** — it
 attaches Postgres/MySQL, reads CSV/Parquet, runs the profiling and probe SQL, and
@@ -41,7 +42,7 @@ never correctness.
 
 ```
 myproject/
-  expdash.yaml   # sources, model tiers, tolerance overrides
+  before-ai.yaml # sources, model tiers, tolerance overrides
   sources/       # dropped files (csv, xlsx, pdf, txt)
   claims/        # one YAML per claim (5 statuses, evidence refs)
   evidence/      # append-only probe results, anchors, confirmations
@@ -80,4 +81,4 @@ milestones **M0–M8**; the current step is **M0: the finance corpus generator**
 | M5 | Document pipeline + V3 (interpretation with anchor validation) |
 | M6 | Question flow + V4 (SQL generation, assumption capture, gap report) |
 | M7 | Staleness propagation & replay against a "prod" copy |
-| M8 | Packaging (`pipx install expdash`) + 10-minute quickstart |
+| M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart |
