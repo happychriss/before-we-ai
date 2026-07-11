@@ -11,6 +11,8 @@ dependencies = [
     "pydantic>=2.5",
     "pyyaml>=6.0",
     "python-ulid>=2.2",
+    "duckdb>=1.0",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +25,8 @@ packages = [
     "before_we_ai",
     "before_we_ai.model",
     "before_we_ai.store",
+    "before_we_ai.sources",
+    "before_we_ai.profile",
 ]
 
 [tool.pytest.ini_options]

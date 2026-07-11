@@ -28,6 +28,7 @@ class Actor(str, Enum):
     AI = "ai"
     PROBE = "probe"
     HUMAN = "human"
+    SYSTEM = "system"  # deterministic tooling (e.g. ingestion declarations)
 
 
 class EvidenceType(str, Enum):

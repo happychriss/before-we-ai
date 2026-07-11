@@ -165,10 +165,78 @@ kein Beweis je verschwindet — geprüft gegen alle 32 Fallen der Übungsfirma.
 
 ---
 
+## M2 — Das Tool bekommt Sinne (✅ fertig, Tag `m2-ingestion-v1`)
+
+Bisher hatte das Tool ein Gedächtnis, aber keine Augen. Jetzt kann es
+Datenquellen öffnen und **vermessen** — immer noch ohne KI, alles pures
+Handwerk.
+
+### Quellen anschließen
+
+Das Tool öffnet, was eine Firma so herumliegen hat: Datenbanken, CSV-Dateien,
+hässliches Excel. Alles wird unter einem Dach als abfragbare Tabellen
+bereitgestellt. Wichtigste Regel dabei: **Nichts wird kaputtgeputzt.** Eine
+Belegnummer wie `0001042` bleibt Text mit ihren führenden Nullen — das Tool
+rät niemals, dass Text „eigentlich eine Zahl" sei. (Genau daran sind schon
+viele Datenprojekte gestorben — das ist Falle T1 aus der Prüfung.)
+
+### Der Excel-Vorleser mit Putzprotokoll
+
+Excel ist ein Sonderfall: verbundene Überschriften, Zahlen wo Nummern
+stehen sollten, Datumswerte in Excel-Geheimschrift. Ein eigener Vorleser
+bügelt das glatt — aber nicht heimlich: **Jede Putz-Entscheidung wird als
+Beweis protokolliert** („Spalte X: Zahl zu Text gemacht, Beispiel: 1101").
+So kann später jeder nachlesen, was beim Einlesen verändert wurde. Das
+Protokoll kann eine Karteikarte niemals befördern — Einlesen ist Beobachten,
+nicht Urteilen.
+
+### Jede Spalte wird vermessen
+
+Für jede Spalte jeder Tabelle entsteht ein Steckbrief: Wie viele Werte, wie
+viele verschiedene, wie viele leer, welches Muster (`AA-AAA-9999999`),
+welche häufigsten Werte. Die spätere KI wird **diese Steckbriefe** sehen,
+nie die Rohdaten — so bleiben auch Millionen Zeilen zusammenfassbar.
+
+### Die Kandidaten-Landkarte
+
+Dann vergleicht das Tool alle Spalten paarweise: Wo tauchen dieselben Werte
+auf? Heraus kommt eine Landkarte möglicher Verknüpfungen — die Kundennummer
+auf der Rechnung passt zum Kundenstamm, die Migrationstabelle aus dem Excel
+passt zu den alten Kundennummern (Falle F5 wird damit erst findbar!).
+
+Wichtig: Die Landkarte **urteilt nicht**. Sie enthält absichtlich auch
+Zufalls-Echos — zwei Datumsspalten, die rein zufällig dieselben Werte
+tragen, stehen genauso drin. Aussortieren ist Aufgabe der Sonden (M3) und
+der Menschen. Und weil M2 gar keine Karteikarten anlegt, kann in dieser
+Phase auch nichts fälschlich befördert werden: null Risiko, eingebaut.
+
+Ehrlich bleibt die Karte auch bei ihren blinden Flecken: Beziehungen, die
+nicht über gleiche Werte laufen (Postleitzahl-*Bereiche*, codierte
+Hierarchie-Strings), stehen **nicht** drin — die muss später die KI finden,
+und das wird eigens gemessen.
+
+### Und die Prüfung aus M0?
+
+Der komplette Scan lief gegen die Übungsfirma: Die führenden Nullen
+überleben (T1), das schmutzige Excel wird mit Protokoll normalisiert (T9),
+alle eingebauten wertbasierten Beziehungen stehen auf der Landkarte —
+inklusive des Zufalls-Echos als Negativkontrolle (T6). Und: Der komplette
+Zwischenspeicher darf jederzeit gelöscht werden — ein neuer Scan baut ihn
+identisch wieder auf.
+
+### M2 in einem Satz
+
+Das Tool kann jetzt chaotische Quellen öffnen, ohne etwas kaputtzuputzen,
+protokolliert jede Aufräum-Entscheidung als Beweis und zeichnet eine
+ehrliche Landkarte möglicher Verknüpfungen — urteilen darf darüber erst
+die nächste Stufe.
+
+---
+
 ## Wie geht es weiter?
 
-- **M2 — Daten einlesen und vermessen**: Das Tool lernt, die chaotischen
-  Quellen der Übungsfirma zu öffnen (Datenbanken, hässliches Excel, CSV)
-  und jede Spalte zu vermessen. *(Abschnitt folgt, wenn M2 gebaut ist.)*
-- M3–M8 folgen danach: Sonden (Probes), LLM-Verträge, Dokumente,
-  Fragenfluss, Veralterung, Paketierung.
+- **M3 — Die Sonden**: Automatische Stichproben prüfen die vermuteten
+  Regeln gegen die Daten — noch immer ganz ohne KI, gegen handgeschriebene
+  Karteikarten aus dem Antwortheft. *(Abschnitt folgt, wenn M3 gebaut ist.)*
+- M4–M8 folgen danach: LLM-Verträge, Dokumente, Fragenfluss, Veralterung,
+  Paketierung.

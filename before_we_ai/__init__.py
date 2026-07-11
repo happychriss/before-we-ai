@@ -7,3 +7,7 @@ imported from here.
 """
 
 __version__ = "0.1.0"
+
+from before_we_ai.scan import ScanResult, scan  # noqa: E402
+
+__all__ = ["ScanResult", "scan", "__version__"]
