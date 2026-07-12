@@ -43,6 +43,21 @@
   may be refined alongside.
 - **Owner: rotate the Anthropic API key** shared in chat on 2026-07-12 (it is
   in the conversation history; it was never written to any file or commit).
+- **Owner direction (2026-07-12, validation session): role packs become a
+  product feature.** Two layers: (1) ship curated per-domain packs bundled in
+  the package (`before_we_ai/roles/finance.yaml`; `roles_file: finance`
+  resolves bundled, path overrides) — the current test fixture
+  `roles_finance.yaml` is the finance pack's content; (2) later, an LLM
+  contract that *drafts* a role pack for a new domain — the authoring
+  questionnaire (conservation laws → extract nouns → structural definitions
+  passing the new-hire test → per-role falsifiability → no vendor/system
+  tokens) is the system prompt; `RoleSet` is the schema. GUARDRAIL: a
+  generated pack is a draft a human curates, never silently consumed — a
+  too-loose invariant is the one path to false confidence (promotes bindings
+  on evidence that tests nothing); too-strict merely drafts Fachfragen.
+  Timing: bundle the pack at M5 kickoff together with sources-discovery
+  (both change prompt bytes → one fixture re-record); the drafting contract
+  is post-M5 scope.
 - Remote branch `copilot/create-scripts-folder` (1 unmerged commit:
   `scripts/copy_raw_data.sh`) — awaiting owner's delete/merge decision; candidate
   seed for the planned `scripts/` folder.
