@@ -36,6 +36,18 @@ the claim list (search + status/predicate/role filters), the main pane shows one
 at a time; deep links (`#claim-…`, `#evidence-…`, `#probe-…`, `#question-…`) still work
 and reveal their claim.
 
+- **How to read this page** — a short intro plus the **core terms**: the canonical
+  vocabulary (hypothesis / claim / status / role / role-binding candidate / binding /
+  probe / domain-law template / Fachfrage) defined where it is read. Same words as the
+  glossary in docs/SIMPLE-README.md and the core-terms box of
+  `validation/scripts/llm_log.py`; the viewer keeps its own small copy because it must
+  not depend on the validation scripts.
+- **Domain pack** — the three declared domain inputs (architecture.md "Domain inputs"),
+  live from the project: the sources (`before-ai.yaml` `sources:`), the role pack
+  (`llm.roles_file` — domain, count, names, definitions) and the domain-law templates
+  (`REGISTRY` entries with `TemplateSpec.domain`, naming the generic remainder as such).
+  What is domain-specific is declared, transparent and enumerable — here it is also
+  *visible*.
 - **The funnel** — the epistemic story in four rows, each number a filter on the list:
   proposed (all claims, inferred when created) → bound / unbindable / semantic-only /
   skipped → judged (a probe actually ran) → derived status. The buckets are read from
@@ -52,9 +64,11 @@ and reveal their claim.
 - **Claim detail as a story**: statement, the derived status badge and its one-line
   rationale, then collapsible *1 proposed → 2 bound → 3 judged → 4 context*, with ids,
   timestamps and raw fields in a "fine print" block. Probes show template, params,
-  roles, default tolerances and a visible domain-law badge; probe-result evidence links
-  back to the probe that produced it. Sources, lineage (`depends_on`, `derived_from`,
-  reverse links) and dependent QuestionCards sit in *context*.
+  roles, default tolerances, a visible domain-law badge and — under each probe card —
+  the **rendered SQL as the question that was asked of the data**, in a code block
+  (collapsed when long). A probe that never ran says so instead. Probe-result evidence
+  links back to the probe that produced it. Sources, lineage (`depends_on`,
+  `derived_from`, reverse links) and dependent QuestionCards sit in *context*.
 - One status badge — the **derived** one, since that is the truth. When the stored status
   disagrees, a loud banner says so instead of two badges side by side.
 - The five statuses are color-coded; `contradicted` and `unresolved` stand out.
@@ -70,8 +84,9 @@ section shows a "Probes (falsification attempts)" block — template, params, ro
 the registry's `domain` tag and default tolerances — and every probe-result
 evidence record links back to the probe that produced it. Invariant probes carry
 no `claim_id`; they are reached through the `probe_id` on the role claim's
-evidence, so they appear on the claims they judged. Rendered SQL stays where it
-lives: on the evidence payload.
+evidence, so they appear on the claims they judged. Rendered SQL still *lives*
+where the runner writes it (the probe-result payload, `payload["sql"]`) — the
+viewer reads it from there and shows it under its probe.
 
 ## Redesign — approved and shipped 2026-07-12
 

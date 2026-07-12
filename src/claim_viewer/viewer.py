@@ -5,6 +5,8 @@ from html import escape
 from pathlib import Path
 from typing import Iterable
 
+import yaml
+
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.model import ClaimStatus, EvidenceType, ProbeVerdict, resolve_status
 from before_we_ai.model.objects import (
@@ -18,6 +20,7 @@ from before_we_ai.model.objects import (
 )
 from before_we_ai.probes.library import REGISTRY
 from before_we_ai.store import ProjectStore, check_integrity
+from before_we_ai.store.layout import CONFIG_FILE
 
 STATUS_COLORS = {
     ClaimStatus.INFERRED.value: "status-inferred",
@@ -41,6 +44,51 @@ STAGE_LABELS = {
     "skipped": "skipped — validation rejected the binding",
     "unbound": "no probe, no recorded reason",
 }
+
+
+
+# The canonical vocabulary, defined where it is read. Same words as the glossary
+# in docs/SIMPLE-README.md and the core-terms box of validation/scripts/llm_log.py
+# — the viewer keeps its own small copy rather than importing from the validation
+# scripts, which it must not depend on.
+GLOSSARY: list[tuple[str, str]] = [
+    ("hypothesis", "one proposed rule, the model's raw output (V1); accepted "
+     "ones become claims"),
+    ("claim", "a rule about the data, stored with author and evidence — "
+     "the 'index card'"),
+    ("status", "inferred / tested / contradicted / unresolved / "
+     "business-confirmed — always derived from evidence; the model's claims "
+     "start at 'inferred' and the model cannot promote them"),
+    ("role", "a domain noun a table/column can play (journal, subledger …)"),
+    ("role-binding candidate", "a claim that one view plays a role; competing "
+     "candidates are wanted — the domain-law probes elect the winner"),
+    ("binding", "the assignment claim → probe template + parameters (V2); "
+     "strictly validated, 'template: null' = not testable"),
+    ("probe", "a deterministic SQL spot-check — with humans, the only path to "
+     "a better status; the rendered SQL is shown under each probe below"),
+    ("domain-law template", "a conservation law as code (balance, "
+     "subledger=GL, IC symmetry) — decides which candidate wins a role"),
+    ("Fachfrage", "a drafted question to the humans when data alone cannot "
+     "decide"),
+]
+
+READING_GUIDE = (
+    "This page mirrors the pipeline: the AI proposes, the probes decide. Read it "
+    "top down — the funnel says how many claims survived each step, the Fachfragen "
+    "are what the data could not settle, the role elections show which candidate "
+    "won its role and which domain law felled the others. Then pick one claim on "
+    "the left and read its story: 1 proposed → 2 bound → 3 judged → 4 context. "
+    "Nothing here is hand-set: every status is derived from the evidence shown "
+    "with it."
+)
+
+DOMAIN_PACK_INTRO = (
+    "Everything domain-specific enters through three declared inputs "
+    "(docs/architecture.md 'Domain inputs'); the model additionally sees only "
+    "measured statistics, never raw rows. The product is a general machine only "
+    "together with a domain pack — so what is domain-specific must be declared, "
+    "transparent, and logically validated."
+)
 
 
 @dataclass
@@ -75,6 +123,7 @@ def write_project_view(root: str | Path, output: str | Path | None = None) -> Pa
 def render_project(root: str | Path) -> str:
     root_path = Path(root).resolve()
     store = ProjectStore(root_path)
+    config = _project_config(root_path)
     matrix = _load_candidate_matrix(root_path)
     claims = sorted(store.claims.values(), key=lambda claim: (claim.created_at, claim.id))
     questions = sorted(store.questions.values(), key=lambda card: (card.created_at, card.id))
@@ -356,6 +405,12 @@ def render_project(root: str | Path) -> str:
     .cand.winner {{ border-left-color: var(--tested); }}
     .cand.loser {{ border-left-color: var(--contradicted); }}
     .fine {{ font-size: 12px; color: var(--muted); }}
+    details.sql > summary, #domain-pack details > summary, #how-to-read details > summary {{
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 13px;
+    }}
+    details.sql pre {{ margin: 0; max-height: 460px; }}
     .claim-detail {{ display: none; }}
     .claim-card.selected {{ border-color: var(--link); }}
     @media (max-width: 980px) {{
@@ -375,6 +430,8 @@ def render_project(root: str | Path) -> str:
       <h1>Claim Viewer</h1>
       <p class="muted">{escape(str(root_path))}</p>
       <div class="section-links">
+        <a href="#how-to-read">How to read</a>
+        <a href="#domain-pack">Domain pack</a>
         <a href="#overview">Funnel</a>
         <a href="#questions">Fachfragen</a>
         <a href="#roles">Role elections</a>
@@ -403,6 +460,14 @@ def render_project(root: str | Path) -> str:
       </div>
     </aside>
     <main class="content">
+      <section class="panel" id="how-to-read">
+        <h2>How to read this page</h2>
+        {_render_core_terms()}
+      </section>
+      <section class="panel" id="domain-pack">
+        <h2>Domain pack — the declared domain inputs</h2>
+        {_render_domain_pack(root_path, config)}
+      </section>
       <section class="panel" id="overview">
         <h2>The funnel — from guess to verdict</h2>
         <p class="muted">The AI proposes; the probes decide. Click any number to filter the claim list.</p>
@@ -632,6 +697,97 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
     return f"<div class='funnel'>{proposed}{bound}{judged}{verdicts}</div>{caveat}"
 
 
+def _render_core_terms() -> str:
+    terms = "".join(
+        f"<dt>{escape(term)}</dt><dd>{escape(text)}</dd>" for term, text in GLOSSARY
+    )
+    return (
+        f"<p>{escape(READING_GUIDE)}</p>"
+        "<details><summary>Core terms — the words this page uses, and no synonyms</summary>"
+        f"<dl>{terms}</dl>"
+        "<p class='fine'>Full glossary: docs/SIMPLE-README.md.</p></details>"
+    )
+
+
+def _project_config(root: Path) -> dict:
+    """The declared inputs, read straight from before-ai.yaml (read-only)."""
+    path = root / CONFIG_FILE
+    if not path.is_file():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _render_domain_pack(root: Path, config: dict) -> str:
+    return (
+        f"<p class='muted'>{escape(DOMAIN_PACK_INTRO)}</p>"
+        "<h3>1 · Raw data — the source list (human-authored)</h3>"
+        f"{_render_declared_sources(config)}"
+        "<h3>2 · Role pack — the domain nouns (data, human-curated)</h3>"
+        f"{_render_role_pack(root, config)}"
+        "<h3>3 · Domain-law templates — the guardians (code, developer-shipped)</h3>"
+        f"{_render_domain_law_templates()}"
+    )
+
+
+def _render_declared_sources(config: dict) -> str:
+    sources = config.get("sources") or []
+    if not sources:
+        return '<p class="empty">No sources declared in before-ai.yaml.</p>'
+    items = "".join(
+        f"<li><code>{escape(str(source.get('name', '?')))}</code> "
+        f"({escape(str(source.get('kind', '?')))}) — "
+        f"{escape(str(source.get('location', '?')))}</li>"
+        for source in sources
+    )
+    return f"<ul class='list'>{items}</ul>"
+
+
+def _render_role_pack(root: Path, config: dict) -> str:
+    declared = (config.get("llm") or {}).get("roles_file")
+    if not declared:
+        return '<p class="empty">No role pack declared (llm.roles_file).</p>'
+    path = Path(declared)
+    if not path.is_absolute():
+        path = root / path
+    try:
+        pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except OSError:
+        return (
+            f'<p class="empty">Role pack declared but unreadable: '
+            f"<code>{escape(str(path))}</code></p>"
+        )
+    roles = pack.get("roles") or {}
+    items = "".join(
+        f"<details><summary><code>{escape(name)}</code></summary>"
+        f"<p>{escape(str(text).strip())}</p></details>"
+        for name, text in roles.items()
+    )
+    return (
+        f"<p>domain <strong>{escape(str(pack.get('domain', '?')))}</strong>, "
+        f"{len(roles)} roles — human-written definitions, no system names<br>"
+        f"<code>{escape(str(path))}</code></p>{items}"
+    )
+
+
+def _render_domain_law_templates() -> str:
+    tagged = [(name, spec) for name, spec in REGISTRY.items() if spec.domain]
+    generic = len(REGISTRY) - len(tagged)
+    if not tagged:
+        return '<p class="empty">No domain-law templates in the registry.</p>'
+    items = "".join(
+        f"<li><code>{escape(name)}</code> "
+        f'<span class="badge status-business-confirmed">{escape(spec.domain)} law</span> — '
+        f"<code>probes/templates/{escape(spec.file)}</code></li>"
+        for name, spec in tagged
+    )
+    return (
+        f"<ul class='list'>{items}</ul>"
+        f"<p class='fine'>The other {generic} templates in the catalog are generic data "
+        "probes (reference check, duplicates, coverage …) — they carry no domain "
+        "knowledge and work in any domain.</p>"
+    )
+
+
 def _render_role_elections(
     facts: dict[str, ClaimFacts], questions: list[QuestionCard]
 ) -> str:
@@ -841,7 +997,10 @@ def _render_claim_section(
         _render_evidence_card(record, claim, store.claims, declarations_by_key, store.probes)
         for record in evidence
     ) or '<p class="empty">No evidence attached yet.</p>'
-    probes_html = "".join(_render_probe_card(probe) for probe in probes) or _no_probe_html(fact)
+    rendered_sql = _rendered_sql_by_probe(evidence)
+    probes_html = "".join(
+        _render_probe_card(probe, rendered_sql.get(probe.id, "")) for probe in probes
+    ) or _no_probe_html(fact)
     dependency_html = "".join(
         f"<li>{_claim_link(dep)} { _status_badge(dep.status.value) }</li>"
         for dep in (store.claims[dep_id] for dep_id in claim.depends_on if dep_id in store.claims)
@@ -935,7 +1094,7 @@ def _no_probe_html(fact: ClaimFacts) -> str:
     )
 
 
-def _render_probe_card(probe: Probe) -> str:
+def _render_probe_card(probe: Probe, rendered_sql: str = "") -> str:
     details = [
         ("id", probe.id),
         ("template", probe.template),
@@ -958,8 +1117,40 @@ def _render_probe_card(probe: Probe) -> str:
         f"<div><a href=\"#probe-{escape(probe.id)}\"><strong>{escape(_short_id(probe.id))}</strong></a> "
         f"<code>{escape(probe.template)}</code> {domain_badge}</div>"
         f"{_definition_list(details)}"
+        f"{_render_rendered_sql(rendered_sql)}"
         "</div>"
     )
+
+
+def _render_rendered_sql(sql: str) -> str:
+    """The exact question that was asked of the data — the SQL the engine ran.
+
+    The rendered SQL is not on the Probe; the runner puts it on the payload of the
+    probe-result evidence it writes (`payload['sql']`). Until a probe has run there
+    is nothing to show — a probe is a question that was asked, not one that could be.
+    """
+    if not sql:
+        return (
+            "<p class='fine'>No rendered SQL yet — this probe has not been run, so no "
+            "question has actually been put to the data.</p>"
+        )
+    open_attr = " open" if sql.count("\n") < 12 else ""
+    return (
+        f"<details class='sql'{open_attr}><summary>Rendered SQL — the question that was "
+        f"asked of the data</summary><pre><code>{escape(sql)}</code></pre></details>"
+    )
+
+
+def _rendered_sql_by_probe(evidence: list[EvidenceRecord]) -> dict[str, str]:
+    """probe id → the rendered SQL its result recorded (latest run wins)."""
+    out: dict[str, str] = {}
+    for record in evidence:
+        if record.type is not EvidenceType.PROBE_RESULT or not record.probe_id:
+            continue
+        sql = str(record.payload.get("sql", "")) if record.payload else ""
+        if sql:
+            out[record.probe_id] = sql
+    return out
 
 
 def _claim_fields(claim: Claim) -> list[tuple[str, str]]:

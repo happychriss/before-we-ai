@@ -4,6 +4,8 @@ from pathlib import Path
 
 import json
 
+import yaml
+
 from before_we_ai.model import (
     Actor,
     ClaimStatus,
@@ -19,6 +21,7 @@ from before_we_ai.model import (
 )
 from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.model.objects import ColumnProfile
+from before_we_ai.probes.library import REGISTRY
 from before_we_ai.store import ProjectStore, init_project
 from claim_viewer import render_project
 
@@ -269,6 +272,123 @@ def test_role_elections_show_winner_loser_and_fachfrage(tmp_path):
     assert f'href="#question-{card.id}"' in html
     # the Fachfragen inbox lists the open question on top
     assert "Fachfragen — open questions (1)" in html
+
+
+def test_probe_card_shows_the_rendered_sql_that_was_asked(tmp_path):
+    root = init_project(tmp_path / "sql")
+    store = ProjectStore(root)
+
+    claim = create_claim(
+        "The journal balances per document",
+        Actor.AI,
+        predicate=Predicate(name="balance", params={"journal": "de_erp__gl_postings"}),
+    )
+    store.save_claim(claim)
+    probe = Probe(template="balance", claim_id=claim.id, roles=["journal"], params={})
+    store.save_probe(probe)
+    sql = (
+        'SELECT "doc_ref", sum(CAST("amount_local_currency" AS DOUBLE)) AS total\n'
+        'FROM "de_erp__gl_postings"\n'
+        'GROUP BY "doc_ref"\n'
+        "HAVING abs(total) > 0.01"
+    )
+    # The runner records the rendered SQL on the probe-result payload — that is
+    # where the viewer must read it from.
+    record = EvidenceRecord(
+        type=EvidenceType.PROBE_RESULT,
+        actor=Actor.PROBE,
+        claim_id=claim.id,
+        probe_id=probe.id,
+        verdict=ProbeVerdict.PASS,
+        population=4020,
+        exception_count=0,
+        payload={"template": "balance", "sql": sql, "summary": "no violations"},
+    )
+    store.add_evidence(record)
+    store.save_claim(attach_evidence(claim, record, []))
+
+    html = render_project(root)
+
+    assert "Rendered SQL — the question that was asked of the data" in html
+    # the exact SQL, escaped, inside a code block under the probe card
+    assert "<pre><code>" in html
+    assert "GROUP BY &quot;doc_ref&quot;" in html
+    assert "HAVING abs(total) &gt; 0.01" in html
+
+
+def test_probe_without_a_run_says_no_sql_was_asked(tmp_path):
+    root = init_project(tmp_path / "no-sql")
+    store = ProjectStore(root)
+
+    claim = create_claim("Postings reference invoices", Actor.AI)
+    store.save_claim(claim)
+    store.save_probe(Probe(template="anti_join", claim_id=claim.id, params={}))
+
+    html = render_project(root)
+
+    assert "No rendered SQL yet" in html
+
+
+def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
+    root = init_project(tmp_path / "domain")
+    roles_file = tmp_path / "roles_finance.yaml"
+    roles_file.write_text(
+        "domain: finance\nroles:\n  journal: The transactional ledger of record.\n"
+        "  subledger_ar: The accounts-receivable open items.\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["sources"] = [
+        {"name": "de_erp", "kind": "duckdb", "location": "/data/DE/erp.duckdb"}
+    ]
+    config["llm"] = {"roles_file": str(roles_file)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    html = render_project(root)
+
+    assert "Domain pack — the declared domain inputs" in html
+    # 1 — the declared sources
+    assert "de_erp" in html and "/data/DE/erp.duckdb" in html
+    # 2 — the role pack: file, domain, count and names
+    assert "2 roles" in html
+    assert "journal" in html and "subledger_ar" in html
+    assert str(roles_file) in html
+    # 3 — the domain-law templates, and the generic remainder named as such
+    for template in ("balance", "subledger_equals_gl", "ic_symmetry"):
+        assert f"<code>{template}</code>" in html
+    assert "finance law" in html
+    generic = len(REGISTRY) - sum(1 for spec in REGISTRY.values() if spec.domain)
+    assert f"The other {generic} templates in the catalog are generic" in html
+
+
+def test_domain_pack_panel_is_honest_when_nothing_is_declared(tmp_path):
+    root = init_project(tmp_path / "undeclared")
+
+    html = render_project(root)
+
+    assert "No sources declared in before-ai.yaml." in html
+    assert "No role pack declared (llm.roles_file)." in html
+
+
+def test_core_terms_define_the_canonical_vocabulary(tmp_path):
+    root = init_project(tmp_path / "terms")
+
+    html = render_project(root)
+
+    assert "How to read this page" in html
+    assert "Core terms" in html
+    for term in (
+        "hypothesis",
+        "claim",
+        "status",
+        "role",
+        "role-binding candidate",
+        "binding",
+        "probe",
+        "domain-law template",
+        "Fachfrage",
+    ):
+        assert f"<dt>{term}</dt>" in html
 
 
 def test_module_cli_writes_output_outside_project_by_default(tmp_path):
