@@ -1,0 +1,2 @@
+src/corpus/data/** -text
+src/raw-training-data/** -text
