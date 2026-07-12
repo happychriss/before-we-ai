@@ -76,7 +76,9 @@ LLM proposes claim hypotheses from profiles (V1) and binds them to probes (V2), 
 strict contracts.
 
 **Requirements:**
-- Input builders from profiles, <25k tokens per prompt
+- Input builders from profiles — **no hard token limit**: the goal is a
+  well-designed system that gives the model complete, well-structured context and
+  lets the AI do what it's good at (~25k tokens is a rough orientation, not a cap)
 - Pydantic output schemas, one retry, full logging to `cache/llm_log/`
 - Stub mode (`--offline`, fixture answers) from day one; CI offline and deterministic
 - LLM output can only ever create `inferred` claims — promotion stays with probes/humans
@@ -89,7 +91,8 @@ strict contracts.
 - Stub fixtures are refreshed from logged real runs (`cache/llm_log/`) so CI can't
   drift green while real output rots; Seeded-Recall is a separate online eval,
   never a CI gate
-- Input builder selects/compresses profiles **deterministically** (sorted, capped) —
-  reproducible online runs, no silent recall loss to the token cap
+- Input builder assembles profiles **deterministically** (stable ordering and
+  selection) — reproducible online runs; if anything must ever be trimmed, trim
+  visibly (logged), never silently
 - If F7/T7 is recalled suspiciously easily, investigate prompt leakage before
   celebrating
