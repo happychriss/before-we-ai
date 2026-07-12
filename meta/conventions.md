@@ -55,7 +55,7 @@ extend it, and hold it to the same standards as the rest of the codebase.
 - `docs/spec/` stays **German** — it is the owner's authoritative spec and reading aid.
 - `docs/SIMPLE-README.md` stays **plain German** by design (per-milestone explainer).
 - Everything else — all other documentation, code, comments, commit messages — is
-  **English**. Domain terms from the spec (Fachfrage, Umsatz, …) may appear as
-  quoted vocabulary where they aid traceability.
+  **English**. German terms encountered outside spec/ and SIMPLE-README may simply
+  be replaced with English equivalents.
 - No mass rewrite of existing mixed-language content: clean it up opportunistically
   whenever you touch a file anyway.

@@ -64,7 +64,8 @@ as QuestionCards. Acceptance held: False-Promotion = 0 against the corpus.
 **Source:** `/workspace/src/claim_viewer/`
 
 Read-only validation UI rendering one self-contained HTML per project root.
-Maintained to the same standards as the rest of the codebase.
+Maintained to the same standards as the rest of the codebase. Component spec,
+binding constraints, and known gaps: `docs/claim-viewer.md`.
 
 ### 6. V1 hypotheses + V2 probe binding — LLM contracts (M4)
 
