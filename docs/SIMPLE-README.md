@@ -304,10 +304,63 @@ befördern.
 
 ---
 
+## M4 — Die KI kommt dazu (✅ fertig, `m4-llm-v1`)
+
+### Die KI als Praktikant mit klarem Arbeitsvertrag
+
+Bis M3 war das Tool komplett ohne KI ehrlich. Jetzt kommt zum ersten Mal
+ein Sprachmodell dazu — aber als **Praktikant, nicht als Chef**. Der
+Praktikant bekommt nur die Steckbriefe aus M2 zu sehen (Statistiken,
+niemals die echten Daten) und darf genau zwei Dinge:
+
+1. **Vermutungen vorschlagen** („Rechnungen verweisen wohl auf Kunden",
+   „diese deutsche und jene englische Spalte meinen dasselbe") — jede
+   landet als Karte mit Status „vermutet", nie höher.
+2. **Sonden zuordnen**: zu jeder Vermutung die passende Prüfung aus dem
+   M3-Baukasten heraussuchen. Ob die Prüfung besteht, entscheidet die
+   Sonde — nie der Praktikant.
+
+Das Entscheidende: Der Praktikant **kann** gar nicht befördern. Die
+Regeln aus M1 lassen es strukturell nicht zu — egal was er schreibt,
+mehr als „vermutet" kommt nicht heraus. Und wenn er Unsinn abgibt
+(falsche Spaltennamen, kaputte Formate), wird genau dieser eine
+Vorschlag aussortiert und protokolliert — der Rest läuft weiter.
+
+### Der Spickzettel-Schwur
+
+Eine Falle im Antwortheft ist nur semantisch findbar (deutsche
+Produktgruppen vs. englische Hierarchie — keine gemeinsamen Werte).
+Findet die KI sie, gibt es zwei Erklärungen: Sie ist wirklich gut — oder
+wir haben ihr heimlich einen Spickzettel geschrieben. Deshalb prüfen
+Tests bei jedem Lauf, dass in keinem Prompt Korpus-Geheimnisse stehen,
+und jedes Gespräch mit der KI wird wortwörtlich protokolliert und
+gescannt.
+
+### Was dabei herauskam (erster echter Lauf)
+
+- Die KI schlug ~60 Vermutungen und 22 Rollen-Kandidaten vor; die Sonden
+  prüften alles deterministisch nach.
+- **Das Hauptbuch gewann die Rolle „Journal", der verführerische
+  Report-Export verlor** — genau die Falle F27, entschieden von der
+  Erhaltungssatz-Sonde, nicht von der KI.
+- 15 von 25 auffindbaren Fallen tauchten als Karte auf — inklusive der
+  Semantik-Falle, mit sauberem Spickzettel-Scan.
+- Und wieder die härteste Zahl: **Falsch-Beförderungen = 0.**
+
+Für die Tests läuft alles auch **offline**: echte, aufgezeichnete
+KI-Antworten werden abgespielt wie eine Kassette — jederzeit
+reproduzierbar, ohne Netz, ohne Kosten.
+
+### M4 in einem Satz
+
+Eine KI darf jetzt Vermutungen anschreiben und Prüfungen vorschlagen —
+aber die Wahrheit vergeben weiterhin nur Sonden und Menschen, und das
+ist keine Absprache, sondern eingebaute Physik.
+
+---
+
 ## Wie geht es weiter?
 
-- **M4 — Die KI kommt dazu**: Ein Sprachmodell darf Vermutungen
-  vorschlagen (aus den Steckbriefen von M2) und Sonden zuordnen — mehr
-  nicht. Gemessen wird, wie viele der eingebauten Beziehungen es findet.
-  *(Abschnitt folgt, wenn M4 gebaut ist.)*
-- M5–M8 folgen danach: Dokumente, Fragenfluss, Veralterung, Paketierung.
+- **M5 — Dokumente**: PDFs lesen, Zahlen mit Fundstellen-Anker belegen;
+  die vergifteten Zahlen im Management-Report dürfen nicht durchkommen.
+- M6–M8 folgen danach: Fragenfluss, Veralterung, Paketierung.

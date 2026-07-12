@@ -84,6 +84,11 @@ and status: `docs/requirements.md`. Working rules: `meta/conventions.md`.
   integrity checks probe refs.
 - `run_ready`: probes topo-sorted by claim; `ready_for_probe` gates (deps ≥
   tested); claim-less probes first; returns RunReport(executed, skipped(reason)).
+  Since M4, a probe whose SQL cannot execute is **contained**: it lands in
+  `skipped` with the error as reason, writes no evidence, leaves its claim
+  untouched — AI-bound probes must never kill the sweep (visibility, not
+  judgment; the loud-crash-on-uncastable-amounts contract inside running
+  probes is unchanged).
 - Normalization is part of the claim: T1 passes canonical, fails with
   `canonical: false` (raw CAST). decode template checks functional dependency,
   not string equality.
@@ -104,6 +109,15 @@ and status: `docs/requirements.md`. Working rules: `meta/conventions.md`.
   one code path; exactly one retry with errors fed back; a schema-valid answer
   with residual semantic errors is "partial" — offending items are skipped,
   never the batch; a double failure is logged and reported, never raised.
+  LESSON (first real runs): schemas stay purely structural — every item-level
+  or cross-field rule lives in the semantic layer, or one bad item kills 60.
+- **Model output is untrusted input**: binding-time checks cover param value
+  shapes (lists, int-able accounts), bare identifiers vs `*_expr`/`*where`,
+  no pre-aggregation in expressions (templates SUM for themselves), and
+  referential integrity (`VIEW_PARAMS`/`COLUMN_PARAMS`: views exist, columns
+  exist on the view they're used against). Unambiguous `view.column` values
+  are normalized to bare columns, not rejected. What still slips through is
+  contained by the engine (see run_ready) — visible, never fatal.
 - **ULIDs never enter a prompt**: V2 references claims via deterministic labels
   (`claim_label_map`, identity-sorted c1..cN) — binding inputs are byte-stable
   across fresh projects, which is what makes fixture hashes meaningful.

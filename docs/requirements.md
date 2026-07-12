@@ -69,13 +69,18 @@ binding constraints, and known gaps: `docs/claim-viewer.md`.
 
 ### 6. V1 hypotheses + V2 probe binding — LLM contracts (M4)
 
-**Status:** In progress — offline path complete (contracts, stub mode, guardrail
-and corpus acceptance tests, Seeded-Recall harness); pending: first online run
-with the owner's `ANTHROPIC_API_KEY` (fixture refresh + Seeded-Recall report),
-then docs/tag. Owner decisions 2026-07-12: Anthropic API, `claude-opus-4-8`
-(V1 + role binding) / `claude-sonnet-5` (plain V2); recall bar set after the
-first real run (measure first).
+**Status:** Complete — tag `m4-llm-v1`
 **Source:** `/workspace/src/before_we_ai/llm/` · eval: `src/tests/eval/`
+
+Owner decisions 2026-07-12: Anthropic API (`ANTHROPIC_API_KEY` env var only),
+`claude-opus-4-8` for V1 + role binding, `claude-sonnet-5` for plain V2 binding.
+Acceptance held (first online run, full report: `docs/seeded-recall-m4.md`):
+**False-Promotion 0**, prompt-leakage scan clean, Seeded-Recall **15/25**
+in-scope traps incl. the T7 semantic-only pair (leakage protocol run: prompts
+carry no corpus hints — the finding derives from profile data, as designed).
+The invariants decided the journal role: GL tested, F27 decoy contradicted.
+CI runs fully offline from recorded fixtures (233 tests). Open owner decision:
+the numeric recall bar, now that the first measurement exists.
 
 LLM proposes claim hypotheses from profiles (V1) and binds them to probes (V2), under
 strict contracts.
