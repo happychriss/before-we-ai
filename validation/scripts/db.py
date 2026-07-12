@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Interactive SQL shell over the walkthrough project's DuckDB catalog.
 
-The catalog's de_erp__*/us_erp__* views sit over ATTACHed databases which
-a raw connection does not re-attach — this shell opens the catalog through
-sources.open_catalog(), so every view works.
+The catalog is only a set of views over ATTACHed databases and CSV/Parquet
+files, so it is rebuilt (cheaply, idempotently) into an in-memory connection
+here — that also means this shell never takes a lock on
+cache/analysis.duckdb and can run while another client holds it open.
 
     db.sh                          interactive shell (quit with \\q or Ctrl-D)
     db.sh "select ..."             run one query and exit
@@ -14,7 +15,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from before_we_ai.sources import open_catalog
+import duckdb
+
+from before_we_ai.sources.attach import build_catalog, load_specs
 
 DEFAULT_PROJECT = Path(__file__).resolve().parents[1] / "data" / "project"
 
@@ -37,7 +40,8 @@ def main() -> None:
 
     if not (args.project / "cache" / "analysis.duckdb").is_file():
         sys.exit(f"no catalog under {args.project} — run 1-scan.sh first")
-    con = open_catalog(args.project)
+    con = duckdb.connect()
+    build_catalog(args.project, load_specs(args.project), con)
     try:
         if args.query:
             run(con, args.query)

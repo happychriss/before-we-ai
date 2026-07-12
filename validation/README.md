@@ -95,9 +95,26 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   errors and pretty-printed answer); `llm-log.sh --html f.html` for a
   browsable page (also produced by step 8).
 - `viewer.sh` — rebuild the claim viewer HTML at any point mid-walkthrough.
-- `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots);
-  opens via `open_catalog()` so the views over attached ERP databases work —
-  a raw connection to `cache/analysis.duckdb` would not re-attach them.
+- `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
+- `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
+  (`data/project/cache/export.duckdb`) — this is what you point DataGrip at.
+
+### Why external tools can't open `cache/analysis.duckdb`
+
+That file holds only **views**: over ATTACHed ERP databases and over
+CSV/Parquet, all referenced by *container-absolute* paths
+(`read_csv('/workspace/src/corpus/data/buchungen_report.csv')`). A DuckDB
+client on the host opens the file but cannot resolve `/workspace/...` and
+fails with `No files found that match the pattern ...`; views over ATTACHed
+databases additionally don't survive a fresh connection at all.
+
+So run `db-export.sh` and open `export.duckdb` — 48 real tables, no external
+references, browsable from anywhere. Re-export after a re-scan; it is a
+snapshot, and `cache/` stays disposable.
+
+Both scripts rebuild the catalog into an in-memory connection instead of
+opening `cache/analysis.duckdb`, so they keep working while a host client
+holds a lock on that file (`Conflicting lock is held in PID 0`).
 - `recall.sh [--online]` — Seeded-Recall scoring in its own project under
   `validation/data/recall/`. The offline replay deterministically scores
   **17/25** — the frozen fixtures are one particular (good) sample; the
