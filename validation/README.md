@@ -24,6 +24,12 @@ deterministic and needs no API key. For live calls run
 | 7 | `7-resolve-roles.sh` | lost roles become Fachfragen |
 | 8 | `8-collect.sh` | gather everything into a clickable report |
 
+Every step opens with an **INPUT** block naming the files that drove it — the
+source list, the role definitions, the profiles, the template catalog, the
+prompts. An output you cannot trace back to its input is an assertion, not
+evidence; for LLM steps the exact bytes sent are in the call log with their
+sha256 (`llm-log.sh <#>`).
+
 Rerunning steps 3 and 4 is safe (claim-key dedup catches everything), and
 step 7 is idempotent. Step 5 refuses to run twice: the offline replay answers
 are keyed to the first run's claim labels, so a re-bind would misapply them —
@@ -31,9 +37,18 @@ run `0-reset.sh` and walk through again instead.
 
 ### Step 1 — load
 
-Look at: view list with row counts, normalization declarations.
+Look at: the **source list** (7 sources — this is what drives everything
+downstream), the views with row counts, the normalization declarations.
 Good: all 7 sources became `<source>__<table>` views; every normalization is
 a visible SYSTEM declaration; **claim count is 0** — the scan never infers.
+
+Who writes the source list: a **human**. `init_project()` creates
+`before-ai.yaml` with an empty `sources: []` — the product never discovers
+files by itself. For the walkthrough the corpus harness fills it in
+(`src/tests/eval/_corpus.py`), and the step prints which corpus files are
+*not* listed: `buchhaltungsrichtlinie.pdf` and `rabattvertrag.pdf` carry the
+policy traps (F14/F15/F19/F25) and are invisible here — PDFs are only
+fingerprinted, the document pipeline is M5.
 
 ### Step 2 — mapping (candidate matrix)
 
