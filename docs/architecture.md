@@ -88,6 +88,8 @@ and status: `docs/requirements.md`. Working rules: `meta/conventions.md`.
   `canonical: false` (raw CAST). decode template checks functional dependency,
   not string equality.
 
-## Claim viewer (`claim_viewer/` — external, hands-off)
+## Claim viewer (`claim_viewer/` — owned code since 2026-07-12)
 
 `python -m claim_viewer <project_root> -o <out.html>` → one self-contained HTML.
+Originally built by an external agent (PR #2); now maintained like the rest of
+the codebase.

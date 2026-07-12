@@ -60,10 +60,11 @@ as QuestionCards. Acceptance held: False-Promotion = 0 against the corpus.
 
 ### 5. Claim viewer
 
-**Status:** Complete — merged PR #2 (external agent; hands-off)
+**Status:** Complete — merged PR #2 (originally external; owned code since 2026-07-12)
 **Source:** `/workspace/src/claim_viewer/`
 
 Read-only validation UI rendering one self-contained HTML per project root.
+Maintained to the same standards as the rest of the codebase.
 
 ### 6. V1 hypotheses + V2 probe binding — LLM contracts (M4)
 

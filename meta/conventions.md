@@ -46,5 +46,16 @@ about how to work.
 
 ## Claim viewer
 
-`src/claim_viewer/` was built by an external agent (PR #2) and stays hands-off —
-report issues to the owner instead of editing.
+`src/claim_viewer/` was originally built by an external agent (PR #2) but is now
+**fully owned code** (ownership transferred 2026-07-12): review it, maintain it,
+extend it, and hold it to the same standards as the rest of the codebase.
+
+## Language policy
+
+- `docs/spec/` stays **German** — it is the owner's authoritative spec and reading aid.
+- `docs/SIMPLE-README.md` stays **plain German** by design (per-milestone explainer).
+- Everything else — all other documentation, code, comments, commit messages — is
+  **English**. Domain terms from the spec (Fachfrage, Umsatz, …) may appear as
+  quoted vocabulary where they aid traceability.
+- No mass rewrite of existing mixed-language content: clean it up opportunistically
+  whenever you touch a file anyway.
