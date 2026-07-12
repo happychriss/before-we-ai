@@ -7,6 +7,7 @@ from typing import Iterable
 
 import yaml
 
+from before_we_ai.glossary import GLOSSARY
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.model import ClaimStatus, EvidenceType, ProbeVerdict, resolve_status
 from before_we_ai.model.objects import (
@@ -47,30 +48,6 @@ STAGE_LABELS = {
 
 
 
-# The canonical vocabulary, defined where it is read. Same words as the glossary
-# in docs/SIMPLE-README.md and the core-terms box of validation/scripts/llm_log.py
-# — the viewer keeps its own small copy rather than importing from the validation
-# scripts, which it must not depend on.
-GLOSSARY: list[tuple[str, str]] = [
-    ("hypothesis", "one proposed rule, the model's raw output (V1); accepted "
-     "ones become claims"),
-    ("claim", "a rule about the data, stored with author and evidence — "
-     "the 'index card'"),
-    ("status", "inferred / tested / contradicted / unresolved / "
-     "business-confirmed — always derived from evidence; the model's claims "
-     "start at 'inferred' and the model cannot promote them"),
-    ("role", "a domain noun a table/column can play (journal, subledger …)"),
-    ("role-binding candidate", "a claim that one view plays a role; competing "
-     "candidates are wanted — the domain-law probes elect the winner"),
-    ("binding", "the assignment claim → probe template + parameters (V2); "
-     "strictly validated, 'template: null' = not testable"),
-    ("probe", "a deterministic SQL spot-check — with humans, the only path to "
-     "a better status; the rendered SQL is shown under each probe below"),
-    ("domain-law template", "a conservation law as code (balance, "
-     "subledger=GL, IC symmetry) — decides which candidate wins a role"),
-    ("Fachfrage", "a drafted question to the humans when data alone cannot "
-     "decide"),
-]
 
 READING_GUIDE = (
     "This page mirrors the pipeline: the AI proposes, the probes decide. Read it "

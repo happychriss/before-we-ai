@@ -17,6 +17,8 @@ from pathlib import Path
 
 import yaml
 
+from before_we_ai.glossary import GLOSSARY
+
 DEFAULT_PROJECT = Path(__file__).resolve().parents[1] / "data" / "project"
 
 # --- process guide -----------------------------------------------------------
@@ -55,29 +57,6 @@ def guide_for(contract: str, scenario: str) -> str:
             "from the closed catalog. 'template: null' answers are honest 'not "
             "testable with the current toolbox' — reported, never hidden.")
     return ""
-
-
-# Core terms, matching the glossary in docs/SIMPLE-README.md — the guide
-# boxes below use exactly these words and no synonyms.
-GLOSSARY: list[tuple[str, str]] = [
-    ("hypothesis", "one proposed rule, the model's raw output (V1); accepted "
-     "ones become claims"),
-    ("claim", "a rule about the data, stored with author and evidence — "
-     "the 'index card'"),
-    ("status", "inferred / tested / contradicted / unresolved / "
-     "business-confirmed — always derived from evidence; the model's claims "
-     "start at 'inferred' and the model cannot promote them"),
-    ("role", "a domain noun a table/column can play (journal, subledger …); "
-     "a role-binding candidate is a claim that a view plays a role"),
-    ("domain-law template", "a conservation law as code (balance, "
-     "subledger=GL, IC symmetry) — decides which candidate wins a role"),
-    ("binding", "the assignment claim → probe template + parameters (V2); "
-     "strictly validated, 'template: null' = not testable"),
-    ("probe", "a deterministic SQL spot-check — with humans, the only path "
-     "to a better status; runs in step 6, never inside a model call"),
-    ("Fachfrage", "a drafted question to the humans when data alone cannot "
-     "decide"),
-]
 
 
 GROWTH_NOTE = (
