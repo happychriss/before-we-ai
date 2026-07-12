@@ -63,9 +63,13 @@ def clip(text: str, width: int = 90) -> str:
 def stage_scan(args) -> None:
     if PROJECT.exists():
         sys.exit(f"{PROJECT} already exists — run 0-reset.sh for a clean start")
-    mode = "ONLINE (real model calls later)" if args.online else \
-        "OFFLINE (recorded real answers replayed from fixtures)"
-    print(f"building walkthrough project: {PROJECT}\nLLM mode: {mode}")
+    mode = "ONLINE — steps 3-5 will make real model calls (needs " \
+        "ANTHROPIC_API_KEY)" if args.online else \
+        "OFFLINE — steps 3-5 will replay the recorded real answers"
+    print(f"building walkthrough project: {PROJECT}\n"
+          f"scan itself is deterministic and never calls an LLM; this run "
+          f"writes the\nLLM config for the later steps into before-ai.yaml: "
+          f"{mode}")
     build_corpus_project(PROJECT, offline=not args.online)
     store = ProjectStore(PROJECT)
 
