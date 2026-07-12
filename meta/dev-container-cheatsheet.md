@@ -122,6 +122,14 @@ Everything else is blocked.
 - Anything else in `/home/ubuntu` (installed apt packages, pip installs outside /workspace, etc.)
 - If you install something you need permanently, add it to `.devcontainer/Dockerfile`
 
+### Locale (fixed 2026-07-12 — redo after a rebuild)
+`~/.zshrc` exports `LC_ALL=en_US.UTF-8`, but the image doesn't generate that
+locale — every `bash` subprocess then warns `setlocale: LC_ALL: cannot change
+locale`. Fix (or add to the Dockerfile permanently):
+```bash
+sudo apt-get install -y locales && sudo locale-gen en_US.UTF-8
+```
+
 ---
 
 ## Useful one-liners
