@@ -69,8 +69,13 @@ binding constraints, and known gaps: `docs/claim-viewer.md`.
 
 ### 6. V1 hypotheses + V2 probe binding — LLM contracts (M4)
 
-**Status:** Not started — next milestone
-**Source:** `/workspace/src/before_we_ai/` (planned)
+**Status:** In progress — offline path complete (contracts, stub mode, guardrail
+and corpus acceptance tests, Seeded-Recall harness); pending: first online run
+with the owner's `ANTHROPIC_API_KEY` (fixture refresh + Seeded-Recall report),
+then docs/tag. Owner decisions 2026-07-12: Anthropic API, `claude-opus-4-8`
+(V1 + role binding) / `claude-sonnet-5` (plain V2); recall bar set after the
+first real run (measure first).
+**Source:** `/workspace/src/before_we_ai/llm/` · eval: `src/tests/eval/`
 
 LLM proposes claim hypotheses from profiles (V1) and binds them to probes (V2), under
 strict contracts.

@@ -1,4 +1,4 @@
-# Product architecture — confirmed design (M1–M3)
+# Product architecture — confirmed design (M1–M4)
 
 Per-package confirmed decisions and gotchas for `src/before_we_ai/`. Feature list
 and status: `docs/requirements.md`. Working rules: `meta/conventions.md`.
@@ -87,6 +87,42 @@ and status: `docs/requirements.md`. Working rules: `meta/conventions.md`.
 - Normalization is part of the claim: T1 passes canonical, fails with
   `canonical: false` (raw CAST). decode template checks functional dependency,
   not string equality.
+
+## LLM contracts (`llm/` — M4)
+
+- **Thin typed functions, no framework**: `hypothesize(root)` (V1, frontier),
+  `propose_role_bindings(root)` (frontier), `bind_probes(root)` (invariant batch
+  frontier / ordinary batch mid-tier) — library seams like `scan(root)`; models
+  and offline switch in `before-ai.yaml` `llm:` (defaults in `llm/config.py`;
+  key ONLY via env var `ANTHROPIC_API_KEY`, lazy SDK import, optional `[llm]` extra).
+- **Controlled predicate vocabulary** (`llm/vocabulary.py`): closed `Literal` in
+  the output schemas — free-form predicates fail validation. `TEMPLATE_PARAMS`
+  mirrors `probes.REGISTRY` key-for-key, locked by a unit test. Every hypothesis
+  carries a `Predicate` with canonicalized params ⇒ claim_key dedup works for
+  AI claims; `rationale` is logged, never stored (wording-free identity).
+- **Retry contract**: parse + Pydantic + semantic checks (mapping dry-run) share
+  one code path; exactly one retry with errors fed back; a schema-valid answer
+  with residual semantic errors is "partial" — offending items are skipped,
+  never the batch; a double failure is logged and reported, never raised.
+- **ULIDs never enter a prompt**: V2 references claims via deterministic labels
+  (`claim_label_map`, identity-sorted c1..cN) — binding inputs are byte-stable
+  across fresh projects, which is what makes fixture hashes meaningful.
+- **Input builders** (`llm/inputs.py`): deterministic rendering (sorted
+  profiles, fixed key order); NO token cap — optional `max_chars` escape hatch
+  trims lowest-signal fields first and always records `trim_notices` into the
+  call log; silent truncation structurally impossible (all rendering funnels
+  through `BuiltInput`).
+- **Stub mode**: fixtures keyed contract+scenario (never input hash — a builder
+  change must not strand keyless devs); drift guard = offline test comparing
+  fixture `input_sha256` against rebuilt inputs; refresh via
+  `tests/eval/refresh_fixtures.py` from `cache/llm_log/` (one JSON per call,
+  verbatim request included). GOTCHA: the corpus generator's
+  `generator_spec/roles.yaml` names trap decoys — runtime role files must be
+  clean (see `tests/fixtures/roles_finance.yaml`).
+- **Role resolution**: an unresolved role (candidates probed, none ≥ tested)
+  becomes a deduped Fachfrage via `resolve_roles` — the losing candidates keep
+  their honest derived statuses; nothing is silently discarded.
+- Seeded-Recall lives in `tests/eval/seeded_recall.py` — reports, never gates.
 
 ## Claim viewer (`claim_viewer/` — owned code since 2026-07-12)
 
