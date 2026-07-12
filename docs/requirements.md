@@ -79,8 +79,13 @@ Acceptance held (first online run, full report: `docs/seeded-recall-m4.md`):
 in-scope traps incl. the T7 semantic-only pair (leakage protocol run: prompts
 carry no corpus hints — the finding derives from profile data, as designed).
 The invariants decided the journal role: GL tested, F27 decoy contradicted.
-CI runs fully offline from recorded fixtures (233 tests). Open owner decision:
+CI runs fully offline from recorded fixtures (257 tests). Open owner decision:
 the numeric recall bar, now that the first measurement exists.
+Validated by the owner via the step-by-step walkthrough (`validation/README.md`,
+2026-07-12, through step 7). Hardened during validation: V2 persists its
+refusals as DECLARATION evidence, and every role declares its settlement path
+(`decided_by:` + pack lint) — every non-slot role ends in a probe verdict or a
+Fachfrage, never in silence (architecture.md).
 
 LLM proposes claim hypotheses from profiles (V1) and binds them to probes (V2), under
 strict contracts.

@@ -5,41 +5,34 @@
 
 ## Current focus
 
-- **M4 COMPLETE** — tag `m4-llm-v1`. First online run: Seeded-Recall 15/25
-  in-scope incl. T7 (leakage clean), False-Promotion 0 (`docs/seeded-recall-m4.md`).
-- **NOW: owner walks through M4 validation** — guide + runnable scripts:
-  `validation/README.md`. Session 2026-07-12 reached step 7 (roles resolved);
-  remaining: step 8 + optional online pass. Suite: 241 pass
-  (`cd /workspace/src && python -m pytest -q`, venv `/workspace/.venv`).
-- **Claim-viewer redesign SHIPPED** (2026-07-12, all six approved items) — the
-  page now mirrors the pipeline: funnel → Fachfragen inbox → role elections →
-  master–detail claim-as-story, single derived badge. See
-  `docs/claim-viewer.md`. It also forced a core improvement: **V2 now persists
-  its refusals** as DECLARATION evidence (unbindable / semantic-only / skipped +
-  verbatim reason), so "why was this never tested" survives a cache wipe
-  (architecture.md "A refusal is a result"). Walkthrough data re-generated
-  offline (steps 0–7) so the report shows them.
-- **Role settlement paths SHIPPED** (2026-07-12, owner-approved after the
-  "undecidable roles" discussion): every role declares `decided_by:`
-  (law / fachfrage / slot), the pack lint rejects silent roles, and
-  `resolve_roles` guarantees every non-slot role ends in a probe verdict or
-  a Fachfrage — never in nothing (architecture.md "Every role declares its
-  settlement path"). Walkthrough step 7 now pins **6** Fachfragen (was 1);
-  prompt bytes unchanged, drift guard green. Deferred to M5 (prompt bytes →
-  fixture re-record): `account` bound to the generic anti_join against the
-  chart of accounts; slot-side lint (needs TemplateSpec slot metadata).
-- Shipped mid-validation: **two-tier retry** (item-scoped repair; see
-  architecture.md "Retry contract, two-tier"). Offline replays unchanged;
-  real effect only measurable on the next online run — watch for
-  `repaired_ok` outcomes there.
-- Also shipped mid-validation: domain-law templates now carry
-  `TemplateSpec.domain` (test-locked — what is domain-specific must be
-  enumerable; see architecture.md "Domain inputs"); claim viewer links
-  persisted probes; walkthrough steps 3–7 auto-refresh both HTML pages
-  (`validation/data/report/{claims,llm_calls}.html`) — the LLM-call log
-  opens with the declared domain inputs + core terms.
-- After validation: **M5 — documents & V3** (spec: docs/spec/ — PDF pipeline,
-  anchors, multi-anchor reconciliation; acceptance: T8 negatives, real PDF).
+- **NOW: M5 — documents & V3** (spec: docs/spec/ — PDF pipeline, anchors,
+  multi-anchor reconciliation; acceptance: T8 negatives, real PDF). Owner
+  moved here 2026-07-12 after validating M4 through step 7.
+- **M5 kickoff batch** (decide/do first, ONE shared fixture re-record since
+  they all touch prompt bytes — procedure below):
+  1. E4 noise PDFs blocker (see open items) — decide before anything.
+  2. `discover(root)` sources discovery + bundled role packs
+     (docs/onboarding-workflow.md).
+  3. Show the domain tag in V2 template docs (architecture.md "Domain inputs").
+  4. Role claims binding to *generic* templates where a real data property
+     exists (`account` via anti_join against the chart of accounts).
+  5. Slot-side pack lint: TemplateSpec declares which roles its slots
+     consume (docs/onboarding-workflow.md "Logical pack validation").
+- **M4 COMPLETE** — tag `m4-llm-v1`. Seeded-Recall 15/25, False-Promotion 0
+  (`docs/seeded-recall-m4.md`). Validation walkthrough done through step 7
+  with the final data; step 8 (`8-collect.sh`) + optional online pass remain
+  available anytime (`validation/README.md`). The online pass would also show
+  whether the two-tier retry turns `partial` into `repaired_ok` (architecture.md
+  "Retry contract, two-tier").
+- Suite: **257 pass** (`cd /workspace/src && python -m pytest -q`,
+  venv `/workspace/.venv`).
+- Shipped during validation, all durable in docs now: claim-viewer redesign
+  (docs/claim-viewer.md), V2 persists refusals as DECLARATIONs + role
+  settlement paths `decided_by:` with pack lint — every non-slot role ends in
+  a probe verdict or a Fachfrage, step 7 pins 6 Fachfragen
+  (architecture.md "A refusal is a result" / "Every role declares its
+  settlement path"); `TemplateSpec.domain` tags; core-terms glossary has one
+  home (`before_we_ai/glossary.py`).
 
 ## Open items
 
@@ -50,10 +43,6 @@
   recall_set but not in `src/corpus/data/`, so M5's "T8 negatives"
   acceptance can't be met as written. Decide at M5 start: generate + re-tag
   the frozen corpus, or re-scope F26.
-- **Onboarding workflow** (owner-aligned 2026-07-12): sources discovery +
-  bundled role packs at **M5 kickoff** (one shared fixture re-record),
-  LLM pack-drafting post-M5, assembled quickstart at M8. Full design:
-  `docs/onboarding-workflow.md`.
 - **Owner: set the numeric Seeded-Recall bar** (first measurement 15/25;
   misses cluster in K3 definition-style traps — they need the M5 document
   pipeline; consider a bar over relationship-style traps only).
@@ -65,3 +54,7 @@
   `tests/corpus_driven/test_llm_offline_corpus.py`, commit.
 - Remote branch `copilot/create-scripts-folder` (1 unmerged commit:
   `scripts/copy_raw_data.sh`) — owner's delete/merge decision pending.
+- M5 will likely unlock three of the walkthrough's untested claims — their
+  V2 refusals literally say the rule lives in a document (`decodes` account
+  ranges, AR control account, opening-balances coverage; read them in the
+  claim viewer).
