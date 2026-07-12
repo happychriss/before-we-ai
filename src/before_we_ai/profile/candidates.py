@@ -104,6 +104,14 @@ def build_matrix(
     }
 
 
+def load_matrix(root: str | Path) -> dict:
+    """Read the persisted candidate matrix of a project (written by scan)."""
+    path = Path(root) / "profiles" / "candidate_matrix.json"
+    if not path.is_file():
+        raise FileNotFoundError(f"no candidate matrix at {path} — run scan first")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def write_matrix(matrix: dict, profiles_dir: str | Path) -> Path:
     """Persist the matrix as JSON (machine) + Markdown (human) in profiles/."""
     directory = Path(profiles_dir)

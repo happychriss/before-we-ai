@@ -1,0 +1,9 @@
+{
+ "contract": "v2_bind",
+ "scenario": "corpus_claims",
+ "input_sha256": "b1e26898b4979fd1a9fd79f4fef1cebe257062a776e368183953cf5401acf60e",
+ "model": "hand-authored",
+ "recorded_at": "hand-authored",
+ "source_log": null,
+ "response_text": "{\n \"bindings\": [\n  {\n   \"claim_id\": \"c1\",\n   \"template\": \"anti_join\",\n   \"params\": {\n    \"child\": \"de_erp__invoices\",\n    \"parent\": \"de_erp__customers\",\n    \"child_column\": \"customer_id\",\n    \"parent_column\": \"customer_id\"\n   }\n  },\n  {\n   \"claim_id\": \"c2\",\n   \"template\": \"validity_join\",\n   \"params\": {\n    \"table\": \"de_erp__customer_hierarchy\",\n    \"key_column\": \"customer_id\",\n    \"valid_from\": \"valid_from\",\n    \"valid_to\": \"valid_to\"\n   }\n  },\n  {\n   \"claim_id\": \"c3\",\n   \"template\": \"duplicate\",\n   \"params\": {\n    \"table\": \"de_erp__invoices\",\n    \"key_columns\": [\n     \"document_number\"\n    ]\n   }\n  },\n  {\n   \"claim_id\": \"c4\",\n   \"template\": null,\n   \"no_template_reason\": \"Reconciliation needs measure expressions and a sign convention that the profiles do not determine.\"\n  }\n ]\n}"
+}

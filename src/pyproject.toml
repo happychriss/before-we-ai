@@ -20,6 +20,10 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
+# online mode only — CI and the offline stub never import the SDK
+llm = [
+    "anthropic>=0.40",
+]
 
 [tool.setuptools]
 packages = [
@@ -30,6 +34,7 @@ packages = [
     "before_we_ai.profile",
     "before_we_ai.probes",
     "before_we_ai.engine",
+    "before_we_ai.llm",
     "claim_viewer",
 ]
 

@@ -1,0 +1,9 @@
+{
+ "contract": "v2_bind",
+ "scenario": "corpus_roles",
+ "input_sha256": "2eaa8333e3a3291692f542f2240bde28c1ebe35867ce415e1d1c332d3e8979ec",
+ "model": "hand-authored",
+ "recorded_at": "hand-authored",
+ "source_log": null,
+ "response_text": "{\n \"bindings\": [\n  {\n   \"claim_id\": \"c1\",\n   \"template\": \"balance\",\n   \"params\": {\n    \"journal\": \"de_erp__gl_postings\",\n    \"amount\": \"amount_local_currency\",\n    \"group_column\": \"document_reference\"\n   }\n  },\n  {\n   \"claim_id\": \"c2\",\n   \"template\": \"balance\",\n   \"params\": {\n    \"journal\": \"buchungen_report__buchungen_report\",\n    \"amount\": \"betrag_eur\",\n    \"group_column\": \"buchung_id\"\n   }\n  },\n  {\n   \"claim_id\": \"c3\",\n   \"template\": \"ic_symmetry\",\n   \"params\": {\n    \"left\": \"de_erp__intercompany\",\n    \"right\": \"us_erp__intercompany\",\n    \"left_period\": \"period\",\n    \"right_period\": \"period\"\n   }\n  }\n ]\n}"
+}

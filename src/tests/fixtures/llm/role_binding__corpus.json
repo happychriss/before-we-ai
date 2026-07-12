@@ -1,0 +1,9 @@
+{
+ "contract": "role_binding",
+ "scenario": "corpus",
+ "input_sha256": "c147913bfa4c525a4d94e844390d6f6de3a5a0e9a10c57b9e8d256e2684d80e3",
+ "model": "hand-authored",
+ "recorded_at": "hand-authored",
+ "source_log": null,
+ "response_text": "{\n \"proposals\": [\n  {\n   \"role\": \"journal\",\n   \"binding\": {\n    \"table\": \"de_erp__gl_postings\",\n    \"amount_local\": \"de_erp__gl_postings.amount_local_currency\",\n    \"doc_ref\": \"de_erp__gl_postings.document_reference\",\n    \"account\": \"de_erp__gl_postings.account_id\",\n    \"period\": \"de_erp__gl_postings.period\"\n   },\n   \"rationale\": \"Line-level table with signed amounts, document references and periods.\"\n  },\n  {\n   \"role\": \"journal\",\n   \"binding\": {\n    \"table\": \"buchungen_report__buchungen_report\",\n    \"amount_local\": \"buchungen_report__buchungen_report.betrag_eur\",\n    \"doc_ref\": \"buchungen_report__buchungen_report.buchung_id\",\n    \"period\": \"buchungen_report__buchungen_report.period\"\n   },\n   \"rationale\": \"Journal-like naming and per-period amounts; plausible competing candidate.\"\n  },\n  {\n   \"role\": \"intercompany\",\n   \"binding\": {\n    \"left\": \"de_erp__intercompany\",\n    \"right\": \"us_erp__intercompany\",\n    \"period\": \"de_erp__intercompany.period\"\n   },\n   \"rationale\": \"Paired entity tables with matching periods and single counterparties.\"\n  }\n ]\n}"
+}

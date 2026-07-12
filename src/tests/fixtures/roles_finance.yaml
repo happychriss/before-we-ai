@@ -1,0 +1,33 @@
+# Finance domain roles — flat and curated, data not code (Regel der Drei:
+# no ontology, no plugin framework before a third domain forces one).
+#
+# CLEAN BY CONSTRUCTION: definitions only — no examples, no source names,
+# no hints. This file is passed into LLM prompts; anything corpus-specific
+# here would teach to the test and invalidate Seeded-Recall. The corpus
+# generator's own roles.yaml (src/corpus/generator_spec/) is NOT usable
+# at runtime for exactly that reason.
+domain: finance
+roles:
+  journal: >-
+    The transactional ledger of record: one row per posting line, carrying a
+    signed amount and a document reference; debit and credit lines balance
+    per document.
+  amount_local: >-
+    The signed posting amount in local currency on the journal — the column
+    that must sum to zero per document.
+  doc_ref: >-
+    The document (voucher) reference that groups journal lines into balanced
+    postings.
+  account: >-
+    The account identifier on the journal, resolvable against a chart of
+    accounts.
+  period: >-
+    The posting period on the journal, at fiscal-period granularity.
+  entity: >-
+    The legal entity or company code a posting belongs to.
+  subledger_ar: >-
+    The accounts-receivable open items: one row per open receivable with a
+    signed amount, reconcilable against the journal's control account.
+  intercompany: >-
+    Paired intercompany postings between two entities that must mirror each
+    other per period.
