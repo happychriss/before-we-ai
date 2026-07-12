@@ -1,11 +1,21 @@
 import json
 from collections import defaultdict
+from dataclasses import dataclass, field
 from html import escape
 from pathlib import Path
 from typing import Iterable
 
+from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.model import ClaimStatus, EvidenceType, ProbeVerdict, resolve_status
-from before_we_ai.model.objects import Claim, ColumnProfile, EvidenceRecord, Probe, QuestionCard, Source
+from before_we_ai.model.objects import (
+    Claim,
+    ColumnProfile,
+    EvidenceRecord,
+    Probe,
+    QuestionCard,
+    RoleBindingClaim,
+    Source,
+)
 from before_we_ai.probes.library import REGISTRY
 from before_we_ai.store import ProjectStore, check_integrity
 
@@ -22,6 +32,29 @@ VERDICT_COLORS = {
     ProbeVerdict.FAIL.value: "verdict-fail",
     ProbeVerdict.INCONCLUSIVE.value: "verdict-inconclusive",
 }
+
+
+STAGE_LABELS = {
+    "bound": "bound to a probe",
+    "unbound": "no probe (unbindable or skipped)",
+    "semantic": "semantic-only (no admissible template)",
+}
+
+
+@dataclass
+class ClaimFacts:
+    """Everything the viewer knows about one claim, computed once."""
+
+    claim: Claim
+    evidence: list[EvidenceRecord] = field(default_factory=list)
+    probes: list[Probe] = field(default_factory=list)
+    derived: ClaimStatus = ClaimStatus.INFERRED
+    stage: str = "unbound"  # bound | unbound | semantic
+    executed: bool = False
+
+    @property
+    def diverges(self) -> bool:
+        return self.claim.status is not self.derived
 
 
 def default_output_path(root: Path) -> Path:
@@ -61,13 +94,14 @@ def render_project(root: str | Path) -> str:
     role_bindings = _role_bindings_by_column(claims)
     candidates_by_column = _candidates_by_column(matrix)
     profiles_by_source = _profiles_by_source(profiles)
+    facts = _claim_facts(store, claims)
 
     claim_index = "".join(
-        _render_claim_index_card(claim) for claim in claims
+        _render_claim_index_card(facts[claim.id]) for claim in claims
     ) or '<p class="empty">No claims yet.</p>'
     claim_sections = "".join(
         _render_claim_section(
-            claim,
+            facts[claim.id],
             store=store,
             questions_by_claim=questions_by_claim,
             reverse_depends=reverse_depends,
@@ -75,7 +109,7 @@ def render_project(root: str | Path) -> str:
             declarations_by_key=declarations_by_key,
         )
         for claim in claims
-    ) or '<section class="panel"><h2>Claims</h2><p class="empty">No claims yet.</p></section>'
+    ) or '<p class="empty">No claims yet.</p>'
     question_sections = "".join(
         _render_question_section(card, store.claims) for card in questions
     ) or '<p class="empty">No questions yet.</p>'
@@ -251,6 +285,76 @@ def render_project(root: str | Path) -> str:
       margin: 0;
       padding-left: 18px;
     }}
+    .funnel {{ display: grid; gap: 10px; }}
+    .funnel-stage {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }}
+    .funnel-stage .step {{
+      color: var(--muted);
+      min-width: 110px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }}
+    .chip {{
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 12px;
+      background: #0f172a;
+      cursor: pointer;
+      color: var(--text);
+      font: inherit;
+    }}
+    .chip:hover {{ border-color: var(--link); }}
+    .chip.active {{ border-color: var(--link); box-shadow: 0 0 0 1px var(--link) inset; }}
+    .chip strong {{ font-size: 16px; }}
+    .chip .label {{ color: var(--muted); font-size: 12px; }}
+    .banner {{
+      border: 1px solid var(--unresolved);
+      background: rgba(217, 119, 6, 0.15);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 10px 0;
+    }}
+    .headline {{ font-size: 15px; margin: 6px 0 12px; }}
+    details {{ margin-bottom: 10px; }}
+    details > summary {{
+      cursor: pointer;
+      padding: 8px 0;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+    }}
+    details[open] > summary {{ color: var(--text); }}
+    .election {{
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }}
+    .cand {{
+      border-left: 3px solid var(--line);
+      padding: 6px 0 6px 10px;
+      margin: 8px 0;
+    }}
+    .cand.winner {{ border-left-color: var(--tested); }}
+    .cand.loser {{ border-left-color: var(--contradicted); }}
+    .fine {{ font-size: 12px; color: var(--muted); }}
+    .claim-detail {{ display: none; }}
+    .claim-card.selected {{ border-color: var(--link); }}
     @media (max-width: 980px) {{
       .layout {{ grid-template-columns: 1fr; }}
       .sidebar {{
@@ -268,9 +372,10 @@ def render_project(root: str | Path) -> str:
       <h1>Claim Viewer</h1>
       <p class="muted">{escape(str(root_path))}</p>
       <div class="section-links">
-        <a href="#claims-index">Claims</a>
-        <a href="#questions">Questions</a>
-        <a href="#sources-index">Sources</a>
+        <a href="#overview">Funnel</a>
+        <a href="#questions">Fachfragen</a>
+        <a href="#roles">Role elections</a>
+        <a href="#data">Data</a>
         <a href="#integrity">Integrity</a>
       </div>
       <div class="panel">
@@ -278,40 +383,52 @@ def render_project(root: str | Path) -> str:
         <div class="toolbar">
           <input id="claim-search" type="search" placeholder="Search statement or predicate">
           <select id="status-filter">
-            <option value="">All statuses</option>
+            <option value="">All statuses (derived)</option>
             {_status_options()}
           </select>
+          <select id="predicate-filter">
+            <option value="">All predicates</option>
+            {_predicate_options(claims)}
+          </select>
+          <select id="role-filter">
+            <option value="">All roles</option>
+            {_role_options(claims)}
+          </select>
         </div>
+        <p id="filter-note" class="muted"></p>
         <div id="claim-list">{claim_index}</div>
-      </div>
-      <div class="panel">
-        <h2 id="sources-index">Data ({len(sources)} sources)</h2>
-        <p class="muted">{candidate_count} candidate overlaps in matrix.</p>
-        {source_index or '<p class="empty">No sources yet.</p>'}
       </div>
     </aside>
     <main class="content">
-      <section class="panel">
-        <h2>Project overview</h2>
-        <div class="grid">
-          <div class="mini-card"><strong>{len(claims)}</strong><div class="muted">claims</div></div>
-          <div class="mini-card"><strong>{len(store.evidence)}</strong><div class="muted">evidence records</div></div>
-          <div class="mini-card"><strong>{len(store.probes)}</strong><div class="muted">probes</div></div>
-          <div class="mini-card"><strong>{len(questions)}</strong><div class="muted">questions</div></div>
-          <div class="mini-card"><strong>{len(sources)}</strong><div class="muted">sources</div></div>
-          <div class="mini-card"><strong>{len(profiles)}</strong><div class="muted">column profiles</div></div>
-          <div class="mini-card"><strong>{candidate_count}</strong><div class="muted">candidate overlaps</div></div>
-        </div>
+      <section class="panel" id="overview">
+        <h2>The funnel — from guess to verdict</h2>
+        <p class="muted">The AI proposes; the probes decide. Click any number to filter the claim list.</p>
+        {_render_funnel(facts)}
+        <p class="muted">{escape(_project_line(store, sources, profiles, candidate_count))}</p>
         {_render_matrix_summary(matrix, warning_html)}
       </section>
-      {claim_sections}
       <section class="panel" id="questions">
-        <h2>Questions</h2>
+        <h2>Fachfragen — open questions ({len(questions)})</h2>
+        <p class="muted">What the probes could not settle. This is the human's to-do list.</p>
         {question_sections}
       </section>
-      <section class="panel">
-        <h2>Sources &amp; columns</h2>
+      <section class="panel" id="roles">
+        <h2>Role elections</h2>
+        <p class="muted">Every role the AI proposed candidates for. Invariant probes elect the winner —
+        a role with no winner ends in a Fachfrage.</p>
+        {_render_role_elections(facts, questions)}
+      </section>
+      <section class="panel" id="claims">
+        <h2>Claim detail</h2>
+        <p id="claim-empty" class="muted">Pick a claim on the left.</p>
+        {claim_sections}
+      </section>
+      <section class="panel" id="data">
+        <h2>Sources &amp; columns ({len(sources)})</h2>
+        {source_index or '<p class="empty">No sources yet.</p>'}
+        <details><summary>All profiled tables and columns</summary>
         {source_sections}
+        </details>
       </section>
       <section class="panel" id="integrity">
         <h2>Integrity</h2>
@@ -321,24 +438,278 @@ def render_project(root: str | Path) -> str:
   </div>
   <script>
     const search = document.getElementById('claim-search');
-    const status = document.getElementById('status-filter');
+    const statusFilter = document.getElementById('status-filter');
+    const predicateFilter = document.getElementById('predicate-filter');
+    const roleFilter = document.getElementById('role-filter');
+    const note = document.getElementById('filter-note');
     const cards = Array.from(document.querySelectorAll('[data-claim-card]'));
+    const details = Array.from(document.querySelectorAll('[data-claim-detail]'));
+    const emptyHint = document.getElementById('claim-empty');
+    let stage = '';
+
     function applyFilter() {{
       const q = (search.value || '').toLowerCase();
-      const s = status.value;
+      const s = statusFilter.value;
+      const p = predicateFilter.value;
+      const r = roleFilter.value;
+      let shown = 0;
       for (const card of cards) {{
-        const text = card.dataset.search || '';
-        const cardStatus = card.dataset.status || '';
-        const visible = (!q || text.includes(q)) && (!s || cardStatus === s);
+        const d = card.dataset;
+        const visible =
+          (!q || (d.search || '').includes(q)) &&
+          (!s || d.status === s) &&
+          (!p || d.predicate === p) &&
+          (!r || d.role === r) &&
+          (!stage || (d.stage === stage) || (stage === 'executed' && d.executed === 'yes'));
         card.style.display = visible ? '' : 'none';
+        if (visible) shown++;
       }}
+      note.textContent = shown + ' of ' + cards.length + ' claims shown'
+        + (stage ? ' · funnel: ' + stage : '');
     }}
+
+    function setStage(value) {{
+      stage = (stage === value) ? '' : value;
+      for (const chip of document.querySelectorAll('[data-stage-chip]')) {{
+        chip.classList.toggle('active', chip.dataset.stageChip === stage);
+      }}
+      applyFilter();
+    }}
+
+    function showClaim(id) {{
+      let found = false;
+      for (const section of details) {{
+        const match = section.id === 'claim-' + id;
+        section.style.display = match ? 'block' : 'none';
+        found = found || match;
+      }}
+      if (emptyHint) emptyHint.style.display = found ? 'none' : '';
+    }}
+
+    function reveal(hash) {{
+      const target = document.getElementById(hash);
+      if (!target) return;
+      const section = target.closest('[data-claim-detail]');
+      if (section) showClaim(section.dataset.claimId);
+      for (let el = target.parentElement; el; el = el.parentElement) {{
+        if (el.tagName === 'DETAILS') el.open = true;
+      }}
+      target.scrollIntoView({{block: 'start'}});
+    }}
+
     search.addEventListener('input', applyFilter);
-    status.addEventListener('change', applyFilter);
+    for (const select of [statusFilter, predicateFilter, roleFilter]) {{
+      select.addEventListener('change', applyFilter);
+    }}
+    for (const chip of document.querySelectorAll('[data-stage-chip]')) {{
+      chip.addEventListener('click', () => {{
+        const value = chip.dataset.stageChip;
+        if (chip.dataset.status) {{
+          statusFilter.value = chip.dataset.status;
+          stage = '';
+          for (const other of document.querySelectorAll('[data-stage-chip]')) {{
+            other.classList.remove('active');
+          }}
+          applyFilter();
+        }} else {{
+          setStage(value);
+        }}
+      }});
+    }}
+    window.addEventListener('hashchange', () => reveal(location.hash.slice(1)));
+    showClaim(null);
+    if (location.hash) reveal(location.hash.slice(1));
+    applyFilter();
   </script>
 </body>
 </html>
 """
+
+
+def _claim_facts(store: ProjectStore, claims: list[Claim]) -> dict[str, ClaimFacts]:
+    """One pass over the store: evidence, probes, derived status, funnel stage."""
+    facts: dict[str, ClaimFacts] = {}
+    for claim in claims:
+        evidence = store.evidence_for(claim)
+        # Persisted probes: bound directly (claim_id) or — for invariant probes,
+        # which are bound to roles, not to one claim — reachable only through the
+        # probe_id on this claim's evidence records.
+        evidence_probe_ids = {record.probe_id for record in evidence if record.probe_id}
+        probes = sorted(
+            (
+                probe
+                for probe in store.probes.values()
+                if probe.claim_id == claim.id or probe.id in evidence_probe_ids
+            ),
+            key=lambda probe: (probe.created_at, probe.id),
+        )
+        if probes:
+            stage = "bound"
+        elif admissible_templates(claim):
+            stage = "unbound"
+        else:
+            stage = "semantic"
+        facts[claim.id] = ClaimFacts(
+            claim=claim,
+            evidence=evidence,
+            probes=probes,
+            derived=resolve_status(claim, evidence),
+            stage=stage,
+            executed=any(
+                record.type is EvidenceType.PROBE_RESULT for record in evidence
+            ),
+        )
+    return facts
+
+
+def _chip(count: int, label: str, stage: str, *, status: str | None = None) -> str:
+    status_attr = f' data-status="{escape(status)}"' if status else ""
+    return (
+        f'<button type="button" class="chip" data-stage-chip="{escape(stage)}"{status_attr}>'
+        f"<strong>{count}</strong><span class='label'>{escape(label)}</span></button>"
+    )
+
+
+def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
+    if not facts:
+        return '<p class="empty">No claims yet.</p>'
+    values = list(facts.values())
+    stages = {name: sum(1 for f in values if f.stage == name) for name in STAGE_LABELS}
+    executed = sum(1 for f in values if f.executed)
+    by_status = defaultdict(int)
+    for f in values:
+        by_status[f.derived.value] += 1
+
+    proposed = (
+        "<div class='funnel-stage'><span class='step'>proposed</span>"
+        + _chip(len(values), "claims (all inferred when created)", "")
+        + "</div>"
+    )
+    bound = (
+        "<div class='funnel-stage'><span class='step'>bound</span>"
+        + _chip(stages["bound"], STAGE_LABELS["bound"], "bound")
+        + _chip(stages["unbound"], STAGE_LABELS["unbound"], "unbound")
+        + _chip(stages["semantic"], STAGE_LABELS["semantic"], "semantic")
+        + "</div>"
+    )
+    judged = (
+        "<div class='funnel-stage'><span class='step'>judged</span>"
+        + _chip(executed, "claims a probe actually ran against", "executed")
+        + "</div>"
+    )
+    verdicts = "<div class='funnel-stage'><span class='step'>status</span>" + "".join(
+        _chip(by_status[status.value], status.value, f"status:{status.value}",
+              status=status.value)
+        for status in ClaimStatus
+        if by_status[status.value]
+    ) + "</div>"
+    caveat = (
+        "<p class='fine'>The store records probes, not the model's refusals: a claim with no "
+        "probe was either reported <em>unbindable</em> (the model gave a reason) or "
+        "<em>skipped</em> by validation. That split lives in the LLM call log, not here.</p>"
+    )
+    return f"<div class='funnel'>{proposed}{bound}{judged}{verdicts}</div>{caveat}"
+
+
+def _render_role_elections(
+    facts: dict[str, ClaimFacts], questions: list[QuestionCard]
+) -> str:
+    by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
+    for fact in facts.values():
+        if isinstance(fact.claim, RoleBindingClaim):
+            by_role[fact.claim.role].append(fact)
+    if not by_role:
+        return '<p class="empty">No role-binding candidates yet.</p>'
+
+    rank = {
+        ClaimStatus.TESTED: 0,
+        ClaimStatus.BUSINESS_CONFIRMED: 0,
+        ClaimStatus.UNRESOLVED: 1,
+        ClaimStatus.INFERRED: 2,
+        ClaimStatus.CONTRADICTED: 3,
+    }
+    blocks = []
+    for role, candidates in sorted(by_role.items()):
+        candidates.sort(key=lambda f: (rank[f.derived], f.claim.id))
+        winners = [f for f in candidates if f.derived in (ClaimStatus.TESTED, ClaimStatus.BUSINESS_CONFIRMED)]
+        rows = "".join(_render_candidate(fact, fact in winners) for fact in candidates)
+        claim_ids = {fact.claim.id for fact in candidates}
+        cards = [card for card in questions if claim_ids & set(card.claim_ids)]
+        if winners:
+            outcome = (
+                f"<p><strong>Elected:</strong> {_claim_link(winners[0].claim)} "
+                f"{_status_badge(winners[0].derived.value)}</p>"
+            )
+        elif not any(fact.probes for fact in candidates):
+            outcome = (
+                "<p class='muted'><strong>Never put to the test:</strong> no invariant probe "
+                "was bound to any candidate, so every candidate is still a guess.</p>"
+            )
+        elif cards:
+            outcome = "".join(
+                f"<p><strong>No winner → Fachfrage:</strong> {_question_link(card)}</p>"
+                for card in cards
+            )
+        else:
+            outcome = (
+                "<p class='muted'>No winner — every tested candidate lost, and no Fachfrage "
+                "is drafted yet.</p>"
+            )
+        blocks.append(
+            f"<div class='election'><h3><code>{escape(role)}</code> "
+            f"<span class='muted'>{len(candidates)} candidate"
+            f"{'s' if len(candidates) != 1 else ''}</span></h3>"
+            f"{outcome}{rows}</div>"
+        )
+    return "".join(blocks)
+
+
+def _render_candidate(fact: ClaimFacts, won: bool) -> str:
+    css = "winner" if won else ("loser" if fact.derived is ClaimStatus.CONTRADICTED else "")
+    reasons = "".join(
+        f"<div class='fine'>felled by <code>{escape(template)}</code>"
+        + (f" <span class='muted'>({escape(domain)} law)</span>" if domain else "")
+        + f" — {detail}</div>"
+        for template, domain, detail in _defeats(fact)
+    )
+    return (
+        f"<div class='cand {css}'>"
+        f"<div>{_claim_link(fact.claim)} {_status_badge(fact.derived.value)}</div>"
+        f"{reasons}</div>"
+    )
+
+
+def _defeats(fact: ClaimFacts) -> list[tuple[str, str, str]]:
+    """(template, domain, human detail) for every failing probe on this claim."""
+    probes = {probe.id: probe for probe in fact.probes}
+    out = []
+    for record in fact.evidence:
+        if record.type is not EvidenceType.PROBE_RESULT or record.verdict is not ProbeVerdict.FAIL:
+            continue
+        probe = probes.get(record.probe_id or "")
+        template = probe.template if probe else "unknown template"
+        spec = REGISTRY.get(template)
+        detail = _population_text(record)
+        out.append((template, (spec.domain if spec else None) or "", detail))
+    return out
+
+
+def _population_text(record: EvidenceRecord) -> str:
+    if record.exception_count is None or record.population is None:
+        return "probe failed"
+    return (
+        f"{record.exception_count:,} exception"
+        f"{'s' if record.exception_count != 1 else ''} in {record.population:,} rows"
+    )
+
+
+def _project_line(
+    store: ProjectStore, sources: list[Source], profiles: list[ColumnProfile], candidates: int
+) -> str:
+    return (
+        f"{len(sources)} sources · {len(profiles)} column profiles · {candidates} candidate "
+        f"overlaps · {len(store.probes)} probes · {len(store.evidence)} evidence records."
+    )
 
 
 def _status_options() -> str:
@@ -346,6 +717,20 @@ def _status_options() -> str:
         f'<option value="{status.value}">{status.value}</option>'
         for status in ClaimStatus
     )
+
+
+def _predicate_options(claims: list[Claim]) -> str:
+    names = sorted({claim.predicate.name for claim in claims if claim.predicate})
+    return "".join(f'<option value="{escape(n)}">{escape(n)}</option>' for n in names)
+
+
+def _role_options(claims: list[Claim]) -> str:
+    roles = sorted(
+        {claim.role for claim in claims if isinstance(claim, RoleBindingClaim)}
+    )
+    return "".join(f'<option value="{escape(r)}">{escape(r)}</option>' for r in roles)
+
+
 
 
 def _render_matrix_summary(matrix: dict, warning_html: str) -> str:
@@ -362,27 +747,33 @@ def _render_matrix_summary(matrix: dict, warning_html: str) -> str:
     return f"<p>{escape(summary)}</p>{warnings}"
 
 
-def _render_claim_index_card(claim: Claim) -> str:
+def _render_claim_index_card(fact: ClaimFacts) -> str:
+    claim = fact.claim
+    predicate = claim.predicate.name if claim.predicate else ""
+    role = claim.role if isinstance(claim, RoleBindingClaim) else ""
     search = " ".join(
-        filter(None, [
-            claim.statement,
-            claim.status.value,
-            claim.predicate.name if claim.predicate else "",
-        ])
+        filter(None, [claim.statement, fact.derived.value, predicate, role])
     ).lower()
+    hint = " · ".join(filter(None, [
+        f"predicate: {predicate}" if predicate else "",
+        f"role: {role}" if role else "",
+        STAGE_LABELS[fact.stage] if fact.stage != "bound" else "",
+    ]))
     return (
-        f'<div class="claim-card" data-claim-card data-status="{escape(claim.status.value)}" '
+        f'<div class="claim-card" data-claim-card data-status="{escape(fact.derived.value)}" '
+        f'data-stage="{escape(fact.stage)}" data-executed="{"yes" if fact.executed else "no"}" '
+        f'data-predicate="{escape(predicate)}" data-role="{escape(role)}" '
         f'data-search="{escape(search)}">'
         f'<div><a href="#claim-{escape(claim.id)}"><strong>{escape(_short_id(claim.id))}</strong></a> '
-        f'{_status_badge(claim.status.value)}</div>'
+        f'{_status_badge(fact.derived.value)}</div>'
         f'<div>{escape(claim.statement)}</div>'
-        f'{f"<div class=\"muted\">predicate: {escape(claim.predicate.name)}</div>" if claim.predicate else ""}'
+        f'{f"<div class=\"muted\">{escape(hint)}</div>" if hint else ""}'
         "</div>"
     )
 
 
 def _render_claim_section(
-    claim: Claim,
+    fact: ClaimFacts,
     *,
     store: ProjectStore,
     questions_by_claim: dict[str, list[QuestionCard]],
@@ -390,20 +781,10 @@ def _render_claim_section(
     reverse_derived: dict[str, list[Claim]],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
 ) -> str:
-    evidence = store.evidence_for(claim)
-    resolved = resolve_status(claim, evidence)
-    # Persisted probes: bound directly (claim_id) or — for invariant probes,
-    # which are bound to roles, not to one claim — reachable only through the
-    # probe_id on this claim's evidence records.
-    evidence_probe_ids = {record.probe_id for record in evidence if record.probe_id}
-    probes = sorted(
-        (
-            probe
-            for probe in store.probes.values()
-            if probe.claim_id == claim.id or probe.id in evidence_probe_ids
-        ),
-        key=lambda probe: (probe.created_at, probe.id),
-    )
+    claim = fact.claim
+    evidence = fact.evidence
+    resolved = fact.derived
+    probes = fact.probes
     sources = [store.sources[sid] for sid in claim.source_ids if sid in store.sources]
     fingerprints = _source_fingerprint_names(evidence)
     source_links = [f"<li>{_source_link(source)}</li>" for source in sources]
@@ -466,28 +847,47 @@ def _render_claim_section(
             "</div>"
         )
 
+    banner = ""
+    if fact.diverges:
+        banner = (
+            f"<div class='banner'><strong>Stored status "
+            f"{_status_badge(claim.status.value)} differs from the status derived "
+            f"from live evidence {_status_badge(resolved.value)}.</strong> The derived "
+            "status is the truth; the stored one is out of date (re-run the sweep).</div>"
+        )
+    proposed = _definition_list([
+        ("predicate", claim.predicate.name if claim.predicate else "—"),
+        ("params", _json_text(claim.predicate.params) if claim.predicate else "—"),
+        ("proposed by", claim.created_by.value),
+        ("funnel stage", STAGE_LABELS[fact.stage]),
+    ])
+
     return (
-        f'<section class="panel" id="claim-{escape(claim.id)}">'
-        f"<h2>{escape(claim.statement)}</h2>"
-        f"<p>{_status_badge(claim.status.value)} <span class='muted'>stored</span> "
-        f"{_status_badge(resolved.value)} <span class='muted'>derived from live evidence</span></p>"
-        f"<p>{escape(_status_rationale(claim, evidence))}</p>"
+        f'<div class="claim-detail" data-claim-detail data-claim-id="{escape(claim.id)}" '
+        f'id="claim-{escape(claim.id)}">'
+        f"<h3>{escape(claim.statement)}</h3>"
+        f"<p>{_status_badge(resolved.value)} "
+        f"<span class='muted'>{escape(_status_rationale(claim, evidence))}</span></p>"
+        f"{banner}"
+        "<details open><summary>1 · Proposed — what the AI guessed</summary>"
+        f"{proposed}{subtype}</details>"
+        f"<details open><summary>2 · Bound — the probes that were meant to falsify it</summary>"
+        f"{probes_html}</details>"
+        f"<details open><summary>3 · Judged — what the data answered</summary>"
+        f"{evidence_html}</details>"
+        "<details><summary>4 · Context — sources, lineage, questions</summary>"
         "<div class='grid'>"
-        f"<div class='mini-card'><h3>Core</h3>{_definition_list(_claim_fields(claim))}</div>"
-        f"<div class='mini-card'><h3>Subtype</h3>{subtype}</div>"
-        f"<div class='mini-card'><h3>Sources</h3>{source_html}{binding_links}</div>"
-        f"<div class='mini-card'><h3>Questions</h3><ul class='list'>{questions_html}</ul></div>"
+        f"<div class='mini-card'><h4>Sources</h4>{source_html}{binding_links}</div>"
+        f"<div class='mini-card'><h4>Questions resting on it</h4><ul class='list'>{questions_html}</ul></div>"
+        f"<div class='mini-card'><h4>Open assumptions</h4>{assumptions}</div>"
+        f"<div class='mini-card'><h4>Depends on</h4><ul class='list'>{dependency_html}</ul></div>"
+        f"<div class='mini-card'><h4>What depends on me</h4><ul class='list'>{reverse_depends_html}</ul></div>"
+        f"<div class='mini-card'><h4>Escalated from me</h4><ul class='list'>{reverse_derived_html}</ul></div>"
         "</div>"
-        f"<div class='mini-card'><h3>Open assumptions</h3>{assumptions}</div>"
-        "<div class='grid'>"
-        f"<div class='mini-card'><h3>Depends on</h3><ul class='list'>{dependency_html}</ul></div>"
-        f"<div class='mini-card'><h3>What depends on me</h3><ul class='list'>{reverse_depends_html}</ul></div>"
-        f"<div class='mini-card'><h3>Escalated from me</h3><ul class='list'>{reverse_derived_html}</ul></div>"
+        f"{lineage}</details>"
+        "<details><summary>Fine print — ids, timestamps, raw fields</summary>"
+        f"{_definition_list(_claim_fields(claim))}</details>"
         "</div>"
-        f"{lineage}"
-        f"<div class='dense'><h3>Probes (falsification attempts)</h3>{probes_html}</div>"
-        f"<div class='dense'><h3>Evidence trail</h3>{evidence_html}</div>"
-        "</section>"
     )
 
 
@@ -501,15 +901,18 @@ def _render_probe_card(probe: Probe) -> str:
     if probe.roles:
         details.insert(2, ("roles", ", ".join(probe.roles)))
     spec = REGISTRY.get(probe.template)
+    domain_badge = ""
     if spec is not None:
         if spec.domain:
-            details.insert(2, ("domain", spec.domain))
+            domain_badge = (
+                f'<span class="badge status-business-confirmed">{escape(spec.domain)} law</span>'
+            )
         if spec.tolerances:
             details.append(("default tolerances", _json_text(spec.tolerances)))
     return (
         f'<div class="evidence-card" id="probe-{escape(probe.id)}">'
         f"<div><a href=\"#probe-{escape(probe.id)}\"><strong>{escape(_short_id(probe.id))}</strong></a> "
-        f"<code>{escape(probe.template)}</code></div>"
+        f"<code>{escape(probe.template)}</code> {domain_badge}</div>"
         f"{_definition_list(details)}"
         "</div>"
     )

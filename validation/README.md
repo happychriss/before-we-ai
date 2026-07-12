@@ -120,8 +120,12 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   the model).
 - `viewer.sh` — rebuild the claim viewer HTML at any point mid-walkthrough.
   Steps 3–7 also refresh it automatically at `data/report/claims.html`
-  (every step that changes the store) — after step 6/7 it shows the full
-  picture: derived statuses, evidence, and the drafted Fachfragen.
+  (every step that changes the store). The page mirrors the pipeline: the
+  **funnel** on top (85 proposed → 58 bound / 19 without probe / 8
+  semantic-only → 58 judged → the derived statuses, every number a filter),
+  then the **Fachfragen inbox**, then the **role elections** (winner, and each
+  loser with the domain law that felled it), then one claim at a time as a
+  story: proposed → bound → judged → context.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
 - `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
   (`data/project/cache/export.duckdb`) — this is what you point DataGrip at.

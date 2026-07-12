@@ -9,13 +9,15 @@
   in-scope incl. T7 (leakage clean), False-Promotion 0 (`docs/seeded-recall-m4.md`).
 - **NOW: owner walks through M4 validation** — guide + runnable scripts:
   `validation/README.md`. Session 2026-07-12 reached step 7 (roles resolved);
-  remaining: step 8 + optional online pass. Suite: 238 pass
+  remaining: step 8 + optional online pass. Suite: 240 pass
   (`cd /workspace/src && python -m pytest -q`, venv `/workspace/.venv`).
-- **NEXT WORK (owner-approved, not started): claim-viewer redesign** — full
-  spec in `docs/claim-viewer.md` "Redesign". The viewer is the basis of
-  understanding and validation; it must read like the pipeline (funnel →
-  role elections → Fachfragen inbox → claim-as-story), master–detail, one
-  self-contained file, canonical terms only. Start with items 2–4.
+- **Claim-viewer redesign SHIPPED** (2026-07-12, all six approved items) — the
+  page now mirrors the pipeline: funnel → Fachfragen inbox → role elections →
+  master–detail claim-as-story, single derived badge. See
+  `docs/claim-viewer.md`. Open finding it surfaced: several roles
+  (`account`, `doc_ref`, `entity`) were **never put to the test** — no invariant
+  probe was bound to any of their candidates, so they stay `inferred`. Worth
+  the owner's eye at step 8.
 - Shipped mid-validation: **two-tier retry** (item-scoped repair; see
   architecture.md "Retry contract, two-tier"). Offline replays unchanged;
   real effect only measurable on the next online run — watch for

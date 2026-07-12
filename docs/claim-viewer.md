@@ -30,14 +30,36 @@ freshly created claims with no evidence.
 
 ## What it renders
 
-- Claim list with status badges, filterable by status/predicate/free text.
-- Claim detail: core fields, subtype fields (ConceptClaim/RoleBindingClaim), full
-  evidence trail per type (probe verdicts with population/exceptions, confirmations
-  incl. mirror-loop admissibility, testimonials, anchors/declarations), a plain-language
-  status rationale (why `resolve_status` landed where it did), sources (direct +
-  via evidence fingerprints), lineage (`depends_on`, `derived_from`, and reverse
-  links), and dependent QuestionCards.
+**The page mirrors the pipeline** (docs/SIMPLE-README.md "The big picture"): outcome
+first, the story of one claim second, raw fields last. Master–detail — the sidebar is
+the claim list (search + status/predicate/role filters), the main pane shows one claim
+at a time; deep links (`#claim-…`, `#evidence-…`, `#probe-…`, `#question-…`) still work
+and reveal their claim.
+
+- **The funnel** — the epistemic story in four rows, each number a filter on the list:
+  proposed (all claims, inferred when created) → bound / no probe / semantic-only →
+  judged (a probe actually ran) → derived status. The store records probes, not the
+  model's refusals, so *unbindable* (model said `template=null`) and *skipped*
+  (validation rejected the binding) collapse into one "no probe" bucket — the split
+  lives in the LLM call log, and the page says so.
+- **Fachfragen inbox** — every open QuestionCard on top, with the claims it rests on.
+- **Role elections** — one block per role: the candidates, the elected winner, and each
+  loser with the domain law that felled it (`ic_symmetry` (finance law) — 1 exception in
+  24 rows). A role whose candidates were never bound to an invariant probe says so
+  ("never put to the test"); a role that lost every candidate ends in its Fachfrage.
+- **Claim detail as a story**: statement, the derived status badge and its one-line
+  rationale, then collapsible *1 proposed → 2 bound → 3 judged → 4 context*, with ids,
+  timestamps and raw fields in a "fine print" block. Probes show template, params,
+  roles, default tolerances and a visible domain-law badge; probe-result evidence links
+  back to the probe that produced it. Sources, lineage (`depends_on`, `derived_from`,
+  reverse links) and dependent QuestionCards sit in *context*.
+- One status badge — the **derived** one, since that is the truth. When the stored status
+  disagrees, a loud banner says so instead of two badges side by side.
 - The five statuses are color-coded; `contradicted` and `unresolved` stand out.
+
+The funnel/election reader imports `admissible_templates` from `before_we_ai.llm.mapping`
+and `REGISTRY` from `before_we_ai.probes` — read-only, and still one-directional (core
+never imports the viewer).
 
 ## Probe linking (gap closed 2026-07-12)
 
@@ -49,13 +71,16 @@ no `claim_id`; they are reached through the `probe_id` on the role claim's
 evidence, so they appear on the claims they judged. Rendered SQL stays where it
 lives: on the evidence payload.
 
-## Redesign — APPROVED by the owner 2026-07-12, not yet implemented
+## Redesign — approved and shipped 2026-07-12
 
-Motivation: the viewer is technically complete but reads like an *archive dump* —
+Motivation: the viewer was technically complete but read like an *archive dump* —
 all claims stacked as full sections on one endless page, every field at equal
-visual weight (a ULID as prominent as a verdict), and no view answers the
+visual weight (a ULID as prominent as a verdict), and no view answered the
 validator's first questions. The viewer is the basis of understanding and
-validation, so it must become an *instrument*.
+validation, so it had to become an *instrument*. All six items below are
+implemented; "What it renders" above describes the result, and
+`tests/unit/test_claim_viewer.py` locks the funnel stage counts and the
+winner / loser-with-its-domain-law / Fachfrage of the role elections.
 
 **Principle: the page mirrors the pipeline** (docs/SIMPLE-README.md "The big
 picture") — outcome first, the story of one claim second, raw fields last.
@@ -86,8 +111,10 @@ probe / domain-law template / Fachfrage) — no synonyms.
    one badge, with a loud banner *only* when they diverge; tag domain-law
    probes visibly as such; keep the existing status colors and words.
 
-Explicitly NOT in scope: graph visualizations, chart libraries, multi-file
+Explicitly still NOT in scope: graph visualizations, chart libraries, multi-file
 output, any external dependency. The binding constraints above all stay.
 
-Suggested order if split: 2–4 are pure additions to the top of the current page
-and deliver most of the understanding-per-pixel; 1+5 is the larger rebuild.
+One honest limit found while building item 2: the store persists probes, not the
+model's refusals, so the funnel cannot separate *unbindable* from *skipped* — both
+show as "no probe", and the page names the LLM call log as the place where the
+split lives.
