@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from before_we_ai.llm.call_log import CallLogger
-from before_we_ai.llm.client import LLMClient, call_with_retry
+from before_we_ai.llm.client import BatchRepair, LLMClient, call_with_retry
 from before_we_ai.llm.config import LLMConfig, build_client
 from before_we_ai.llm.inputs import build_profile_context
 from before_we_ai.llm.mapping import ProfileIndex, check_hypothesis, hypothesis_to_claim
@@ -53,9 +53,6 @@ def hypothesize(
     built = build_profile_context(store, load_matrix(root))
     index = ProfileIndex(store)
 
-    def semantic_check(batch: HypothesisBatch) -> list[str]:
-        return [e for h in batch.hypotheses for e in check_hypothesis(h, index)]
-
     result = call_with_retry(
         client,
         contract=CONTRACT,
@@ -64,7 +61,8 @@ def hypothesize(
         system=with_schema(V1_SYSTEM, HypothesisBatch),
         built=built,
         schema=HypothesisBatch,
-        semantic_check=semantic_check,
+        repair=BatchRepair("hypotheses",
+                           lambda h: check_hypothesis(h, index)),
         logger=CallLogger(root),
     )
     report = V1Report(retries=result.retries, usage=result.usage,

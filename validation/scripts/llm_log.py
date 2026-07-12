@@ -34,6 +34,19 @@ def pretty_response(text: str) -> str:
         return text
 
 
+def describe_attempt(attempt: dict) -> str:
+    """The two-tier retry made attempts unequal: say which kind this is."""
+    kind = attempt.get("kind", "answer")
+    if kind == "repair":
+        sent = attempt.get("items_sent", "?")
+        accepted = attempt.get("items_accepted")
+        got = "discarded" if accepted is None else f"{accepted} accepted"
+        return f"REPAIR of {sent} rejected item(s) — {got}"
+    if kind == "retry":
+        return "whole-call RETRY (nothing parsed)"
+    return "first answer"
+
+
 def tokens(usage: dict) -> str:
     if not usage:
         return "n/a (stub)"
@@ -71,11 +84,12 @@ def show_call(path: Path, entry: dict) -> None:
     print(entry["request"]["user"])
     for i, attempt in enumerate(entry["attempts"], 1):
         print(f"\n{bar}\nATTEMPT {i}/{len(entry['attempts'])}  ·  "
+              f"{describe_attempt(attempt)}  ·  "
               f"{tokens(attempt.get('usage', {}))}  ·  {attempt.get('ms', 0)} ms\n{bar}")
         errors = attempt.get("validation_errors") or []
         if errors:
             print(f"validation errors ({len(errors)}) — "
-                  "fed back verbatim on the retry:")
+                  "fed back verbatim to the model:")
             for e in errors:
                 print(f"  - {e}")
             print()
@@ -93,7 +107,8 @@ def render_html(project: Path, out: Path) -> Path:
                           + "".join(f"<li>{html.escape(e)}</li>" for e in errors)
                           + "</ul>") if errors else ""
             attempts.append(
-                f"<details><summary>attempt {j}/{len(entry['attempts'])} — "
+                f"<details><summary>attempt {j}/{len(entry['attempts'])}: "
+                f"{html.escape(describe_attempt(attempt))} — "
                 f"{html.escape(tokens(attempt.get('usage', {})))}"
                 f"{' — HAD ERRORS' if errors else ''}</summary>"
                 f"{error_html}<pre>{html.escape(pretty_response(attempt['raw_text']))}"

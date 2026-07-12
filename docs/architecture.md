@@ -105,10 +105,27 @@ and status: `docs/requirements.md`. Working rules: `meta/conventions.md`.
   mirrors `probes.REGISTRY` key-for-key, locked by a unit test. Every hypothesis
   carries a `Predicate` with canonicalized params ⇒ claim_key dedup works for
   AI claims; `rationale` is logged, never stored (wording-free identity).
-- **Retry contract**: parse + Pydantic + semantic checks (mapping dry-run) share
-  one code path; exactly one retry with errors fed back; a schema-valid answer
-  with residual semantic errors is "partial" — offending items are skipped,
-  never the batch; a double failure is logged and reported, never raised.
+- **Retry contract, two-tier** (the spec fixes the count — *ein Retry* — not
+  its payload). Parse + Pydantic + semantic checks (mapping dry-run) share one
+  code path; the *kind* of failure decides what the one extra call contains:
+  - nothing parsed (bad JSON/shape) → **whole-call retry**, errors fed back;
+  - schema-valid batch, some items fail semantically → **item-scoped repair**:
+    only those items are resent with their errors, and accepted corrections
+    are spliced back into their slots (`client.BatchRepair`).
+  Measured on a real V1 answer, the old whole-batch retry re-emitted all 65
+  hypotheses byte-identically and fixed neither broken item: the corrective
+  signal drowns in the rewrite instruction, and a rewrite may perturb items
+  that already validated. The repair call is cheap (2 items, not 65) and
+  structurally cannot touch the good ones.
+  GOTCHA: the splice is **positional**, so a repair that answers with a
+  different number of items (a re-emitted full batch, a short list) is
+  **discarded whole** — a mis-spliced item would silently replace one claim
+  with another. Offline replays hit exactly this (the stub returns the same
+  full fixture), which is why fixture-driven counts are unchanged by the
+  two-tier switch.
+  Whatever is still broken afterwards is "partial" — offending items are
+  skipped, never the batch; a double failure is logged and reported, never
+  raised. Outcomes: ok / retried_ok / repaired_ok / partial / failed.
   LESSON (first real runs): schemas stay purely structural — every item-level
   or cross-field rule lives in the semantic layer, or one bad item kills 60.
 - **Model output is untrusted input**: binding-time checks cover param value

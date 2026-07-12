@@ -138,8 +138,13 @@ DuckDB client takes an exclusive lock, and ours then fails with
 ## Expected behaviors that are NOT bugs
 
 - Two V1 hypotheses and one V2 binding are skipped on every offline replay —
-  the recorded answers kept a few bad items even after their retry; skips are
-  per-item and visible in the logs (`outcome: partial`).
+  the recorded answers kept a few bad items; skips are per-item and visible in
+  the logs (`outcome: partial`).
+- The **repair attempt is always discarded offline**: when items fail, the
+  retry resends only those items, but the stub can only replay the one
+  recorded answer — the full batch — so the splice guard refuses it
+  (`repair returned 65 item(s), expected 2 — discarded, originals kept`).
+  That is the guard working; online the repair gets a real 2-item answer.
 - `us_erp__gl_postings` journal candidate is CONTRADICTED — data-honest (the
   US ledger's missing IC leg breaks the per-period balance).
 - Online runs sample differently each time (~50–62 hypotheses, recall

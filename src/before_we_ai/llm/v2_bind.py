@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from before_we_ai.llm.call_log import CallLogger
-from before_we_ai.llm.client import LLMClient, LLMResult, call_with_retry
+from before_we_ai.llm.client import BatchRepair, LLMClient, LLMResult, call_with_retry
 from before_we_ai.llm.config import LLMConfig, build_client
 from before_we_ai.llm.inputs import (
     build_binding_context,
@@ -83,12 +83,6 @@ def propose_role_bindings(
     built = build_role_context(store, load_matrix(root), roles)
     index = ProfileIndex(store)
 
-    def semantic_check(batch: RoleBindingBatch) -> list[str]:
-        return [
-            e for p in batch.proposals
-            for e in check_role_proposal(p, roles.names, index)
-        ]
-
     result = call_with_retry(
         client,
         contract=CONTRACT_ROLES,
@@ -97,7 +91,10 @@ def propose_role_bindings(
         system=with_schema(ROLE_BINDING_SYSTEM, RoleBindingBatch),
         built=built,
         schema=RoleBindingBatch,
-        semantic_check=semantic_check,
+        repair=BatchRepair(
+            "proposals",
+            lambda p: check_role_proposal(p, roles.names, index),
+        ),
         logger=CallLogger(root),
     )
     report = RoleProposalReport(retries=result.retries, usage=result.usage,
@@ -233,12 +230,6 @@ def _bind_batch(root: Path, store: ProjectStore, index: ProfileIndex,
                 *, model: str, scenario: str, system: str) -> LLMResult:
     built = build_binding_context(store, labels, render_template_docs())
 
-    def semantic_check(batch: BindingBatch) -> list[str]:
-        return [
-            e for b in batch.bindings
-            for e in check_binding(b, labels, index)
-        ]
-
     return call_with_retry(
         client,
         contract=CONTRACT_BIND,
@@ -247,6 +238,7 @@ def _bind_batch(root: Path, store: ProjectStore, index: ProfileIndex,
         system=with_schema(system, BindingBatch),
         built=built,
         schema=BindingBatch,
-        semantic_check=semantic_check,
+        repair=BatchRepair("bindings",
+                           lambda b: check_binding(b, labels, index)),
         logger=CallLogger(root),
     )

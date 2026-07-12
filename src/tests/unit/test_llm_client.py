@@ -1,5 +1,7 @@
-"""The shared retry loop: one retry with errors fed back, honest outcomes
-(ok / retried_ok / partial / failed), and a complete call log."""
+"""The shared retry loop: two-tier (whole retry when nothing parsed,
+item-scoped repair when a batch is schema-valid but some items are not),
+honest outcomes (ok / retried_ok / repaired_ok / partial / failed), and a
+complete call log."""
 
 import json
 
@@ -7,7 +9,12 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 
 from before_we_ai.llm.call_log import CallLogger
-from before_we_ai.llm.client import AnthropicClient, Completion, call_with_retry
+from before_we_ai.llm.client import (
+    AnthropicClient,
+    BatchRepair,
+    Completion,
+    call_with_retry,
+)
 from before_we_ai.llm.config import LLMConfig, build_client
 from before_we_ai.llm.inputs import BuiltInput
 from before_we_ai.llm.stub import FixtureMissing, StubClient
@@ -17,6 +24,35 @@ class Answer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     value: int
+
+
+class Item(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    ok: bool = True
+
+
+class Batch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[Item]
+
+
+def _batch(*items: tuple[str, bool]) -> str:
+    return json.dumps({"items": [{"name": n, "ok": o} for n, o in items]})
+
+
+def _rejects(item: Item) -> list[str]:
+    return [] if item.ok else [f"item {item.name!r} is not ok"]
+
+
+def _call_batch(tmp_path, client):
+    return call_with_retry(
+        client, contract="v1_hypotheses", scenario="test", model="test-model",
+        system="answer with json", built=_built(), schema=Batch,
+        repair=BatchRepair("items", _rejects), logger=CallLogger(tmp_path),
+    )
 
 
 class FakeClient:
@@ -95,6 +131,76 @@ def test_residual_semantic_errors_yield_partial_not_failed(tmp_path):
     assert result.retries == 1
     assert "value must be positive" in client.calls[1][2]["content"]
     assert _log(result)["outcome"] == "partial"
+
+
+def test_repair_asks_only_for_the_broken_items_and_keeps_the_rest(tmp_path):
+    """The point of the two-tier retry: 2 bad items out of 65 must not cost
+    a 65-item rewrite, and must not put the 63 good ones at risk."""
+    good = [(f"h{i}", True) for i in range(63)]
+    client = FakeClient([
+        _batch(*good[:20], ("bad1", False), *good[20:], ("bad2", False)),
+        _batch(("bad1", True), ("bad2", True)),  # repaired, in the same order
+    ])
+    result = _call_batch(tmp_path, client)
+
+    repair_prompt = client.calls[1][2]["content"]
+    assert "2 item(s)" in repair_prompt
+    assert "bad1" in repair_prompt and "bad2" in repair_prompt
+    assert "is not ok" in repair_prompt  # the errors travel with the items
+    assert "h0" not in repair_prompt  # the accepted items are NOT resent
+
+    items = result.parsed.items
+    assert len(items) == 65 and all(i.ok for i in items)
+    assert [i.name for i in items] == [n for n, _ in good[:20]] + ["bad1"] \
+        + [n for n, _ in good[20:]] + ["bad2"]  # spliced back into their slots
+    assert result.semantic_errors == []
+    entry = _log(result)
+    assert entry["outcome"] == "repaired_ok"
+    assert entry["attempts"][1] | {} and entry["attempts"][1]["kind"] == "repair"
+    assert entry["attempts"][1]["items_sent"] == 2
+    assert entry["attempts"][1]["items_accepted"] == 2
+
+
+def test_repair_that_does_not_answer_what_was_asked_is_discarded(tmp_path):
+    """A mis-spliced item would silently replace one claim with another, so
+    a repair that returns the wrong number of items is refused outright —
+    the originals stay, the caller skips them (partial)."""
+    client = FakeClient([
+        _batch(("h1", True), ("bad", False)),
+        _batch(("h1", True), ("bad", True)),  # re-emitted the whole batch
+    ])
+    result = _call_batch(tmp_path, client)
+
+    assert [i.name for i in result.parsed.items] == ["h1", "bad"]
+    assert result.parsed.items[1].ok is False  # original kept, not spliced
+    assert result.semantic_errors == ["item 'bad' is not ok"]
+    entry = _log(result)
+    assert entry["outcome"] == "partial"
+    assert "expected 1" in entry["attempts"][1]["validation_errors"][0]
+
+
+def test_repair_never_splices_a_still_broken_item(tmp_path):
+    client = FakeClient([
+        _batch(("h1", True), ("bad", False)),
+        _batch(("bad", False)),  # right shape, still broken
+    ])
+    result = _call_batch(tmp_path, client)
+    assert result.parsed.items[1].ok is False
+    assert result.semantic_errors == ["item 'bad' is not ok"]
+    assert _log(result)["outcome"] == "partial"
+    assert _log(result)["attempts"][1]["items_accepted"] == 0
+
+
+def test_unparseable_batch_still_retries_the_whole_call(tmp_path):
+    """Two-tier: with nothing schema-valid there is nothing to keep, so the
+    whole call is retried — repair only applies to a parsed batch."""
+    client = FakeClient(["not json", _batch(("h1", True))])
+    result = _call_batch(tmp_path, client)
+    assert [i.name for i in result.parsed.items] == ["h1"]
+    entry = _log(result)
+    assert entry["outcome"] == "retried_ok"
+    assert entry["attempts"][1]["kind"] == "retry"
+    assert "failed validation" in client.calls[1][2]["content"]
 
 
 def test_log_carries_the_verbatim_request_and_input_hash(tmp_path):
