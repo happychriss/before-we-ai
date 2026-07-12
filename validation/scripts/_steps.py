@@ -71,6 +71,28 @@ def need_project() -> ProjectStore:
     return ProjectStore(PROJECT)
 
 
+def refresh_llm_html() -> None:
+    """Re-render the browsable LLM-call log after every step that talked to
+    the model — the page grows with the walkthrough and always lives at the
+    same path, domain-knowledge header on top."""
+    if not (PROJECT / "cache" / "llm_log").is_dir():
+        return
+    REPORT.mkdir(parents=True, exist_ok=True)
+    import llm_log
+    out = llm_log.render_html(PROJECT, REPORT / "llm_calls.html")
+    print(f"\nLLM-call log (updated, grows with every step): {out}")
+
+
+def refresh_claims_html() -> None:
+    """Re-render the claim viewer after every step that changed the store —
+    same fixed path, so the browser tab just needs a reload."""
+    REPORT.mkdir(parents=True, exist_ok=True)
+    out = REPORT / "claims.html"
+    subprocess.run([sys.executable, "-m", "claim_viewer", str(PROJECT),
+                    "-o", str(out)], check=True, stdout=subprocess.DEVNULL)
+    print(f"claim viewer (updated): {out}")
+
+
 def clip(text: str, width: int = 90) -> str:
     text = " ".join(text.split())
     return text if len(text) <= width else text[: width - 1] + "…"
@@ -214,6 +236,8 @@ def stage_hypotheses(args) -> None:
             print(f"  [{claim.status.value}] ({claim.predicate.name}) "
                   f"{clip(claim.statement, 80)}")
     print(f"\nfull detail: {PROJECT}/claims/")
+    refresh_llm_html()
+    refresh_claims_html()
     print("next: 4-role-proposals.sh")
 
 
@@ -243,6 +267,8 @@ def stage_role_proposals(args) -> None:
         print(f"  {role:15s} {len(mine)} candidate(s)")
         for c in mine:
             print(f"      [{c.status.value}] {clip(', '.join(c.binding.values()), 75)}")
+    refresh_llm_html()
+    refresh_claims_html()
     print("next: 5-bind-probes.sh")
 
 
@@ -304,6 +330,8 @@ def stage_bind(args) -> None:
         for cid in report.semantic_only:
             print(f"  {clip(store.claims[cid].statement, 85)}")
     print(f"\nfull detail: {PROJECT}/probes/")
+    refresh_llm_html()
+    refresh_claims_html()
     print("next: 6-run-probes.sh")
 
 
@@ -354,6 +382,8 @@ def stage_run(args) -> None:
           "\n".join(f"  !! {c.id} [{c.status.value}] {c.statement}" for c in bad))
     print(f"\nfull detail: {PROJECT}/evidence/  ·  exception sets: "
           f"{PROJECT}/cache/probe_runs/")
+    print()
+    refresh_claims_html()
     print("next: 7-resolve-roles.sh")
 
 
@@ -381,6 +411,8 @@ def stage_resolve(args) -> None:
     for card in store.questions.values():
         print(f"  - {clip(card.question, 100)}")
     print(f"\nfull detail: {PROJECT}/questions/")
+    print()
+    refresh_claims_html()
     print("next: 8-collect.sh")
 
 

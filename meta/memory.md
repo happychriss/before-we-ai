@@ -8,13 +8,24 @@
 - **M4 COMPLETE** — tag `m4-llm-v1`. First online run: Seeded-Recall 15/25
   in-scope incl. T7 (leakage clean), False-Promotion 0 (`docs/seeded-recall-m4.md`).
 - **NOW: owner walks through M4 validation** — guide + runnable scripts:
-  `validation/README.md`. Session 2026-07-12 reached step 3 (V1 hypotheses);
-  remaining: steps 4–8 + optional online pass. Suite: 237 pass
+  `validation/README.md`. Session 2026-07-12 reached step 7 (roles resolved);
+  remaining: step 8 + optional online pass. Suite: 238 pass
   (`cd /workspace/src && python -m pytest -q`, venv `/workspace/.venv`).
+- **NEXT WORK (owner-approved, not started): claim-viewer redesign** — full
+  spec in `docs/claim-viewer.md` "Redesign". The viewer is the basis of
+  understanding and validation; it must read like the pipeline (funnel →
+  role elections → Fachfragen inbox → claim-as-story), master–detail, one
+  self-contained file, canonical terms only. Start with items 2–4.
 - Shipped mid-validation: **two-tier retry** (item-scoped repair; see
   architecture.md "Retry contract, two-tier"). Offline replays unchanged;
   real effect only measurable on the next online run — watch for
   `repaired_ok` outcomes there.
+- Also shipped mid-validation: domain-law templates now carry
+  `TemplateSpec.domain` (test-locked — what is domain-specific must be
+  enumerable; see architecture.md "Domain inputs"); claim viewer links
+  persisted probes; walkthrough steps 3–7 auto-refresh both HTML pages
+  (`validation/data/report/{claims,llm_calls}.html`) — the LLM-call log
+  opens with the declared domain inputs + core terms.
 - After validation: **M5 — documents & V3** (spec: docs/spec/ — PDF pipeline,
   anchors, multi-anchor reconciliation; acceptance: T8 negatives, real PDF).
 

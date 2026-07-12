@@ -112,8 +112,16 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
 - `llm-log.sh` — list all LLM calls; `llm-log.sh 2` shows one call fully
   formatted (system prompt, user input, every attempt with its validation
   errors and pretty-printed answer); `llm-log.sh --html f.html` for a
-  browsable page (also produced by step 8).
+  browsable page. Steps 3–5 also refresh that page automatically at
+  `data/report/llm_calls.html` — it opens with the **domain knowledge**
+  actually in play (source list, role pack, domain-law templates), every
+  call carries a comment mapping it back to its walkthrough step, and the
+  page grows as you progress (steps 6–8 add nothing: they never talk to
+  the model).
 - `viewer.sh` — rebuild the claim viewer HTML at any point mid-walkthrough.
+  Steps 3–7 also refresh it automatically at `data/report/claims.html`
+  (every step that changes the store) — after step 6/7 it shows the full
+  picture: derived statuses, evidence, and the drafted Fachfragen.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
 - `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
   (`data/project/cache/export.duckdb`) — this is what you point DataGrip at.
@@ -156,5 +164,3 @@ DuckDB client takes an exclusive lock, and ours then fails with
   model-worded — identity/dedup lives in predicate+params, never wording.
 - A probe that cannot execute lands in `skipped("execution error…")`, writes
   no evidence, and does not stop the sweep.
-- Known viewer gap: persisted probes are not linked from claims
-  (`docs/claim-viewer.md`).

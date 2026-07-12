@@ -395,11 +395,13 @@ All milestones together form **one** flow. The sentence to remember:
    and the candidate map measures where the same values appear. Measuring,
    not judging.
 4. **The AI guesses (M4).** The intern sees profile cards + map and
-   proposes: first **suspicion cards** about this concrete data ("the
-   document number in the report references the general ledger"), then
-   **role candidates** ("this table could be the journal" — competition
-   wanted), then for each card the **fitting probe** from the toolbox,
-   with parameters. Everything stays "suspected".
+   proposes: first **hypotheses** — proposed rules about this concrete
+   data ("the document number in the report references the general
+   ledger"), each accepted one becoming an index card — then
+   **role-binding candidates** ("this table could play the journal
+   role" — competition wanted), then for each card a **binding**: the
+   fitting probe template from the toolbox, with parameters. Everything
+   stays "suspected".
 5. **The probes decide (M3 machinery).** Deterministic SQL against the
    real data. Only here are stamps awarded: tested, contradicted,
    unresolved. Roles where no candidate passed become a **Fachfrage** to
@@ -416,6 +418,7 @@ a discovery, but it can never create false confidence.
 | **source** | a connected file or database; the list is written by a human | `before-ai.yaml` `sources:` |
 | **profile card** | statistics summary of one column — the only thing the AI ever sees of the data | `profile/`, `profiles/` output |
 | **candidate map** | measured value overlap between columns; deliberately includes chance echoes | `profiles/candidate_matrix.json` |
+| **hypothesis** | one proposed rule, the AI's raw output; every accepted one becomes an index card stamped "suspected" | `Hypothesis` (`llm/schemas.py`) |
 | **index card** | a suspicion as a rule about the data, with author and evidence | `Claim` (`model/`) |
 | **stamp** | suspected / tested / contradicted / unresolved / business-confirmed — always derived from evidence, never set directly | `ClaimStatus`, `resolve_status` |
 | **role** | a domain noun a table/column can play (journal, subledger, …) | `RoleBindingClaim` |

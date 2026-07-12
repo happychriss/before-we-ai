@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Iterable
 
 from before_we_ai.model import ClaimStatus, EvidenceType, ProbeVerdict, resolve_status
-from before_we_ai.model.objects import Claim, ColumnProfile, EvidenceRecord, QuestionCard, Source
+from before_we_ai.model.objects import Claim, ColumnProfile, EvidenceRecord, Probe, QuestionCard, Source
+from before_we_ai.probes.library import REGISTRY
 from before_we_ai.store import ProjectStore, check_integrity
 
 STATUS_COLORS = {
@@ -295,6 +296,7 @@ def render_project(root: str | Path) -> str:
         <div class="grid">
           <div class="mini-card"><strong>{len(claims)}</strong><div class="muted">claims</div></div>
           <div class="mini-card"><strong>{len(store.evidence)}</strong><div class="muted">evidence records</div></div>
+          <div class="mini-card"><strong>{len(store.probes)}</strong><div class="muted">probes</div></div>
           <div class="mini-card"><strong>{len(questions)}</strong><div class="muted">questions</div></div>
           <div class="mini-card"><strong>{len(sources)}</strong><div class="muted">sources</div></div>
           <div class="mini-card"><strong>{len(profiles)}</strong><div class="muted">column profiles</div></div>
@@ -390,6 +392,18 @@ def _render_claim_section(
 ) -> str:
     evidence = store.evidence_for(claim)
     resolved = resolve_status(claim, evidence)
+    # Persisted probes: bound directly (claim_id) or — for invariant probes,
+    # which are bound to roles, not to one claim — reachable only through the
+    # probe_id on this claim's evidence records.
+    evidence_probe_ids = {record.probe_id for record in evidence if record.probe_id}
+    probes = sorted(
+        (
+            probe
+            for probe in store.probes.values()
+            if probe.claim_id == claim.id or probe.id in evidence_probe_ids
+        ),
+        key=lambda probe: (probe.created_at, probe.id),
+    )
     sources = [store.sources[sid] for sid in claim.source_ids if sid in store.sources]
     fingerprints = _source_fingerprint_names(evidence)
     source_links = [f"<li>{_source_link(source)}</li>" for source in sources]
@@ -417,9 +431,12 @@ def _render_claim_section(
             )
 
     evidence_html = "".join(
-        _render_evidence_card(record, claim, store.claims, declarations_by_key)
+        _render_evidence_card(record, claim, store.claims, declarations_by_key, store.probes)
         for record in evidence
     ) or '<p class="empty">No evidence attached yet.</p>'
+    probes_html = "".join(_render_probe_card(probe) for probe in probes) or (
+        '<p class="empty">No probes bound to this claim.</p>'
+    )
     dependency_html = "".join(
         f"<li>{_claim_link(dep)} { _status_badge(dep.status.value) }</li>"
         for dep in (store.claims[dep_id] for dep_id in claim.depends_on if dep_id in store.claims)
@@ -468,8 +485,33 @@ def _render_claim_section(
         f"<div class='mini-card'><h3>Escalated from me</h3><ul class='list'>{reverse_derived_html}</ul></div>"
         "</div>"
         f"{lineage}"
+        f"<div class='dense'><h3>Probes (falsification attempts)</h3>{probes_html}</div>"
         f"<div class='dense'><h3>Evidence trail</h3>{evidence_html}</div>"
         "</section>"
+    )
+
+
+def _render_probe_card(probe: Probe) -> str:
+    details = [
+        ("id", probe.id),
+        ("template", probe.template),
+        ("created_at", probe.created_at.isoformat()),
+        ("params", _json_text(probe.params)),
+    ]
+    if probe.roles:
+        details.insert(2, ("roles", ", ".join(probe.roles)))
+    spec = REGISTRY.get(probe.template)
+    if spec is not None:
+        if spec.domain:
+            details.insert(2, ("domain", spec.domain))
+        if spec.tolerances:
+            details.append(("default tolerances", _json_text(spec.tolerances)))
+    return (
+        f'<div class="evidence-card" id="probe-{escape(probe.id)}">'
+        f"<div><a href=\"#probe-{escape(probe.id)}\"><strong>{escape(_short_id(probe.id))}</strong></a> "
+        f"<code>{escape(probe.template)}</code></div>"
+        f"{_definition_list(details)}"
+        "</div>"
     )
 
 
@@ -505,6 +547,7 @@ def _render_evidence_card(
     claim: Claim,
     claims: dict[str, Claim],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
+    probes: dict[str, Probe],
 ) -> str:
     details = [
         ("id", record.id),
@@ -548,6 +591,17 @@ def _render_evidence_card(
             "<div><strong>Exception samples</strong>"
             f"<table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>"
         )
+    probe_hint = ""
+    if record.probe_id:
+        probe = probes.get(record.probe_id)
+        if probe:
+            probe_hint = (
+                f"<p><strong>Produced by probe:</strong> "
+                f"<a href='#probe-{escape(probe.id)}'><code>{escape(probe.template)}</code> "
+                f"{escape(_short_id(probe.id))}</a></p>"
+            )
+        else:
+            details.append(("probe_id", f"{record.probe_id} (not persisted)"))
     declaration_hint = ""
     if record.type is EvidenceType.DECLARATION:
         source = str(record.payload.get("source", ""))
@@ -572,6 +626,7 @@ def _render_evidence_card(
         f'<div class="evidence-card" id="evidence-{escape(record.id)}">'
         f"<div><a href=\"#evidence-{escape(record.id)}\"><strong>{escape(_short_id(record.id))}</strong></a> {verdict_badge}</div>"
         f"{_definition_list(details)}"
+        f"{probe_hint}"
         f"{samples}"
         f"{declaration_hint}"
         "</div>"
