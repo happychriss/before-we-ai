@@ -13,6 +13,28 @@ and status: `docs/requirements.md`. Working rules: `meta/conventions.md`.
   incl. claim_viewer)
 - Authoritative German spec: `docs/spec/`
 
+## Domain inputs — declared, transparent, validated (cross-cutting)
+
+Everything domain-specific enters through exactly **three declared inputs**;
+the rest of the product is domain-agnostic. Each input must be (a) declared
+as input, (b) transparent to the user, (c) logically validated:
+
+| input | declared | transparent | validated |
+|---|---|---|---|
+| raw data | `before-ai.yaml` `sources:` (human-authored) | step-INPUT blocks; fingerprints; SYSTEM declarations | canonicalization + profiling; re-scan idempotence |
+| role pack (data) | `llm.roles_file` | INPUT block prints the file; definitions land in prompts verbatim (logged) | Pydantic `RoleSet`, `extra="forbid"` — **schema only; role↔invariant consumption check is an M5 gap** (see docs/onboarding-workflow.md) |
+| probe/invariant templates (code) | `probes/REGISTRY` | rendered template docs in the V2 prompt (logged); executed SQL kept in evidence | unit test locks `TEMPLATE_PARAMS` ↔ REGISTRY; review like all code |
+
+**The product is a general machine only together with a domain pack** —
+never on its own (owner decision 2026-07-12). A domain pack = the role YAML
+(data) + the domain-tagged templates (code). What is domain-specific is
+therefore explicit and enumerable: `TemplateSpec.domain` (`None` = generic;
+today exactly the three invariants carry `domain="finance"`, 10 of 13
+templates are generic), locked by
+`test_domain_specific_templates_are_explicitly_tagged`. Showing the tag in
+the rendered V2 template docs would change prompt bytes → joins the M5
+fixture re-record batch.
+
 ## Epistemic core (`model/`, `store/` — M1, tags m1-core-v1/v2)
 
 - `model/` is pure and IO-free; `store/` is a YAML repo with append-only evidence,

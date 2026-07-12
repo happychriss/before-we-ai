@@ -53,6 +53,11 @@ class TemplateSpec:
     verdict: Callable  # (rows, columns, ctx) -> verdicts.Assessment
     tolerances: dict[str, float] = field(default_factory=dict)
     question: str | None = None  # Fachfrage template, formatted with the context
+    # None = generic data probe, works in any domain. A domain name marks a
+    # domain law — these templates are part of that domain's pack, and what
+    # is domain-specific must always be enumerable (the product is a general
+    # machine only together with a domain pack, never on its own).
+    domain: str | None = None
 
 
 def _prep_anti_join(con, p, tol):
@@ -259,6 +264,7 @@ REGISTRY: dict[str, TemplateSpec] = {
         verdict=verdicts.empty_expected,
         tolerances={"absolute": 0.01},
         question="Fachfrage: {journal} ist je Gruppe nicht ausgeglichen — fehlt eine Gegenbuchung?",
+        domain="finance",
     ),
     "subledger_equals_gl": TemplateSpec(
         file="subledger_equals_gl.sql.j2",
@@ -266,11 +272,13 @@ REGISTRY: dict[str, TemplateSpec] = {
         verdict=verdicts.empty_expected,
         tolerances={"absolute": 0.01},
         question="Fachfrage: Nebenbuch {subledger} weicht vom Hauptbuch {journal} ab — welche Posten fehlen?",
+        domain="finance",
     ),
     "ic_symmetry": TemplateSpec(
         file="ic_symmetry.sql.j2",
         prepare=_prep_ic_symmetry,
         verdict=verdicts.empty_expected,
         question="Fachfrage: Intercompany-Buchungen sind zwischen {left} und {right} nicht symmetrisch — wo fehlt die Gegenseite?",
+        domain="finance",
     ),
 }

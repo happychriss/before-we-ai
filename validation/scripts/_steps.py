@@ -255,9 +255,13 @@ def stage_bind(args) -> None:
         sys.exit(f"{len(store.probes)} probes already exist — binding ran. "
                  "For a fresh pass run 0-reset.sh and start over.")
     unbound = [c for c in store.claims.values() if c.created_by is Actor.AI]
+    n_roles = sum(isinstance(c, RoleBindingClaim) for c in unbound)
     inputs(
-        f"the {len(unbound)} AI claims from steps 3+4 (labelled c1..cN — ULIDs "
-        f"never enter\n  a prompt, so the input stays byte-stable)",
+        f"the {len(unbound)} AI claims already in the store: "
+        f"{len(unbound) - n_roles} hypotheses from step 3\n  "
+        f"+ {n_roles} role-binding candidates from step 4 "
+        f"(labelled c1..cN — ULIDs never enter\n  a prompt, so the input stays "
+        f"byte-stable)",
         "the probe template catalog: probes/library.py REGISTRY, rendered by "
         "llm/prompts.py:\n  render_template_docs — only templates admissible "
         "for a claim's predicate are offered",

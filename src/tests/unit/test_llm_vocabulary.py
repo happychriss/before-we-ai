@@ -40,6 +40,16 @@ def test_invariant_templates_are_registry_keys():
     assert set(INVARIANT_TEMPLATES) <= set(REGISTRY)
 
 
+def test_domain_specific_templates_are_explicitly_tagged():
+    # The product is a general machine only together with a domain pack —
+    # what is domain-specific must be enumerable, never implicit. Today
+    # that is exactly the three finance invariants; a new domain-tagged
+    # template must consciously extend this lock.
+    tagged = {name for name, spec in REGISTRY.items() if spec.domain}
+    assert tagged == set(INVARIANT_TEMPLATES)
+    assert {REGISTRY[name].domain for name in tagged} == {"finance"}
+
+
 def test_column_params_cover_the_registry_and_name_real_params():
     assert set(COLUMN_PARAMS) == set(REGISTRY)
     for template, pairs in COLUMN_PARAMS.items():

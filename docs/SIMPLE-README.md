@@ -1,366 +1,437 @@
-# before-we-ai — einfach erklärt
+# before-we-ai — explained simply
 
-Dieses Dokument erklärt das Projekt ohne Fachchinesisch. Es wächst mit:
-nach jedem Milestone kommt ein neuer Abschnitt dazu, im gleichen einfachen Stil.
-
----
-
-## Worum geht es überhaupt?
-
-Das Tool `before-we-ai` soll später auf echten, chaotischen Firmendaten arbeiten
-und Fragen beantworten — und zwar so, dass es **niemals still und heimlich eine
-falsche Antwort** gibt. Entweder die Antwort stimmt, oder das Tool sagt ehrlich:
-„Hier bin ich unsicher, und zwar deshalb."
-
-Das Problem: Wie beweist man, dass ein Tool ehrlich ist? Auf echten Daten kann
-man es nicht testen, denn da kennt niemand die richtige Antwort. Also bauen wir
-zuerst **die Prüfung** — und erst danach den Prüfling.
+This document explains the project without jargon. It grows with the project:
+after every milestone a new section is added, in the same plain style. Where a
+picture is used, the real thing in the code is named in brackets — so every
+metaphor can be traced back to an actual file or object.
 
 ---
 
-## M0 — Die Prüfung bauen (✅ fertig, eingefroren als `m0-corpus-v1`)
+## What is this about?
 
-### Der Korpus = die erfundene Übungsfirma
+The tool `before-we-ai` is meant to work on real, messy company data and
+answer questions — in a way that it **never quietly gives a wrong answer**.
+Either the answer is right, or the tool says honestly: "I am unsure here, and
+this is why."
 
-Eine komplette, ausgedachte, aber realistische Firma: zwei Gesellschaften
-(DE in Euro, US in Dollar), 24 Monate Geschäft — Aufträge, Rechnungen,
-Buchhaltung, Kundenlisten in Excel, Verträge als PDF. Absichtlich unordentlich,
-wie im echten Leben.
-
-Der entscheidende Unterschied zu echten Daten: **Wir haben das Antwortheft**
-(`expected_verdicts.yaml`). Wir wissen für jede Frage, was rauskommen muss,
-weil wir die Firma selbst gebaut haben.
-
-### Die Zielfragen Z1–Z4 = die vier Prüfungsaufgaben
-
-Vier typische Geschäftsfragen, z.B. „Wie viel externer Umsatz pro Kunde?" (Z2)
-oder „Gehen die Bücher auf?" (Z4). Für jede kennen wir das richtige Ergebnis
-auf den Cent. Wenn das Tool später etwas anderes ausrechnet, **ohne zu sagen
-warum**, ist es durchgefallen. Das ist die Messlatte für „das Tool funktioniert".
-
-### Die Fehler F1–F29 = die versteckten Fallen
-
-Einzelne, absichtlich eingebaute Stolperfallen — jede eine Geschichte, die in
-echten Firmen ständig passiert:
-
-- Kunde 1101 bekommt 2025 die neue Nummer 1201 (F5) — wer das nicht merkt,
-  verliert seinen Umsatz.
-- Eine Rechnung plus ihre Stornierung (F3) — wer naiv summiert, zählt doppelt.
-- Eine Umsatzzahl steht in einer alten Pressemitteilung, ist aber längst
-  verkauftes Geschäft (F26) — wer sie glaubt, ist vergiftet.
-
-Dazu **3 Blind-Fallen**, die nur der Projektinhaber kennt — wie
-Prüfungsaufgaben, die der Lehrer vorher nicht verrät.
-
-### Die Fehlerklassen K1–K7 = die Sorten von Fallen
-
-Das Muster hinter den einzelnen Fallen:
-
-- **K1** = „grün aber falsch" — die Rechnung geht auf, ist aber inhaltlich
-  trotzdem falsch. Die gefährlichste Sorte.
-- **K2** = Doppelzählung durch Strukturbrüche.
-- **K3** = Konventionen, die nur im Richtlinien-PDF stehen (z.B. „Haben ist negativ").
-- **K4** = Verknüpfungen, die man nicht am Wert erkennt (Gültigkeitszeiträume,
-  PLZ-Bereiche, codierte Textspalten).
-- **K5** = Grundregeln, die immer gelten müssen (Bücher gehen auf).
-- **K6** = „legitime Waisen" — ein offener Auftrag ohne Rechnung ist **kein**
-  Fehler, nur ein Wartezustand.
-- **K7** = vergiftete Zahlen, die man niemals glauben darf.
-
-Wichtig: Die Prüfung testet **Fallentypen, nicht einzelne Fallen** — deshalb
-kann sie auch die Blind-Fallen prüfen, ohne sie zu kennen.
-
-### M0 in einem Satz
-
-Wir haben eine Übungsfirma mit versteckten Fallen und einem Antwortheft gebaut,
-unabhängig nachgeprüft und eingefroren — jede zukünftige Version des Tools muss
-diese Prüfung bestehen, bevor sie irgendetwas darf. Und das Tool selbst bekommt
-**kein Finanzwissen einprogrammiert**: Es muss die Regeln selbst aus den Daten
-und Dokumenten herausfinden. Das Finanzwissen wohnt im Korpus, nicht im Tool.
+The problem: how do you prove that a tool is honest? You cannot test it on
+real data, because there nobody knows the right answer. So we build **the
+exam first** — and only then the student.
 
 ---
 
-## M1 — Das Gedächtnis des Tools (✅ fertig, Tag `m1-core-v1`)
+## M0 — Building the exam (✅ done, frozen as `m0-corpus-v1`)
 
-Jetzt gibt es das erste Stück vom Tool selbst. Noch keine Datenanalyse,
-keine KI — nur das **Gedächtnis**: die Regeln, nach denen das Tool sich
-merkt, was es weiß, was es vermutet und was es nicht weiß.
+### The corpus = the invented practice company
 
-### Der Claim = die Karteikarte
+A complete, made-up but realistic company [`src/corpus/`]: two legal entities
+(DE in euros, US in dollars), 24 months of business — orders, invoices,
+bookkeeping, customer lists in Excel, contracts as PDF. Deliberately untidy,
+like real life.
 
-Jede Vermutung wird eine Karteikarte: „Ich glaube, Konto 4300 ist
-Innenumsatz." Auf der Karte steht immer, **wer sie geschrieben hat** und
-**welche Beweise dranhängen**. Eine Karte hat genau einen von fünf Stempeln:
+The decisive difference to real data: **we have the answer booklet**
+[`src/corpus/data/expected_verdicts.yaml`]. For every question we know what
+must come out, because we built the company ourselves.
 
-- **vermutet** (inferred) — jemand glaubt es, geprüft hat es keiner.
-- **geprüft** (tested) — eine automatische Stichprobe (Sonde) hat es bestätigt.
-- **widerlegt** (contradicted) — die Sonde sagt: stimmt nicht.
-- **ungeklärt** (unresolved) — die Beweise widersprechen sich. Laut, nicht leise!
-- **vom Chef bestätigt** (business-confirmed) — ein Mensch hat es abgesegnet.
+### The target questions Z1–Z4 = the four exam tasks
 
-### Die drei eisernen Regeln
+Four typical business questions, e.g. "How much external revenue per
+customer?" (Z2) or "Do the books balance?" (Z4). For each one we know the
+correct result to the cent. If the tool later computes something different
+**without saying why**, it has failed. That is the yardstick for "the tool
+works".
 
-1. **Die KI darf nur vermuten.** Egal wie überzeugt sie klingt — sie kann
-   Karten anlegen, aber niemals selbst einen besseren Stempel draufdrücken.
-   Befördern dürfen nur eine Sonde oder ein Mensch. Das ist keine
-   Vereinbarung, das ist eingebaut: Es gibt schlicht keinen Weg im Code.
-2. **Widerspruch macht laut.** Sagt eine Sonde „stimmt" und eine andere
-   „stimmt nicht", wird nicht gemittelt und nicht das Neueste geglaubt —
-   die Karte springt auf **ungeklärt**, und ein Mensch muss ran. Das gilt
-   sogar für Chef-bestätigte Karten: Findet eine Sonde später etwas
-   Gegenteiliges, ist auch die wieder ungeklärt.
-3. **Beweise sind ein Kassenbuch.** Jeder Beweis wird nur angehängt, nie
-   geändert, nie gelöscht. Höchstens als „veraltet" markiert — dann zählt
-   er nicht mehr, bleibt aber nachlesbar.
+### The faults F1–F29 = the hidden traps
 
-### Die Spiegel-Schleife
+Individual, deliberately built-in stumbling blocks — each one a story that
+happens in real companies all the time:
 
-Sagt der Nutzer „Unser Geschäftsjahr läuft Mai bis April", speichert das
-Tool den Satz wörtlich — und bevor ein Mensch das bestätigen darf, muss
-geklärt sein, **wofür es gilt**: Welche Gesellschaft? Welcher Zeitraum?
-Eine Bestätigung ohne diese Angabe wird abgelehnt. (Das ist genau die
-Falle F29 aus dem Korpus: Der Satz galt nur für die US-Firma.)
+- Customer 1101 gets the new number 1201 in 2025 (F5) — miss that, and you
+  lose their revenue.
+- An invoice plus its cancellation (F3) — sum naively and you double-count.
+- A revenue figure sits in an old press release but belongs to a business
+  unit sold off long ago (F26) — believe it, and you are poisoned.
 
-### Eine Karte pro Regel, nicht pro Zeile
+Plus **3 blind traps** known only to the project owner — like exam questions
+the teacher does not reveal in advance.
 
-Wichtig bei großen Datenmengen: Eine Karteikarte beschreibt immer eine
-**Regel** („jeder offene Posten hat eine Buchung im Hauptbuch"), nie eine
-einzelne Datenzeile. Prüft die Sonde 100.000 Zeilen und findet 37
-Ausreißer, entsteht **eine** Karte mit **einem** Beweis: geprüfte Menge,
-Anzahl Ausnahmen, eine Handvoll anschaulicher Beispiele — nicht 100.000
-Karten, die nie jemand durchsieht. Die vollständige Ausnahmeliste landet
-im wegwerfbaren Zwischenspeicher, nicht in den Akten.
+### The trap classes K1–K7 = the kinds of traps
 
-Zwei Schutzmechanismen gehören dazu: Wird dieselbe Regel doppelt
-vorgeschlagen (anders formuliert, andere Sitzung), erkennt der
-Aktenschrank sie an ihrem Inhalt und legt **keine zweite Karte** an. Und
-wenn sich hinter den Ausnahmen ein eigenes Muster verbirgt (z.B. „alle
-37 stammen aus der alten Nummernwelt"), kann ein Mensch daraus gezielt
-eine **neue Karte** machen — die mit der Ursprungskarte verknüpft ist,
-aber wieder bei „vermutet" anfängt und sich ihre Stempel selbst verdienen
-muss.
+The pattern behind the individual traps:
 
-### Der Aktenschrank
+- **K1** = "green but wrong" — the calculation balances, yet the content is
+  still wrong. The most dangerous kind.
+- **K2** = double counting through structural breaks.
+- **K3** = conventions that exist only in a policy PDF (e.g. "credit is
+  negative").
+- **K4** = relationships you cannot see in the values themselves (validity
+  periods, postal-code ranges, encoded text columns).
+- **K5** = ground rules that must always hold (the books balance).
+- **K6** = "legitimate orphans" — an open order without an invoice is **not**
+  an error, just a waiting state.
+- **K7** = poisoned figures that must never be believed.
 
-Alles liegt als einfache Textdateien in einem Projektordner — eine Datei
-pro Karteikarte, eine pro Beweis. Keine Datenbank, alles mit Git
-versionierbar. Ein Prüf-Kommando kontrolliert, dass keine Karte auf
-Beweise verweist, die es gar nicht gibt.
+Important: the exam tests **trap types, not individual traps** — which is
+why it can also grade the blind traps without knowing them.
 
-### Und die Prüfung aus M0?
+### M0 in one sentence
 
-Das Gedächtnis wurde direkt gegen das Antwortheft getestet: Für jede der
-32 Fallen wird durchgespielt, welche Beweise sie erzeugen würde — und
-geprüft, dass die Karteikarte auf dem richtigen Stempel landet. Vergiftete
-Zahlen (K7) bleiben **vermutet**, egal wie viele Dokumente sie erwähnen.
-Legitime Waisen (K6) werden **nicht** als widerlegt abgestempelt. Und der
-härteste Test: Mit nur KI-Beweisen wird **keine einzige** der 32 Fallen
-befördert — falsche Beförderungen: null.
-
-### M1 in einem Satz
-
-Das Tool hat jetzt ein ehrliches Gedächtnis: Karteikarten mit fünf
-Stempeln, bei denen die KI nur vermuten darf, Widerspruch laut wird und
-kein Beweis je verschwindet — geprüft gegen alle 32 Fallen der Übungsfirma.
+We built a practice company with hidden traps and an answer booklet,
+verified it independently and froze it — every future version of the tool
+must pass this exam before it is allowed to do anything. And the tool itself
+gets **no finance knowledge programmed in**: it must work the rules out from
+the data and documents itself. The finance knowledge lives in the corpus,
+not in the tool.
 
 ---
 
-## M2 — Das Tool bekommt Sinne (✅ fertig, Tag `m2-ingestion-v1`)
+## M1 — The tool's memory (✅ done, tag `m1-core-v1`)
 
-Bisher hatte das Tool ein Gedächtnis, aber keine Augen. Jetzt kann es
-Datenquellen öffnen und **vermessen** — immer noch ohne KI, alles pures
-Handwerk.
+Now the first piece of the tool itself exists. No data analysis yet, no AI —
+only the **memory** [`model/` + `store/` in `src/before_we_ai/`]: the rules
+by which the tool remembers what it knows, what it suspects, and what it
+does not know.
 
-### Quellen anschließen
+### The claim = the index card
 
-Das Tool öffnet, was eine Firma so herumliegen hat: Datenbanken, CSV-Dateien,
-hässliches Excel. Alles wird unter einem Dach als abfragbare Tabellen
-bereitgestellt. Wichtigste Regel dabei: **Nichts wird kaputtgeputzt.** Eine
-Belegnummer wie `0001042` bleibt Text mit ihren führenden Nullen — das Tool
-rät niemals, dass Text „eigentlich eine Zahl" sei. (Genau daran sind schon
-viele Datenprojekte gestorben — das ist Falle T1 aus der Prüfung.)
+Every suspicion becomes an index card [a `Claim`]: "I believe account 4300
+is intercompany revenue." The card always records **who wrote it** and
+**which evidence is attached**. A card carries exactly one of five stamps
+[`ClaimStatus`]:
 
-### Der Excel-Vorleser mit Putzprotokoll
+- **suspected** (inferred) — someone believes it; nobody has checked.
+- **tested** — an automatic spot-check (a probe) confirmed it.
+- **contradicted** — the probe says: not true.
+- **unresolved** — the evidence contradicts itself. Loud, not quiet!
+- **business-confirmed** — a human signed it off.
 
-Excel ist ein Sonderfall: verbundene Überschriften, Zahlen wo Nummern
-stehen sollten, Datumswerte in Excel-Geheimschrift. Ein eigener Vorleser
-bügelt das glatt — aber nicht heimlich: **Jede Putz-Entscheidung wird als
-Beweis protokolliert** („Spalte X: Zahl zu Text gemacht, Beispiel: 1101").
-So kann später jeder nachlesen, was beim Einlesen verändert wurde. Das
-Protokoll kann eine Karteikarte niemals befördern — Einlesen ist Beobachten,
-nicht Urteilen.
+### The three iron rules
 
-### Jede Spalte wird vermessen
+1. **The AI may only suspect.** However convinced it sounds — it can create
+   cards, but it can never press a better stamp onto one itself. Only a
+   probe or a human may promote. That is not an agreement, it is built in:
+   there is simply no path in the code [`Actor.AI` cannot author promoting
+   evidence — enforced by validators in `model/`].
+2. **Contradiction gets loud.** If one probe says "true" and another says
+   "false", nothing is averaged and the newest is not simply believed — the
+   card jumps to **unresolved**, and a human must step in. That even applies
+   to business-confirmed cards: if a probe later finds the opposite, that
+   card is unresolved again too.
+3. **Evidence is a ledger.** Every piece of evidence is only ever appended,
+   never changed, never deleted. At most it is marked "stale" — then it no
+   longer counts, but it stays readable.
 
-Für jede Spalte jeder Tabelle entsteht ein Steckbrief: Wie viele Werte, wie
-viele verschiedene, wie viele leer, welches Muster (`AA-AAA-9999999`),
-welche häufigsten Werte. Die spätere KI wird **diese Steckbriefe** sehen,
-nie die Rohdaten — so bleiben auch Millionen Zeilen zusammenfassbar.
+### The mirror loop
 
-### Die Kandidaten-Landkarte
+If the user says "our fiscal year runs May to April", the tool stores the
+sentence word for word — and before a human may confirm it, it must be
+clear **what it applies to**: which entity? which period? A confirmation
+without that scope is rejected [`PromotionError`]. (That is exactly trap F29
+from the corpus: the sentence was true only for the US entity.)
 
-Dann vergleicht das Tool alle Spalten paarweise: Wo tauchen dieselben Werte
-auf? Heraus kommt eine Landkarte möglicher Verknüpfungen — die Kundennummer
-auf der Rechnung passt zum Kundenstamm, die Migrationstabelle aus dem Excel
-passt zu den alten Kundennummern (Falle F5 wird damit erst findbar!).
+### One card per rule, not per row
 
-Wichtig: Die Landkarte **urteilt nicht**. Sie enthält absichtlich auch
-Zufalls-Echos — zwei Datumsspalten, die rein zufällig dieselben Werte
-tragen, stehen genauso drin. Aussortieren ist Aufgabe der Sonden (M3) und
-der Menschen. Und weil M2 gar keine Karteikarten anlegt, kann in dieser
-Phase auch nichts fälschlich befördert werden: null Risiko, eingebaut.
+Important with large data: an index card always describes a **rule** ("every
+open item has a posting in the general ledger"), never a single data row. If
+the probe checks 100,000 rows and finds 37 outliers, **one** card gets
+**one** piece of evidence: population checked, number of exceptions, a
+handful of illustrative examples — not 100,000 cards nobody will ever read.
+The full exception list goes to the disposable cache, not into the files.
 
-Ehrlich bleibt die Karte auch bei ihren blinden Flecken: Beziehungen, die
-nicht über gleiche Werte laufen (Postleitzahl-*Bereiche*, codierte
-Hierarchie-Strings), stehen **nicht** drin — die muss später die KI finden,
-und das wird eigens gemessen.
+Two safeguards belong to this: if the same rule is proposed twice (worded
+differently, another session), the filing cabinet recognizes it by its
+content and creates **no second card** [`claim_key` dedup — wording is
+excluded from identity]. And if a pattern hides behind the exceptions
+("all 37 come from the old numbering world"), a human can deliberately turn
+that into a **new card** — linked to the original, but starting again at
+"suspected" and earning its own stamps.
 
-### Und die Prüfung aus M0?
+### The filing cabinet
 
-Der komplette Scan lief gegen die Übungsfirma: Die führenden Nullen
-überleben (T1), das schmutzige Excel wird mit Protokoll normalisiert (T9),
-alle eingebauten wertbasierten Beziehungen stehen auf der Landkarte —
-inklusive des Zufalls-Echos als Negativkontrolle (T6). Und: Der komplette
-Zwischenspeicher darf jederzeit gelöscht werden — ein neuer Scan baut ihn
-identisch wieder auf.
+Everything lives as plain text files in a project folder [`store/` — one
+YAML file per card, one per piece of evidence]. No database, all
+versionable with git. A check command verifies that no card points at
+evidence that does not exist.
 
-### M2 in einem Satz
+### And the exam from M0?
 
-Das Tool kann jetzt chaotische Quellen öffnen, ohne etwas kaputtzuputzen,
-protokolliert jede Aufräum-Entscheidung als Beweis und zeichnet eine
-ehrliche Landkarte möglicher Verknüpfungen — urteilen darf darüber erst
-die nächste Stufe.
+The memory was tested directly against the answer booklet: for each of the
+32 traps, the evidence it would produce is played through — and the test
+checks that the index card lands on the right stamp. Poisoned figures (K7)
+stay **suspected**, no matter how many documents mention them. Legitimate
+orphans (K6) are **not** stamped contradicted. And the hardest test: with
+AI-only evidence, **not a single one** of the 32 traps gets promoted —
+false promotions: zero.
 
----
+### M1 in one sentence
 
-## M3 — Die Sonden (✅ fertig, Tag `m3-probes-v1`)
-
-Jetzt kann das Tool Vermutungen **prüfen** — und zwar, indem es versucht,
-sie zu widerlegen. Immer noch keine KI im Spiel: Die Sonden liefen gegen
-handgeschriebene Karteikarten aus dem Antwortheft der Übungsfirma.
-
-### Was ist eine Sonde?
-
-Eine Sonde ist eine automatische Stichprobe: eine SQL-Abfrage aus einer
-festen Schablone plus eine feste Regel, die das Ergebnis in einen Stempel
-übersetzt. Kein Ermessen, kein Bauchgefühl — dieselbe Sonde auf denselben
-Daten liefert immer dasselbe Urteil. Jeder Lauf hinterlässt einen Beweis
-mit allem, was ein Prüfer braucht: die ausgeführte Abfrage, wie viele
-Zeilen geprüft, wie viele Ausnahmen, eine Handvoll Beispiele, und den
-Fingerabdruck der Daten zum Prüfzeitpunkt.
-
-Es gibt gut ein Dutzend Schablonen (Verweis-Prüfung, Dubletten, Abdeckung,
-Abstimmung, Gültigkeitszeiträume, Bereichs-Zuordnung, Decodierung …) —
-und eine eiserne Regel: **Eine neue Schablone gibt es nur, wenn ein Fall
-aus der Übungsfirma sie erzwingt.** Kein Vorratsbau.
-
-### Waise ist nicht Fehler
-
-Die wichtigste Feinheit: Eine Karteikarte sagt selbst, was Ausnahmen
-bedeuten. „Jeder Auftrag hat eine Rechnung" — offene Aufträge sind da
-**kein** Fehler, sondern ein Wartezustand. Solche Karten können durch
-Befunde niemals auf „widerlegt" springen; stattdessen entsteht eine
-**Fachfrage** an den Menschen („Datenschnitt oder Fehler?"). Echte
-Widersprüche dagegen werden laut: Die CRM-Referenzen, die sich nirgends
-auflösen, stempeln ihre Karte auf „widerlegt".
-
-### Die Wächter-Sonden
-
-Eine zweite Sorte prüft nicht einzelne Karten, sondern Erhaltungssätze
-der ganzen Landschaft: Gehen die Bücher je Beleg auf? Stimmt Nebenbuch
-mit Hauptbuch? Sind die Konzernbuchungen symmetrisch? Diese Wächter
-fanden die absichtlich eingebaute Lücke der Übungsfirma auf den Punkt:
-**genau ein** unausgeglichener Beleg, US-Gesellschaft, Juni 2024 — nicht
-mehr, nicht weniger. Und sie entschieden den Schönheitswettbewerb der
-Quellen: Der hübsch beschriftete Buchhaltungs-Report sieht wie das
-Journal aus, fällt aber durch die Bilanz-Prüfung durch — das sperrige
-Hauptbuch besteht. Der Report bleibt trotzdem wertvoll: als zweite
-Quelle zum Abstimmen, und genau das wurde auch bewiesen.
-
-### Toleranzen mit Begründung
-
-Manche Abweichungen sind fachlich erklärt (offene Zahlungen ohne
-Rechnungszuordnung). Dafür gibt es Toleranzen — aber nie versteckt im
-Code, sondern sichtbar in der Projekt-Konfiguration, mit Begründung.
-Niemals „Toleranz hochdrehen, bis der Test grün ist".
-
-### Die Abschlussprüfung
-
-Alle Fallentypen aus dem Antwortheft, durchgespielt mit echten Sonden auf
-echten Korpusdaten: führende Nullen bestehen nur **mit** dokumentierter
-Normalisierung (ohne sie fällt dieselbe Beziehung durch), Waisen werden
-Fachfragen, Widerspruch zwischen zwei Sonden macht die Karte „ungeklärt",
-das Zufalls-Echo aus M2 wird von der Kardinalitäts-Sonde entlarvt und
-kommt nie über „vermutet" hinaus. Und die härteste Zahl:
-**Falsch-Beförderungen = 0** — die Menge der „geprüft"-Karten ist exakt
-die erwartete, kein Stück mehr.
-
-### M3 in einem Satz
-
-Das Tool versucht jetzt systematisch, sich selbst zu widerlegen — mit
-deterministischen Stichproben, die Waisen von Fehlern unterscheiden,
-Erhaltungssätze wachen lassen und keine einzige Karte zu Unrecht
-befördern.
+The tool now has an honest memory: index cards with five stamps, where the
+AI may only suspect, contradiction gets loud, and no evidence ever
+disappears — tested against all 32 traps of the practice company.
 
 ---
 
-## M4 — Die KI kommt dazu (✅ fertig, `m4-llm-v1`)
+## M2 — The tool gets senses (✅ done, tag `m2-ingestion-v1`)
 
-### Die KI als Praktikant mit klarem Arbeitsvertrag
+Until now the tool had a memory but no eyes. Now it can open data sources
+and **measure** them [`sources/` + `profile/` + `scan.py`] — still without
+any AI, all pure craft.
 
-Bis M3 war das Tool komplett ohne KI ehrlich. Jetzt kommt zum ersten Mal
-ein Sprachmodell dazu — aber als **Praktikant, nicht als Chef**. Der
-Praktikant bekommt nur die Steckbriefe aus M2 zu sehen (Statistiken,
-niemals die echten Daten) und darf genau zwei Dinge:
+### Connecting sources
 
-1. **Vermutungen vorschlagen** („Rechnungen verweisen wohl auf Kunden",
-   „diese deutsche und jene englische Spalte meinen dasselbe") — jede
-   landet als Karte mit Status „vermutet", nie höher.
-2. **Sonden zuordnen**: zu jeder Vermutung die passende Prüfung aus dem
-   M3-Baukasten heraussuchen. Ob die Prüfung besteht, entscheidet die
-   Sonde — nie der Praktikant.
+The tool opens whatever a company has lying around: databases, CSV files,
+ugly Excel. Everything is made available under one roof as queryable tables
+[a DuckDB catalog, `cache/analysis.duckdb`]. The most important rule:
+**nothing gets cleaned to death.** A document number like `0001042` stays
+text with its leading zeros — the tool never guesses that text is "really a
+number". (Exactly this has killed many a data project — that is trap T1
+from the exam.)
 
-Das Entscheidende: Der Praktikant **kann** gar nicht befördern. Die
-Regeln aus M1 lassen es strukturell nicht zu — egal was er schreibt,
-mehr als „vermutet" kommt nicht heraus. Und wenn er Unsinn abgibt
-(falsche Spaltennamen, kaputte Formate), wird genau dieser eine
-Vorschlag aussortiert und protokolliert — der Rest läuft weiter.
+### The Excel reader with a cleaning log
 
-### Der Spickzettel-Schwur
+Excel is a special case: merged headers, numbers where identifiers should
+be, dates in Excel's secret notation. A dedicated reader smooths that out —
+but not silently: **every cleaning decision is recorded as evidence**
+["column X: number turned into text, example: 1101" — a DECLARATION by
+`Actor.SYSTEM`]. Anyone can later read what was changed during loading. The
+log can never promote an index card — loading is observing, not judging.
 
-Eine Falle im Antwortheft ist nur semantisch findbar (deutsche
-Produktgruppen vs. englische Hierarchie — keine gemeinsamen Werte).
-Findet die KI sie, gibt es zwei Erklärungen: Sie ist wirklich gut — oder
-wir haben ihr heimlich einen Spickzettel geschrieben. Deshalb prüfen
-Tests bei jedem Lauf, dass in keinem Prompt Korpus-Geheimnisse stehen,
-und jedes Gespräch mit der KI wird wortwörtlich protokolliert und
-gescannt.
+### Every column gets measured
 
-### Was dabei herauskam (erster echter Lauf)
+For every column of every table a profile card is written [`profile/`]: how
+many values, how many distinct, how many empty, what pattern
+(`AA-AAA-9999999`), which most-frequent values. The AI later sees **these
+profile cards**, never the raw data — that is how even millions of rows
+stay summarizable.
 
-- Die KI schlug ~60 Vermutungen und 22 Rollen-Kandidaten vor; die Sonden
-  prüften alles deterministisch nach.
-- **Das Hauptbuch gewann die Rolle „Journal", der verführerische
-  Report-Export verlor** — genau die Falle F27, entschieden von der
-  Erhaltungssatz-Sonde, nicht von der KI.
-- 15 von 25 auffindbaren Fallen tauchten als Karte auf — inklusive der
-  Semantik-Falle, mit sauberem Spickzettel-Scan.
-- Und wieder die härteste Zahl: **Falsch-Beförderungen = 0.**
+### The candidate map
 
-Für die Tests läuft alles auch **offline**: echte, aufgezeichnete
-KI-Antworten werden abgespielt wie eine Kassette — jederzeit
-reproduzierbar, ohne Netz, ohne Kosten.
+Then the tool compares all columns pairwise: where do the same values show
+up? The result is a map of possible relationships [the candidate matrix,
+`profiles/candidate_matrix.json`] — the customer number on the invoice
+matches the customer master, the migration table from the Excel matches the
+old customer numbers (trap F5 only becomes findable through this!).
 
-### M4 in einem Satz
+Important: the map **does not judge**. It deliberately also contains chance
+echoes — two date columns that happen to share values are listed just the
+same. Sorting that out is the job of the probes (M3) and of humans. And
+because M2 creates no index cards at all, nothing can be falsely promoted
+in this phase: zero risk, built in.
 
-Eine KI darf jetzt Vermutungen anschreiben und Prüfungen vorschlagen —
-aber die Wahrheit vergeben weiterhin nur Sonden und Menschen, und das
-ist keine Absprache, sondern eingebaute Physik.
+The map is also honest about its blind spots: relationships that do not run
+through equal values (postal-code *ranges*, encoded hierarchy strings) are
+**not** on it — the AI must find those later, and that is measured
+separately.
+
+### And the exam from M0?
+
+The complete scan ran against the practice company: the leading zeros
+survive (T1), the dirty Excel is normalized with a log (T9), all built-in
+value-based relationships appear on the map — including the chance echo as
+a negative control (T6). And: the entire cache may be deleted at any time —
+a new scan rebuilds it identically.
+
+### M2 in one sentence
+
+The tool can now open messy sources without cleaning anything to death,
+records every tidy-up decision as evidence, and draws an honest map of
+possible relationships — judging them is reserved for the next stage.
 
 ---
 
-## Wie geht es weiter?
+## M3 — The probes (✅ done, tag `m3-probes-v1`)
 
-- **M5 — Dokumente**: PDFs lesen, Zahlen mit Fundstellen-Anker belegen;
-  die vergifteten Zahlen im Management-Report dürfen nicht durchkommen.
-- M6–M8 folgen danach: Fragenfluss, Veralterung, Paketierung.
+Now the tool can **test** suspicions — by trying to refute them. Still no
+AI involved: the probes ran against hand-written index cards from the
+practice company's answer booklet.
+
+### What is a probe?
+
+A probe is an automatic spot-check [`probes/`]: an SQL query built from a
+fixed template plus a fixed rule that translates the result into a stamp.
+No discretion, no gut feeling — the same probe on the same data always
+returns the same verdict. Every run leaves evidence with everything an
+auditor needs: the executed query, how many rows checked, how many
+exceptions, a handful of examples, and the fingerprint of the data at test
+time.
+
+There are a good dozen templates [`probes/templates/*.sql.j2`, catalogued
+in `probes/library.py` REGISTRY]: reference check, duplicates, coverage,
+reconciliation, validity periods, range mapping, decoding … — and one iron
+rule: **a new template exists only when a case from the practice company
+forces it.** No building for stock.
+
+### Orphan is not error
+
+The most important subtlety: an index card itself says what exceptions
+mean. "Every order has an invoice" — open orders are **not** an error
+there, but a waiting state. Such cards can never jump to "contradicted"
+through findings; instead a **Fachfrage** — a question for the humans —
+is drafted [a `QuestionCard`]: "data cutoff or error?". Real
+contradictions, on the other hand, get loud: the CRM references that
+resolve nowhere stamp their card "contradicted".
+
+### The guardian probes
+
+A second kind checks not individual cards but conservation laws of the
+whole landscape: do the books balance per document? Does the subledger
+match the general ledger? Are the intercompany postings symmetric? These
+guardians [the invariant templates: `balance`, `subledger_equals_gl`,
+`ic_symmetry`] found the practice company's deliberately built-in gap to
+the point: **exactly one** unbalanced document, US entity, June 2024 — no
+more, no less. And they decided the beauty contest between sources: the
+nicely labelled accounting report looks like the journal but fails the
+balance check — the unwieldy general ledger passes. The report stays
+valuable anyway: as a second source for reconciliation, and exactly that
+was proven too.
+
+### Tolerances with reasons
+
+Some deviations have a business explanation (open payments not yet matched
+to invoices). For those there are tolerances — never hidden in code, but
+visible in the project configuration [`before-ai.yaml` `tolerances:`],
+with a reason. Never "turn the tolerance up until the test goes green".
+
+### The final exam
+
+All trap types from the answer booklet, played through with real probes on
+real corpus data: leading zeros pass only **with** documented
+normalization (without it the same relationship fails), orphans become
+Fachfragen, contradiction between two probes makes the card "unresolved",
+the chance echo from M2 is exposed by the cardinality probe and never gets
+past "suspected". And the hardest number: **false promotions = 0** — the
+set of "tested" cards is exactly the expected one, not one card more.
+
+### M3 in one sentence
+
+The tool now systematically tries to refute itself — with deterministic
+spot-checks that tell orphans from errors, let conservation laws stand
+guard, and promote not a single card unjustly.
+
+---
+
+## M4 — The AI joins (✅ done, `m4-llm-v1`)
+
+### The AI as an intern with a clear employment contract
+
+Up to M3 the tool was honest entirely without AI. Now, for the first time,
+a language model joins [`llm/`] — but as an **intern, not a boss**. The
+intern only ever sees the profile cards from M2 (statistics, never the real
+data) and is allowed to do exactly two things:
+
+1. **Propose suspicions** ("invoices probably reference customers", "this
+   German and that English column mean the same thing") — each lands as a
+   card with the stamp "suspected", never higher.
+2. **Assign probes**: for each suspicion, pick the fitting check from the
+   M3 toolbox. Whether the check passes is decided by the probe — never by
+   the intern.
+
+The decisive point: the intern **cannot** promote at all. The M1 rules make
+it structurally impossible — whatever it writes, nothing more than
+"suspected" comes out. And if it hands in nonsense (wrong column names,
+broken formats), exactly that one proposal is sorted out and logged — the
+rest keeps going.
+
+### The cheat-sheet oath
+
+One trap in the answer booklet is findable only semantically (German
+product groups vs. an English hierarchy — no shared values). If the AI
+finds it, there are two explanations: it is genuinely good — or we secretly
+wrote it a cheat sheet. That is why tests check on every run that no prompt
+contains corpus secrets [the leakage tripwire], and every conversation with
+the AI is logged word for word [`cache/llm_log/`] and scanned.
+
+### What came out (first real run)
+
+- The AI proposed ~60 suspicions and 22 role candidates; the probes checked
+  everything deterministically.
+- **The general ledger won the "journal" role, the seductive report export
+  lost** — exactly trap F27, decided by the conservation-law probe, not by
+  the AI.
+- 15 of 25 findable traps showed up as cards — including the semantic trap,
+  with a clean cheat-sheet scan.
+- And again the hardest number: **false promotions = 0.**
+
+For testing, everything also runs **offline**: real, recorded AI answers
+are replayed like a tape [`tests/fixtures/llm/`] — reproducible at any
+time, no network, no cost.
+
+### M4 in one sentence
+
+An AI may now write up suspicions and suggest checks — but truth is still
+awarded only by probes and humans, and that is not a policy, it is built-in
+physics.
+
+---
+
+## The big picture — one pass from start to finish
+
+All milestones together form **one** flow. The sentence to remember:
+
+> **The data and the rules are given, the AI guesses, the probes decide.**
+
+1. **Given: the raw data.** A human lists the sources (databases, CSV,
+   Excel, PDF) in the project file [`before-ai.yaml` `sources:`] — the
+   tool never invents sources.
+2. **Given: the rules.** They come from two pots, and together they are
+   the **domain pack**:
+   - The **role pack** [a YAML file, e.g. the finance pack]: the *nouns*
+     of the domain — what a journal is, what a subledger, what an
+     intercompany posting. Written by humans, pure definitions, no system
+     names.
+   - The **domain-law templates** [the three templates tagged
+     `domain="finance"` in `probes/library.py`]: the *laws* — "books
+     balance per document", "subledger equals general ledger",
+     "intercompany postings mirror". Shipped by the developers as
+     reviewed code.
+
+   Be honest about what this means: **the product alone is not a general
+   solution.** The machinery is general — the ten untagged probe templates
+   (reference check, duplicates, coverage …) work in any domain — but it
+   only becomes useful *together with a domain pack*, and what is
+   domain-specific is explicitly marked and listable, never hidden in the
+   machinery. New domain = new pack, same machine.
+3. **Measure (M2).** The data is loaded, every column gets a profile card,
+   and the candidate map measures where the same values appear. Measuring,
+   not judging.
+4. **The AI guesses (M4).** The intern sees profile cards + map and
+   proposes: first **suspicion cards** about this concrete data ("the
+   document number in the report references the general ledger"), then
+   **role candidates** ("this table could be the journal" — competition
+   wanted), then for each card the **fitting probe** from the toolbox,
+   with parameters. Everything stays "suspected".
+5. **The probes decide (M3 machinery).** Deterministic SQL against the
+   real data. Only here are stamps awarded: tested, contradicted,
+   unresolved. Roles where no candidate passed become a **Fachfrage** to
+   the humans.
+
+So the AI never checks anything itself — it sits between measuring and
+testing purely as a proposal generator. A wrong AI answer can at most cost
+a discovery, but it can never create false confidence.
+
+### Small glossary
+
+| term | meaning | in the code |
+|---|---|---|
+| **source** | a connected file or database; the list is written by a human | `before-ai.yaml` `sources:` |
+| **profile card** | statistics summary of one column — the only thing the AI ever sees of the data | `profile/`, `profiles/` output |
+| **candidate map** | measured value overlap between columns; deliberately includes chance echoes | `profiles/candidate_matrix.json` |
+| **index card** | a suspicion as a rule about the data, with author and evidence | `Claim` (`model/`) |
+| **stamp** | suspected / tested / contradicted / unresolved / business-confirmed — always derived from evidence, never set directly | `ClaimStatus`, `resolve_status` |
+| **role** | a domain noun a table/column can play (journal, subledger, …) | `RoleBindingClaim` |
+| **role pack** | one domain's role definitions as a file — humanly curated | `RoleSet` YAML (`llm.roles_file`) |
+| **probe** | an automatic SQL spot-check with a fixed verdict — the only machine path to a better stamp | `probes/`, `engine/` |
+| **template** | a probe's blueprint (code); the AI only fills in parameters, never writes SQL | `probes/templates/*.sql.j2` + REGISTRY |
+| **guardian / domain law** | templates for conservation laws of the whole landscape — they also decide which candidate wins a role | `TemplateSpec(domain="finance")` |
+| **domain pack** | role pack + domain-law templates: everything domain-specific, explicit and listable | role YAML + `domain`-tagged REGISTRY entries |
+| **binding** | the assignment card → template + parameters (AI proposal, strictly validated) | V2, `llm/v2_bind.py` |
+| **evidence** | an appended, never-deleted finding: probe run, document anchor, confirmation, testimonial, declaration | `EvidenceRecord` (five types) |
+| **Fachfrage** | a written question to the humans when data alone cannot decide | `QuestionCard` |
+
+---
+
+## What comes next?
+
+- **M5 — documents**: read PDFs, back figures with source anchors; the
+  poisoned figures in the management report must not get through.
+- M6–M8 follow after: question flow, staleness, packaging.

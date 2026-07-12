@@ -5,6 +5,10 @@ You drive the pipeline **one stage at a time** with the scripts in
 Everything lands in `validation/data/` (git-ignored, disposable — `0-reset.sh`
 wipes it). The scripts activate the venv themselves; run them from anywhere.
 
+New to the flow or the terminology? `docs/SIMPLE-README.md` has the big
+picture ("The big picture — one pass from start to finish") and a small
+glossary — the walkthrough below is that flow, one stage per script.
+
 Default mode is **offline**: the recorded real answers (Opus 4.8 / Sonnet 5,
 2026-07-12) are replayed through the full validation path, so every run is
 deterministic and needs no API key. For live calls run

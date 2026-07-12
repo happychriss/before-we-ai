@@ -19,7 +19,8 @@ but never restate it:
   install/test from `src/`)
 - `docs/` — everything about the software: `requirements.md` (WHAT + status),
   `architecture.md` / `corpus.md` (confirmed design facts & gotchas),
-  `SIMPLE-README.md` (plain-German explainer, grows per milestone),
+  `SIMPLE-README.md` (plain-English explainer linking metaphors to real
+  code objects, grows per milestone),
   `spec/` (authoritative German spec — read-only, never edit)
 - `meta/` — how we work, not what we build: `project-setup.md` (workflow),
   `conventions.md` (project rules), `memory.md` (live state only — slim it when
