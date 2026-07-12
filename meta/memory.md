@@ -12,4 +12,8 @@
 ## Open items
 
 - Remote branch `copilot/create-scripts-folder` (1 unmerged commit:
-  `scripts/copy_raw_data.sh`) — awaiting owner's delete/merge decision.
+  `scripts/copy_raw_data.sh`) — awaiting owner's delete/merge decision; candidate
+  seed for the planned `scripts/` folder.
+- **M4 kickoff decisions needed from owner**: LLM provider + model for online mode
+  (recommendation: Anthropic API; key via env var, never committed) and the
+  Seeded-Recall bar (which trap subset V1 must minimally recall).

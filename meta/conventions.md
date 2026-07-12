@@ -20,6 +20,11 @@ about how to work.
   author promoting evidence.
 - **Growth contract:** a new normalization rule = one case in `sources/canonical.py`
   + one unit test + auto-declaration. Downstream never enumerates rules.
+- **Prompts are part of the product — they stay domain-agnostic too** (M4+): LLM
+  prompts may contain generic data-profiling language only; domain knowledge enters
+  a prompt exclusively via the profile/source data being passed in. Never encode
+  corpus-trap hints in a prompt — that would be teaching to the test and would
+  invalidate Seeded-Recall and the blind traps.
 
 ## Corpus & validation style
 
