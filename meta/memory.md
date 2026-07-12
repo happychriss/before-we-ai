@@ -57,7 +57,9 @@
   on evidence that tests nothing); too-strict merely drafts Fachfragen.
   Timing: bundle the pack at M5 kickoff together with sources-discovery
   (both change prompt bytes → one fixture re-record); the drafting contract
-  is post-M5 scope.
+  is post-M5 scope. Owner: this belongs to the **onboarding workflow**
+  (M8 quickstart territory): init project → pick a bundled pack or draft one
+  (LLM-assisted, human-curated) → drop files into sources/ → scan.
 - Remote branch `copilot/create-scripts-folder` (1 unmerged commit:
   `scripts/copy_raw_data.sh`) — awaiting owner's delete/merge decision; candidate
   seed for the planned `scripts/` folder.
