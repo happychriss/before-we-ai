@@ -15,6 +15,7 @@ from before_we_ai.llm.schemas import (
     RoleBindingProposal,
 )
 from before_we_ai.llm.vocabulary import (
+    COLUMN_PARAMS,
     INVARIANT_TEMPLATES,
     PREDICATES,
     PredicateName,
@@ -37,6 +38,15 @@ def test_every_predicate_template_is_a_registry_key():
 
 def test_invariant_templates_are_registry_keys():
     assert set(INVARIANT_TEMPLATES) <= set(REGISTRY)
+
+
+def test_column_params_cover_the_registry_and_name_real_params():
+    assert set(COLUMN_PARAMS) == set(REGISTRY)
+    for template, pairs in COLUMN_PARAMS.items():
+        allowed = TEMPLATE_PARAMS[template].allowed
+        for column_param, view_param in pairs:
+            assert column_param in allowed, (template, column_param)
+            assert view_param in allowed, (template, view_param)
 
 
 def test_literals_agree_with_runtime_tables():
@@ -69,14 +79,18 @@ def test_extra_fields_are_rejected():
         )
 
 
-def test_concept_requires_term_and_definition():
-    with pytest.raises(ValidationError):
-        Hypothesis.model_validate(_hypothesis(kind="concept"))
-    ok = Hypothesis.model_validate(
-        _hypothesis(kind="concept", predicate="concept_definition", params={},
-                    term="revenue", definition="external revenue accounts only")
+def test_cross_field_rules_are_semantic_not_schema():
+    """Item-level cross-field consistency must NOT fail schema validation —
+    a schema failure kills the whole batch, and one item may never sink it
+    (learned from the first real run). The rules live in mapping.check_*."""
+    incomplete_concept = Hypothesis.model_validate(_hypothesis(kind="concept"))
+    assert incomplete_concept.term is None  # schema-valid; semantically skipped
+    no_reason = ProbeBinding.model_validate({"claim_id": "c1", "template": None})
+    assert no_reason.no_template_reason is None
+    empty_binding = RoleBindingProposal.model_validate(
+        {"role": "journal", "binding": {}, "rationale": "?"}
     )
-    assert ok.term == "revenue"
+    assert empty_binding.binding == {}
 
 
 def test_unknown_template_is_rejected():
@@ -86,27 +100,13 @@ def test_unknown_template_is_rejected():
         )
 
 
-def test_no_template_requires_a_reason_and_vice_versa():
-    with pytest.raises(ValidationError):
-        ProbeBinding.model_validate({"claim_id": "c1", "template": None})
-    with pytest.raises(ValidationError):
-        ProbeBinding.model_validate(
-            {"claim_id": "c1", "template": "anti_join",
-             "params": {}, "no_template_reason": "just in case"}
-        )
+def test_valid_none_binding_round_trips():
     ok = ProbeBinding.model_validate(
         {"claim_id": "c1", "template": None,
          "no_template_reason": "semantic-only relationship"}
     )
     assert ok.template is None
     BindingBatch.model_validate({"bindings": [ok.model_dump()]})
-
-
-def test_role_binding_must_bind_something():
-    with pytest.raises(ValidationError):
-        RoleBindingProposal.model_validate(
-            {"role": "journal", "binding": {}, "rationale": "?"}
-        )
 
 
 def test_check_template_params_missing_unknown_and_choice():
@@ -130,3 +130,35 @@ def test_check_template_params_missing_unknown_and_choice():
     assert check_template_params("no_such_template", {}) == [
         "unknown template 'no_such_template'"
     ]
+
+
+def test_check_template_params_value_shapes():
+    """Params the prepare functions iterate must be lists with sane items —
+    a scalar would crash the engine sweep (seen in the first real run)."""
+    scalar = check_template_params("subledger_equals_gl", {
+        "subledger": "a", "subledger_amount": "x", "journal": "b",
+        "journal_amount": "y", "account": "k",
+        "accounts": "de_erp__chart_of_accounts",
+    })
+    assert any("'accounts' must be a list" in e for e in scalar)
+    not_numbers = check_template_params("subledger_equals_gl", {
+        "subledger": "a", "subledger_amount": "x", "journal": "b",
+        "journal_amount": "y", "account": "k", "accounts": ["1200", "abc"],
+    })
+    assert any("account numbers (integers), got 'abc'" in e for e in not_numbers)
+    scalar_keys = check_template_params("duplicate",
+                                        {"table": "t", "key_columns": "id"})
+    assert any("'key_columns' must be a list" in e for e in scalar_keys)
+    # expression params are row-level; the templates aggregate for themselves
+    nested = check_template_params("reconciliation", {
+        "left": "a", "right": "b",
+        "left_group_expr": "doc_ref", "right_group_expr": "doc_no",
+        "left_measure_expr": "sum(amount)", "right_measure_expr": "amount",
+    })
+    assert any("row-level expression" in e and "'left_measure_expr'" in e
+               for e in nested)
+    # identifier params must be bare identifiers, never expressions
+    expression = check_template_params("balance", {
+        "journal": "j", "amount": "sum(amount_local)", "group_column": "doc",
+    })
+    assert any("bare view/column identifier" in e for e in expression)

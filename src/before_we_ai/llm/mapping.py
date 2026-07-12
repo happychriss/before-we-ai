@@ -17,10 +17,13 @@ of the same rule.
 
 from before_we_ai.llm.schemas import Hypothesis, ProbeBinding, RoleBindingProposal
 from before_we_ai.llm.vocabulary import (
+    COLUMN_PARAMS,
     INVARIANT_TEMPLATES,
     PREDICATES,
     ROLE_BINDING_PREDICATE,
+    VIEW_PARAMS,
     check_template_params,
+    normalize_template_params,
 )
 from before_we_ai.model.enums import Actor
 from before_we_ai.model.objects import (
@@ -88,10 +91,20 @@ def _string_values(value) -> list[str]:
 def check_hypothesis(h: Hypothesis, index: ProfileIndex) -> list[str]:
     errors = []
     spec = PREDICATES[h.predicate]
+    if h.kind not in ("rule", "concept"):
+        errors.append(
+            f"hypothesis {h.statement!r}: kind must be 'rule' or 'concept', "
+            f"got {h.kind!r}"
+        )
     if (h.kind == "concept") != (h.predicate == "concept_definition"):
         errors.append(
             f"hypothesis {h.statement!r}: kind {h.kind!r} does not fit "
             f"predicate {h.predicate!r} (concepts use concept_definition)"
+        )
+    if h.kind == "concept" and not (h.term and h.definition):
+        errors.append(
+            f"hypothesis {h.statement!r}: a concept hypothesis requires "
+            "term and definition"
         )
     keys = set(h.params)
     for missing in sorted(spec.required_params - keys):
@@ -159,6 +172,10 @@ def check_role_proposal(p: RoleBindingProposal, role_names: list[str],
     errors = []
     if p.role not in role_names:
         errors.append(f"proposal binds unknown role {p.role!r}")
+    if not p.binding:
+        errors.append(
+            f"proposal for role {p.role!r}: must bind at least one part"
+        )
     for part, value in p.binding.items():
         if value not in index.views and value not in index.columns:
             errors.append(
@@ -200,8 +217,13 @@ def check_binding(b: ProbeBinding, claims_by_id: dict[str, Claim],
     if claim is None:
         return [f"binding references unknown claim {b.claim_id!r}"]
     if b.template is None:
-        return []
+        return ([] if b.no_template_reason
+                else [f"claim {b.claim_id}: template=null requires no_template_reason"])
     errors = []
+    if b.no_template_reason:
+        errors.append(
+            f"claim {b.claim_id}: no_template_reason is only valid with template=null"
+        )
     allowed = admissible_templates(claim)
     if b.template not in allowed:
         errors.append(
@@ -209,12 +231,32 @@ def check_binding(b: ProbeBinding, claims_by_id: dict[str, Claim],
             f"predicate {claim.predicate.name if claim.predicate else None!r} "
             f"(admissible: {sorted(allowed) or 'none'})"
         )
+    params = normalize_template_params(b.template, b.params)
     errors += [f"claim {b.claim_id}: {e}"
-               for e in check_template_params(b.template, b.params)]
-    for ref in _string_values(b.params):
+               for e in check_template_params(b.template, params)]
+    for ref in _string_values(params):
         problem = index.check_ref(ref)
         if problem:
             errors.append(f"claim {b.claim_id}: {problem}")
+    # referential integrity of the instantiation: views exist, columns
+    # exist on the view they are used against
+    for view_param in sorted(VIEW_PARAMS & set(params)):
+        view = params[view_param]
+        if isinstance(view, str) and view not in index.views:
+            errors.append(
+                f"claim {b.claim_id}: {view_param}={view!r} is not a known view"
+            )
+    for column_param, view_param in COLUMN_PARAMS.get(b.template, ()):
+        view = params.get(view_param)
+        columns = params.get(column_param)
+        if not isinstance(view, str) or view not in index.views or columns is None:
+            continue
+        for column in columns if isinstance(columns, list) else [columns]:
+            if isinstance(column, str) and f"{view}.{column}" not in index.columns:
+                errors.append(
+                    f"claim {b.claim_id}: column {column!r} does not exist "
+                    f"on view {view!r} (param {column_param!r})"
+                )
     return errors
 
 
@@ -226,5 +268,5 @@ def binding_to_probe(b: ProbeBinding, claim: Claim) -> Probe | None:
         template=b.template,
         claim_id=claim.id,
         roles=[claim.role] if isinstance(claim, RoleBindingClaim) else [],
-        params=_canonical_params(b.params),
+        params=_canonical_params(normalize_template_params(b.template, b.params)),
     )

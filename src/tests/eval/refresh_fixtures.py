@@ -28,11 +28,13 @@ from before_we_ai.store import ProjectStore
 
 def write_fixture_from_log(log_ref: str, scenario_override: str | None = None) -> Path:
     entry = json.loads(Path(log_ref).read_text(encoding="utf-8"))
-    if entry["outcome"] not in ("ok", "retried_ok"):
+    if entry["outcome"] == "failed":
         raise SystemExit(
-            f"refusing to record a fixture from a {entry['outcome']} call "
-            f"({log_ref}) — fix the run first"
+            f"refusing to record a fixture from a failed call ({log_ref})"
         )
+    if entry["outcome"] == "partial":
+        print(f"  NOTE: recording a partial answer — offline replays will "
+              f"skip the same items (see {Path(log_ref).name})")
     scenario = scenario_override or entry["scenario"]
     path = FIXTURES / f"{entry['contract']}__{scenario}.json"
     path.write_text(json.dumps({

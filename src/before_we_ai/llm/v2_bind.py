@@ -34,6 +34,7 @@ from before_we_ai.llm.mapping import (
 )
 from before_we_ai.llm.prompts import (
     ROLE_BINDING_SYSTEM,
+    V2_ROLES_SYSTEM,
     V2_SYSTEM,
     render_template_docs,
     with_schema,
@@ -181,19 +182,21 @@ def bind_probes(
         else:
             report.semantic_only.append(claim.id)
 
-    # Role bindings are a search task with domain judgment — frontier tier;
-    # plain template binding runs mid-tier (architecture spec).
+    # Role bindings are a search task with domain judgment — frontier tier
+    # and a system prompt that explains the invariant mechanism; plain
+    # template binding runs mid-tier (architecture spec).
     batches = [
-        (role_claims, CONTRACT_ROLES, f"{scenario}_roles"),
-        (ordinary, CONTRACT_BIND, f"{scenario}_claims"),
+        (role_claims, CONTRACT_ROLES, f"{scenario}_roles", V2_ROLES_SYSTEM),
+        (ordinary, CONTRACT_BIND, f"{scenario}_claims", V2_SYSTEM),
     ]
-    for claims, model_key, batch_scenario in batches:
+    for claims, model_key, batch_scenario, system in batches:
         if not claims:
             continue
         labels = claim_label_map(claims)
         result = _bind_batch(
             root, store, index, labels, client,
             model=config.models[model_key], scenario=batch_scenario,
+            system=system,
         )
         report.retries += result.retries
         for key, value in result.usage.items():
@@ -227,7 +230,7 @@ def bind_probes(
 
 def _bind_batch(root: Path, store: ProjectStore, index: ProfileIndex,
                 labels: dict[str, Claim], client: LLMClient,
-                *, model: str, scenario: str) -> LLMResult:
+                *, model: str, scenario: str, system: str) -> LLMResult:
     built = build_binding_context(store, labels, render_template_docs())
 
     def semantic_check(batch: BindingBatch) -> list[str]:
@@ -241,7 +244,7 @@ def _bind_batch(root: Path, store: ProjectStore, index: ProfileIndex,
         contract=CONTRACT_BIND,
         scenario=scenario,
         model=model,
-        system=with_schema(V2_SYSTEM, BindingBatch),
+        system=with_schema(system, BindingBatch),
         built=built,
         schema=BindingBatch,
         semantic_check=semantic_check,

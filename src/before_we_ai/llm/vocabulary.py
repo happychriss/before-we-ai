@@ -15,7 +15,8 @@ Two tables anchor the set to the probe library:
   by a unit test.
 """
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 from typing import Literal
 
 # The closed set, spelled twice: once as a typing.Literal so the output
@@ -189,6 +190,78 @@ TEMPLATE_PARAMS: dict[str, TemplateParams] = {
 }
 
 
+# Params whose values the prepare functions iterate — a scalar here would
+# crash the engine sweep, so the shape is part of the binding contract.
+_LIST_PARAMS = ("key_columns", "expected", "accounts", "pairs")
+
+# The templates aggregate for themselves (e.g. reconciliation wraps every
+# measure in SUM); an expression param carrying its own aggregate renders
+# into nested aggregates and crashes the sweep.
+_AGGREGATES = ("sum(", "count(", "avg(", "min(", "max(")
+
+_IDENTIFIER = re.compile(r"\w+")
+
+# Param names that must name a catalog view.
+VIEW_PARAMS = frozenset({"child", "parent", "table", "left", "right",
+                         "encoded", "decode", "ranges", "journal", "subledger"})
+
+# Which bare-column params must exist on which view param — template-level
+# referential integrity, checked at binding time so a hallucinated column
+# is retry feedback instead of an engine crash.
+COLUMN_PARAMS: dict[str, tuple[tuple[str, str], ...]] = {
+    "anti_join": (("child_column", "child"), ("parent_column", "parent")),
+    "duplicate": (("key_columns", "table"),),
+    "grain": (("key_columns", "table"),),
+    "coverage": (("unit_column", "table"),),
+    "cardinality": (("child_column", "child"), ("parent_column", "parent")),
+    "attribute_contradiction": (("left_key", "left"), ("left_attr", "left"),
+                                ("right_key", "right"), ("right_attr", "right")),
+    "reconciliation": (),
+    "validity_join": (("key_column", "table"), ("valid_from", "table"),
+                      ("valid_to", "table")),
+    "range_join": (("value_column", "table"), ("range_from", "ranges"),
+                   ("range_to", "ranges")),
+    "decode": (("key", "encoded"), ("key", "decode")),
+    "balance": (("amount", "journal"), ("group_column", "journal")),
+    "subledger_equals_gl": (("subledger_amount", "subledger"),
+                            ("journal_amount", "journal"),
+                            ("account", "journal")),
+    "ic_symmetry": (("left_period", "left"), ("right_period", "right")),
+}
+
+def normalize_template_params(template: str, params: dict) -> dict:
+    """Deterministic normalization of an unambiguous formatting variant:
+    a column param qualified with exactly its own view ("view.column")
+    reduces to the bare column. Anything else is left for the checks —
+    lenient in what we accept, strict in what we store."""
+    normalized = dict(params)
+    for column_param, view_param in COLUMN_PARAMS.get(template, ()):
+        view = normalized.get(view_param)
+        value = normalized.get(column_param)
+        if not isinstance(view, str):
+            continue
+        prefix = view + "."
+        if isinstance(value, str) and value.startswith(prefix):
+            normalized[column_param] = value[len(prefix):]
+        elif isinstance(value, list):
+            normalized[column_param] = [
+                v[len(prefix):] if isinstance(v, str) and v.startswith(prefix) else v
+                for v in value
+            ]
+    return normalized
+
+
+# Free-text contract notes rendered into the V2 template docs — the model
+# reads these; keep them generic.
+TEMPLATE_NOTES: dict[str, str] = {
+    "reconciliation": ("group/measure params are row-level SQL expressions "
+                       "over the named view; the template applies SUM itself "
+                       "— never pre-aggregate"),
+    "balance": ("amount is a plain column summed by the template; group_expr, "
+                "if used, is a row-level expression"),
+}
+
+
 def check_template_params(template: str, params: dict) -> list[str]:
     """Validate a param dict against a template's contract; returns errors."""
     contract = TEMPLATE_PARAMS.get(template)
@@ -207,4 +280,38 @@ def check_template_params(template: str, params: dict) -> list[str]:
             )
     for unknown in sorted(keys - contract.allowed):
         errors.append(f"template {template!r}: unknown param {unknown!r}")
+    for key in _LIST_PARAMS:
+        if key in keys and key in contract.allowed and not isinstance(params[key], list):
+            errors.append(
+                f"template {template!r}: param {key!r} must be a list, "
+                f"got {type(params[key]).__name__}"
+            )
+    accounts = params.get("accounts")
+    if template == "subledger_equals_gl" and isinstance(accounts, list):
+        for item in accounts:
+            try:
+                int(item)
+            except (TypeError, ValueError):
+                errors.append(
+                    f"template {template!r}: 'accounts' must contain account "
+                    f"numbers (integers), got {item!r}"
+                )
+    for key in sorted(keys & contract.allowed):
+        value = params[key]
+        if not isinstance(value, str):
+            continue
+        if key.endswith("_expr"):
+            lowered = value.lower()
+            for aggregate in _AGGREGATES:
+                if aggregate in lowered:
+                    errors.append(
+                        f"template {template!r}: param {key!r} must be a "
+                        f"row-level expression — the template aggregates for "
+                        f"itself, got {value!r}"
+                    )
+        elif not key.endswith("where") and not _IDENTIFIER.fullmatch(value):
+            errors.append(
+                f"template {template!r}: param {key!r} must be a bare "
+                f"view/column identifier, got {value!r}"
+            )
     return errors

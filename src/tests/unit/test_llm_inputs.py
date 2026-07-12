@@ -99,6 +99,7 @@ def test_binding_context_carries_claim_columns_and_template_docs(tmp_path):
     )
     assert "### claim c1" in built.text
     assert claim.id not in built.text  # ULIDs never enter a prompt
+    assert "admissible templates: anti_join, cardinality" in built.text
     assert "### beta__orders.customer_id" in built.text  # profile digest inlined
     assert "- alpha__customers: " in built.text  # view schema line
     assert "## Probe templates" in built.text
@@ -114,8 +115,9 @@ _DENYLIST = ("trap", "decoy", "corpus", "expected_verdicts", "BLIND_",
 
 @pytest.mark.parametrize("text", [
     prompts.V1_SYSTEM, prompts.ROLE_BINDING_SYSTEM, prompts.V2_SYSTEM,
+    prompts.V2_ROLES_SYSTEM,
     prompts.render_template_docs(), prompts.render_predicate_docs(),
-], ids=["v1", "roles", "v2", "template_docs", "predicate_docs"])
+], ids=["v1", "roles", "v2", "v2_roles", "template_docs", "predicate_docs"])
 def test_prompts_contain_no_corpus_hints(text):
     lowered = text.lower()
     for token in _DENYLIST:

@@ -94,6 +94,13 @@ def test_check_hypothesis_reports_semantic_errors(tmp_path):
     mismatch = check_hypothesis(_hypothesis(predicate="concept_definition",
                                             params={}, columns=[]), index)
     assert any("does not fit" in e for e in mismatch)
+    incomplete = check_hypothesis(_hypothesis(
+        kind="concept", predicate="concept_definition", params={}, columns=[],
+        term="revenue",  # definition missing
+    ), index)
+    assert any("requires term and definition" in e for e in incomplete)
+    bad_kind = check_hypothesis(_hypothesis(kind="guess"), index)
+    assert any("kind must be 'rule' or 'concept'" in e for e in bad_kind)
 
 
 def test_concept_hypothesis_becomes_a_concept_claim(tmp_path):
@@ -122,6 +129,9 @@ def test_role_proposal_checks_and_maps(tmp_path):
                               rationale="?")
     assert any("unknown 'nowhere'" in e
                for e in check_role_proposal(bad, ["journal"], index))
+    empty = RoleBindingProposal(role="journal", binding={}, rationale="?")
+    assert any("at least one part" in e
+               for e in check_role_proposal(empty, ["journal"], index))
     claim = proposal_to_role_claim(p, index)
     assert isinstance(claim, RoleBindingClaim)
     assert claim.created_by is Actor.AI
@@ -169,10 +179,44 @@ def test_binding_checks_and_maps(tmp_path):
     assert any("missing required param" in e
                for e in check_binding(missing_param, claims, index))
 
+    ghost_view = ProbeBinding(claim_id=claim.id, template="anti_join", params={
+        "child": "beta__orders", "parent": "gamma__nowhere",
+        "child_column": "customer_id", "parent_column": "customer_id",
+    })
+    assert any("parent='gamma__nowhere' is not a known view" in e
+               for e in check_binding(ghost_view, claims, index))
+
+    ghost_column = ProbeBinding(claim_id=claim.id, template="anti_join", params={
+        "child": "beta__orders", "parent": "alpha__customers",
+        "child_column": "customer_id", "parent_column": "customer_nr",
+    })
+    assert any("column 'customer_nr' does not exist on view 'alpha__customers'" in e
+               for e in check_binding(ghost_column, claims, index))
+
+    # a column qualified with exactly its own view is unambiguous — accepted
+    # and normalized to the bare column (seen in every real run)
+    qualified = ProbeBinding(claim_id=claim.id, template="anti_join", params={
+        "child": "beta__orders", "parent": "alpha__customers",
+        "child_column": "beta__orders.customer_id",
+        "parent_column": "customer_id",
+    })
+    assert check_binding(qualified, claims, index) == []
+    normalized = binding_to_probe(qualified, claim)
+    assert normalized.params["child_column"] == "customer_id"
+
     none_binding = ProbeBinding(claim_id=claim.id, template=None,
                                 no_template_reason="semantic only")
     assert check_binding(none_binding, claims, index) == []
     assert binding_to_probe(none_binding, claim) is None
+
+    no_reason = ProbeBinding(claim_id=claim.id, template=None)
+    assert any("requires no_template_reason" in e
+               for e in check_binding(no_reason, claims, index))
+    stray_reason = ProbeBinding(claim_id=claim.id, template="anti_join",
+                                params=good.params,
+                                no_template_reason="just in case")
+    assert any("only valid with template=null" in e
+               for e in check_binding(stray_reason, claims, index))
 
 
 def test_role_claim_binds_to_invariants_only(tmp_path):

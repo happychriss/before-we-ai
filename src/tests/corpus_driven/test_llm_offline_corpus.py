@@ -87,23 +87,28 @@ def pipeline(tmp_path_factory):
 
 
 def test_contracts_ran_clean_offline(pipeline):
+    """Pinned against the recorded real answers (Opus 4.8 / Sonnet 5,
+    refreshed 2026-07-12). A red here after a fixture refresh is the guard
+    working: review the new numbers and re-pin deliberately."""
     v1, proposals, v2 = pipeline["v1"], pipeline["proposals"], pipeline["v2"]
-    assert v1.failure is None and v1.skipped == []
-    assert len(v1.claims_created) == 6
-    assert proposals.failure is None and len(proposals.claims_created) == 3
+    assert v1.failure is None
+    assert len(v1.claims_created) == 54
+    assert len(v1.skipped) == 2  # residual bad items skipped, batch survived
+    assert proposals.failure is None and len(proposals.claims_created) == 23
     assert v2.failures == [] and v2.skipped == [] and v2.unanswered == []
-    assert len(v2.probes_created) == 6
-    assert len(v2.semantic_only) == 2  # semantic_equivalent + concept: no template
-    assert len(v2.unbindable) == 1  # the reconciles claim, honestly unbound
-    assert "sign convention" in v2.unbindable[0][1]
+    assert len(v2.probes_created) == 49
+    assert len(v2.semantic_only) == 7  # no admissible template — never sent
+    assert len(v2.unbindable) == 21  # honest template=null answers
+    assert len(pipeline["engine"].executed) == 49
+    assert pipeline["engine"].skipped == []
 
 
 def test_llm_path_cannot_promote(pipeline):
-    """False-Promotion = 0 on the LLM path: before the engine ran, every
-    AI-created object was an inferred claim or a probe — nothing else."""
+    """False-Promotion = 0 on the LLM path: every AI-created object was an
+    inferred claim or a probe; status changes came from probe evidence only."""
     store = pipeline["store"]
     ai_claims = [c for c in store.claims.values() if c.created_by is Actor.AI]
-    assert len(ai_claims) == 9  # 6 hypotheses + 3 role candidates
+    assert len(ai_claims) == 77  # 54 hypotheses + 23 role candidates
     for evidence in store.evidence.values():
         assert evidence.actor is not Actor.AI
     # promotions happened, but only through probe evidence
@@ -116,36 +121,39 @@ def test_llm_path_cannot_promote(pipeline):
 
 
 def test_verdicts_land_on_the_corpus_ground_truth(pipeline):
+    """The invariants decided the roles — the epistemic heart of M4: the
+    real ledger wins, the F27 decoy loses, the US ledger honestly fails on
+    the F22 imbalance, and untestable claims stay inferred."""
     store = pipeline["store"]
-    by_statement = {c.statement: c.status for c in store.claims.values()}
-    assert by_statement["Every invoice references an existing customer."] is ClaimStatus.TESTED
-    assert by_statement["document_number uniquely identifies an invoice."] is ClaimStatus.TESTED
-    assert by_statement[
-        "Customer hierarchy versions are non-overlapping per customer."
-    ] is ClaimStatus.TESTED
-    # untestable-by-template claims stay inferred — honest, not promoted
-    assert by_statement[
-        "The reporting extract reconciles with the posting ledger."
-    ] is ClaimStatus.INFERRED
-    assert by_statement[
-        "Marketing product groups and the material hierarchy express the same grouping concept."
-    ] is ClaimStatus.INFERRED
-    assert by_statement["Revenue means external revenue accounts only."] is ClaimStatus.INFERRED
-    # the invariant decided the journal role: ledger wins, the decoy loses (F27)
-    role_status = {
-        (c.role, c.binding.get("table", c.binding.get("left"))): c.status
-        for c in store.claims.values() if isinstance(c, RoleBindingClaim)
-    }
-    assert role_status[("journal", "de_erp__gl_postings")] is ClaimStatus.TESTED
-    assert role_status[("journal", "buchungen_report__buchungen_report")] is ClaimStatus.CONTRADICTED
-    assert role_status[("intercompany", "de_erp__intercompany")] is ClaimStatus.CONTRADICTED
+
+    def role_claims(role: str, token: str):
+        return [c for c in store.claims.values()
+                if isinstance(c, RoleBindingClaim) and c.role == role
+                and any(token in v for v in c.binding.values())]
+
+    (gl,) = role_claims("journal", "de_erp__gl_postings")
+    assert gl.status is ClaimStatus.TESTED
+    (decoy,) = role_claims("journal", "buchungen_report")
+    assert decoy.status is ClaimStatus.CONTRADICTED  # F27
+    (us_gl,) = role_claims("journal", "us_erp__gl_postings")
+    assert us_gl.status is ClaimStatus.CONTRADICTED  # F22 missing IC leg
+    ic = [c for c in store.claims.values()
+          if isinstance(c, RoleBindingClaim) and c.role == "intercompany"]
+    assert ic and all(c.status is ClaimStatus.CONTRADICTED for c in ic)  # F22
+    # claims V2 could not bind stay inferred — visible, never promoted
+    unbound_ids = {cid for cid, _ in pipeline["v2"].unbindable}
+    assert all(store.claims[cid].status is ClaimStatus.INFERRED
+               for cid in unbound_ids)
+    # semantic-only claims (T7 class among them) stay inferred
+    for cid in pipeline["v2"].semantic_only:
+        assert store.claims[cid].status is ClaimStatus.INFERRED
 
 
 def test_lost_role_becomes_a_fachfrage_not_a_silent_discard(pipeline):
     cards = pipeline["role_cards"]
     assert len(cards) == 1
     assert "'intercompany'" in cards[0].question
-    assert len(cards[0].claim_ids) == 1
+    assert len(cards[0].claim_ids) == 2  # both losing candidates attached
     # the settled journal role drafts no question, and resolution is idempotent
     assert resolve_roles(pipeline["store"], pipeline["roles"]) == []
 
@@ -153,13 +161,18 @@ def test_lost_role_becomes_a_fachfrage_not_a_silent_discard(pipeline):
 def test_call_logs_are_complete(pipeline):
     logs = sorted((pipeline["root"] / "cache" / "llm_log").glob("*.json"))
     assert len(logs) == 4  # v1, role proposals, v2 role batch, v2 claim batch
+    outcomes = []
     for path in logs:
         entry = json.loads(path.read_text(encoding="utf-8"))
         assert entry["provider"] == "stub"
-        assert entry["outcome"] == "ok"
         assert entry["input_sha256"]
         assert entry["request"]["system"] and entry["request"]["user"]
-        assert entry["attempts"][0]["validation_errors"] == []
+        outcomes.append(entry["outcome"])
+        if entry["outcome"] == "partial":
+            assert entry["attempts"][-1]["validation_errors"]  # skips are visible
+    # the recorded V1 answer keeps two bad items even after its retry —
+    # replayed as "partial", with the same items skipped every run
+    assert sorted(outcomes) == ["ok", "ok", "ok", "partial"]
 
 
 def test_pipeline_is_idempotent(pipeline):
@@ -167,15 +180,13 @@ def test_pipeline_is_idempotent(pipeline):
     claims; bound claims drop out of the V2 selection entirely."""
     root, store = pipeline["root"], pipeline["store"]
     again = hypothesize(root, store=store, scenario="corpus")
-    assert again.claims_created == [] and again.claims_deduped == 6
+    assert again.claims_created == [] and again.claims_deduped == 54
     proposals = propose_role_bindings(root, roles=pipeline["roles"], store=store,
                                       scenario="corpus")
-    assert proposals.claims_created == [] and proposals.claims_deduped == 3
-    # only the honestly unbound claims are still selectable for V2
-    unbound = _unbound_ai_claims(store, None)
-    assert sorted(c.predicate.name for c in unbound) == [
-        "concept_definition", "reconciles", "semantic_equivalent",
-    ]
+    assert proposals.claims_created == [] and proposals.claims_deduped == 23
+    # only the honestly unbound claims are still selectable for V2:
+    # 21 unbindable + 7 semantic-only
+    assert len(_unbound_ai_claims(store, None)) == 28
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):

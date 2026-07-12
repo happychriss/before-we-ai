@@ -15,7 +15,7 @@ import json
 
 from pydantic import BaseModel
 
-from before_we_ai.llm.vocabulary import PREDICATES, TEMPLATE_PARAMS
+from before_we_ai.llm.vocabulary import PREDICATES, TEMPLATE_NOTES, TEMPLATE_PARAMS
 
 _JSON_RULES = (
     "Respond with a single JSON object that validates against this JSON "
@@ -57,7 +57,13 @@ def render_template_docs() -> str:
                 parts.append(f"exactly one of [{', '.join(sorted(group))}]")
         if contract.optional:
             parts.append(f"optional [{', '.join(sorted(contract.optional))}]")
+        if name in TEMPLATE_NOTES:
+            parts.append(f"NOTE: {TEMPLATE_NOTES[name]}")
         lines.append(f"- {name}: " + "; ".join(parts))
+    lines.append(
+        "Param values are bare view/column identifiers unless the param name "
+        "says expression (*_expr) or filter (*where)."
+    )
     return "\n".join(lines)
 
 
@@ -117,8 +123,23 @@ V2_SYSTEM = (
     "input), either instantiate the most suitable template — filling "
     "every required param with concrete view/column names from the "
     "supplied schemas — or answer template=null with a short "
-    "no_template_reason when no template can test the claim. Never force "
+    "no_template_reason when no template can test the claim. Every claim "
+    "lists its admissible templates; choose among those only. Never force "
     "a fit: an honest null keeps the claim visible as untested, which is "
     "the correct outcome for rules that only a human or a document can "
     "settle."
+)
+
+V2_ROLES_SYSTEM = V2_SYSTEM + (
+    "\n\nThe claims in this batch are role bindings: each asserts that "
+    "specific views/columns play a domain role. A role binding IS "
+    "falsifiable — by instantiating the conservation law implied by the "
+    "role's definition against the bound columns (its admissible "
+    "templates are the invariant probes). A binding whose invariant holds "
+    "is supported; one whose invariant fails is refuted — that is how "
+    "competing candidates for the same role are decided. Bind each "
+    "role-binding claim to the invariant template its role definition "
+    "implies, taking params from the claim's binding; answer "
+    "template=null only when the role's definition genuinely implies no "
+    "testable invariant."
 )

@@ -20,7 +20,8 @@ import json
 from pydantic import BaseModel
 
 from before_we_ai.llm.roles import RoleSet
-from before_we_ai.model.objects import Claim, ColumnProfile
+from before_we_ai.llm.vocabulary import INVARIANT_TEMPLATES, PREDICATES
+from before_we_ai.model.objects import Claim, ColumnProfile, RoleBindingClaim
 from before_we_ai.store.repository import ProjectStore
 
 
@@ -197,6 +198,12 @@ def build_binding_context(store: ProjectStore, labels: dict[str, Claim],
         claim_blocks = []
         for label, claim in labels.items():
             predicate = claim.predicate
+            if isinstance(claim, RoleBindingClaim):
+                admissible = INVARIANT_TEMPLATES
+            elif predicate and predicate.name in PREDICATES:
+                admissible = PREDICATES[predicate.name].templates
+            else:
+                admissible = ()
             lines = [
                 f"### claim {label}",
                 f"statement: {claim.statement}",
@@ -205,6 +212,7 @@ def build_binding_context(store: ProjectStore, labels: dict[str, Claim],
                     predicate.params if predicate else {},
                     sort_keys=True, ensure_ascii=False, default=str,
                 ),
+                "admissible templates: " + (", ".join(sorted(admissible)) or "none"),
             ]
             for ref in sorted({r for r in _param_refs(claim) if r in profile_keys}):
                 lines.append(

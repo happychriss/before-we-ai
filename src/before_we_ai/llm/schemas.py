@@ -6,12 +6,15 @@ against them or the call is retried once with the errors fed back.
 is a wrong answer. Predicate and template names are Literals over the
 controlled vocabulary, so free-form inventions fail here, not downstream.
 
-Schema validation is syntactic; the *semantic* checks (do the referenced
-columns exist, do params fit the predicate/template contract) live in
-``mapping`` and feed the same retry loop.
+Schemas stay purely *structural* (types, Literals, forbidden extras):
+a schema failure is fatal for the whole batch, so anything item-level —
+cross-field consistency, do the referenced columns exist, do params fit
+the predicate/template contract — lives in ``mapping``'s semantic checks
+instead, which feed the same retry loop but skip per item. (Learned from
+the first real run: 56 hypotheses died over two items missing a term.)
 """
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict
 
 from before_we_ai.llm.vocabulary import PredicateName, TemplateName
 
@@ -46,14 +49,6 @@ class Hypothesis(BaseModel):
     valid_to: str | None = None
     rationale: str  # why the profiles suggest this — logged, never stored on the claim
 
-    @model_validator(mode="after")
-    def _check_kind(self) -> "Hypothesis":
-        if self.kind not in ("rule", "concept"):
-            raise ValueError(f"kind must be 'rule' or 'concept', got {self.kind!r}")
-        if self.kind == "concept" and not (self.term and self.definition):
-            raise ValueError("a concept hypothesis requires term and definition")
-        return self
-
 
 class HypothesisBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -69,12 +64,6 @@ class RoleBindingProposal(BaseModel):
     role: str  # must name a role from the supplied role list (semantic check)
     binding: dict[str, str]  # role part -> "view" or "view.column"
     rationale: str
-
-    @model_validator(mode="after")
-    def _check_binding(self) -> "RoleBindingProposal":
-        if not self.binding:
-            raise ValueError("a role binding proposal must bind at least one part")
-        return self
 
 
 class RoleBindingBatch(BaseModel):
@@ -92,14 +81,6 @@ class ProbeBinding(BaseModel):
     template: TemplateName | None = None  # None = no suitable template
     params: dict[str, ParamValue] = {}
     no_template_reason: str | None = None
-
-    @model_validator(mode="after")
-    def _check_template(self) -> "ProbeBinding":
-        if self.template is None and not self.no_template_reason:
-            raise ValueError("template=null requires no_template_reason")
-        if self.template is not None and self.no_template_reason:
-            raise ValueError("no_template_reason is only valid with template=null")
-        return self
 
 
 class BindingBatch(BaseModel):
