@@ -95,6 +95,9 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   errors and pretty-printed answer); `llm-log.sh --html f.html` for a
   browsable page (also produced by step 8).
 - `viewer.sh` — rebuild the claim viewer HTML at any point mid-walkthrough.
+- `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots);
+  opens via `open_catalog()` so the views over attached ERP databases work —
+  a raw connection to `cache/analysis.duckdb` would not re-attach them.
 - `recall.sh [--online]` — Seeded-Recall scoring in its own project under
   `validation/data/recall/`. The offline replay deterministically scores
   **17/25** — the frozen fixtures are one particular (good) sample; the
