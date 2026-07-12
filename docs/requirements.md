@@ -81,3 +81,15 @@ strict contracts.
 - Stub mode (`--offline`, fixture answers) from day one; CI offline and deterministic
 - LLM output can only ever create `inferred` claims — promotion stays with probes/humans
 - Acceptance: Seeded-Recall incl. the F7/T7 semantic pair
+
+**Design constraints (owner-aligned 2026-07-12):**
+- Prompts stay domain-agnostic — no corpus-trap hints ever (see `meta/conventions.md`)
+- The `inferred`-only guardrail must hold **structurally** (actor restrictions in the
+  model layer, like `Actor.SYSTEM`), never by prompt discipline alone
+- Stub fixtures are refreshed from logged real runs (`cache/llm_log/`) so CI can't
+  drift green while real output rots; Seeded-Recall is a separate online eval,
+  never a CI gate
+- Input builder selects/compresses profiles **deterministically** (sorted, capped) —
+  reproducible online runs, no silent recall loss to the token cap
+- If F7/T7 is recalled suspiciously easily, investigate prompt leakage before
+  celebrating
