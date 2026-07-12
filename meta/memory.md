@@ -26,6 +26,17 @@
 
 ## Open items
 
+- **M5 blocker found 2026-07-12 (validation session): the E4 noise PDFs are
+  missing from the frozen corpus.** `sources_manifest.yaml` specifies
+  `reisekostenrichtlinie.pdf`, `lieferantenkatalog.pdf`,
+  `pressemitteilung_2022_divested_unit.pdf` (E4, trap F26 — poisoned anchor,
+  `deny_promotion: true`), but `src/corpus/data/` holds only the three
+  content PDFs (E1 management_report, E2 rabattvertrag, E3
+  buchhaltungsrichtlinie). F26 is in the recall_set and in
+  expected_verdicts.yaml, so M5's "T8 negatives" acceptance cannot be met as
+  written. Decide at M5 start: generate the missing decoys (corpus is frozen,
+  tag m0-corpus-v1 — needs a deliberate re-tag) or re-scope F26.
+
 - **Owner: set the numeric Seeded-Recall bar** now that the first measurement
   exists (15/25; misses mostly K3 definition-style traps F14/F15/F17/F19/F21/F25
   and F3/F4/F7/F11 — see report). Matchers in `tests/eval/seeded_recall.py`
