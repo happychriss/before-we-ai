@@ -129,9 +129,11 @@ def build_role_context(store: ProjectStore, matrix: dict, roles: RoleSet,
                        *, max_chars: int | None = None) -> BuiltInput:
     """Role-binding input: the role definitions first, then the V1 context."""
     def render(patterns: bool = True, top_k: int | None = None) -> str:
+        # only name + definition enter the prompt — decided_by is lint
+        # metadata for the settlement path, never a hint to the model
         role_lines = [f"## Roles to bind (domain: {roles.domain})"]
-        role_lines += [f"- {name}: {definition}"
-                       for name, definition in roles.roles.items()]
+        role_lines += [f"- {name}: {spec.definition}"
+                       for name, spec in roles.roles.items()]
         body = _profile_body(store, matrix, patterns=patterns, top_k=top_k)
         return "\n".join(role_lines) + "\n\n" + body
 

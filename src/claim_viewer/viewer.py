@@ -482,9 +482,10 @@ def render_project(root: str | Path) -> str:
       </section>
       <section class="panel" id="roles">
         <h2>Role elections</h2>
-        <p class="muted">Every role the AI proposed candidates for. Invariant probes elect the winner —
-        a role with no winner ends in a Fachfrage.</p>
-        {_render_role_elections(facts, questions)}
+        <p class="muted">Every role the AI proposed candidates for. Each role declares its
+        settlement path: a domain law elects the winner, or the humans decide via Fachfrage —
+        never silence.</p>
+        {_render_role_elections(facts, questions, _load_decided_by(root_path, config))}
       </section>
       <section class="panel" id="claims">
         <h2>Claim detail</h2>
@@ -758,15 +759,53 @@ def _render_role_pack(root: Path, config: dict) -> str:
         )
     roles = pack.get("roles") or {}
     items = "".join(
-        f"<details><summary><code>{escape(name)}</code></summary>"
-        f"<p>{escape(str(text).strip())}</p></details>"
-        for name, text in roles.items()
+        f"<details><summary><code>{escape(name)}</code> "
+        f"<span class='fine'>{escape(_decided_by_label(spec))}</span></summary>"
+        f"<p>{escape(str(_role_definition(spec)).strip())}</p></details>"
+        for name, spec in roles.items()
     )
     return (
         f"<p>domain <strong>{escape(str(pack.get('domain', '?')))}</strong>, "
-        f"{len(roles)} roles — human-written definitions, no system names<br>"
+        f"{len(roles)} roles — human-written definitions, no system names; "
+        "each declares its settlement path (how it can ever stop being a guess)<br>"
         f"<code>{escape(str(path))}</code></p>{items}"
     )
+
+
+def _role_definition(spec) -> str:
+    if isinstance(spec, dict):
+        return str(spec.get("definition", ""))
+    return str(spec)
+
+
+def _decided_by_label(spec) -> str:
+    decided_by = spec.get("decided_by", "") if isinstance(spec, dict) else ""
+    if not decided_by:
+        return ""
+    if decided_by == "fachfrage":
+        return "decided by humans (Fachfrage)"
+    if decided_by == "slot":
+        return "slot only — carried inside another role's law"
+    return f"elected by the {decided_by} law"
+
+
+def _load_decided_by(root: Path, config: dict) -> dict[str, str]:
+    """role -> decided_by from the declared role pack; empty if unreadable."""
+    declared = (config.get("llm") or {}).get("roles_file")
+    if not declared:
+        return {}
+    path = Path(declared)
+    if not path.is_absolute():
+        path = root / path
+    try:
+        pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except OSError:
+        return {}
+    return {
+        name: spec.get("decided_by", "")
+        for name, spec in (pack.get("roles") or {}).items()
+        if isinstance(spec, dict)
+    }
 
 
 def _render_domain_law_templates() -> str:
@@ -789,7 +828,8 @@ def _render_domain_law_templates() -> str:
 
 
 def _render_role_elections(
-    facts: dict[str, ClaimFacts], questions: list[QuestionCard]
+    facts: dict[str, ClaimFacts], questions: list[QuestionCard],
+    decided_by: dict[str, str],
 ) -> str:
     by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
     for fact in facts.values():
@@ -817,25 +857,29 @@ def _render_role_elections(
                 f"<p><strong>Elected:</strong> {_claim_link(winners[0].claim)} "
                 f"{_status_badge(winners[0].derived.value)}</p>"
             )
-        elif not any(fact.probes for fact in candidates):
-            outcome = (
-                "<p class='muted'><strong>Never put to the test:</strong> no invariant probe "
-                "was bound to any candidate, so every candidate is still a guess.</p>"
-            )
         elif cards:
+            # the drafted Fachfrage is the outcome, whatever kept a law from
+            # electing — probed-and-lost, unbindable, or a fachfrage-decided role
             outcome = "".join(
                 f"<p><strong>No winner → Fachfrage:</strong> {_question_link(card)}</p>"
                 for card in cards
             )
+        elif not any(fact.probes for fact in candidates):
+            outcome = (
+                "<p class='muted'><strong>Not decided yet:</strong> no invariant probe "
+                "bound and no Fachfrage drafted — binding is still in flight.</p>"
+            )
         else:
             outcome = (
                 "<p class='muted'>No winner — every tested candidate lost, and no Fachfrage "
-                "is drafted yet.</p>"
+                "is drafted yet (run role resolution).</p>"
             )
+        path_note = _decided_by_label({"decided_by": decided_by.get(role, "")})
         blocks.append(
             f"<div class='election'><h3><code>{escape(role)}</code> "
             f"<span class='muted'>{len(candidates)} candidate"
-            f"{'s' if len(candidates) != 1 else ''}</span></h3>"
+            f"{'s' if len(candidates) != 1 else ''}"
+            f"{' · ' + escape(path_note) if path_note else ''}</span></h3>"
             f"{outcome}{rows}</div>"
         )
     return "".join(blocks)

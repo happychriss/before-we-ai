@@ -378,7 +378,12 @@ All milestones together form **one** flow. The sentence to remember:
    - The **role pack** [a YAML file, e.g. the finance pack]: the *nouns*
      of the domain — what a journal is, what a subledger, what an
      intercompany posting. Written by humans, pure definitions, no system
-     names.
+     names. Each role also declares how it can ever be settled
+     [`decided_by:` — a law, `fachfrage`, or `slot`; checked on load]:
+     some roles a law can decide (books balance → this is the journal),
+     others no arithmetic can — what a column *means* is a human
+     question. The promise: **every role ends in a probe verdict or a
+     Fachfrage, never in silence.**
    - The **domain-law templates** [the three templates tagged
      `domain="finance"` in `probes/library.py`]: the *laws* — "books
      balance per document", "subledger equals general ledger",

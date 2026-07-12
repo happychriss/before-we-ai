@@ -101,9 +101,21 @@ missing intercompany leg); intercompany contradicted everywhere; audit CLEAN.
 
 ### Step 7 — role resolution
 
-Good (offline pins): exactly **one** German Fachfrage — the intercompany
-role lost every candidate, so it becomes a question carrying both losing
-claim ids. The settled journal role drafts nothing.
+Every role in the pack declares its settlement path (`decided_by:` in the
+role file, linted on load): the domain law that can elect it, or
+`fachfrage` — no arithmetic can decide what a column *means* — or `slot`.
+The rule is: **every non-slot role ends in a probe verdict or a Fachfrage,
+never in nothing.**
+
+Good (offline pins): **six** German Fachfragen, one per unsettled role —
+
+- `intercompany` — probed, every candidate lost → "welche Quelle ist führend?"
+- `subledger_ar` — its law could never be bound to a candidate (the AR
+  control account is not documented in the data) → "welches Fachwissen fehlt?"
+- `account`, `doc_ref`, `entity`, `period` — fachfrage-decided; each question
+  lists the candidates, so it is answerable in one pick.
+
+The settled roles (`journal`, `amount_local`) draft nothing.
 
 ### Step 8 — collect
 

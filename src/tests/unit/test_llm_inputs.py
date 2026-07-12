@@ -76,10 +76,15 @@ def test_forced_trim_is_loud_and_names_the_cut(tmp_path):
 
 def test_role_context_leads_with_the_role_definitions(tmp_path):
     store = _store(tmp_path)
-    roles = RoleSet(domain="testing", roles={"ledger": "the journal of record"})
+    roles = RoleSet(domain="testing", roles={
+        "ledger": {"definition": "the journal of record",
+                   "decided_by": "fachfrage"},
+    })
     built = inputs.build_role_context(store, MATRIX, roles)
     assert built.text.startswith("## Roles to bind (domain: testing)")
     assert "- ledger: the journal of record" in built.text
+    # the settlement path is lint metadata, never a hint to the model
+    assert "decided_by" not in built.text and "fachfrage" not in built.text
     assert "## Column profiles" in built.text
 
 

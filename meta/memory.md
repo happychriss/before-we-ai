@@ -19,12 +19,15 @@
   verbatim reason), so "why was this never tested" survives a cache wipe
   (architecture.md "A refusal is a result"). Walkthrough data re-generated
   offline (steps 0–7) so the report shows them.
-- **Open finding for the owner** (surfaced by the role elections): the roles
-  `account`, `doc_ref`, `entity` can never be elected — they appear only as
-  *slots* inside the invariants, so V2 honestly answers `template=null` for all
-  their candidates and they stay `inferred` with no Fachfrage. The role-pack
-  lint (M5 kickoff) must force each declared role to name the invariant that
-  elects it, or be declared slot-only.
+- **Role settlement paths SHIPPED** (2026-07-12, owner-approved after the
+  "undecidable roles" discussion): every role declares `decided_by:`
+  (law / fachfrage / slot), the pack lint rejects silent roles, and
+  `resolve_roles` guarantees every non-slot role ends in a probe verdict or
+  a Fachfrage — never in nothing (architecture.md "Every role declares its
+  settlement path"). Walkthrough step 7 now pins **6** Fachfragen (was 1);
+  prompt bytes unchanged, drift guard green. Deferred to M5 (prompt bytes →
+  fixture re-record): `account` bound to the generic anti_join against the
+  chart of accounts; slot-side lint (needs TemplateSpec slot metadata).
 - Shipped mid-validation: **two-tier retry** (item-scoped repair; see
   architecture.md "Retry contract, two-tier"). Offline replays unchanged;
   real effect only measurable on the next online run — watch for

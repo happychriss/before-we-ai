@@ -38,18 +38,20 @@ overrides. Flat YAML, no plugin framework (Regel der Drei). Shipped packs
 must pass the same leakage tripwire as prompts. Tests keep pointing at the
 fixture until the next fixture re-record (byte-identical content anyway).
 
-**Logical pack validation (same milestone):** loading today checks only the
-schema (`RoleSet`, `extra="forbid"`) — nothing catches an orphan role no
-invariant consumes, or an invariant whose role slots the pack cannot fill.
-The role↔slot mapping is conceptual (8 finance roles ↔ 3 laws, zero
-leftovers) but not mechanical: invariant params (`journal`, `subledger`,
-`left`/`right`…) are not literally pack role names. Fix: each invariant
-`TemplateSpec` declares which *roles* its slots consume; `load_roles` then
-lints the pack against the registry — orphan role → error ("prompt noise"),
-unfillable slot → error. Principle: docs/architecture.md "Domain inputs".
-The code half of the pack already exists: domain-law templates carry
-`TemplateSpec.domain` (tagged 2026-07-12, test-locked) — a domain pack is
-role YAML + its domain-tagged templates, together.
+**Logical pack validation:** the role half **shipped 2026-07-12** — every role
+declares `decided_by:` (its law, `fachfrage`, or `slot`) and the `RoleSet`
+lint rejects a silent role, a generic template as decider, and a foreign
+domain's law (architecture.md "Every role declares its settlement path").
+Remaining for M5, needs template metadata: the slot side — each invariant
+`TemplateSpec` declares which *roles* its slots consume, so the lint can also
+reject an invariant whose slots the pack cannot fill (invariant params
+(`journal`, `subledger`, `left`/`right`…) are not literally pack role names
+today). Also M5 (prompt bytes → fixture re-record batch): role claims binding
+to *generic* templates where a real data property exists (`account` via
+anti_join against the chart of accounts). The code half of the pack already
+exists: domain-law templates carry `TemplateSpec.domain` (tagged 2026-07-12,
+test-locked) — a domain pack is role YAML + its domain-tagged templates,
+together.
 
 ## 3. Role-pack drafting (LLM contract, post-M5)
 

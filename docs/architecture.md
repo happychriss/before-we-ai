@@ -185,15 +185,29 @@ fixture re-record batch.
   accordingly: `llm/` may build exactly one `EvidenceRecord`, of type
   `DECLARATION`, and may not even name a promoting evidence type
   (`tests/unit/test_llm_guardrail.py`).
-- **Role resolution**: an unresolved role (candidates probed, none ≥ tested)
-  becomes a deduped Fachfrage via `resolve_roles` — the losing candidates keep
-  their honest derived statuses; nothing is silently discarded.
-  KNOWN GAP the viewer made visible: roles that appear only as *slots* inside the
-  invariants (`account`, `doc_ref`, `entity`) can never be elected by any probe —
-  V2 correctly answers `template=null` for all their candidates, so they stay
-  `inferred` and draft no Fachfrage. That is the role-pack lint's job (M5
-  kickoff, `docs/onboarding-workflow.md`): every declared role must name the
-  invariant that can elect it, or be declared slot-only.
+- **Every role declares its settlement path** (2026-07-12; the viewer's role
+  elections made the gap visible). Each role in the pack carries `decided_by:`
+  — the domain law that can elect it, `fachfrage` (no arithmetic can decide
+  what a column *means*: a journal balances per period AND per document AND
+  per year, so a passing law never proves what one slot means), or `slot`
+  (only carried inside another role's law). The pack lint (`RoleSet`
+  validator) rejects a silent role and rejects a generic template or a
+  foreign domain's law as decider. `decided_by` never enters a prompt — only
+  the definitions render — so the fixture drift guard stayed green.
+- **Role resolution — no silence**: `resolve_roles` completes the rule *every
+  non-slot role ends in a probe verdict or a Fachfrage*: probed-and-lost →
+  "welche Quelle ist führend?"; law never bindable (every candidate carries
+  V2's no-probe declaration — the subledger_ar case: knowledge missing to
+  apply the law) → "welches Fachwissen fehlt?"; fachfrage-decided →
+  question listing the candidates, answerable in one pick; no candidate at
+  all (once the search ran) → "gibt es diese Rolle?". Candidates without a
+  probe result and without a declaration are in flight and draft nothing.
+  The losing candidates keep their honest derived statuses.
+  Still M5: the slot-fillability side of the lint (every invariant slot
+  fillable by some declared role — needs template slot metadata), and letting
+  role claims bind to *generic* templates (e.g. `account` via anti_join
+  against the chart of accounts — catches garbage, though it still cannot
+  prove meaning); the latter changes prompt bytes → fixture re-record batch.
 - Seeded-Recall lives in `tests/eval/seeded_recall.py` — reports, never gates.
 
 ## Claim viewer (`claim_viewer/` — owned code since 2026-07-12)

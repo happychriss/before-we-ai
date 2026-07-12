@@ -167,12 +167,30 @@ def test_verdicts_land_on_the_corpus_ground_truth(pipeline):
         assert store.claims[cid].status is ClaimStatus.INFERRED
 
 
-def test_lost_role_becomes_a_fachfrage_not_a_silent_discard(pipeline):
+def test_every_unsettled_role_becomes_a_fachfrage_not_a_silent_discard(pipeline):
+    """Every non-slot role ends in a probe verdict or a Fachfrage:
+    intercompany was probed and lost everywhere; subledger_ar's law could
+    never be bound to a candidate; the four fachfrage-decided roles
+    (account, doc_ref, entity, period) list their candidates for the
+    humans to choose. The settled roles (journal, amount_local) draft
+    nothing."""
     cards = pipeline["role_cards"]
-    assert len(cards) == 1
-    assert "'intercompany'" in cards[0].question
-    assert len(cards[0].claim_ids) == 2  # both losing candidates attached
-    # the settled journal role drafts no question, and resolution is idempotent
+    by_role = {}
+    for card in cards:
+        role = card.question.split("'")[1]
+        by_role[role] = card
+    assert sorted(by_role) == [
+        "account", "doc_ref", "entity", "intercompany", "period", "subledger_ar",
+    ]
+    ic = by_role["intercompany"]
+    assert "Invarianten-Sonde bestanden" in ic.question  # probed, all lost
+    assert len(ic.claim_ids) == 2  # both losing candidates attached
+    assert "welches Fachwissen fehlt" in by_role["subledger_ar"].question
+    for role in ("account", "doc_ref", "entity", "period"):
+        card = by_role[role]
+        assert "welche Bindung gilt" in card.question
+        assert card.claim_ids  # the candidates ride along, answerable in one pick
+    # resolution is idempotent
     assert resolve_roles(pipeline["store"], pipeline["roles"]) == []
 
 

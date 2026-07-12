@@ -103,14 +103,23 @@ def domain_header(project: Path) -> str:
     roles_path = (config.get("llm") or {}).get("roles_file")
     if roles_path:
         pack = yaml.safe_load(Path(roles_path).read_text(encoding="utf-8"))
+
+        def _definition(spec) -> str:
+            return spec.get("definition", "") if isinstance(spec, dict) else str(spec)
+
+        def _decided(spec) -> str:
+            return spec.get("decided_by", "") if isinstance(spec, dict) else ""
+
         role_items = "".join(
-            f"<details><summary><code>{html.escape(name)}</code></summary>"
-            f"<p>{html.escape(text.strip())}</p></details>"
-            for name, text in pack.get("roles", {}).items())
+            f"<details><summary><code>{html.escape(name)}</code>"
+            + (f" <i>decided_by: {html.escape(_decided(spec))}</i>" if _decided(spec) else "")
+            + f"</summary><p>{html.escape(_definition(spec).strip())}</p></details>"
+            for name, spec in pack.get("roles", {}).items())
         roles_html = (
             f"<p>domain <b>{html.escape(pack.get('domain', '?'))}</b>, "
             f"{len(pack.get('roles', {}))} roles — human-written definitions, "
-            f"no system names<br><code>{html.escape(str(roles_path))}</code></p>"
+            f"no system names; only the definitions enter prompts, decided_by is "
+            f"the linted settlement path<br><code>{html.escape(str(roles_path))}</code></p>"
             f"{role_items}")
 
     try:

@@ -2,32 +2,56 @@
 # no ontology, no plugin framework before a third domain forces one).
 #
 # CLEAN BY CONSTRUCTION: definitions only — no examples, no source names,
-# no hints. This file is passed into LLM prompts; anything corpus-specific
-# here would teach to the test and invalidate Seeded-Recall. The corpus
-# generator's own roles.yaml (src/corpus/generator_spec/) is NOT usable
-# at runtime for exactly that reason.
+# no hints. The definitions are passed into LLM prompts; anything
+# corpus-specific here would teach to the test and invalidate
+# Seeded-Recall. The corpus generator's own roles.yaml
+# (src/corpus/generator_spec/) is NOT usable at runtime for exactly that
+# reason.
+#
+# decided_by declares each role's settlement path (linted on load; it
+# never enters a prompt): the domain law that can elect it, or
+# "fachfrage" — no arithmetic can decide what a column *means*, the
+# candidates go to the humans — or "slot" (only carried inside another
+# role's law). Every role ends in a probe verdict or a Fachfrage,
+# never in nothing.
 domain: finance
 roles:
-  journal: >-
-    The transactional ledger of record: one row per posting line, carrying a
-    signed amount and a document reference; debit and credit lines balance
-    per document.
-  amount_local: >-
-    The signed posting amount in local currency on the journal — the column
-    that must sum to zero per document.
-  doc_ref: >-
-    The document (voucher) reference that groups journal lines into balanced
-    postings.
-  account: >-
-    The account identifier on the journal, resolvable against a chart of
-    accounts.
-  period: >-
-    The posting period on the journal, at fiscal-period granularity.
-  entity: >-
-    The legal entity or company code a posting belongs to.
-  subledger_ar: >-
-    The accounts-receivable open items: one row per open receivable with a
-    signed amount, reconcilable against the journal's control account.
-  intercompany: >-
-    Paired intercompany postings between two entities that must mirror each
-    other per period.
+  journal:
+    decided_by: balance
+    definition: >-
+      The transactional ledger of record: one row per posting line, carrying a
+      signed amount and a document reference; debit and credit lines balance
+      per document.
+  amount_local:
+    decided_by: balance
+    definition: >-
+      The signed posting amount in local currency on the journal — the column
+      that must sum to zero per document.
+  doc_ref:
+    decided_by: fachfrage
+    definition: >-
+      The document (voucher) reference that groups journal lines into balanced
+      postings.
+  account:
+    decided_by: fachfrage
+    definition: >-
+      The account identifier on the journal, resolvable against a chart of
+      accounts.
+  period:
+    decided_by: fachfrage
+    definition: >-
+      The posting period on the journal, at fiscal-period granularity.
+  entity:
+    decided_by: fachfrage
+    definition: >-
+      The legal entity or company code a posting belongs to.
+  subledger_ar:
+    decided_by: subledger_equals_gl
+    definition: >-
+      The accounts-receivable open items: one row per open receivable with a
+      signed amount, reconcilable against the journal's control account.
+  intercompany:
+    decided_by: ic_symmetry
+    definition: >-
+      Paired intercompany postings between two entities that must mirror each
+      other per period.
