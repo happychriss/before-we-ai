@@ -1,0 +1,116 @@
+# M4 validation walkthrough — owner's guide
+
+You drive the pipeline **one stage at a time** with the scripts in
+`validation/scripts/` and inspect what each stage produced before moving on.
+Everything lands in `validation/data/` (git-ignored, disposable — `0-reset.sh`
+wipes it). The scripts activate the venv themselves; run them from anywhere.
+
+Default mode is **offline**: the recorded real answers (Opus 4.8 / Sonnet 5,
+2026-07-12) are replayed through the full validation path, so every run is
+deterministic and needs no API key. For live calls run
+`1-scan.sh --online` and `export ANTHROPIC_API_KEY=...` first.
+
+## The steps
+
+| # | script | pipeline stage |
+|---|--------|----------------|
+| 0 | `0-reset.sh` | wipe `validation/data/` |
+| 1 | `1-scan.sh` | load: ingest all 7 sources, build catalog + profiles |
+| 2 | `2-matrix.sh` | initial mapping: table:table value-overlap matrix |
+| 3 | `3-hypotheses.sh` | V1: LLM proposes claim hypotheses |
+| 4 | `4-role-proposals.sh` | LLM proposes role-binding candidates |
+| 5 | `5-bind-probes.sh` | V2: LLM binds claims to probe templates |
+| 6 | `6-run-probes.sh` | engine: execute probes, derive statuses |
+| 7 | `7-resolve-roles.sh` | lost roles become Fachfragen |
+| 8 | `8-collect.sh` | gather everything into a clickable report |
+
+Rerunning steps 3 and 4 is safe (claim-key dedup catches everything), and
+step 7 is idempotent. Step 5 refuses to run twice: the offline replay answers
+are keyed to the first run's claim labels, so a re-bind would misapply them —
+run `0-reset.sh` and walk through again instead.
+
+### Step 1 — load
+
+Look at: view list with row counts, normalization declarations.
+Good: all 7 sources became `<source>__<table>` views; every normalization is
+a visible SYSTEM declaration; **claim count is 0** — the scan never infers.
+
+### Step 2 — mapping (candidate matrix)
+
+Look at: top pairs by containment (`--top 30` for more); full table in
+`data/project/profiles/candidate_matrix.md`.
+Good: the real finance joins (accounts, document refs across de_erp / us_erp /
+buchungen_report / the Excel files) score high — and some coincidental
+overlaps are in the list too. That is by design: the matrix measures, never
+judges; filtering happens later via probes.
+
+### Step 3 — V1 hypotheses
+
+Look at: created/deduped/skipped counts, predicate mix, sample claims; then
+`llm-log.sh 1` for the verbatim prompt and answer.
+Good (offline pins): **62 created, 1 deduped, 2 skipped** with visible
+reasons; every claim `inferred`, created by `ai`, with a structured
+predicate. Audit the prompt: profiles + matrix only, no corpus hints.
+
+### Step 4 — role proposals
+
+Look at: candidates per role.
+Good (offline pins): **23 candidates** over the 8 finance roles, all still
+`inferred`; the journal role has three competitors including the CSV report —
+competition is wanted, the invariant probes will decide.
+
+### Step 5 — V2 binding
+
+Look at: template mix; the three honest rejection buckets.
+Good (offline pins): **58 probes**, **18 unbindable** (model said
+`template=null`, with its reason), **8 semantic-only** (no admissible
+template exists — the semantic-equivalence class lives here), **1 skipped**
+(validation rejected a `ranges: []` binding). Nothing disappears silently.
+
+### Step 6 — engine sweep
+
+Look at: executed/skipped, verdict mix, role verdicts, the false-promotion
+audit line.
+Good (offline pins): **58 executed, 0 skipped**; journal role:
+`de_erp__gl_postings` **tested**, `buchungen_report` **contradicted** (the
+decoy loses), `us_erp__gl_postings` **contradicted** (honest — the data has a
+missing intercompany leg); intercompany contradicted everywhere; audit CLEAN.
+
+### Step 7 — role resolution
+
+Good (offline pins): exactly **one** German Fachfrage — the intercompany
+role lost every candidate, so it becomes a question carrying both losing
+claim ids. The settled journal role drafts nothing.
+
+### Step 8 — collect
+
+Builds `validation/data/report/index.html` linking the claim viewer, the
+LLM-call browser, the candidate matrix, and (if `recall.sh` ran) the
+Seeded-Recall report. Open it in a browser or VS Code and click around.
+
+## Tools
+
+- `llm-log.sh` — list all LLM calls; `llm-log.sh 2` shows one call fully
+  formatted (system prompt, user input, every attempt with its validation
+  errors and pretty-printed answer); `llm-log.sh --html f.html` for a
+  browsable page (also produced by step 8).
+- `viewer.sh` — rebuild the claim viewer HTML at any point mid-walkthrough.
+- `recall.sh [--online]` — Seeded-Recall scoring in its own project under
+  `validation/data/recall/`. The offline replay deterministically scores
+  **17/25** — the frozen fixtures are one particular (good) sample; the
+  official first online run scored 15/25 (`docs/seeded-recall-m4.md`).
+
+## Expected behaviors that are NOT bugs
+
+- Two V1 hypotheses and one V2 binding are skipped on every offline replay —
+  the recorded answers kept a few bad items even after their retry; skips are
+  per-item and visible in the logs (`outcome: partial`).
+- `us_erp__gl_postings` journal candidate is CONTRADICTED — data-honest (the
+  US ledger's missing IC leg breaks the per-period balance).
+- Online runs sample differently each time (~50–62 hypotheses, recall
+  14–15/25); only the recorded fixtures are frozen. Claim statements are
+  model-worded — identity/dedup lives in predicate+params, never wording.
+- A probe that cannot execute lands in `skipped("execution error…")`, writes
+  no evidence, and does not stop the sweep.
+- Known viewer gap: persisted probes are not linked from claims
+  (`docs/claim-viewer.md`).

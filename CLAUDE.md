@@ -26,6 +26,9 @@ but never restate it:
   items become durable), environment notes
 - `scripts/` — (reserved, added later) self-contained ops scripts: start the
   process, claim viewer, cleanup of stale processes; runnable directly after login
+- `validation/` — owner-facing validation walkthrough: `README.md` (the test
+  steps) + `scripts/` (runnable stage & viewer tools); `data/` is generated
+  and git-ignored
 - `README.md` — human-facing product front page (exempt: may summarize)
 
 When recording something new, place it in its home and update — don't append copies.
