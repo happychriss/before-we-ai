@@ -112,9 +112,9 @@ So run `db-export.sh` and open `export.duckdb` — 48 real tables, no external
 references, browsable from anywhere. Re-export after a re-scan; it is a
 snapshot, and `cache/` stays disposable.
 
-Both scripts rebuild the catalog into an in-memory connection instead of
-opening `cache/analysis.duckdb`, so they keep working while a host client
-holds a lock on that file (`Conflicting lock is held in PID 0`).
+Close the file in the external client before rerunning the scripts: a host
+DuckDB client takes an exclusive lock, and ours then fails with
+`Conflicting lock is held in PID 0`.
 - `recall.sh [--online]` — Seeded-Recall scoring in its own project under
   `validation/data/recall/`. The offline replay deterministically scores
   **17/25** — the frozen fixtures are one particular (good) sample; the

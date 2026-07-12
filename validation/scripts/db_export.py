@@ -16,7 +16,7 @@ from pathlib import Path
 
 import duckdb
 
-from before_we_ai.sources.attach import build_catalog, load_specs
+from before_we_ai.sources import open_catalog
 
 DEFAULT_PROJECT = Path(__file__).resolve().parents[1] / "data" / "project"
 
@@ -27,12 +27,8 @@ def export(project: Path, out: Path) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.unlink(missing_ok=True)
 
-    # Build the catalog into a throwaway in-memory connection rather than
-    # opening cache/analysis.duckdb: a DuckDB client on the host (DataGrip)
-    # holds an exclusive lock on that file, and the build is cheap anyway.
-    con = duckdb.connect()
+    con = open_catalog(project)
     try:
-        build_catalog(project, load_specs(project), con)
         views = [row[0] for row in con.execute(
             "select view_name from duckdb_views() where not internal "
             "order by view_name").fetchall()]
