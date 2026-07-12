@@ -67,7 +67,8 @@ traps are held back by the owner to test what the implementer didn't anticipate.
 ## Status
 
 Concept, architecture, and validation basis are complete. Implementation follows
-milestones **M0–M8**; the current step is **M0: the finance corpus generator**.
+milestones **M0–M8**; **M0–M3 are done** (tags `m0-corpus-v1` … `m3-probes-v1`, plus the
+merged claim viewer) and the current step is **M4: LLM contracts V1/V2**.
 
 ## Roadmap
 
