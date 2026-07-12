@@ -256,7 +256,9 @@ def normalize_template_params(template: str, params: dict) -> dict:
 TEMPLATE_NOTES: dict[str, str] = {
     "reconciliation": ("group/measure params are row-level SQL expressions "
                        "over the named view; the template applies SUM itself "
-                       "— never pre-aggregate"),
+                       "— never pre-aggregate. Check the column types in the "
+                       "view schemas: text-typed numeric columns must be cast "
+                       "in the expression, e.g. CAST(col AS DOUBLE)"),
     "balance": ("amount is a plain column summed by the template; group_expr, "
                 "if used, is a row-level expression"),
 }

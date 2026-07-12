@@ -242,9 +242,9 @@ def check_binding(b: ProbeBinding, claims_by_id: dict[str, Claim],
     # exist on the view they are used against
     for view_param in sorted(VIEW_PARAMS & set(params)):
         view = params[view_param]
-        if isinstance(view, str) and view not in index.views:
+        if not isinstance(view, str) or view not in index.views:
             errors.append(
-                f"claim {b.claim_id}: {view_param}={view!r} is not a known view"
+                f"claim {b.claim_id}: {view_param}={view!r} must name a known view"
             )
     for column_param, view_param in COLUMN_PARAMS.get(b.template, ()):
         view = params.get(view_param)

@@ -92,14 +92,16 @@ def test_contracts_ran_clean_offline(pipeline):
     working: review the new numbers and re-pin deliberately."""
     v1, proposals, v2 = pipeline["v1"], pipeline["proposals"], pipeline["v2"]
     assert v1.failure is None
-    assert len(v1.claims_created) == 54
+    assert len(v1.claims_created) == 62
+    assert v1.claims_deduped == 1  # the real batch contains one paraphrase pair
     assert len(v1.skipped) == 2  # residual bad items skipped, batch survived
     assert proposals.failure is None and len(proposals.claims_created) == 23
-    assert v2.failures == [] and v2.skipped == [] and v2.unanswered == []
-    assert len(v2.probes_created) == 49
-    assert len(v2.semantic_only) == 7  # no admissible template — never sent
-    assert len(v2.unbindable) == 21  # honest template=null answers
-    assert len(pipeline["engine"].executed) == 49
+    assert v2.failures == [] and v2.unanswered == []
+    assert len(v2.probes_created) == 58
+    assert len(v2.skipped) == 1  # the ranges=[] binding — skipped, not crashed
+    assert len(v2.semantic_only) == 8  # no admissible template — never sent
+    assert len(v2.unbindable) == 18  # honest template=null answers
+    assert len(pipeline["engine"].executed) == 58
     assert pipeline["engine"].skipped == []
 
 
@@ -108,7 +110,7 @@ def test_llm_path_cannot_promote(pipeline):
     inferred claim or a probe; status changes came from probe evidence only."""
     store = pipeline["store"]
     ai_claims = [c for c in store.claims.values() if c.created_by is Actor.AI]
-    assert len(ai_claims) == 77  # 54 hypotheses + 23 role candidates
+    assert len(ai_claims) == 85  # 62 hypotheses + 23 role candidates
     for evidence in store.evidence.values():
         assert evidence.actor is not Actor.AI
     # promotions happened, but only through probe evidence
@@ -170,9 +172,9 @@ def test_call_logs_are_complete(pipeline):
         outcomes.append(entry["outcome"])
         if entry["outcome"] == "partial":
             assert entry["attempts"][-1]["validation_errors"]  # skips are visible
-    # the recorded V1 answer keeps two bad items even after its retry —
-    # replayed as "partial", with the same items skipped every run
-    assert sorted(outcomes) == ["ok", "ok", "ok", "partial"]
+    # the recorded V1 and V2-claims answers keep a few bad items even after
+    # their retry — replayed as "partial", same items skipped every run
+    assert sorted(outcomes) == ["ok", "ok", "partial", "partial"]
 
 
 def test_pipeline_is_idempotent(pipeline):
@@ -180,13 +182,13 @@ def test_pipeline_is_idempotent(pipeline):
     claims; bound claims drop out of the V2 selection entirely."""
     root, store = pipeline["root"], pipeline["store"]
     again = hypothesize(root, store=store, scenario="corpus")
-    assert again.claims_created == [] and again.claims_deduped == 54
+    assert again.claims_created == [] and again.claims_deduped == 63
     proposals = propose_role_bindings(root, roles=pipeline["roles"], store=store,
                                       scenario="corpus")
     assert proposals.claims_created == [] and proposals.claims_deduped == 23
     # only the honestly unbound claims are still selectable for V2:
-    # 21 unbindable + 7 semantic-only
-    assert len(_unbound_ai_claims(store, None)) == 28
+    # 18 unbindable + 8 semantic-only + 1 skipped binding
+    assert len(_unbound_ai_claims(store, None)) == 27
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):

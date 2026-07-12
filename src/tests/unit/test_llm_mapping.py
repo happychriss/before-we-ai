@@ -183,8 +183,16 @@ def test_binding_checks_and_maps(tmp_path):
         "child": "beta__orders", "parent": "gamma__nowhere",
         "child_column": "customer_id", "parent_column": "customer_id",
     })
-    assert any("parent='gamma__nowhere' is not a known view" in e
+    assert any("parent='gamma__nowhere' must name a known view" in e
                for e in check_binding(ghost_view, claims, index))
+
+    # a view param that is not even a string (seen live: ranges=[]) is an error
+    list_view = ProbeBinding(claim_id=claim.id, template="range_join", params={
+        "table": "beta__orders", "value_column": "customer_id",
+        "ranges": [], "range_from": "lo", "range_to": "hi",
+    })
+    assert any("ranges=[] must name a known view" in e
+               for e in check_binding(list_view, claims, index))
 
     ghost_column = ProbeBinding(claim_id=claim.id, template="anti_join", params={
         "child": "beta__orders", "parent": "alpha__customers",
