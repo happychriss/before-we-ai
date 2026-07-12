@@ -36,8 +36,10 @@ VERDICT_COLORS = {
 
 STAGE_LABELS = {
     "bound": "bound to a probe",
-    "unbound": "no probe (unbindable or skipped)",
-    "semantic": "semantic-only (no admissible template)",
+    "unbindable": "unbindable — the model gave a reason",
+    "semantic_only": "semantic-only — no probe template can test it",
+    "skipped": "skipped — validation rejected the binding",
+    "unbound": "no probe, no recorded reason",
 }
 
 
@@ -49,8 +51,9 @@ class ClaimFacts:
     evidence: list[EvidenceRecord] = field(default_factory=list)
     probes: list[Probe] = field(default_factory=list)
     derived: ClaimStatus = ClaimStatus.INFERRED
-    stage: str = "unbound"  # bound | unbound | semantic
+    stage: str = "unbound"  # a key of STAGE_LABELS
     executed: bool = False
+    no_probe_reason: str = ""  # verbatim, from the DECLARATION V2 wrote
 
     @property
     def diverges(self) -> bool:
@@ -543,12 +546,17 @@ def _claim_facts(store: ProjectStore, claims: list[Claim]) -> dict[str, ClaimFac
             ),
             key=lambda probe: (probe.created_at, probe.id),
         )
+        # V2 declares why a claim got no probe (unbindable / semantic_only /
+        # skipped) — the model's own words, persisted, not left in the cache.
+        decision, reason = _no_probe_decision(evidence)
         if probes:
             stage = "bound"
-        elif admissible_templates(claim):
-            stage = "unbound"
+        elif decision:
+            stage = decision
+        elif not admissible_templates(claim):
+            stage = "semantic_only"
         else:
-            stage = "semantic"
+            stage = "unbound"
         facts[claim.id] = ClaimFacts(
             claim=claim,
             evidence=evidence,
@@ -558,8 +566,19 @@ def _claim_facts(store: ProjectStore, claims: list[Claim]) -> dict[str, ClaimFac
             executed=any(
                 record.type is EvidenceType.PROBE_RESULT for record in evidence
             ),
+            no_probe_reason=reason,
         )
     return facts
+
+
+def _no_probe_decision(evidence: list[EvidenceRecord]) -> tuple[str, str]:
+    for record in evidence:
+        if record.type is not EvidenceType.DECLARATION:
+            continue
+        decision = str(record.payload.get("decision", ""))
+        if decision in STAGE_LABELS:
+            return decision, str(record.payload.get("reason", ""))
+    return "", ""
 
 
 def _chip(count: int, label: str, stage: str, *, status: str | None = None) -> str:
@@ -587,9 +606,11 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
     )
     bound = (
         "<div class='funnel-stage'><span class='step'>bound</span>"
-        + _chip(stages["bound"], STAGE_LABELS["bound"], "bound")
-        + _chip(stages["unbound"], STAGE_LABELS["unbound"], "unbound")
-        + _chip(stages["semantic"], STAGE_LABELS["semantic"], "semantic")
+        + "".join(
+            _chip(stages[name], STAGE_LABELS[name], name)
+            for name in STAGE_LABELS
+            if stages[name]
+        )
         + "</div>"
     )
     judged = (
@@ -604,9 +625,9 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
         if by_status[status.value]
     ) + "</div>"
     caveat = (
-        "<p class='fine'>The store records probes, not the model's refusals: a claim with no "
-        "probe was either reported <em>unbindable</em> (the model gave a reason) or "
-        "<em>skipped</em> by validation. That split lives in the LLM call log, not here.</p>"
+        "<p class='fine'>A claim without a probe is not a claim that failed — it is a claim "
+        "nobody tested, and it stays <em>inferred</em>. Every one of them carries the reason "
+        "it got no probe; open the claim to read it in the model's own words.</p>"
     )
     return f"<div class='funnel'>{proposed}{bound}{judged}{verdicts}</div>{caveat}"
 
@@ -672,6 +693,11 @@ def _render_candidate(fact: ClaimFacts, won: bool) -> str:
         + f" — {detail}</div>"
         for template, domain, detail in _defeats(fact)
     )
+    if not fact.probes and fact.no_probe_reason:
+        reasons += (
+            f"<div class='fine'>never tested — {escape(fact.stage)}: "
+            f"{escape(fact.no_probe_reason)}</div>"
+        )
     return (
         f"<div class='cand {css}'>"
         f"<div>{_claim_link(fact.claim)} {_status_badge(fact.derived.value)}</div>"
@@ -815,9 +841,7 @@ def _render_claim_section(
         _render_evidence_card(record, claim, store.claims, declarations_by_key, store.probes)
         for record in evidence
     ) or '<p class="empty">No evidence attached yet.</p>'
-    probes_html = "".join(_render_probe_card(probe) for probe in probes) or (
-        '<p class="empty">No probes bound to this claim.</p>'
-    )
+    probes_html = "".join(_render_probe_card(probe) for probe in probes) or _no_probe_html(fact)
     dependency_html = "".join(
         f"<li>{_claim_link(dep)} { _status_badge(dep.status.value) }</li>"
         for dep in (store.claims[dep_id] for dep_id in claim.depends_on if dep_id in store.claims)
@@ -867,7 +891,7 @@ def _render_claim_section(
         f'id="claim-{escape(claim.id)}">'
         f"<h3>{escape(claim.statement)}</h3>"
         f"<p>{_status_badge(resolved.value)} "
-        f"<span class='muted'>{escape(_status_rationale(claim, evidence))}</span></p>"
+        f"<span class='muted'>{escape(_headline(fact))}</span></p>"
         f"{banner}"
         "<details open><summary>1 · Proposed — what the AI guessed</summary>"
         f"{proposed}{subtype}</details>"
@@ -888,6 +912,26 @@ def _render_claim_section(
         "<details><summary>Fine print — ids, timestamps, raw fields</summary>"
         f"{_definition_list(_claim_fields(claim))}</details>"
         "</div>"
+    )
+
+
+def _no_probe_html(fact: ClaimFacts) -> str:
+    """What stands where the probe would have stood: why none was built."""
+    if fact.stage == "unbound":
+        return (
+            '<p class="empty">No probe, and no recorded reason — V2 has not run on this '
+            "claim yet.</p>"
+        )
+    who = {
+        "unbindable": "The model declined to bind this claim",
+        "semantic_only": "No probe template can test this claim",
+        "skipped": "Validation rejected the model's binding",
+    }[fact.stage]
+    reason = escape(fact.no_probe_reason) if fact.no_probe_reason else "no reason recorded"
+    return (
+        f"<div class='banner'><strong>Not bound — {escape(fact.stage)}.</strong> {who}, "
+        f"so nothing ever tested it and it stays <em>inferred</em>."
+        f"<blockquote class='fine'>{reason}</blockquote></div>"
     )
 
 
@@ -1239,6 +1283,13 @@ def _column_link(column: str) -> str:
     return f'<a href="#column-{escape(column)}"><code>{escape(column)}</code></a>'
 
 
+def _headline(fact: ClaimFacts) -> str:
+    """The one line a validator should be able to stop reading after."""
+    if fact.derived is ClaimStatus.INFERRED and fact.stage != "bound":
+        return f"Never tested — {STAGE_LABELS[fact.stage]}."
+    return _status_rationale(fact.claim, fact.evidence)
+
+
 def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
     live = [record for record in evidence if not record.stale]
     probe_pass = sum(
@@ -1275,7 +1326,9 @@ def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
 
 
 def _short_id(value: str) -> str:
-    return value[:8]
+    # ULIDs are timestamp-first: a whole V1 batch is created in the same
+    # millisecond and shares its leading characters. Only the tail identifies.
+    return f"…{value[-6:]}"
 
 
 def _json_text(value: object) -> str:

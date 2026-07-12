@@ -172,9 +172,28 @@ fixture re-record batch.
   verbatim request included). GOTCHA: the corpus generator's
   `generator_spec/roles.yaml` names trap decoys — runtime role files must be
   clean (see `tests/fixtures/roles_finance.yaml`).
+- **A refusal is a result — and it is persisted** (2026-07-12). Every claim V2
+  leaves without a probe (`unbindable` / `semantic_only` / `skipped`) gets a
+  `DECLARATION` evidence record carrying the verbatim reason
+  (`payload: {decision, reason}`). Before that the reason existed only in the
+  disposable `cache/llm_log/`, so wiping the cache erased *why* a claim was never
+  tested — the most common question a validator asks. The declaration is process
+  metadata, the same class as a normalization declaration: authored by
+  `Actor.SYSTEM` (the AI still authors **no** evidence — the model's words travel
+  as payload data), and `resolve_status` ignores declarations, so it is
+  structurally incapable of promoting anything. The guardrail test was tightened
+  accordingly: `llm/` may build exactly one `EvidenceRecord`, of type
+  `DECLARATION`, and may not even name a promoting evidence type
+  (`tests/unit/test_llm_guardrail.py`).
 - **Role resolution**: an unresolved role (candidates probed, none ≥ tested)
   becomes a deduped Fachfrage via `resolve_roles` — the losing candidates keep
   their honest derived statuses; nothing is silently discarded.
+  KNOWN GAP the viewer made visible: roles that appear only as *slots* inside the
+  invariants (`account`, `doc_ref`, `entity`) can never be elected by any probe —
+  V2 correctly answers `template=null` for all their candidates, so they stay
+  `inferred` and draft no Fachfrage. That is the role-pack lint's job (M5
+  kickoff, `docs/onboarding-workflow.md`): every declared role must name the
+  invariant that can elect it, or be declared slot-only.
 - Seeded-Recall lives in `tests/eval/seeded_recall.py` — reports, never gates.
 
 ## Claim viewer (`claim_viewer/` — owned code since 2026-07-12)

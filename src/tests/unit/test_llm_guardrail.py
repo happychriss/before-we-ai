@@ -59,11 +59,36 @@ def test_ai_cannot_author_promoting_evidence(hypothesized_claim):
 def test_llm_modules_never_write_evidence():
     """The contract layer creates claims and probes — evidence writes do not
     appear anywhere in its source. Probes produce evidence when the ENGINE
-    runs them; the LLM layer only files the falsification requests."""
+    runs them; the LLM layer only files the falsification requests.
+
+    The one exception is ``v2_bind``, covered by the next test."""
     forbidden = ("add_evidence", "attach_evidence", "mark_evidence_stale")
     modules = [call_log, client, config, inputs, mapping, prompts,
-               roles_module, schemas, stub, v1_hypotheses, v2_bind, vocabulary]
+               roles_module, schemas, stub, v1_hypotheses, vocabulary]
     for module in modules:
         source = inspect.getsource(module)
         for call in forbidden:
             assert call not in source, f"{module.__name__} contains {call}"
+
+
+def test_v2_writes_only_declarations_and_they_cannot_promote(hypothesized_claim):
+    """V2's single evidence write: a DECLARATION saying why a claim got no
+    probe (unbindable / semantic-only / skipped). It is process metadata, the
+    same class as a normalization declaration — authored by the SYSTEM, never
+    by the AI, and structurally unable to move a status. Without it the
+    model's reason would live only in the disposable call log."""
+    source = inspect.getsource(v2_bind)
+    assert "mark_evidence_stale" not in source
+    assert source.count("EvidenceRecord(") == 1  # exactly one, the declaration
+    assert "type=EvidenceType.DECLARATION" in source
+    assert "actor=Actor.SYSTEM" in source
+    for promoting in ("PROBE_RESULT", "CONFIRMATION", "TESTIMONIAL", "DOCUMENT_ANCHOR"):
+        assert promoting not in source, f"v2_bind names {promoting}"
+
+    declaration = EvidenceRecord(
+        type=EvidenceType.DECLARATION,
+        actor=Actor.SYSTEM,
+        claim_id=hypothesized_claim.id,
+        payload={"decision": "unbindable", "reason": "no pairs available"},
+    )
+    assert resolve_status(hypothesized_claim, [declaration]) is ClaimStatus.INFERRED

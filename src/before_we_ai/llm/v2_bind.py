@@ -9,8 +9,10 @@ binding claims go to the invariant templates (frontier tier, per the
 architecture's exception), ordinary claims to the rest (mid tier). A
 claim whose predicate no template can test is reported as
 ``semantic_only``; a claim the model honestly cannot bind is reported as
-``unbindable`` with the model's reason. Nothing is silently dropped, no
-SQL is run, no evidence is written — the engine does that, later.
+``unbindable`` with the model's reason. Nothing is silently dropped: every
+claim that ends without a probe carries a DECLARATION saying why, so the
+refusal survives the disposable call log. No SQL is run and no
+status-bearing evidence is written — the engine does that, later.
 """
 
 from dataclasses import dataclass, field
@@ -41,8 +43,9 @@ from before_we_ai.llm.prompts import (
 )
 from before_we_ai.llm.roles import RoleSet, load_roles
 from before_we_ai.llm.schemas import BindingBatch, RoleBindingBatch
-from before_we_ai.model.enums import Actor, ClaimStatus
-from before_we_ai.model.objects import Claim, RoleBindingClaim
+from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType
+from before_we_ai.model.objects import Claim, EvidenceRecord, RoleBindingClaim
+from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.profile.candidates import load_matrix
 from before_we_ai.store.repository import ProjectStore
 
@@ -145,6 +148,33 @@ def _unbound_ai_claims(store: ProjectStore,
     return sorted(selected, key=lambda c: c.id)
 
 
+def _declare_no_probe(store: ProjectStore, claim: Claim, decision: str,
+                      reason: str) -> None:
+    """Record in the store why this claim got no probe.
+
+    The refusal is as much a result as a probe is — but it lived only in the
+    disposable call log. A DECLARATION is the canonical home: a declared
+    processing decision, weak evidence that can never promote. The SYSTEM
+    authors it (the AI never authors evidence); the model's verbatim reason
+    travels in the payload as data.
+    """
+    existing = store.evidence_for(claim)
+    if any(
+        record.type is EvidenceType.DECLARATION
+        and record.payload.get("decision") == decision
+        for record in existing
+    ):
+        return
+    record = EvidenceRecord(
+        type=EvidenceType.DECLARATION,
+        actor=Actor.SYSTEM,
+        claim_id=claim.id,
+        payload={"decision": decision, "reason": reason},
+    )
+    store.add_evidence(record)
+    store.save_claim(attach_evidence(claim, record, existing))
+
+
 def _existing_probe(store: ProjectStore, probe) -> bool:
     return any(
         p.template == probe.template
@@ -178,6 +208,12 @@ def bind_probes(
             ordinary.append(claim)
         else:
             report.semantic_only.append(claim.id)
+            _declare_no_probe(
+                store, claim, "semantic_only",
+                f"no probe template can test predicate "
+                f"{claim.predicate.name!r} — this claim is decided by a human, "
+                "not by SQL",
+            )
 
     # Role bindings are a search task with domain judgment — frontier tier
     # and a system prompt that explains the invariant mechanism; plain
@@ -208,11 +244,16 @@ def bind_probes(
             errors = check_binding(binding, labels, index)
             if errors:
                 report.skipped.append((binding.claim_id, "; ".join(errors)))
+                if binding.claim_id in labels:
+                    _declare_no_probe(store, labels[binding.claim_id], "skipped",
+                                      "; ".join(errors))
                 continue
             claim = labels[binding.claim_id]
             probe = binding_to_probe(binding, claim)
             if probe is None:
                 report.unbindable.append((claim.id, binding.no_template_reason))
+                _declare_no_probe(store, claim, "unbindable",
+                                  binding.no_template_reason or "")
                 continue
             if _existing_probe(store, probe):
                 report.probes_deduped += 1

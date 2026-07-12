@@ -9,15 +9,22 @@
   in-scope incl. T7 (leakage clean), False-Promotion 0 (`docs/seeded-recall-m4.md`).
 - **NOW: owner walks through M4 validation** — guide + runnable scripts:
   `validation/README.md`. Session 2026-07-12 reached step 7 (roles resolved);
-  remaining: step 8 + optional online pass. Suite: 240 pass
+  remaining: step 8 + optional online pass. Suite: 241 pass
   (`cd /workspace/src && python -m pytest -q`, venv `/workspace/.venv`).
 - **Claim-viewer redesign SHIPPED** (2026-07-12, all six approved items) — the
   page now mirrors the pipeline: funnel → Fachfragen inbox → role elections →
   master–detail claim-as-story, single derived badge. See
-  `docs/claim-viewer.md`. Open finding it surfaced: several roles
-  (`account`, `doc_ref`, `entity`) were **never put to the test** — no invariant
-  probe was bound to any of their candidates, so they stay `inferred`. Worth
-  the owner's eye at step 8.
+  `docs/claim-viewer.md`. It also forced a core improvement: **V2 now persists
+  its refusals** as DECLARATION evidence (unbindable / semantic-only / skipped +
+  verbatim reason), so "why was this never tested" survives a cache wipe
+  (architecture.md "A refusal is a result"). Walkthrough data re-generated
+  offline (steps 0–7) so the report shows them.
+- **Open finding for the owner** (surfaced by the role elections): the roles
+  `account`, `doc_ref`, `entity` can never be elected — they appear only as
+  *slots* inside the invariants, so V2 honestly answers `template=null` for all
+  their candidates and they stay `inferred` with no Fachfrage. The role-pack
+  lint (M5 kickoff) must force each declared role to name the invariant that
+  elects it, or be declared slot-only.
 - Shipped mid-validation: **two-tier retry** (item-scoped repair; see
   architecture.md "Retry contract, two-tier"). Offline replays unchanged;
   real effect only measurable on the next online run — watch for

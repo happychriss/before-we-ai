@@ -37,11 +37,13 @@ at a time; deep links (`#claim-…`, `#evidence-…`, `#probe-…`, `#question-�
 and reveal their claim.
 
 - **The funnel** — the epistemic story in four rows, each number a filter on the list:
-  proposed (all claims, inferred when created) → bound / no probe / semantic-only →
-  judged (a probe actually ran) → derived status. The store records probes, not the
-  model's refusals, so *unbindable* (model said `template=null`) and *skipped*
-  (validation rejected the binding) collapse into one "no probe" bucket — the split
-  lives in the LLM call log, and the page says so.
+  proposed (all claims, inferred when created) → bound / unbindable / semantic-only /
+  skipped → judged (a probe actually ran) → derived status. The buckets are read from
+  the `DECLARATION` records V2 writes (architecture.md "A refusal is a result"), so
+  they match the step-5 report exactly, and each claim shows **the model's verbatim
+  reason** where its probe would have been ("No documented pairs mapping
+  account_range_group values to expected account_id ranges is available to populate the
+  decode template's required 'pairs' parameter").
 - **Fachfragen inbox** — every open QuestionCard on top, with the claims it rests on.
 - **Role elections** — one block per role: the candidates, the elected winner, and each
   loser with the domain law that felled it (`ic_symmetry` (finance law) — 1 exception in
@@ -114,7 +116,6 @@ probe / domain-law template / Fachfrage) — no synonyms.
 Explicitly still NOT in scope: graph visualizations, chart libraries, multi-file
 output, any external dependency. The binding constraints above all stay.
 
-One honest limit found while building item 2: the store persists probes, not the
-model's refusals, so the funnel cannot separate *unbindable* from *skipped* — both
-show as "no probe", and the page names the LLM call log as the place where the
-split lives.
+Building item 2 surfaced a real gap and closed it: the store persisted probes but not
+the model's refusals, so the funnel could not say *why* 19 claims went untested. V2 now
+declares that (architecture.md "A refusal is a result"), and the funnel reads it.

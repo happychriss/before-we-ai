@@ -84,7 +84,11 @@ Look at: template mix; the three honest rejection buckets.
 Good (offline pins): **58 probes**, **18 unbindable** (model said
 `template=null`, with its reason), **8 semantic-only** (no admissible
 template exists — the semantic-equivalence class lives here), **1 skipped**
-(validation rejected a `ranges: []` binding). Nothing disappears silently.
+(validation rejected a `ranges: []` binding). Nothing disappears silently:
+each of those 27 claims carries a DECLARATION in the store with the verbatim
+reason, so the claim viewer shows *why* it was never tested — read them, they
+are the sharpest evidence of what the domain pack is still missing (three of
+them say, in effect: "the rule is in a document I cannot see" → M5).
 
 ### Step 6 — engine sweep
 

@@ -168,6 +168,19 @@ def test_funnel_counts_the_pipeline_stages(tmp_path):
         ),
     )
     store.save_claim(unbound)
+    # V2 declares why it built no probe — the model's verbatim reason, persisted
+    refusal = EvidenceRecord(
+        type=EvidenceType.DECLARATION,
+        actor=Actor.SYSTEM,
+        claim_id=unbound.id,
+        payload={
+            "decision": "unbindable",
+            "reason": "no documented pairs available to populate the template",
+        },
+    )
+    store.add_evidence(refusal)
+    store.save_claim(attach_evidence(unbound, refusal, []))
+
     semantic = create_claim(
         "Betrag means amount",
         Actor.AI,
@@ -182,11 +195,14 @@ def test_funnel_counts_the_pipeline_stages(tmp_path):
 
     assert "The funnel" in html
     assert 'data-stage-chip="bound"' in html
-    # one claim per stage: bound / unbound (no probe) / semantic-only
+    # one claim per stage: bound / unbindable / semantic-only
     assert html.count('data-stage="bound"') == 1
-    assert html.count('data-stage="unbound"') == 1
-    assert html.count('data-stage="semantic"') == 1
+    assert html.count('data-stage="unbindable"') == 1
+    assert html.count('data-stage="semantic_only"') == 1
     assert html.count('data-executed="yes"') == 1
+    # the refusal is readable where the probe would have been
+    assert "no documented pairs available to populate the template" in html
+    assert "Never tested" in html
     # the funnel filters on the derived status, not the stored one
     assert 'data-status="tested"' in html
 

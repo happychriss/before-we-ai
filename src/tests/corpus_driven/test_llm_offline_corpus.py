@@ -31,7 +31,7 @@ from before_we_ai.llm.inputs import (
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.llm.prompts import render_template_docs
 from before_we_ai.llm.v2_bind import _unbound_ai_claims
-from before_we_ai.model import Actor, ClaimStatus
+from before_we_ai.model import Actor, ClaimStatus, EvidenceType
 from before_we_ai.model.objects import RoleBindingClaim
 from before_we_ai.profile.candidates import load_matrix
 from before_we_ai.sources import open_catalog
@@ -103,6 +103,22 @@ def test_contracts_ran_clean_offline(pipeline):
     assert len(v2.unbindable) == 18  # honest template=null answers
     assert len(pipeline["engine"].executed) == 58
     assert pipeline["engine"].skipped == []
+
+    # every claim that ends without a probe says why, in the store — the reason
+    # must outlive the disposable call log
+    store = pipeline["store"]
+    reasons = {
+        record.claim_id: record.payload
+        for record in store.evidence.values()
+        if record.type is EvidenceType.DECLARATION and "decision" in record.payload
+    }
+    assert len(reasons) == 27  # 18 unbindable + 8 semantic-only + 1 skipped
+    assert sorted(p["decision"] for p in reasons.values()) == (
+        ["semantic_only"] * 8 + ["skipped"] + ["unbindable"] * 18
+    )
+    assert all(p["reason"] for p in reasons.values())  # never an empty reason
+    for claim_id in reasons:
+        assert store.claims[claim_id].status is ClaimStatus.INFERRED
 
 
 def test_llm_path_cannot_promote(pipeline):
