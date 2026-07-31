@@ -58,7 +58,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from before_we_ai.model.enums import ClaimStatus, CheckVerdict, EvidenceType
-from before_we_ai.model.objects import ClarificationQuestion, MappingClaim
+from before_we_ai.model.objects import ClarificationQuestion, MappingClaim, Scope
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.store.repository import ProjectStore
 
@@ -378,10 +378,10 @@ def _draft(store: ProjectStore, drafted: list, role: str, decided_by: str,
 
 
 def _save(store: ProjectStore, drafted: list, text: str,
-          candidates: list[MappingClaim]) -> None:
-    if any(card.question == text for card in store.questions.values()):
-        return
-    card = ClarificationQuestion(question=text,
+          candidates: list[MappingClaim], scope: Scope | None = None) -> None:
+    card = ClarificationQuestion(question=text, scope=scope,
                                  claim_ids=[c.id for c in candidates])
+    if store.find_question(card):
+        return
     store.save_question(card)
     drafted.append(card)

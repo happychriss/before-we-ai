@@ -6,6 +6,7 @@ myproject/
   sources/         # dropped files
   claims/          # one YAML per claim
   evidence/        # append-only records
+  answers/         # answer requests + the knowledge they require
   questions/       # question cards
   profiles/        # column profiles
   reports/         # rendered derivatives
@@ -22,6 +23,7 @@ PROJECT_DIRS = (
     "sources",
     "claims",
     "evidence",
+    "answers",
     "questions",
     "checks",
     "profiles",

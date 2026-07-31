@@ -9,7 +9,13 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, model_validator
 
-from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, CheckVerdict
+from before_we_ai.model.enums import (
+    Actor,
+    ClaimStatus,
+    EvidenceType,
+    CheckVerdict,
+    KnowledgeKind,
+)
 from before_we_ai.model.ids import new_id
 
 
@@ -31,6 +37,24 @@ class Scope(BaseModel):
 
     def is_explicit(self) -> bool:
         return any(v is not None for v in (self.entity, self.period, self.segment))
+
+    def label(self) -> str:
+        """The scope in business words, or "" when it is not explicit.
+
+        Used wherever two scopes must be told apart by a reader — a question
+        card, a readiness item — so "the same question, twice" reads as the
+        two different questions it is.
+        """
+        parts = [
+            f"{name} {value}"
+            for name, value in (
+                ("entity", self.entity),
+                ("period", self.period),
+                ("segment", self.segment),
+            )
+            if value is not None
+        ]
+        return ", ".join(parts)
 
 
 class Validity(BaseModel):
@@ -228,14 +252,96 @@ class ClarificationQuestion(BaseModel):
 
     ``claim_ids`` lists every claim the answer would touch — this is what
     makes an answer auditable and what staleness propagates into.
+
+    ``scope`` is what makes the card unique: the same wording asked about
+    two entities is two questions, and deduplication keys on
+    ``dedup_key()`` — text *and* scope — so the second one can never
+    collapse into the first. A card with no scope is landscape-wide.
     """
 
     id: str = Field(default_factory=new_id)
     question: str
-    # sql/result_ref are a vestigial answer-half kept from the pre-M6 card;
-    # they migrate to AnswerRequest when M6 builds the question flow.
-    sql: str | None = None
-    result_ref: str | None = None
+    scope: Scope | None = None
     claim_ids: list[str] = Field(default_factory=list)
     stale: bool = False
+    created_at: datetime = Field(default_factory=_now)
+
+    def dedup_key(self) -> tuple[str, str]:
+        """Identity for deduplication: the wording within its scope."""
+        return (self.question, self.scope.label() if self.scope else "")
+
+
+class AnswerRequest(BaseModel):
+    """The structured form of one business question.
+
+    The human asks a business question; this is its software
+    representation — what output is wanted, over which scope. It is the top
+    of the machine: the request *bounds* discovery, so what the answer
+    depends on must be known and nothing else has to be. That is what keeps
+    domain knowledge tied to a use case instead of an enterprise ontology.
+
+    ``sql``/``result_ref`` are the answer half, migrated here from the
+    pre-M6 question card: the query that would produce the requested output
+    and a disposable ``cache/`` path to its result. Neither is truth — the
+    ReadinessMap decides whether the answer may be given at all.
+    """
+
+    id: str = Field(default_factory=new_id)
+    question: str  # verbatim, as the human asked it
+    requested_output: str  # what the answer must deliver
+    scope: Scope = Field(default_factory=Scope)
+    sql: str | None = None
+    result_ref: str | None = None
+    created_by: Actor = Actor.HUMAN
+    created_at: datetime = Field(default_factory=_now)
+
+
+class KnowledgeItem(BaseModel):
+    """One thing the requested answer depends on.
+
+    ``kind`` says what it points at — a business object of the domain
+    guide, one of that object's fields, or a rule. Every item carries its
+    request's scope: that is what makes elections and questions scoped
+    rather than landscape-wide, and it is inherited, never invented here.
+
+    ``why`` states the dependency in business words. An item without a
+    reason cannot be pruned by a human with any confidence, and pruning is
+    exactly what the draft exists for.
+    """
+
+    kind: KnowledgeKind
+    name: str
+    of_object: str | None = None  # set for fields, empty otherwise
+    why: str = ""
+    scope: Scope = Field(default_factory=Scope)
+
+    @model_validator(mode="after")
+    def _check_shape(self) -> "KnowledgeItem":
+        if self.kind is KnowledgeKind.FIELD and not self.of_object:
+            raise ValueError("a field item must name the object it belongs to")
+        if self.kind is not KnowledgeKind.FIELD and self.of_object:
+            raise ValueError(
+                f"only a field belongs to an object — {self.kind.value} "
+                f"'{self.name}' must not carry one"
+            )
+        return self
+
+    def ref(self) -> str:
+        """The item's address in the domain guide's terms."""
+        return f"{self.of_object}.{self.name}" if self.of_object else self.name
+
+
+class RequiredKnowledge(BaseModel):
+    """What must be known before the requested answer can be produced.
+
+    Derived from the AnswerRequest and drafted by the AI — then pruned by
+    the human, as everywhere: the model proposes. It is persisted because
+    that pruning is a human decision, not something re-derivable from the
+    request.
+    """
+
+    id: str = Field(default_factory=new_id)
+    request_id: str
+    items: list[KnowledgeItem] = Field(default_factory=list)
+    created_by: Actor = Actor.AI
     created_at: datetime = Field(default_factory=_now)

@@ -48,6 +48,19 @@ class EvidenceType(str, Enum):
     DECLARATION = "declaration"
 
 
+class KnowledgeKind(str, Enum):
+    """What a required-knowledge item points at.
+
+    The three things a business answer can depend on: a business object of
+    the domain guide, one of that object's fields, or a rule (a claim about
+    how the data behaves). Nothing else bounds discovery.
+    """
+
+    OBJECT = "object"
+    FIELD = "field"
+    RULE = "rule"
+
+
 class CheckVerdict(str, Enum):
     """Outcome of a check run, carried on its EvidenceRecord.
 

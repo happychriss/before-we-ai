@@ -55,6 +55,13 @@ def check_integrity(store: "ProjectStore") -> list[str]:
             if cid not in store.claims:
                 findings.append(f"question {card.id}: dangling claim reference {cid}")
 
+    for required in store.required.values():
+        if required.request_id not in store.requests:
+            findings.append(
+                f"required knowledge {required.id}: dangling request reference "
+                f"{required.request_id}"
+            )
+
     for profile in store.profiles.values():
         if profile.source_id not in store.sources:
             findings.append(

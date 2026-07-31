@@ -14,6 +14,7 @@ import yaml
 from pydantic import BaseModel
 
 from before_we_ai.model.objects import (
+    AnswerRequest,
     Claim,
     DataProfile,
     ConceptClaim,
@@ -21,6 +22,7 @@ from before_we_ai.model.objects import (
     CheckPlan,
     ClarificationQuestion,
     MappingClaim,
+    RequiredKnowledge,
     Source,
 )
 from before_we_ai.model.semantics import claim_key
@@ -30,6 +32,13 @@ _CLAIM_TYPES = {
     "Claim": Claim,
     "ConceptClaim": ConceptClaim,
     "MappingClaim": MappingClaim,
+}
+
+# answers/ holds a request and the knowledge it requires side by side —
+# they are one story and are read together.
+_ANSWER_TYPES = {
+    "AnswerRequest": AnswerRequest,
+    "RequiredKnowledge": RequiredKnowledge,
 }
 
 
@@ -70,6 +79,8 @@ class ProjectStore:
         self.sources: dict[str, Source] = {}
         self.profiles: dict[str, DataProfile] = {}
         self.checks: dict[str, CheckPlan] = {}
+        self.requests: dict[str, AnswerRequest] = {}
+        self.required: dict[str, RequiredKnowledge] = {}
         self._load()
 
     # -- loading ---------------------------------------------------------
@@ -98,6 +109,13 @@ class ProjectStore:
         self.checks = {
             o.id: o for o in self._read_dir("checks", CheckPlan.model_validate)
         }
+        answers = self._read_dir("answers", self._parse_answer, keep_type=True)
+        self.requests = {
+            o.id: o for o in answers if isinstance(o, AnswerRequest)
+        }
+        self.required = {
+            o.id: o for o in answers if isinstance(o, RequiredKnowledge)
+        }
 
     def _read_dir(self, dirname: str, parse, keep_type: bool = False) -> list:
         directory = self.root / dirname
@@ -115,6 +133,13 @@ class ProjectStore:
     def _parse_claim(data: dict) -> Claim:
         cls = _CLAIM_TYPES.get(data.pop("object_type", "Claim"), Claim)
         return cls.model_validate(data)
+
+    @staticmethod
+    def _parse_answer(data: dict) -> AnswerRequest | RequiredKnowledge:
+        name = data.pop("object_type", "AnswerRequest")
+        if name not in _ANSWER_TYPES:
+            raise ValueError(f"answers/ holds no object of type {name!r}")
+        return _ANSWER_TYPES[name].model_validate(data)
 
     # -- writing ---------------------------------------------------------
 
@@ -168,6 +193,33 @@ class ProjectStore:
     def save_question(self, card: ClarificationQuestion) -> None:
         self._write("questions", card)
         self.questions[card.id] = card
+
+    def find_question(self, card: ClarificationQuestion) -> ClarificationQuestion | None:
+        """The existing card this one would duplicate, or None.
+
+        Identity is wording *within a scope*: the same question asked about
+        two entities is two questions, and the second must never collapse
+        into the first — that would be the silence the product forbids.
+        """
+        key = card.dedup_key()
+        for existing in self.questions.values():
+            if existing.dedup_key() == key:
+                return existing
+        return None
+
+    def save_request(self, request: AnswerRequest) -> None:
+        self._write("answers", request)
+        self.requests[request.id] = request
+
+    def save_required_knowledge(self, required: RequiredKnowledge) -> None:
+        self._write("answers", required)
+        self.required[required.id] = required
+
+    def knowledge_for(self, request_id: str) -> RequiredKnowledge | None:
+        for required in self.required.values():
+            if required.request_id == request_id:
+                return required
+        return None
 
     def save_source(self, source: Source) -> None:
         # metadata about a source, not the dropped file itself (sources/)

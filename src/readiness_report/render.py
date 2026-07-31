@@ -2050,7 +2050,7 @@ def _render_question_section(
         f"<h3>{escape(card.question)}</h3>"
         f"{picks}"
         f"{_provenance(rel, 'questions', card.id, 'asked of a human', 'nobody has answered it yet')}"
-        f"{_technical([('id', card.id), ('created_at', card.created_at.isoformat()), ('stale', str(card.stale).lower()), ('sql', card.sql or '—'), ('result_ref', card.result_ref or '—')])}"
+        f"{_technical([('id', card.id), ('created_at', card.created_at.isoformat()), ('stale', str(card.stale).lower()), ('scope', card.scope.label() if card.scope and card.scope.is_explicit() else 'whole landscape')])}"
         "</div>"
     )
 

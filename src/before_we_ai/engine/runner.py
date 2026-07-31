@@ -120,8 +120,11 @@ def _draft_question(store, spec, ctx, check: CheckPlan, record: EvidenceRecord) 
     text = spec.question.format_map(
         {k: v for k, v in ctx.items() if isinstance(v, (str, int, float))}
     )
-    if any(card.question == text for card in store.questions.values()):
-        return
-    store.save_question(
-        ClarificationQuestion(question=text, claim_ids=[check.claim_id] if check.claim_id else [])
+    card = ClarificationQuestion(
+        question=text,
+        scope=record.scope,
+        claim_ids=[check.claim_id] if check.claim_id else [],
     )
+    if store.find_question(card):
+        return
+    store.save_question(card)
