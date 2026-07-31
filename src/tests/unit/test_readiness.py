@@ -10,6 +10,7 @@ consumed its column while its own claims stay proposed.
 """
 
 import pytest
+from pydantic import ValidationError
 
 from before_we_ai.llm.domain_guide import DomainGuide
 from before_we_ai.model import (
@@ -22,6 +23,7 @@ from before_we_ai.model import (
     CheckVerdict,
     KnowledgeItem,
     KnowledgeKind,
+    KnowledgeLink,
     MappingClaim,
     Predicate,
     RequiredKnowledge,
@@ -30,8 +32,15 @@ from before_we_ai.model import (
 )
 from before_we_ai.model.objects import CheckPlan
 from before_we_ai.model.transitions import attach_evidence
-from before_we_ai.readiness import Ground, Readiness, evaluate, evaluate_request
-from before_we_ai.store import ProjectStore, init_project
+from before_we_ai.readiness import (
+    Ground,
+    Readiness,
+    UnlinkableItem,
+    evaluate,
+    evaluate_request,
+    link_claim,
+)
+from before_we_ai.store import ProjectStore, check_integrity, init_project
 
 DE = Scope(entity="DE")
 
@@ -70,9 +79,26 @@ def _field(name="amount_local", of="journal", scope=Scope()):
                          why="it is what gets summed", scope=scope)
 
 
-def _rule(name="sign convention for income", scope=Scope()):
+def _rule(name="sign convention for income", scope=Scope(), links=None):
     return KnowledgeItem(kind=KnowledgeKind.RULE, name=name,
-                         why="it decides profit from loss", scope=scope)
+                         why="it decides profit from loss", scope=scope,
+                         satisfied_by=links or [])
+
+
+def _link(claim, linked_by=Actor.HUMAN, note=""):
+    return KnowledgeLink(claim_id=claim.id, linked_by=linked_by, note=note)
+
+
+def _confirmed_policy(store, term="sign convention for income"):
+    """The shape M5 will produce: a policy read into a settled claim."""
+    claim = ConceptClaim(
+        statement="income is stored as a negative amount",
+        created_by=Actor.HUMAN, term=term,
+        definition="income negative, expense positive",
+        status=ClaimStatus.BUSINESS_CONFIRMED,
+    )
+    store.save_claim(claim)
+    return claim
 
 
 def _map(store, guide, *items) -> "ReadinessMap":
@@ -232,34 +258,52 @@ class TestEverySatisfiedItemSaysHow:
         item = _map(store, guide, _field("entity")).items[0]
         assert not item.satisfied
 
-    def test_a_rule_is_satisfied_by_a_claim_that_states_it(self, store, guide):
-        claim = ConceptClaim(
-            statement="income is stored as a negative amount",
-            created_by=Actor.HUMAN, term="sign convention for income",
-            definition="income negative, expense positive",
-            status=ClaimStatus.BUSINESS_CONFIRMED,
-        )
-        store.save_claim(claim)
-        item = _map(store, guide, _rule()).items[0]
+    def test_a_rule_is_satisfied_by_a_linked_claim_and_names_who_linked_it(
+            self, store, guide):
+        claim = _confirmed_policy(store)
+        item = _map(store, guide,
+                    _rule(links=[_link(claim, Actor.HUMAN)])).items[0]
         assert item.satisfied and item.ground is Ground.STATED_RULE
-        assert "a business-confirmed claim states it" in item.because
+        assert "a business-confirmed claim is linked to it by the human" in \
+            item.because
         assert "income is stored as a negative amount" in item.because
 
-    def test_a_rule_stated_only_as_a_proposal_is_not_support(self, store, guide):
-        store.save_claim(ConceptClaim(
-            statement="income is probably negative", created_by=Actor.AI,
-            term="sign convention for income", definition="guessed",
-        ))
-        item = _map(store, guide, _rule()).items[0]
+    def test_a_linked_claim_that_is_only_proposed_is_not_support(
+            self, store, guide):
+        """The link routes; it never vouches. Status still decides."""
+        claim = ConceptClaim(statement="income is probably negative",
+                             created_by=Actor.AI, term="sign", definition="g")
+        store.save_claim(claim)
+        item = _map(store, guide, _rule(links=[_link(claim, Actor.AI)])).items[0]
         assert not item.satisfied and item.ground is Ground.UNDECIDED
 
-    def test_a_rule_matches_a_settled_predicate_claim_too(self, store, guide):
-        claim = create_claim("every AR item references a GL posting", Actor.AI,
-                             predicate=Predicate(name="references"))
-        store.save_claim(claim.model_copy(
-            update={"status": ClaimStatus.TEST_SUPPORTED}))
-        item = _map(store, guide, _rule("references")).items[0]
-        assert item.satisfied and item.ground is Ground.STATED_RULE
+    def test_a_claim_that_states_the_rule_but_is_not_linked_is_not_support(
+            self, store, guide):
+        """Name matching was rejected (owner decision 2026-07-31): V4 names a
+        rule in the human's words and whatever produces the claim coins its
+        own term, so a match would miss where it matters and could hit
+        something unrelated that happens to slug the same. A verdict resting
+        on a coincidence of wording is not a verdict."""
+        _confirmed_policy(store)  # term == the rule's name, exactly
+        item = _map(store, guide, _rule()).items[0]
+        assert not item.satisfied and item.ground is Ground.NOTHING_PROPOSED
+        assert "nothing in this project is linked to it" in item.because
+
+    def test_an_ai_may_link_because_a_link_cannot_promote(self, store, guide):
+        """The whole reason V3 is allowed to do this in M5."""
+        claim = _confirmed_policy(store)
+        item = _map(store, guide, _rule(links=[_link(claim, Actor.AI)])).items[0]
+        assert item.satisfied
+        assert "linked to it by the ai" in item.because  # attributed, visibly
+
+    def test_a_link_to_a_claim_that_vanished_says_the_link_is_broken(
+            self, store, guide):
+        """Distinct from 'nobody answered' — one is missing knowledge, the
+        other is a broken pointer, and they need different repairs."""
+        item = _map(store, guide, _rule(links=[
+            KnowledgeLink(claim_id="01GONE", linked_by=Actor.HUMAN)])).items[0]
+        assert not item.satisfied
+        assert "the link is broken, not the knowledge" in item.because
 
 
 class TestScope:
@@ -287,6 +331,86 @@ class TestScope:
         assert item.satisfied
         assert "no source declares it as entity DE's" in item.because
         assert "rests on a landscape-wide mapping" in item.because
+
+
+class TestLinking:
+    """The seam M5 needs: V3 reads a policy, produces a claim, and says which
+    open dependency that claim answers."""
+
+    def _asked(self, store, *items):
+        request = AnswerRequest(question="q?", requested_output="o")
+        store.save_request(request)
+        store.save_required_knowledge(
+            RequiredKnowledge(request_id=request.id, items=list(items)))
+        return request
+
+    def test_linking_turns_a_named_gap_into_a_satisfied_item(self, store, guide):
+        request = self._asked(store, _rule())
+        assert evaluate_request(store, guide, request.id).verdict is \
+            Readiness.READY_WITH_LIMITATIONS
+        claim = _confirmed_policy(store)
+
+        link_claim(store, request.id, "sign convention for income", claim.id,
+                   linked_by=Actor.AI, note="Buchhaltungsrichtlinie §2")
+
+        result = evaluate_request(ProjectStore(store.root), guide, request.id)
+        assert result.verdict is Readiness.READY
+        assert result.items[0].ground is Ground.STATED_RULE
+
+    def test_a_link_cannot_promote_the_claim_it_points_at(self, store, guide):
+        """The property that makes it safe for an AI to do."""
+        request = self._asked(store, _rule())
+        claim = ConceptClaim(statement="guessed", created_by=Actor.AI,
+                             term="t", definition="d")
+        store.save_claim(claim)
+        link_claim(store, request.id, "sign convention for income", claim.id,
+                   linked_by=Actor.AI)
+        assert ProjectStore(store.root).claims[claim.id].status is \
+            ClaimStatus.PROPOSED
+        assert not evaluate_request(store, guide, request.id).items[0].satisfied
+
+    def test_an_object_cannot_be_linked_because_the_guide_decides_it(
+            self, store, guide):
+        """A link that could satisfy an object would be a way around the
+        scoped election, which is the whole point of having a guide."""
+        request = self._asked(store, _obj())
+        claim = _confirmed_policy(store)
+        with pytest.raises(UnlinkableItem, match="only a rule"):
+            link_claim(store, request.id, "journal", claim.id,
+                       linked_by=Actor.HUMAN)
+        # and the model refuses to hold one even if constructed directly
+        with pytest.raises(ValidationError, match="only a rule is satisfied"):
+            KnowledgeItem(kind=KnowledgeKind.OBJECT, name="journal",
+                          satisfied_by=[_link(claim)])
+
+    def test_linking_something_the_question_does_not_require_is_refused(
+            self, store, guide):
+        request = self._asked(store, _rule())
+        claim = _confirmed_policy(store)
+        with pytest.raises(UnlinkableItem, match="is not required by"):
+            link_claim(store, request.id, "month cut-off", claim.id,
+                       linked_by=Actor.HUMAN)
+
+    def test_linking_a_claim_that_does_not_exist_is_refused(self, store, guide):
+        request = self._asked(store, _rule())
+        with pytest.raises(UnlinkableItem, match="no claim"):
+            link_claim(store, request.id, "sign convention for income",
+                       "01NOPE", linked_by=Actor.HUMAN)
+
+    def test_relinking_the_same_claim_does_not_stack(self, store, guide):
+        request = self._asked(store, _rule())
+        claim = _confirmed_policy(store)
+        for _ in range(3):
+            required = link_claim(store, request.id,
+                                  "sign convention for income", claim.id,
+                                  linked_by=Actor.HUMAN)
+        assert len(required.items[0].satisfied_by) == 1
+
+    def test_a_broken_link_is_an_integrity_finding(self, store, guide):
+        request = self._asked(store, _rule(links=[
+            KnowledgeLink(claim_id="01GONE", linked_by=Actor.AI)]))
+        findings = check_integrity(ProjectStore(store.root))
+        assert any("linked to missing claim 01GONE" in f for f in findings)
 
 
 class TestDerivedNeverStored:

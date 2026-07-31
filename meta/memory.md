@@ -5,7 +5,7 @@
 
 ## Current focus
 
-- **M6 — question flow + ReadinessMap: DONE 2026-07-31.** Suite **349
+- **M6 — question flow + ReadinessMap: DONE 2026-07-31.** Suite **373
   green**; prompt bytes of V1/V2 untouched at every commit (drift guard
   green, which is the proof). Built: `AnswerRequest` / `RequiredKnowledge`
   (`answers/` in the store), **V4** (`llm/v4_request.py`, hand-authored
@@ -33,17 +33,22 @@
 - **NEXT: the owner's validation run using only the readiness report**
   (deferred once already, before M6). Then **M5**.
 - **M5 — documents & V3** (spec: docs/spec/ — PDF pipeline, anchors,
-  multi-anchor reconciliation; acceptance: T8 negatives, real PDF).
-- **M5 kickoff batch** (runs at M5 start; items 3+4+6 touch prompt bytes →
+  multi-anchor reconciliation; acceptance: T8 negatives, real PDF — all the
+  PDFs it needs are in the frozen corpus, see the struck blocker below).
+  Its target after M6 is concrete: the three unsupported *rule* items in the
+  ReadinessMap. **Owner decision 2026-07-31: rule items are satisfied by an
+  explicit claim link** (`KnowledgeItem.satisfied_by`, `readiness.link_claim`)
+  — name matching was rejected. V3 must therefore link the claims it produces
+  to the open rules they answer; the seam is built and tested.
+- **M5 kickoff batch** (runs at M5 start; items 2+3+4 touch prompt bytes →
   ONE shared fixture re-record at M5 kickoff, ~5 calls now that V4 rides
   along and gets its first real recording):
-  1. E4 noise PDFs blocker (see open items) — decide before anything.
-  2. `discover(root)` sources discovery + bundled domain guides
+  1. `discover(root)` sources discovery + bundled domain guides
      (architecture.md "Onboarding workflow").
-  3. Show the domain tag in V2 template docs (architecture.md "Domain inputs").
-  4. Mapping claims binding to *generic* templates where a real data property
+  2. Show the domain tag in V2 template docs (architecture.md "Domain inputs").
+  3. Mapping claims binding to *generic* templates where a real data property
      exists (`account` via anti_join against the chart of accounts).
-  5. **Concept claims are lost to a redundant field** (found in the
+  4. **Concept claims are lost to a redundant field** (found in the
      2026-07-31 validation walkthrough). `Hypothesis.kind` is a pure
      function of the predicate (`concept` iff `concept_definition`), yet the
      model must supply it — and when it omits it, the `"rule"` default
@@ -56,7 +61,7 @@
      batch's re-record. Note: it would NOT have flipped F21 (that matcher
      also needs the revenue link, which the claim never states) — the gain
      is admitting the K3 concept class at all, not a recall number.
-  6. **Owner decision: normalize `view.column` given for view params?**
+  5. **Owner decision: normalize `view.column` given for view params?**
      (same walkthrough). 6 of the 7 V2 skips are one shape error — the model
      answers `de_erp__gl_postings.account_id` where the param must name a
      bare *view*; it cascades across every param of that template. The
@@ -75,7 +80,7 @@
   **0**; leakage CLEAN (`docs/seeded-recall-m4.md`). Finding to watch at the
   M5 re-record: the reworded V2 mapping prompt binds invariants more
   hesitantly (19/22 template=null vs 15/23).
-- Suite: **349 pass** when fixtures are current (`cd /workspace/src &&
+- Suite: **373 pass** when fixtures are current (`cd /workspace/src &&
   python -m pytest -q`, venv `/workspace/.venv`).
 
 ## Open items
@@ -93,13 +98,15 @@
   construction" + "Question flow & readiness"); the file also restates the
   terminology table glossary.py owns. Keep it as a discussion record, or
   delete per one-fact-one-home — owner's call, not deleted unilaterally.
-- **M5 blocker: E4 noise PDFs missing from the frozen corpus**
-  (`reisekostenrichtlinie.pdf`, `lieferantenkatalog.pdf`,
-  `pressemitteilung_2022_divested_unit.pdf` — trap F26 poisoned anchor,
-  `deny_promotion: true`). They're in `sources_manifest.yaml` and the
-  recall_set but not in `src/corpus/data/`, so M5's "T8 negatives"
-  acceptance can't be met as written. Decide at M5 start: generate + re-tag
-  the frozen corpus, or re-scope F26.
+- ~~M5 blocker: E4 noise PDFs missing~~ — **THE BLOCKER WAS FALSE
+  (2026-07-31).** All three are in `src/corpus/data/noise/` and have been
+  since m0-corpus-v1; the earlier check looked at the top level only. F26's
+  poisoned anchor reads "Erloes von EUR 8.450.000" in
+  `pressemitteilung_2022_divested_unit.pdf`, so M5's "T8 negatives"
+  acceptance **can** be met as written and F26 needs no re-scope. Guarded
+  by `tests/corpus_driven/test_corpus_files_exist.py`, which also found
+  `kunden_migration.xlsx` shipped-but-undeclared and now fixed in
+  `sources_manifest.yaml`.
 - **Owner: set the numeric Seeded-Recall bar** (first measurement 15/25;
   misses cluster in K3 definition-style traps — they need the M5 document
   pipeline; consider a bar over relationship-style traps only).

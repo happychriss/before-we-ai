@@ -46,7 +46,7 @@ about how to work.
 - Update `docs/before-ai-concept.md`: fold what the milestone added into the
   one linear flow (plain language, canonical vocabulary only — the words in
   `before_we_ai/glossary.py`, no synonyms, no metaphors) and refresh its
-  "What comes next?" list and M5/M6 markers.
+  "What comes next?" list and its not-yet-built markers.
 - Update the `README.md` roadmap status and `docs/architecture.md` with
   confirmed design decisions; slim `meta/memory.md` back to live state.
 - Tag milestones `mN-<name>-vX` and push.

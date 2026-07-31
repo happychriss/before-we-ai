@@ -15,8 +15,10 @@ from before_we_ai.readiness.evaluate import (
     Readiness,
     ReadinessItem,
     ReadinessMap,
+    UnlinkableItem,
     evaluate,
     evaluate_request,
+    link_claim,
 )
 
 __all__ = [
@@ -24,6 +26,8 @@ __all__ = [
     "Readiness",
     "ReadinessItem",
     "ReadinessMap",
+    "UnlinkableItem",
     "evaluate",
     "evaluate_request",
+    "link_claim",
 ]

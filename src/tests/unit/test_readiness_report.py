@@ -16,6 +16,7 @@ from before_we_ai.model import (
     CheckPlan,
     CheckVerdict,
     ClarificationQuestion,
+    ConceptClaim,
     KnowledgeItem,
     KnowledgeKind,
     MappingClaim,
@@ -27,6 +28,7 @@ from before_we_ai.model import (
 from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.model.objects import DataProfile
 from before_we_ai.checks.library import REGISTRY
+from before_we_ai.readiness import link_claim
 from before_we_ai.store import ProjectStore, init_project
 from readiness_report import render_project
 
@@ -821,6 +823,29 @@ def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
     assert "The answer cannot be produced" in html
     assert "Not supported: nothing in this project plays it" in html
     assert "<strong>blocked</strong> verdict" in html
+
+
+def test_a_linked_rule_shows_who_linked_it_and_why(tmp_path):
+    """A rule is only ever satisfied by an explicit link, so the link is part
+    of the audit trail: a wrong one points a verdict at an unrelated claim."""
+    root, store = _p_and_l_project(tmp_path, "linked")
+    policy = ConceptClaim(
+        statement="income is stored as a negative amount",
+        created_by=Actor.HUMAN, term="haben_konvention",
+        definition="income negative, expense positive",
+        status=ClaimStatus.BUSINESS_CONFIRMED,
+    )
+    store.save_claim(policy)
+    link_claim(store, next(iter(store.requests)), "sign convention", policy.id,
+               linked_by=Actor.AI, note="Buchhaltungsrichtlinie §2")
+
+    html = render_project(root)
+
+    assert "a business-confirmed claim is linked to it by the ai" in html
+    assert "Linked by the ai — Buchhaltungsrichtlinie §2" in html
+    # the claim's term and the rule's name do not match; only the link joins
+    # them, which is the whole reason the link exists
+    assert "haben_konvention" != "sign convention"
 
 
 def test_a_project_nobody_asked_a_question_of_says_that_plainly(tmp_path):

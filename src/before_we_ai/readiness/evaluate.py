@@ -24,17 +24,16 @@ Two rules govern the output and are not negotiable:
    decision preserves.
 """
 
-import re
 from dataclasses import dataclass
 from enum import Enum
 
 from before_we_ai.llm.domain_guide import DomainGuide, settled_slots
-from before_we_ai.model.enums import ClaimStatus, KnowledgeKind
+from before_we_ai.model.enums import Actor, ClaimStatus, KnowledgeKind
 from before_we_ai.model.objects import (
     AnswerRequest,
     Claim,
-    ConceptClaim,
     KnowledgeItem,
+    KnowledgeLink,
     MappingClaim,
     RequiredKnowledge,
     Scope,
@@ -165,6 +164,54 @@ def evaluate(store: ProjectStore, guide: DomainGuide, request: AnswerRequest,
     return ReadinessMap(request=request, items=items, verdict=verdict)
 
 
+class UnlinkableItem(Exception):
+    """Raised when a link is aimed at something that cannot carry one."""
+
+
+def link_claim(store: ProjectStore, request_id: str, ref: str, claim_id: str,
+               *, linked_by: Actor, note: str = "") -> RequiredKnowledge:
+    """Point a required rule at the claim that states it, and persist it.
+
+    The seam M5 needs: V3 reads a policy document, produces a claim, and
+    says which open dependency that claim answers. It is also how a human
+    answering a clarification connects their answer to the question it
+    settles.
+
+    Linking is deliberately *not* evidence: the claim's own status still
+    decides whether the dependency is satisfied, so this cannot promote
+    anything and an AI may do it. Re-linking the same claim replaces the
+    earlier link rather than stacking duplicates.
+    """
+    required = store.knowledge_for(request_id)
+    if required is None:
+        raise UnlinkableItem(f"no required knowledge for request {request_id}")
+    if claim_id not in store.claims:
+        raise UnlinkableItem(f"no claim {claim_id} in this project")
+    items, found = [], False
+    for item in required.items:
+        if item.ref() != ref:
+            items.append(item)
+            continue
+        if item.kind is not KnowledgeKind.RULE:
+            raise UnlinkableItem(
+                f"{item.kind.value} {ref!r} resolves through the domain "
+                "guide's scoped election; only a rule takes a linked claim"
+            )
+        kept = [l for l in item.satisfied_by if l.claim_id != claim_id]
+        items.append(item.model_copy(update={"satisfied_by": kept + [
+            KnowledgeLink(claim_id=claim_id, linked_by=linked_by, note=note)
+        ]}))
+        found = True
+    if not found:
+        raise UnlinkableItem(
+            f"{ref!r} is not required by request {request_id} — "
+            f"required: {sorted(i.ref() for i in required.items)}"
+        )
+    updated = required.model_copy(update={"items": items})
+    store.save_required_knowledge(updated)
+    return updated
+
+
 def evaluate_request(store: ProjectStore, guide: DomainGuide,
                      request_id: str) -> ReadinessMap | None:
     """The map for a stored request, or None when nothing requires anything
@@ -246,31 +293,56 @@ def _slot_derivation(store: ProjectStore, guide: DomainGuide,
 
 
 def _judge_rule(store: ProjectStore, item: KnowledgeItem) -> ReadinessItem:
-    """A rule the vocabulary does not contain, satisfied by a settled claim.
+    """A rule the vocabulary does not contain, satisfied by a **linked** claim.
 
-    Matching is by name, normalised: a concept claim's term, or a claim's
-    predicate name. Anything else leaves the item unsupported and *named* —
-    which is the point. The demo's non-inferable policy arrives exactly this
-    way: unsupported until a human answers, then a business-confirmed claim
-    carrying their words.
+    Only an explicit link counts. The alternative — matching the rule's name
+    against a concept claim's term or a predicate name — was tried and
+    rejected (owner decision 2026-07-31): V4 names a rule in the human's
+    words ("sign convention for income and expense") while whatever produces
+    the claim coins its own term, so the match would miss where it matters
+    and, worse, could hit something unrelated that happens to slug the same.
+    A verdict resting on a coincidence of wording is not a verdict.
+
+    Unlinked therefore means unsupported and *named*, which is the correct
+    default: a rule nobody has connected to evidence is a rule nobody has
+    answered. The demo's non-inferable policy arrives exactly this way —
+    unsupported until a human answers, then a business-confirmed claim
+    carrying their words, linked to the dependency it settles.
     """
-    key = _slug(item.name)
-    stating = [c for c in store.claims.values()
-               if _states_rule(c, key) and _covers(c.scope, item.scope)]
-    winners = [c for c in stating if c.status in _SETTLED]
+    linked = [(link, store.claims[link.claim_id])
+              for link in item.satisfied_by if link.claim_id in store.claims]
+    dangling = [link for link in item.satisfied_by
+                if link.claim_id not in store.claims]
+    in_scope = [(link, claim) for link, claim in linked
+                if _covers(claim.scope, item.scope)]
+    winners = [(link, claim) for link, claim in in_scope
+               if claim.status in _SETTLED]
     if winners:
-        won = winners[0]
+        link, claim = winners[0]
         return ReadinessItem(
             item=item, satisfied=True, ground=Ground.STATED_RULE,
             because=(
-                f"Satisfied because a {won.status.value} claim states it: "
-                f"{won.statement}{_scope_note(won.scope, item.scope)}."
+                f"Satisfied because a {claim.status.value} claim is linked to "
+                f"it by the {link.linked_by.value}: {claim.statement}"
+                f"{_scope_note(claim.scope, item.scope)}."
             ),
-            claim_ids=tuple(sorted(c.id for c in winners)),
+            claim_ids=tuple(sorted(c.id for _, c in winners)),
         )
-    return ReadinessItem(item=item, satisfied=False,
-                         claim_ids=tuple(sorted(c.id for c in stating)),
-                         **_why_not(stating, item, "states it"))
+    if dangling:
+        # integrity also reports it; the verdict must not read as a mere gap
+        return ReadinessItem(
+            item=item, satisfied=False, ground=Ground.NOTHING_PROPOSED,
+            because=(
+                f"Not supported: this rule is linked to "
+                f"{len(dangling)} claim(s) that no longer exist "
+                f"({', '.join(sorted(l.claim_id for l in dangling))}) — the "
+                "link is broken, not the knowledge."
+            ),
+        )
+    return ReadinessItem(
+        item=item, satisfied=False,
+        claim_ids=tuple(sorted(c.id for _, c in in_scope)),
+        **_why_not([c for _, c in in_scope], item, "is linked to it"))
 
 
 def _why_not(candidates: list[Claim], item: KnowledgeItem,
@@ -338,16 +410,6 @@ def _scope_note(claim_scope: Scope | None, item_scope: Scope) -> str:
 
 def _scope_ask(scope: Scope) -> str:
     return f" for {scope.label()}" if scope.is_explicit() else ""
-
-
-def _states_rule(claim: Claim, key: str) -> bool:
-    if isinstance(claim, ConceptClaim) and _slug(claim.term) == key:
-        return True
-    return bool(claim.predicate and _slug(claim.predicate.name) == key)
-
-
-def _slug(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
 def _name(claim: MappingClaim) -> str:

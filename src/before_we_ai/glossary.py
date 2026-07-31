@@ -62,7 +62,9 @@ GLOSSARY: list[tuple[str, str]] = [
      "does not depend on, nobody has to know"),
     ("required knowledge", "the objects, fields and rules one answer depends "
      "on, each carrying the request's scope; drafted by the model, pruned by "
-     "a human"),
+     "a human. Objects and fields resolve through the domain guide's scoped "
+     "election; a rule has no guide entry, so it is answered only by a claim "
+     "explicitly linked to it — the link routes, it never vouches"),
     ("readiness map", "per required-knowledge item: its claim, evidence and "
      "remaining gap, and how each satisfied item is satisfied; grounds the "
      "verdict ready / ready_with_limitations / blocked, which always names "

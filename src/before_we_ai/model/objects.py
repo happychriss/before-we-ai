@@ -310,6 +310,24 @@ class AnswerRequest(BaseModel):
     created_at: datetime = Field(default_factory=_now)
 
 
+class KnowledgeLink(BaseModel):
+    """A pointer from a required rule to the claim that states it.
+
+    A link **routes, it does not vouch**: it says "this claim is the one
+    that speaks to this dependency", and nothing more. Whether the
+    dependency is satisfied still comes from the claim's own status, so a
+    link authored by the AI is structurally as harmless as an AI-authored
+    claim — it cannot promote anything. What it does carry is
+    responsibility, hence ``linked_by``: a wrong link points a verdict at
+    an unrelated claim, and the reader must be able to see whose mistake
+    that was.
+    """
+
+    claim_id: str
+    linked_by: Actor
+    note: str = ""  # why this claim answers this dependency
+
+
 class KnowledgeItem(BaseModel):
     """One thing the requested answer depends on.
 
@@ -321,6 +339,13 @@ class KnowledgeItem(BaseModel):
     ``why`` states the dependency in business words. An item without a
     reason cannot be pruned by a human with any confidence, and pruning is
     exactly what the draft exists for.
+
+    ``satisfied_by`` is for **rules only**. An object or a field resolves
+    through the domain guide and its scoped election — that is what the
+    guide is for, and a link that could bypass an election would be a way
+    around it. A rule is precisely the thing the guide has no entry for, so
+    nothing but an explicit link can connect it to the claim that states
+    it.
     """
 
     kind: KnowledgeKind
@@ -328,6 +353,7 @@ class KnowledgeItem(BaseModel):
     of_object: str | None = None  # set for fields, empty otherwise
     why: str = ""
     scope: Scope = Field(default_factory=Scope)
+    satisfied_by: list[KnowledgeLink] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _check_shape(self) -> "KnowledgeItem":
@@ -337,6 +363,12 @@ class KnowledgeItem(BaseModel):
             raise ValueError(
                 f"only a field belongs to an object — {self.kind.value} "
                 f"'{self.name}' must not carry one"
+            )
+        if self.satisfied_by and self.kind is not KnowledgeKind.RULE:
+            raise ValueError(
+                f"{self.kind.value} '{self.name}': only a rule is satisfied by "
+                "a linked claim — an object or field resolves through the "
+                "domain guide's scoped election, and a link would bypass it"
             )
         return self
 

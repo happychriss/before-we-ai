@@ -73,6 +73,15 @@ sources:
     description: Official product hierarchy decoder
     traps: []
 
+  B1_kunden_migration_xlsx:
+    # Shipped and loaded since m0-corpus-v1, and named in generator_contract.md,
+    # but missing from this manifest until 2026-07-31 — found by
+    # tests/corpus_driven/test_corpus_files_exist.py.
+    format: xlsx_file
+    description: Old→new customer ID mapping (DE), the bridge for the recycled legacy IDs
+    filename: kunden_migration.xlsx
+    traps: [F5]
+
   B4_marketing_grouping_xlsx:
     format: xlsx_file
     description: Competing product grouping; referenced by plan (D6), claim ownership of "product group" concept

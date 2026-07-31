@@ -36,7 +36,7 @@ and `tested` → `test-supported`, actor/evidence `probe`/`probe_result` →
 - Repo root: `/workspace` — https://github.com/happychriss/before-we-ai
   (`pyproject.toml` lives in `src/`)
 - Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
-  `/workspace/src`; run `python -m pytest -q` there (349 tests green after M6,
+  `/workspace/src`; run `python -m pytest -q` there (373 tests green after M6,
   incl. readiness_report; CI runs fully offline from recorded fixtures)
 - Authoritative German spec: `docs/spec/`
 
@@ -131,7 +131,7 @@ table, or a mirrored export that sums to zero per period could realise it.
 
 **What validates the guide today: almost nothing.** Only the load-time
 Pydantic lint (`extra="forbid"`; `decided_by` names a real law of the correct
-domain). **None of the 257 tests asks whether the guide is correct.** The
+domain). **Not one of the suite's tests asks whether the guide is correct.** The
 `amount_local` mis-declaration (see meta/memory.md, M5 kickoff item 5) was
 found by a human reading a generated question and thinking it looked odd —
 not by any check. That is not a repeatable quality process.
@@ -514,9 +514,9 @@ status/predicate/role filters; deep links reveal their claim:
   inputs → measured → the AI proposes → the checks decide → humans decide the
   rest. Two things are drawn, not written: the **actor boundary** between
   "proposed" and "decided" (nothing the AI authors can promote a claim — the
-  structural False-Promotion invariant, made visible), and **ghost nodes** for
-  M5 (documents) and M6 (question → readiness), dashed and labelled "not
-  built", so what is missing is stated rather than omitted.
+  structural False-Promotion invariant, made visible), and a **ghost node**
+  for M5 (documents), dashed and labelled "not built", so what is missing is
+  stated rather than omitted. M6's node became real when M6 shipped.
 - **1 · Inputs** — the three declared domain inputs, live from the project:
   sources, the domain guide (domain, count, names, definitions, settlement
   paths), and the domain-law check definitions (naming the generic remainder
@@ -528,14 +528,19 @@ status/predicate/role filters; deep links reveal their claim:
   filter. The buckets are read from the `DECLARATION` records V2 writes ("A
   refusal is a result"), so they match the step-5 report exactly, and each
   claim shows the model's verbatim reason where its check would have been.
-- **4 · Decided** — the role elections, per role: the candidates, the elected
-  winner, each loser with the domain law that felled it; a role whose
-  candidates were never bound to an invariant says so; a slot field shows the
-  column its object's passing law consumed; a role that lost every candidate
-  ends in its clarification question.
+- **4 · Decided** — the elections, one per **role × scope** (the entity named
+  in the heading): the candidates, the elected winner, each loser with the
+  domain law that felled it; a role whose candidates were never bound to an
+  invariant says so; a slot field shows the column its object's passing law
+  consumed; a role that lost every candidate ends in its clarification
+  question.
 - **5 · Open** — the clarification-questions inbox with the claims each
   question rests on: the human's to-do list.
-- **6 · Claim detail as a story**: statement, one derived-status badge (a loud
+- **6 · Readiness** — per asked question: the business question verbatim, the
+  derived verdict with the dependencies it names, and every required item with
+  the sentence saying where it stands, grouped into "what the figures are
+  computed from" and "what the figures mean". See "Question flow & readiness".
+- **7 · Claim detail as a story**: statement, one derived-status badge (a loud
   banner only when the stored status diverges), then collapsible
   *1 proposed → 2 planned → 3 judged → 4 context*; ids and timestamps in
   collapsed fine print. Check-plan cards show template, params, roles,
@@ -755,6 +760,31 @@ Two things are non-negotiable in the output and are tested as such:
 and *proposed but undecided* are three different jobs for the reader — declare
 a source, fix the data, answer a question — so `Ground` tells them apart in
 words.
+
+**How each kind of item resolves.** An **object** or **field** resolves through
+the domain guide and its scoped election — that is what the guide is for. A
+**rule** has no guide entry by definition, so it resolves only through an
+**explicit claim link** (`KnowledgeItem.satisfied_by`, a `KnowledgeLink`
+carrying `linked_by`; created via `readiness.link_claim`).
+
+*Owner decision 2026-07-31.* The first implementation matched a rule's name
+against a concept claim's `term` or a predicate name, slug-normalised. That was
+rejected before M5 could build on it: V4 names a rule in the human's words
+("sign convention for income and expense") while V3, reading a policy PDF,
+coins its own term — so the match would miss exactly where it matters, and
+could just as easily hit something unrelated that happens to slug the same. A
+verdict resting on a coincidence of wording is not a verdict.
+
+The link **routes, it does not vouch**: the linked claim's own status still
+decides, so a link can never promote anything and an **AI may create one** —
+structurally as harmless as an AI-authored claim. That is what makes it usable
+as V3's output seam in M5. Two guards: a link on a non-rule item is refused
+(model validator + `UnlinkableItem`), because it would be a way around the
+scoped election; and a link to a vanished claim is both an integrity finding
+and a distinct readiness sentence ("the link is broken, not the knowledge") —
+a broken pointer and missing knowledge need different repairs. The report
+prints who linked it and why, since a wrong link points a verdict at an
+unrelated claim.
 
 One deliberate leniency, stated rather than hidden: a **landscape-wide claim
 covers a scoped item**, because a shared account master genuinely serves every

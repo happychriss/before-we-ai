@@ -1439,13 +1439,23 @@ def _render_readiness_item(item, rel: str) -> str:
         f"<a href='#claim-{escape(cid)}'>{escape(cid[-6:])}</a>"
         for cid in item.claim_ids
     )
+    # A rule is only ever satisfied by an explicit link, so who made that
+    # link is part of the audit trail: a wrong link points a verdict at an
+    # unrelated claim, and the reader must see whose mistake that was.
+    linked = "".join(
+        f"<p class='fine'>Linked by the {escape(link.linked_by.value)}"
+        f"{' — ' + escape(link.note) if link.note else ''} "
+        f"→ <a href='#claim-{escape(link.claim_id)}'>"
+        f"{escape(link.claim_id[-6:])}</a></p>"
+        for link in item.item.satisfied_by
+    )
     return (
         f"<div class='ready-item {mark}'>"
         f"<h5><code>{escape(item.ref)}</code> "
         f"<span class='muted'>{escape(item.item.kind.value)}</span></h5>"
         f"<p class='derived'>{escape(item.because)}</p>"
-        f"{why}"
-        + (f"<p class='fine'>Claims: {links}</p>" if links else "")
+        f"{why}{linked}"
+        + (f"<p class='fine'>Claims: {links}</p>" if links and not linked else "")
         + "</div>"
     )
 
