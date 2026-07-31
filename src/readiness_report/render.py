@@ -23,6 +23,7 @@ from before_we_ai.model.objects import (
     Source,
 )
 from before_we_ai.checks.library import REGISTRY
+from before_we_ai.readiness import Readiness, evaluate_request
 from before_we_ai.store import ProjectStore, check_integrity
 from before_we_ai.store.layout import CONFIG_FILE
 
@@ -181,7 +182,9 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
     answered_slots = _settled_slot_columns(root_path, config, store)
     guide_fields = len(guide.owner)
     elected, elections = _election_tally(facts, answered_slots)
+    readiness_maps = _readiness_maps(store, root_path, config)
     diagram = _render_process_diagram(
+        readiness_counts=_readiness_counts(readiness_maps),
         declared_sources=len(config.get("sources") or []),
         guide_objects=len(guide.order) - guide_fields,
         guide_fields=guide_fields,
@@ -491,6 +494,28 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
       font-size: 13px;
     }}
     .ai-said cite {{ display: block; font-style: normal; font-size: 11px; color: var(--muted); }}
+    /* the readiness map: the verdict leads, each dependency states itself */
+    .ready-map {{
+      border: 1px solid var(--line);
+      border-left-width: 4px;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }}
+    .ready-ready {{ border-left-color: var(--pass); }}
+    .ready-ready_with_limitations {{ border-left-color: var(--proposed); }}
+    .ready-blocked {{ border-left-color: var(--fail); }}
+    .ready-map .verdict {{ font-size: 16px; }}
+    .ready-map h4 {{ margin: 14px 0 6px; text-transform: uppercase;
+      letter-spacing: .04em; }}
+    .ready-item {{
+      border-left: 3px solid var(--line);
+      padding: 2px 0 2px 10px;
+      margin: 8px 0;
+    }}
+    .ready-item.supported {{ border-left-color: var(--pass); }}
+    .ready-item.missing {{ border-left-color: var(--fail); }}
+    .ready-item h5 {{ margin: 0 0 2px; font-size: 13px; }}
     .strip {{ display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }}
     .strip .step {{
       font-size: 11px;
@@ -560,6 +585,7 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         <a href="#proposed">3 Proposed</a>
         <a href="#decided">4 Decided</a>
         <a href="#open">5 Open</a>
+        <a href="#readiness">6 Readiness</a>
         <a href="#claims">Claim detail</a>
         <a href="#integrity">Integrity</a>
         <a href="#terms">Core terms</a>
@@ -624,8 +650,16 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         <p class="muted">What the checks could not settle. This is the human's to-do list.</p>
         {question_sections}
       </section>
+      <section class="panel" id="readiness">
+        <h2>6 · Readiness — what may be answered</h2>
+        <p class="muted">The question bounds the work: it defines what must be
+        known, and nothing else has to be. Each dependency below is traced to
+        its claim and evidence. Derived on every render, never stored — a
+        verdict that has drifted from its evidence is worse than none.</p>
+        {_render_readiness(readiness_maps, store_rel)}
+      </section>
       <section class="panel" id="claims">
-        <h2>6 · Claim detail — one claim, its whole story</h2>
+        <h2>7 · Claim detail — one claim, its whole story</h2>
         <p id="claim-empty" class="muted">Pick a claim on the left.</p>
         {claim_sections}
       </section>
@@ -998,6 +1032,7 @@ def _render_process_diagram(
     elected: int,
     elections: int,
     questions: int,
+    readiness_counts: list[tuple[str, str]],
 ) -> str:
     """The whole machine on one line, with this project's numbers in it.
 
@@ -1030,16 +1065,14 @@ def _render_process_diagram(
         _node("5 · open", "Humans decide the rest", "open", "human — may promote", [
             (str(questions), f"open question{'s' if questions != 1 else ''}"),
         ]),
+        _node("6 · readiness", "What may be answered", "readiness",
+              "derived — never stored", readiness_counts),
     ])
     ghosts = (
         '<div class="ghosts">'
         '<div class="ghost"><strong>M5 · documents</strong> — not built. '
         "Policies, manuals and contracts become a fourth input, anchored back to "
         "the passage they came from.</div>"
-        '<div class="ghost"><strong>M6 · question → readiness</strong> — not built. '
-        "A business question enters at the front and decides what must be known; "
-        "this report's evidence then answers "
-        "<em>ready</em> / <em>ready with limitations</em> / <em>blocked</em>.</div>"
         "</div>"
     )
     return f'<div class="flow">{flow}</div>{ghosts}'
@@ -1283,6 +1316,137 @@ def _generic_note(generic: int, foreign: int) -> str:
         f"<p class='fine'>The other {generic} templates in the catalog are generic data "
         "checks (reference check, duplicates, coverage …) — they carry no domain "
         f"knowledge and work in any domain.{other}</p>"
+    )
+
+
+_VERDICT_HEADLINE = {
+    Readiness.READY: (
+        "Ready.",
+        "Every dependency of this answer is supported by evidence.",
+    ),
+    Readiness.READY_WITH_LIMITATIONS: (
+        "Ready, with limitations.",
+        "The figures can be produced. What they mean is not fully settled — "
+        "the unsupported items below are the qualifications that belong with "
+        "any answer given from this data.",
+    ),
+    Readiness.BLOCKED: (
+        "Blocked.",
+        "The figures cannot be produced from this data yet. Each unsupported "
+        "item below is something the answer is computed from.",
+    ),
+}
+
+
+def _readiness_maps(store: ProjectStore, root: Path, config: dict) -> list:
+    """Every asked question, judged. Empty when none has been asked.
+
+    Derived on this render, never read from a file — a stored verdict could
+    drift away from the evidence beneath it, and a drifted verdict is worse
+    than none.
+    """
+    path = _guide_path(root, config)
+    if path is None or not store.requests:
+        return []
+    try:
+        guide = load_domain_guide(path)
+    except (OSError, ValueError):
+        return []
+    maps = []
+    for request in sorted(store.requests.values(), key=lambda r: r.created_at):
+        result = evaluate_request(store, guide, request.id)
+        if result is not None:
+            maps.append(result)
+    return maps
+
+
+def _readiness_counts(maps: list) -> list[tuple[str, str]]:
+    """The diagram's live numbers for stage 6."""
+    if not maps:
+        return [("—", "no question asked")]
+    supported = sum(1 for m in maps for i in m.items if i.satisfied)
+    total = sum(len(m.items) for m in maps)
+    worst = next((m.verdict for m in maps if m.verdict is Readiness.BLOCKED),
+                 None) or next(
+        (m.verdict for m in maps if m.verdict is Readiness.READY_WITH_LIMITATIONS),
+        Readiness.READY)
+    return [
+        (f"{supported}/{total}", "dependencies supported"),
+        (worst.value.replace("_", " "), "verdict"),
+    ]
+
+
+def _render_readiness(maps: list, rel: str) -> str:
+    if not maps:
+        return (
+            '<p class="empty">No business question has been asked of this '
+            "project yet. Until one is, this report describes a landscape "
+            "rather than an answer — and whether a landscape is generally "
+            "sound is a question nobody asked.</p>"
+        )
+    return "".join(_render_readiness_map(result, rel) for result in maps)
+
+
+def _render_readiness_map(result, rel: str) -> str:
+    headline, explanation = _VERDICT_HEADLINE[result.verdict]
+    scope = result.request.scope
+    scope_line = (
+        f"<p class='fine'>Asked for {escape(scope.label())}.</p>"
+        if scope.is_explicit() else ""
+    )
+    groups = [
+        ("What the figures are computed from",
+         [i for i in result.items if i.structural]),
+        ("What the figures mean",
+         [i for i in result.items if not i.structural]),
+    ]
+    body = "".join(
+        f"<h4 class='fine'>{escape(title)}</h4>"
+        + "".join(_render_readiness_item(item, rel) for item in items)
+        for title, items in groups if items
+    )
+    return (
+        f"<div class='ready-map ready-{result.verdict.value}' "
+        f"id='readiness-{escape(result.request.id)}'>"
+        # the human's words, verbatim: this is the question that was asked
+        f"<blockquote class='quote'>{escape(result.request.question)}"
+        "<cite>— the business question, as it was asked</cite></blockquote>"
+        f"<p class='fine'>Requested output: "
+        f"{escape(result.request.requested_output)}</p>{scope_line}"
+        f"<p class='derived verdict'><strong>{escape(headline)}</strong> "
+        f"{escape(result.reason())}</p>"
+        f"<p class='muted'>{escape(explanation)}</p>"
+        f"{body}"
+        f"{_provenance(rel, 'answers', result.request.id, 'derived on this render', 'never stored')}"
+    ) + "</div>"
+
+
+def _render_readiness_item(item, rel: str) -> str:
+    """One dependency: the derived sentence first, the AI's reason under it.
+
+    The three-voices rule at its sharpest. The status sentence is derived
+    and is the headline; the ``why`` the model wrote when it listed this
+    dependency is legible, attributed, and subordinate — it explains why the
+    item is on the list, never what became of it.
+    """
+    mark = "supported" if item.satisfied else "missing"
+    why = (
+        f"<blockquote class='ai-said'>{escape(item.item.why)}"
+        "<cite>— the AI, on why the answer depends on this</cite></blockquote>"
+        if item.item.why else ""
+    )
+    links = " ".join(
+        f"<a href='#claim-{escape(cid)}'>{escape(cid[-6:])}</a>"
+        for cid in item.claim_ids
+    )
+    return (
+        f"<div class='ready-item {mark}'>"
+        f"<h5><code>{escape(item.ref)}</code> "
+        f"<span class='muted'>{escape(item.item.kind.value)}</span></h5>"
+        f"<p class='derived'>{escape(item.because)}</p>"
+        f"{why}"
+        + (f"<p class='fine'>Claims: {links}</p>" if links else "")
+        + "</div>"
     )
 
 

@@ -23,6 +23,9 @@ DATA = VALIDATION / "data"
 PROJECT = DATA / "project"
 REPORT = DATA / "report"
 SCENARIO = "corpus"  # shared with fixtures and the eval tools
+# byte-identical to DEMO_QUESTION in the offline corpus suite and in
+# tests/eval/refresh_fixtures.py — the V4 drift guard rebuilds its input from it
+DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
 sys.path.insert(0, str(REPO / "src" / "tests" / "eval"))  # _corpus (test-side)
 import _corpus  # noqa: E402
@@ -34,6 +37,7 @@ def _corpus_file() -> str:
 
 from before_we_ai.engine import run_ready  # noqa: E402
 from before_we_ai.llm import (  # noqa: E402
+    ask,
     plan_checks,
     hypothesize,
     load_domain_guide,
@@ -44,6 +48,7 @@ from before_we_ai.llm.domain_guide import settled_slots  # noqa: E402
 from before_we_ai.model import Actor  # noqa: E402
 from before_we_ai.model.objects import MappingClaim  # noqa: E402
 from before_we_ai.profile.candidates import load_matrix  # noqa: E402
+from before_we_ai.readiness import evaluate_request  # noqa: E402
 from before_we_ai.sources import open_catalog  # noqa: E402
 from before_we_ai.store import ProjectStore  # noqa: E402
 
@@ -428,7 +433,68 @@ def stage_resolve(args) -> None:
     print(f"\nfull detail: {PROJECT}/questions/")
     print()
     refresh_report_html()
-    print("next: 8-collect.sh")
+    print("next: 8-ask.sh")
+
+
+def stage_ask(args) -> None:
+    """The frame around everything steps 1-8 did: the question, and the verdict.
+
+    In a driven run the question comes *first* — it bounds discovery, and
+    what it does not depend on nobody has to know. The walkthrough puts it
+    here because steps 1-8 are the middle of the machine, and this step is
+    both ends of it at once.
+    """
+    store = need_project()
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)
+    inputs(
+        f"the business question, as a human asked it: {DEMO_QUESTION!r}",
+        f"the same domain vocabulary as step 4: "
+        f"{DOMAIN_GUIDE_FILE.relative_to(REPO)}\n  (definitions only — V4 "
+        "sees no profiles: whether the data can serve the request is the "
+        "rest\n  of the pipeline's job, and answering it here would be the "
+        "model deciding)",
+        "system prompt: llm/prompts.py:V4_SYSTEM + the output schema",
+        f"answers: {'recorded fixtures in src/tests/fixtures/llm/' if _offline() else 'live model calls'}",
+        "for the verdict — NO LLM: the ReadinessMap is derived from the "
+        "claims and\n  evidence steps 1-8 produced, and is never stored",
+        LLM_INPUT_NOTE,
+    )
+    report = ask(PROJECT, DEMO_QUESTION, guide=roles, store=store,
+                 scenario=SCENARIO)
+    section("V4 — the question, and what it requires")
+    if report.failure:
+        print(f"  CALL FAILED after retry: {report.failure}")
+        print("  nothing was created")
+        return
+    print(f"  required: {len(report.required.items)}   "
+          f"skipped: {len(report.skipped)}   retries: {report.retries}   "
+          f"usage: {report.usage or 'n/a (stub)'}")
+    for name, reason in report.skipped:
+        print(f"  skipped: {clip(name, 60)}\n           -> {clip(reason)}")
+    print(f"  verbatim call log: {report.log_ref}  (read with llm-log.sh)")
+    print(f"  requested output: {report.request.requested_output}")
+    scope = report.request.scope
+    print(f"  scope: {scope.label() or 'the whole landscape (the question named none)'}")
+    section(f"required knowledge ({len(report.required.items)} items) — and "
+            "nothing else has to be known")
+    for item in report.required.items:
+        print(f"  {item.kind.value:7s} {item.ref():24s} {clip(item.why, 60)}")
+
+    store = ProjectStore(PROJECT)  # reload: the verdict reads what is on disk
+    result = evaluate_request(store, roles, report.request.id)
+    section(f"the ReadinessMap — {result.verdict.value.replace('_', ' ')}")
+    print(f"  {result.reason()}\n")
+    for item in result.items:
+        mark = "OK " if item.satisfied else "-- "
+        print(f"  {mark}{item.ref:24s} {clip(item.because, 100)}")
+    print("\n  Every satisfied item says HOW it is satisfied: by its own "
+          "claim's status,\n  or by the derivation a passing law supplies for "
+          "a slot field whose own\n  claims are still proposed. Those are "
+          "deliberately different things.")
+    print(f"\nfull detail: {PROJECT}/answers/  (and section 6 of the report)")
+    refresh_llm_html()
+    refresh_report_html()
+    print("next: 9-collect.sh")
 
 
 def stage_collect(args) -> None:
@@ -486,7 +552,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=[
         "scan", "matrix", "hypotheses", "role-proposals", "bind", "run",
-        "resolve", "collect", "report"])
+        "resolve", "ask", "collect", "report"])
     parser.add_argument("--online", action="store_true",
                         help="scan only: configure real model calls "
                              "(needs ANTHROPIC_API_KEY for stages 3-5)")
@@ -501,6 +567,7 @@ def main() -> None:
         "bind": stage_bind,
         "run": stage_run,
         "resolve": stage_resolve,
+        "ask": stage_ask,
         "collect": stage_collect,
         "report": stage_report,
     }[args.stage](args)

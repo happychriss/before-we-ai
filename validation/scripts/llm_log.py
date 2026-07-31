@@ -27,6 +27,16 @@ DEFAULT_PROJECT = Path(__file__).resolve().parents[1] / "data" / "project"
 
 
 def guide_for(contract: str, scenario: str) -> str:
+    if contract == "v4_request":
+        return (
+            "Walkthrough step 8 (V4) — the top of the machine. Input: one "
+            "business question + the domain vocabulary (definitions only, no "
+            "profiles: whether the data can serve the request is the rest of "
+            "the pipeline's job). Output: the requested output in one line, "
+            "and the objects, fields and rules the answer depends on. The "
+            "question bounds the work — what it does not depend on, nobody "
+            "has to know. The list is a draft a human may prune; nothing "
+            "here is a claim and nothing here is verified.")
     if contract == "v1_hypotheses":
         return (
             "Walkthrough step 3 (V1) — the model's first job. Input: column "
@@ -61,10 +71,11 @@ def guide_for(contract: str, scenario: str) -> str:
 
 
 GROWTH_NOTE = (
-    "This log grows as the walkthrough progresses: steps 3, 4 and 5 talk to "
-    "the model (one entry per call; retries and repairs live inside their "
-    "entry as extra attempts). Steps 1–2 and 6–8 are deterministic and add "
-    "nothing here — measuring and judging never involve the model.")
+    "This log grows as the walkthrough progresses: steps 3, 4, 5 and 8 talk "
+    "to the model (one entry per call; retries and repairs live inside their "
+    "entry as extra attempts). Steps 1–2, 6–7 and 9 are deterministic and add "
+    "nothing here — measuring, judging and deciding readiness never involve "
+    "the model.")
 
 
 def domain_header(project: Path) -> str:

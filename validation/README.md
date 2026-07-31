@@ -27,7 +27,8 @@ first — expect different numbers (the model samples).
 | 5 | `5-plan-checks.sh` | V2: LLM binds claims to check definitions |
 | 6 | `6-run-checks.sh` | engine: execute checks, derive statuses |
 | 7 | `7-resolve-roles.sh` | unsettled roles become clarification questions |
-| 8 | `8-collect.sh` | gather everything into a clickable report |
+| 8 | `8-ask.sh` | V4: a business question → what must be known → the ReadinessMap |
+| 9 | `9-collect.sh` | gather everything into a clickable report |
 
 Every step opens with an **INPUT** block naming the files that drove it — the
 source list, the domain guide, the profiles, the check-definition catalog, the
@@ -144,7 +145,51 @@ grouping column.
 The project now holds **13** open questions in total: these 6 plus 7 drafted
 by the engine in step 6 where a check failed or was inconclusive.
 
-### Step 8 — collect
+### Step 8 — the question, and the verdict
+
+The two ends of the machine, in one step. Steps 1–7 are the middle: they scan
+a landscape and test what can be tested. This step puts the frame around
+them — the business question that bounds the work, and the verdict that work
+earns.
+
+In a driven run the question comes **first**: it defines what must be known,
+and nothing else has to be. The walkthrough asks it here because you have just
+watched the middle happen and can see what the question does to it.
+
+V4 reads the question and the domain vocabulary — definitions only, no
+profiles. Whether the data can serve the request is the rest of the pipeline's
+job; answering it here would be the model deciding. Good (offline pins): **9**
+required-knowledge items, 0 skipped — the journal, four of its fields, the
+intercompany object, and three business rules the vocabulary does not contain
+(which accounts are P&L, the sign convention, the month cut-off). Note what is
+*not* on the list: `subledger_ar`. Open receivables do not enter a profit and
+loss, so this question does not require them — that is the question bounding
+discovery, visible.
+
+Then the ReadinessMap, derived with no model involved from the claims and
+evidence steps 1–7 produced. Good (offline pins): **blocked**, naming
+`journal.entity`, `journal.period`, `journal.account` and `intercompany`. The
+honest verdict: the ledger of record is identified and its amount column is
+settled, but nothing yet says which column carries the entity or the period —
+and a P&L *by entity and month* is computed from exactly those.
+
+Two things to check in the output, because they are the guarantees:
+
+- **The verdict names its dependency.** A verdict without its reason is the
+  one thing this product may not ship.
+- **Every satisfied item says *how*.** `journal` is satisfied because its own
+  claim is test-supported. `journal.amount_local` is satisfied because the
+  balance law of `journal` passed while reading
+  `de_erp__gl_postings.amount_local_currency` — its own candidate claims are
+  still `proposed`, and the sentence says so. *Satisfied* and *promoted* are
+  deliberately different things (owner decision, 2026-07-31); an item reading
+  only "satisfied" would hide the difference.
+
+Answer the four open mapping questions and the verdict narrows rather than
+clearing: `ready_with_limitations`, with the three business rules named as the
+limitations they are. That is the third outcome — permit, narrow, or block.
+
+### Step 9 — collect
 
 Builds `validation/data/report/index.html` linking the readiness report, the
 LLM-call browser, the candidate matrix, and (if `recall.sh` ran) the
@@ -155,27 +200,29 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
 - `llm-log.sh` — list all LLM calls; `llm-log.sh 2` shows one call fully
   formatted (system prompt, user input, every attempt with its validation
   errors and pretty-printed answer); `llm-log.sh --html f.html` for a
-  browsable page. Steps 3–5 also refresh that page automatically at
+  browsable page. Steps 3–5 and 8 also refresh that page automatically at
   `data/report/llm_calls.html` — it opens with the **domain knowledge**
   actually in play (source list, domain guide, domain-law check definitions),
   every call carries a comment mapping it back to its walkthrough step, and
-  the page grows as you progress (steps 6–8 add nothing: they never talk to
-  the model).
+  the page grows as you progress (steps 6, 7 and 9 add nothing: they never
+  talk to the model).
 - `report.sh` — rebuild the readiness report HTML at any point mid-walkthrough.
-  Steps 3–7 also refresh it automatically at `data/report/readiness.html`
+  Steps 3–8 also refresh it automatically at `data/report/readiness.html`
   (every step that changes the store). The page *is* this walkthrough,
   rendered from the store, in the same order: a **process diagram** on top
   carrying this project's live numbers (each one a link into the section that
   produced it, with the actor boundary drawn where the AI's proposals stop and
-  promotion begins, and M5/M6 shown as not-built ghosts), then
+  promotion begins, and M5 shown as a not-built ghost), then
   **1 inputs** (the three declared domain inputs), **2 measured** (sources,
   column profiles, candidate overlaps), **3 proposed** (the funnel: 74 proposed
   → 42 planned / 19 unbindable / 6 semantic-only / 7 skipped → 42 judged → the
   derived statuses, every number a filter), **4 decided** (the role elections —
   each object with its fields nested beneath it: the winner, each loser with
   the domain law that felled it, and for a slot field the column its object's
-  passing law consumed), **5 open** (the clarification-questions inbox), then
-  one claim at a time as a story: proposed → planned → judged → context.
+  passing law consumed), **5 open** (the clarification-questions inbox),
+  **6 readiness** (the question verbatim, the verdict, and every dependency
+  with the sentence saying where it stands), then one claim at a time as a
+  story: proposed → planned → judged → context.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
 - `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
   (`data/project/cache/export.duckdb`) — this is what you point DataGrip at.

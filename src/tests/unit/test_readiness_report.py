@@ -8,6 +8,7 @@ import yaml
 
 from before_we_ai.model import (
     Actor,
+    AnswerRequest,
     ClaimStatus,
     EvidenceRecord,
     EvidenceType,
@@ -15,7 +16,10 @@ from before_we_ai.model import (
     CheckPlan,
     CheckVerdict,
     ClarificationQuestion,
+    KnowledgeItem,
+    KnowledgeKind,
     MappingClaim,
+    RequiredKnowledge,
     Scope,
     Source,
     create_claim,
@@ -343,7 +347,8 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
     html = render_project(root)
 
     # every stage is a link into the section that produced it
-    for anchor in ("inputs", "measured", "proposed", "decided", "open"):
+    for anchor in ("inputs", "measured", "proposed", "decided", "open",
+                   "readiness"):
         assert f'<div class="node-title"><a href="#{anchor}">' in html
     # the counts are read from this project, not written into the template
     laws = sum(1 for spec in REGISTRY.values() if spec.domain)
@@ -359,9 +364,12 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
     assert "no proposal may promote itself" in html
     assert "AI — proposals only" in html
     assert "check — may promote" in html
-    # what is not built says so, rather than being left out
-    assert "M5 · documents" in html and "M6 · question → readiness" in html
-    assert html.count("not built") == 2
+    # readiness is a real stage now; nothing was asked of this project, and
+    # the diagram says that rather than showing a verdict nobody earned
+    assert "<strong>—</strong> no question asked" in html
+    # what is not built still says so, rather than being left out
+    assert "M5 · documents" in html
+    assert html.count("not built") == 1
 
 
 def test_a_question_lists_candidates_and_hides_its_ids(tmp_path):
@@ -716,6 +724,112 @@ def test_two_entities_get_two_elections_and_the_page_says_which(tmp_path):
     assert html.count("<code>journal</code>") >= 2
     assert "for entity DE" in html and "for entity US" in html
     assert "<strong>0/2</strong> elections settled" in html
+
+
+def _p_and_l_project(tmp_path, name="readiness"):
+    """A project with a guide, a question asked of it, and one ledger."""
+    root = init_project(tmp_path / name)
+    store = ProjectStore(root)
+    guide = tmp_path / f"{name}-guide.yaml"
+    guide.write_text(
+        "domain: finance\n"
+        "objects:\n"
+        "  journal:\n"
+        "    decided_by: balance\n"
+        "    definition: The transactional ledger of record.\n"
+        "    fields:\n"
+        "      amount_local:\n"
+        "        decided_by: slot\n"
+        "        fills: amount\n"
+        "        definition: The signed posting amount.\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["llm"] = {"domain_guide_file": str(guide)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    request = AnswerRequest(
+        question="Can these files reliably produce actual P&L by entity and month?",
+        requested_output="P&L per entity per month",
+    )
+    store.save_request(request)
+    store.save_required_knowledge(RequiredKnowledge(request_id=request.id, items=[
+        KnowledgeItem(kind=KnowledgeKind.OBJECT, name="journal",
+                      why="the figures are summed from it"),
+        KnowledgeItem(kind=KnowledgeKind.FIELD, name="amount_local",
+                      of_object="journal", why="it is what gets summed"),
+        KnowledgeItem(kind=KnowledgeKind.RULE, name="sign convention",
+                      why="it decides profit from loss"),
+    ]))
+    return root, store
+
+
+def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_path):
+    """The bottom of the machine, on the page. The question is the human's
+    words, the verdict is derived, and the AI's reason for listing a
+    dependency is attributed and subordinate to it."""
+    root, store = _p_and_l_project(tmp_path)
+    journal = MappingClaim(statement="role 'journal' is played by de_erp__gl",
+                           created_by=Actor.AI, role="journal",
+                           binding={"table": "de_erp__gl"})
+    store.save_claim(journal)
+    plan = CheckPlan(template="balance", roles=["journal"],
+                     params={"journal": "de_erp__gl", "amount": "betrag",
+                             "group_column": "period"})
+    store.save_check_plan(plan)
+    record = EvidenceRecord(type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK,
+                            claim_id=journal.id, check_plan_id=plan.id,
+                            verdict=CheckVerdict.PASS, population=9,
+                            exception_count=0)
+    store.add_evidence(record)
+    store.save_claim(attach_evidence(journal, record, []))
+
+    html = render_project(root)
+
+    # the ghost is gone; the stage is real and carries live numbers
+    assert "M6 · question → readiness" not in html
+    assert "<strong>2/3</strong> dependencies supported" in html
+    assert "6 · Readiness — what may be answered" in html
+
+    # the human's question, verbatim
+    assert "Can these files reliably produce actual P&amp;L by entity and month?" in html
+    assert "— the business question, as it was asked" in html
+
+    # the verdict is narrowed, not blocked: the figures compute, the meaning
+    # is unsettled — and it names what is unsettled
+    assert "Ready, with limitations." in html
+    assert "&#x27;sign convention&#x27;" in html
+    assert "what they mean is not settled" in html
+
+    # every satisfied item says HOW, and the two grounds differ
+    assert "Satisfied because its own claim is test-supported" in html
+    assert "the balance law of &#x27;journal&#x27; passed while reading" in html
+    assert "still proposed" in html
+
+    # three voices: the AI's why is attributed and never the headline
+    assert "— the AI, on why the answer depends on this" in html
+    assert html.index("Satisfied because its own claim") < \
+        html.index("the figures are summed from it")
+
+
+def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
+    root, _ = _p_and_l_project(tmp_path, "blocked")
+
+    html = render_project(root)
+
+    assert "Blocked." in html
+    assert "The answer cannot be produced" in html
+    assert "Not supported: nothing in this project plays it" in html
+    assert "<strong>blocked</strong> verdict" in html
+
+
+def test_a_project_nobody_asked_a_question_of_says_that_plainly(tmp_path):
+    """Without a question the report describes a landscape, and whether a
+    landscape is generally sound is a question nobody asked."""
+    html = render_project(init_project(tmp_path / "unasked"))
+
+    assert "No business question has been asked of this project yet" in html
+    assert "<strong>—</strong> no question asked" in html
 
 
 def test_domain_pack_panel_is_honest_when_nothing_is_declared(tmp_path):
