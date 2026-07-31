@@ -33,9 +33,18 @@ from before_we_ai.llm.inputs import (
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.llm.prompts import render_template_docs
 from before_we_ai.llm.v2_bind import _unbound_ai_claims
-from before_we_ai.model import Actor, ClaimStatus, EvidenceType
+from before_we_ai.model import (
+    Actor,
+    ClaimStatus,
+    EvidenceRecord,
+    EvidenceType,
+    KnowledgeKind,
+    Scope,
+)
 from before_we_ai.model.objects import MappingClaim
+from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.profile.candidates import load_matrix
+from before_we_ai.readiness import Ground, Readiness, evaluate_request
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, init_project
 
@@ -271,6 +280,138 @@ def test_built_inputs_leak_no_corpus_hints(pipeline):
         lowered = text.lower()
         for token in LEAK_TOKENS:
             assert token.lower() not in lowered, f"built input leaks {token!r}"
+
+
+# --- M6 acceptance: the six demo behaviours -------------------------------
+#
+# The acceptance criteria of the narrow demo (findings §12), run against the
+# frozen corpus and its *recorded real* answers rather than a hand-authored
+# demo set: identify both journal candidates, contradict the wrong one,
+# surface the missing business rule, ask one focused clarification, build the
+# ReadinessMap, and permit / narrow / block the answer. Numbers here are
+# pinned to the recording, like every other assertion in this module.
+
+
+def _readiness(pipeline):
+    store = pipeline["store"]
+    request = pipeline["v4"].request
+    return evaluate_request(store, pipeline["roles"], request.id)
+
+
+def test_demo_1_and_2_both_journals_are_found_and_the_wrong_one_is_contradicted(pipeline):
+    """The decoy is an *attractive* wrong answer — a plausible-looking
+    posting export. Nothing about its shape says so; the balance law does."""
+    store = pipeline["store"]
+    journals = [c for c in store.claims.values()
+                if isinstance(c, MappingClaim) and c.role == "journal"]
+    tables = {c.binding.get("table", "") for c in journals}
+    assert any("de_erp__gl_postings" in t for t in tables)
+    assert any("buchungen_report" in t for t in tables)
+    (decoy,) = [c for c in journals if "buchungen_report" in c.binding.get("table", "")]
+    assert decoy.status is ClaimStatus.CONTRADICTED
+
+
+def test_demo_3_the_rules_no_column_layout_reveals_are_surfaced_by_name(pipeline):
+    """The three conventions a P&L rests on and no data can supply. They are
+    listed as required knowledge and then found unsupported — the opposite of
+    the failure mode where an answer is produced as if they were known."""
+    result = _readiness(pipeline)
+    rules = {i.ref for i in result.items
+             if i.item.kind is KnowledgeKind.RULE}
+    assert rules == {
+        "which accounts are profit and loss",
+        "sign convention for income and expense",
+        "month cut-off for late postings",
+    }
+    assert all(not i.satisfied for i in result.items
+               if i.item.kind is KnowledgeKind.RULE)
+
+
+def test_demo_4_the_clarifications_are_focused_and_scoped_to_the_question(pipeline):
+    """Six cards, each about one role, none of them a wall of candidates."""
+    cards = pipeline["role_cards"]
+    assert len(cards) == 6
+    for card in cards:
+        assert card.question.count("?") == 1
+        assert len(card.question) < 320
+
+
+def test_demo_5_the_readiness_map_covers_every_required_item(pipeline):
+    result = _readiness(pipeline)
+    assert len(result.items) == len(pipeline["v4"].required.items) == 9
+    # nothing is silent: every item carries a derived sentence saying where
+    # it stands, satisfied or not
+    assert all(i.because for i in result.items)
+    assert all(i.because.startswith(("Satisfied because", "Not supported:"))
+               for i in result.items)
+
+
+def test_demo_6_the_answer_is_blocked_and_the_blockers_are_named(pipeline):
+    """The honest verdict on this landscape: the ledger of record is
+    identified and its amount column is settled by the run that consumed it —
+    but nothing yet says which column carries the entity or the period, and a
+    P&L *by entity and month* is computed from exactly those."""
+    result = _readiness(pipeline)
+    assert result.verdict is Readiness.BLOCKED
+
+    satisfied = {i.ref: i.ground for i in result.items if i.satisfied}
+    assert satisfied == {
+        "journal": Ground.ELECTED,
+        "journal.amount_local": Ground.SLOT_DERIVATION,
+    }
+    assert sorted(i.ref for i in result.blocking()) == [
+        "intercompany", "journal.account", "journal.entity", "journal.period",
+    ]
+    reason = result.reason()
+    for blocker in ("journal.entity", "journal.period", "journal.account"):
+        assert f"'{blocker}'" in reason
+    assert "the figures are computed from them" in reason
+
+
+def test_demo_6_answering_the_clarifications_narrows_instead_of_blocking(pipeline,
+                                                                        tmp_path):
+    """The other side of "permit, narrow, or block". A human answers the four
+    open mapping questions; the figures become computable, and what is left
+    is what they *mean* — so the verdict narrows rather than clearing. The
+    three conventions are named as the limitations they are."""
+    store = ProjectStore(pipeline["root"])  # a private reload; the module
+    for card in pipeline["role_cards"]:     # fixture must stay untouched
+        # what answering a card *is*: the human picks one of its candidates
+        picked = store.claims[card.claim_ids[0]]
+        record = EvidenceRecord(
+            type=EvidenceType.CONFIRMATION, actor=Actor.HUMAN,
+            claim_id=picked.id, scope=Scope(entity="DE"),
+        )
+        store.add_evidence(record)
+        store.save_claim(attach_evidence(picked, record,
+                                         store.evidence_for(picked)))
+
+    result = evaluate_request(store, pipeline["roles"],
+                              pipeline["v4"].request.id)
+
+    assert result.verdict is Readiness.READY_WITH_LIMITATIONS
+    assert result.blocking() == []
+    assert sorted(i.ref for i in result.limitations()) == [
+        "month cut-off for late postings",
+        "sign convention for income and expense",
+        "which accounts are profit and loss",
+    ]
+    assert "what they mean is not settled" in result.reason()
+    # and the promotions came from the human, never from the AI
+    for item in result.items:
+        for claim_id in item.claim_ids:
+            claim = store.claims[claim_id]
+            if claim.status is ClaimStatus.BUSINESS_CONFIRMED:
+                assert any(store.evidence[eid].actor is Actor.HUMAN
+                           for eid in claim.evidence_ids)
+
+
+def test_the_readiness_map_never_writes_anything(pipeline):
+    """Derived, never stored — the same discipline as claim status."""
+    root = pipeline["root"]
+    before = {p: p.stat().st_mtime_ns for p in sorted(root.rglob("*.yaml"))}
+    _readiness(pipeline)
+    assert {p: p.stat().st_mtime_ns for p in sorted(root.rglob("*.yaml"))} == before
 
 
 def test_fixtures_match_current_inputs(pipeline):
