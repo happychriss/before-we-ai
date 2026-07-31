@@ -83,8 +83,8 @@ Full report: `docs/seeded-recall-m4.md`. Owner-facing validation walkthrough:
 | M3 | Check engine + epistemics runtime — validated **without any LLM** | ✅ done — `m3-probes-v1` |
 | M4 | LLM contracts V1/V2 (hypotheses, check planning) + offline stub mode | ✅ done — `m4-llm-v1` |
 | — | Claim viewer (read-only validation UI, one self-contained HTML) | ✅ done — owned code |
-| — | Pre-M6 alignment: domain guide → business objects + fields, coherence lint | next |
-| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked) | specified (`docs/architecture.md`) — pulled ahead of M5, owner decision 2026-07-31 |
+| — | Pre-M6 alignment: domain guide → business objects + fields, coherence lint | ✅ done — 2026-07-31, prompts byte-identical |
+| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked) | next — specified in `docs/architecture.md`, pulled ahead of M5 (owner decision 2026-07-31) |
 | M5 | Document pipeline + V3 (interpretation with anchor validation) | queued — after the M6 demo |
 | M7 | Staleness propagation & replay against a "prod" copy | planned |
 | M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart | planned |

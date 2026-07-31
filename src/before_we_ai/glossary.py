@@ -18,11 +18,16 @@ GLOSSARY: list[tuple[str, str]] = [
     ("status", "proposed / test-supported / contradicted / unresolved / "
      "business-confirmed — always derived from evidence; the model's claims "
      "start at 'proposed' and the model cannot promote them"),
-    ("domain guide", "the curated per-domain starting vocabulary: roles with "
-     "one definition each and a declared settlement path (decided_by) — "
-     "data, never code"),
-    ("role", "a domain noun from the domain guide that a table/column can "
-     "play (journal, subledger …)"),
+    ("domain guide", "the curated per-domain starting vocabulary: business "
+     "objects with their fields, one definition each and a declared "
+     "settlement path (decided_by) — data, never code"),
+    ("business object", "what a domain law judges: a thing of the domain a "
+     "table can be (journal, subledger, intercompany)"),
+    ("field", "something a business object carries (the posting amount, the "
+     "account) — settled inside its object's law as a slot, or by a "
+     "clarification question; a field never declares a law of its own"),
+    ("role", "any guide entry — object or field — that a table/column can "
+     "play; what a mapping claim binds"),
     ("data profile", "measured statistics of one column — what the model "
      "sees instead of raw data"),
     ("check definition", "reusable test logic (SQL template + deterministic "
@@ -35,7 +40,8 @@ GLOSSARY: list[tuple[str, str]] = [
     ("evidence", "an append-only record: check result, human confirmation, "
      "verbatim testimonial, document anchor, or declaration"),
     ("domain law", "a conservation law as code (balance, subledger=GL, "
-     "IC symmetry) — decides which candidate wins a role"),
+     "IC symmetry) — decides which candidate wins a business object, and "
+     "settles its slot fields with the columns the passing run consumed"),
     ("clarification question", "a drafted question to the humans when data "
      "alone cannot decide"),
 ]

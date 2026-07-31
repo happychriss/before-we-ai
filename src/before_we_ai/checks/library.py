@@ -58,6 +58,17 @@ class CheckDefinition:
     # is domain-specific must always be enumerable (the product is a general
     # machine only together with a domain pack, never on its own).
     domain: str | None = None
+    # Slot params of a domain law: {param that takes a column: param that
+    # names the view it sits on}. A domain guide's *fields* declare which of
+    # these slots they fill (``fills:``), and a passing run of the law settles
+    # exactly those fields — with the column the run actually consumed.
+    #
+    # Only params the law truly *identifies* belong here. A journal balances
+    # per document AND per period AND per year, so ``group_column`` is NOT a
+    # slot: a pass says nothing about what the grouping column means. The
+    # amount is different — conserving to zero is the whole definition of the
+    # posting amount, and it is what the run measured.
+    slots: dict[str, str] = field(default_factory=dict)
 
 
 def _prep_anti_join(con, p, tol):
@@ -265,6 +276,7 @@ REGISTRY: dict[str, CheckDefinition] = {
         tolerances={"absolute": 0.01},
         question="Clarification question: {journal} does not balance per group — is an offsetting entry missing?",
         domain="finance",
+        slots={"amount": "journal"},
     ),
     "subledger_equals_gl": CheckDefinition(
         file="subledger_equals_gl.sql.j2",
@@ -273,6 +285,7 @@ REGISTRY: dict[str, CheckDefinition] = {
         tolerances={"absolute": 0.01},
         question="Clarification question: subledger {subledger} deviates from the general ledger {journal} — which items are missing?",
         domain="finance",
+        slots={"subledger_amount": "subledger"},
     ),
     "ic_symmetry": CheckDefinition(
         file="ic_symmetry.sql.j2",

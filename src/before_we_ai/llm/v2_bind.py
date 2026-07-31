@@ -1,8 +1,9 @@
 """Contract V2 — check binding (and the role-binding proposals it needs).
 
 ``propose_mappings`` is the frontier-tier search task: candidate
-MappingClaims for the supplied domain roles, competing candidates
-welcome — the invariant checks decide, never the model.
+MappingClaims for every entry of the supplied domain guide — its business
+objects and their fields, flattened into one list for the prompt —
+competing candidates welcome; the invariant checks decide, never the model.
 
 ``plan_checks`` turns unbound AI claims into ``CheckPlan`` records: role-
 binding claims go to the invariant templates (frontier tier, per the
@@ -79,7 +80,8 @@ def propose_mappings(
     if roles is None:
         if not config.domain_guide_file:
             raise ValueError(
-                "no role set: pass roles= or set llm.domain_guide_file in before-ai.yaml"
+                "no domain guide: pass roles= or set llm.domain_guide_file "
+                "in before-ai.yaml"
             )
         roles = load_domain_guide(root / config.domain_guide_file)
 

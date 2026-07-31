@@ -8,6 +8,7 @@ from typing import Iterable
 import yaml
 
 from before_we_ai.glossary import GLOSSARY
+from before_we_ai.llm.domain_guide import load_domain_guide, settled_slots
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.model import ClaimStatus, EvidenceType, CheckVerdict, resolve_status
 from before_we_ai.model.objects import (
@@ -115,6 +116,7 @@ def render_project(root: str | Path) -> str:
         ),
     )
     integrity = check_integrity(store)
+    guide_order, guide_decided_by, guide_owner = _load_guide_shape(root_path, config)
 
     questions_by_claim = _questions_by_claim(questions)
     reverse_depends, reverse_derived = _reverse_claim_links(claims)
@@ -374,6 +376,8 @@ def render_project(root: str | Path) -> str:
       padding: 12px;
       margin-bottom: 12px;
     }}
+    /* a field belongs to the object above it — the guide's shape, visible */
+    .guide-field {{ margin-left: 22px; border-left: 2px solid var(--line); }}
     .cand {{
       border-left: 3px solid var(--line);
       padding: 6px 0 6px 10px;
@@ -462,7 +466,9 @@ def render_project(root: str | Path) -> str:
         <p class="muted">Every role the AI proposed candidates for. Each role declares its
         settlement path: a domain law elects the winner, or the humans decide via clarification question —
         never silence.</p>
-        {_render_role_elections(facts, questions, _load_decided_by(root_path, config))}
+        {_render_role_elections(facts, questions, guide_decided_by,
+                                guide_order, guide_owner,
+                                _settled_slot_columns(root_path, config, store))}
       </section>
       <section class="panel" id="claims">
         <h2>Claim detail</h2>
@@ -721,12 +727,9 @@ def _render_declared_sources(config: dict) -> str:
 
 
 def _render_role_pack(root: Path, config: dict) -> str:
-    declared = (config.get("llm") or {}).get("domain_guide_file")
-    if not declared:
+    path = _guide_path(root, config)
+    if path is None:
         return '<p class="empty">No domain guide declared (llm.domain_guide_file).</p>'
-    path = Path(declared)
-    if not path.is_absolute():
-        path = root / path
     try:
         pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except OSError:
@@ -734,18 +737,31 @@ def _render_role_pack(root: Path, config: dict) -> str:
             f'<p class="empty">Domain guide declared but unreadable: '
             f"<code>{escape(str(path))}</code></p>"
         )
-    roles = pack.get("roles") or {}
+    objects = pack.get("objects") or {}
+    n_fields = sum(len((spec.get("fields") or {})) for spec in objects.values()
+                   if isinstance(spec, dict))
     items = "".join(
-        f"<details><summary><code>{escape(name)}</code> "
-        f"<span class='fine'>{escape(_decided_by_label(spec))}</span></summary>"
-        f"<p>{escape(str(_role_definition(spec)).strip())}</p></details>"
-        for name, spec in roles.items()
+        _render_guide_entry(name, spec)
+        + "".join(f"<div class='guide-field'>{_render_guide_entry(fname, fspec)}</div>"
+                  for fname, fspec in ((spec.get("fields") or {}).items()
+                                       if isinstance(spec, dict) else ()))
+        for name, spec in objects.items()
     )
     return (
         f"<p>domain <strong>{escape(str(pack.get('domain', '?')))}</strong>, "
-        f"{len(roles)} roles — human-written definitions, no system names; "
-        "each declares its settlement path (how it can ever stop being a guess)<br>"
+        f"{len(objects)} business objects with {n_fields} "
+        f"field{'s' if n_fields != 1 else ''} — human-written "
+        "definitions, no system names; each declares its settlement path (how it "
+        "can ever stop being a guess), and a field can never declare a law<br>"
         f"<code>{escape(str(path))}</code></p>{items}"
+    )
+
+
+def _render_guide_entry(name: str, spec) -> str:
+    return (
+        f"<details><summary><code>{escape(name)}</code> "
+        f"<span class='fine'>{escape(_decided_by_label(spec))}</span></summary>"
+        f"<p>{escape(str(_role_definition(spec)).strip())}</p></details>"
     )
 
 
@@ -762,27 +778,62 @@ def _decided_by_label(spec) -> str:
     if decided_by == "clarification":
         return "decided by humans (clarification question)"
     if decided_by == "slot":
-        return "slot only — carried inside another role's law"
+        fills = spec.get("fills") or "?"
+        return f"slot — elected as the '{fills}' of its object's law"
     return f"elected by the {decided_by} law"
 
 
-def _load_decided_by(root: Path, config: dict) -> dict[str, str]:
-    """role -> decided_by from the declared domain guide; empty if unreadable."""
+def _guide_path(root: Path, config: dict) -> Path | None:
     declared = (config.get("llm") or {}).get("domain_guide_file")
     if not declared:
-        return {}
+        return None
     path = Path(declared)
-    if not path.is_absolute():
-        path = root / path
+    return path if path.is_absolute() else root / path
+
+
+def _load_guide_shape(root: Path, config: dict) -> tuple[list[str], dict[str, str], dict[str, str]]:
+    """(entry order, entry -> decided_by, field -> its object) from the guide.
+
+    Read tolerantly from the raw YAML: the viewer shows a broken guide, it
+    does not refuse to render because of one.
+    """
+    path = _guide_path(root, config)
+    if path is None:
+        return [], {}, {}
     try:
         pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except OSError:
+        return [], {}, {}
+    order: list[str] = []
+    decided_by: dict[str, str] = {}
+    owner: dict[str, str] = {}
+    for name, spec in (pack.get("objects") or {}).items():
+        if not isinstance(spec, dict):
+            continue
+        order.append(name)
+        decided_by[name] = spec.get("decided_by", "")
+        for fname, fspec in (spec.get("fields") or {}).items():
+            order.append(fname)
+            owner[fname] = name
+            if isinstance(fspec, dict):
+                decided_by[fname] = fspec.get("decided_by", "")
+    return order, decided_by, owner
+
+
+def _settled_slot_columns(root: Path, config: dict, store: ProjectStore) -> dict[str, str]:
+    """field -> the column its object's passing law consumed; empty if the
+    guide does not load (the panel above already says so)."""
+    path = _guide_path(root, config)
+    if path is None:
         return {}
-    return {
-        name: spec.get("decided_by", "")
-        for name, spec in (pack.get("roles") or {}).items()
-        if isinstance(spec, dict)
-    }
+    try:
+        guide = load_domain_guide(path)
+    except (OSError, ValueError):
+        return {}
+    answered: dict[str, str] = {}
+    for name in guide.objects:
+        answered.update(settled_slots(store, guide, name))
+    return answered
 
 
 def _render_domain_law_templates() -> str:
@@ -806,14 +857,21 @@ def _render_domain_law_templates() -> str:
 
 def _render_role_elections(
     facts: dict[str, ClaimFacts], questions: list[ClarificationQuestion],
-    decided_by: dict[str, str],
+    decided_by: dict[str, str], order: list[str] | None = None,
+    owner: dict[str, str] | None = None, answered: dict[str, str] | None = None,
 ) -> str:
+    owner = owner or {}
+    answered = answered or {}
     by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
     for fact in facts.values():
         if isinstance(fact.claim, MappingClaim):
             by_role[fact.claim.role].append(fact)
     if not by_role:
         return '<p class="empty">No role-binding candidates yet.</p>'
+    # guide order — every object followed by its own fields; anything the
+    # guide does not name (a stale claim from an older guide) sorts after
+    rank_role = {name: i for i, name in enumerate(order or [])}
+    ordered_roles = sorted(by_role, key=lambda r: (rank_role.get(r, len(rank_role)), r))
 
     rank = {
         ClaimStatus.TEST_SUPPORTED: 0,
@@ -823,7 +881,8 @@ def _render_role_elections(
         ClaimStatus.CONTRADICTED: 3,
     }
     blocks = []
-    for role, candidates in sorted(by_role.items()):
+    for role in ordered_roles:
+        candidates = by_role[role]
         candidates.sort(key=lambda f: (rank[f.derived], f.claim.id))
         winners = [f for f in candidates if f.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)]
         rows = "".join(_render_candidate(fact, fact in winners) for fact in candidates)
@@ -833,6 +892,15 @@ def _render_role_elections(
             outcome = (
                 f"<p><strong>Elected:</strong> {_claim_link(winners[0].claim)} "
                 f"{_status_badge(winners[0].derived.value)}</p>"
+            )
+        elif role in answered:
+            # a slot needs no election of its own: the object's passing law
+            # already consumed a column for it, and that run is the answer
+            outcome = (
+                f"<p><strong>Answered by the "
+                f"{escape(decided_by.get(owner.get(role, ''), 'domain'))} law of "
+                f"<code>{escape(owner.get(role, '?'))}</code>:</strong> the passing "
+                f"check consumed <code>{escape(answered[role])}</code></p>"
             )
         elif cards:
             # the drafted clarification question is the outcome, whatever kept a law from
@@ -852,8 +920,12 @@ def _render_role_elections(
                 "is drafted yet (run role resolution).</p>"
             )
         path_note = _decided_by_label({"decided_by": decided_by.get(role, "")})
+        of_object = (f" <span class='fine'>field of "
+                     f"<code>{escape(owner[role])}</code></span>"
+                     if role in owner else "")
         blocks.append(
-            f"<div class='election'><h3><code>{escape(role)}</code> "
+            f"<div class='election{' guide-field' if role in owner else ''}'>"
+            f"<h3><code>{escape(role)}</code>{of_object} "
             f"<span class='muted'>{len(candidates)} candidate"
             f"{'s' if len(candidates) != 1 else ''}"
             f"{' · ' + escape(path_note) if path_note else ''}</span></h3>"

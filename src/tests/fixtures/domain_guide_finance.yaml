@@ -1,5 +1,5 @@
-# Finance domain roles — flat and curated, data not code (Regel der Drei:
-# no ontology, no plugin framework before a third domain forces one).
+# Finance domain guide — curated data, not code (Regel der Drei: no ontology,
+# no plugin framework before a third domain forces one).
 #
 # CLEAN BY CONSTRUCTION: definitions only — no examples, no source names,
 # no hints. The definitions are passed into LLM prompts; anything
@@ -8,43 +8,53 @@
 # (src/corpus/generator_spec/) is NOT usable at runtime for exactly that
 # reason.
 #
-# decided_by declares each role's settlement path (linted on load; it
-# never enters a prompt): the domain law that can elect it, or
+# Business objects carry fields. An object is what a domain law judges; a
+# field is carried inside its object's law or decided by a human — a field
+# can never declare a law, the schema does not allow it.
+#
+# decided_by declares each entry's settlement path (linted on load; it never
+# enters a prompt): for an object the domain law that can elect it, or
 # "clarification" — no arithmetic can decide what a column *means*, the
-# candidates go to the humans — or "slot" (only carried inside another
-# role's law). Every role ends in a check verdict or a clarification question,
-# never in nothing.
+# candidates go to the humans. For a field "slot" (plus fills: which slot of
+# its object's law it is — the passing run settles it with the column it
+# consumed) or "clarification". Every object and every clarification-decided
+# field ends in a check verdict or a clarification question, never in nothing.
 domain: finance
-roles:
+objects:
   journal:
     decided_by: balance
     definition: >-
       The transactional ledger of record: one row per posting line, carrying a
       signed amount and a document reference; debit and credit lines balance
       per document.
-  amount_local:
-    decided_by: balance
-    definition: >-
-      The signed posting amount in local currency on the journal — the column
-      that must sum to zero per document.
-  doc_ref:
-    decided_by: clarification
-    definition: >-
-      The document (voucher) reference that groups journal lines into balanced
-      postings.
-  account:
-    decided_by: clarification
-    definition: >-
-      The account identifier on the journal, resolvable against a chart of
-      accounts.
-  period:
-    decided_by: clarification
-    definition: >-
-      The posting period on the journal, at fiscal-period granularity.
-  entity:
-    decided_by: clarification
-    definition: >-
-      The legal entity or company code a posting belongs to.
+    fields:
+      amount_local:
+        decided_by: slot
+        fills: amount
+        definition: >-
+          The signed posting amount in local currency on the journal — the column
+          that must sum to zero per document.
+      doc_ref:
+        # not a slot: a journal balances per document AND per period AND per
+        # year, so a passing balance run never proves what its grouping
+        # column *means*.
+        decided_by: clarification
+        definition: >-
+          The document (voucher) reference that groups journal lines into balanced
+          postings.
+      account:
+        decided_by: clarification
+        definition: >-
+          The account identifier on the journal, resolvable against a chart of
+          accounts.
+      period:
+        decided_by: clarification
+        definition: >-
+          The posting period on the journal, at fiscal-period granularity.
+      entity:
+        decided_by: clarification
+        definition: >-
+          The legal entity or company code a posting belongs to.
   subledger_ar:
     decided_by: subledger_equals_gl
     definition: >-

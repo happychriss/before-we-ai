@@ -11,13 +11,25 @@
   `docs/architecture.md` ("Guide by construction", "Question flow &
   readiness"); owner discussion record:
   `docs/before-we-ai-key-findings-and-conclusions.md`.
-- **NEXT: pre-M6 alignment step** — DomainGuide restructured to business
-  objects + fields (a field can never declare a law → `amount_local` bug
-  class inexpressible), coherence lint against the new shape (absorbs former
-  M5 kickoff item 5), slot metadata on CheckDefinition. **Hard constraint:
-  prompt bytes stay identical** (drift-guard test proves it offline); if
-  flat rendering can't be preserved byte-identically, fold the change into
-  the M5 re-record batch and re-plan.
+- **Pre-M6 alignment step — DONE 2026-07-31** (suite 270 green, drift guard
+  untouched ⇒ prompt bytes identical, no fixture re-record). DomainGuide is
+  business objects with fields (`objects:` / `fields:`, `fills:`); the
+  coherence lint rejects a field declaring a law, a slot its object's law
+  does not have, two fields in one slot, an object declared a slot, a
+  duplicate name; `CheckDefinition.slots` carries the slot metadata;
+  `settled_slots` answers a slot from the column its object's passing law
+  consumed. Visible: the spurious `amount_local` question is gone (role
+  questions 7 → 6, project total 14 → 13), the walkthrough and viewer now
+  *show* the consumed column. Detail: architecture.md "Guide by
+  construction" + Domain inputs.
+- **NEXT: M6** (question flow + ReadinessMap, built to the narrow demo).
+  Spec: architecture.md "Question flow & readiness"; build outline: WP2 of
+  the plan file. **Open question the M6 design must answer:** a slot field's
+  settlement is derived only — its candidate claims stay `proposed` while
+  the law vouched for the column. Either the ReadinessMap reads the
+  derivation, or the passing run's evidence attaches to the field claim and
+  promotes it — that would be a **new promotion path**, so it is an owner
+  decision, not a refactor.
 - **Terminology realignment + documentation restructure — DONE 2026-07-31**
   (code, docs, spec, walkthrough, live fixture re-record, suite 257 green;
   committed). Post-rename Seeded-Recall: **14/25** (−1 vs baseline, flips
@@ -39,22 +51,10 @@
   3. Show the domain tag in V2 template docs (architecture.md "Domain inputs").
   4. Mapping claims binding to *generic* templates where a real data property
      exists (`account` via anti_join against the chart of accounts).
-  5. ~~Slot-side guide lint~~ — **moved to the pre-M6 alignment step**
-     (2026-07-31): CheckDefinition declares which roles its slots
-     consume (architecture.md "Guide by construction"). **Concrete case found
-     2026-07-31:** the finance guide declares BOTH `journal` and
-     `amount_local` as `decided_by: balance`, but balance's *subject* is the
-     journal — the amount is one of its slots. Consequences: (a)
-     `amount_local` draws a spurious "what domain knowledge is missing?"
-     question when nothing is missing; (b) the outcome is sample-dependent —
-     the M4 fixtures bound balance to it and it passed (listed as settled),
-     the 2026-07-31 fixtures refused it ("a bare amount_local column carries
-     no self-contained conservation invariant"), so a coin flip decides
-     whether the role settles. Likely fix: `amount_local: decided_by: slot`
-     (data, one line) + extend the lint to reject a role declaring a law it
-     can only be a slot of. Note the evidence already exists but is
-     unconnected: the passing journal balance check ran with
-     `amount=amount_local_currency`.
+  5. ~~Slot-side guide lint~~ — **DONE 2026-07-31** in the pre-M6 alignment
+     step (`CheckDefinition.slots` + the coherence lint; the `amount_local`
+     mis-declaration is now inexpressible). Detail: architecture.md "Guide
+     by construction".
   6. **Concept claims are lost to a redundant field** (found in the
      2026-07-31 validation walkthrough). `Hypothesis.kind` is a pure
      function of the predicate (`concept` iff `concept_definition`), yet the
@@ -93,8 +93,8 @@
   resolved by design in M6.** AnswerRequest carries scope → RequiredKnowledge
   inherits it → elections run per scope. No interim fix on the flat model.
   See architecture.md → "Question flow & readiness (M6)".
-- **Domain-guide acceptance kit — part 3 scheduled, parts 1+2 open.** The
-  coherence lint is now the pre-M6 alignment step (Current focus). Parts 1+2
+- **Domain-guide acceptance kit — part 3 DONE, parts 1+2 open.** The
+  coherence lint shipped with the pre-M6 alignment step. Parts 1+2
   (per new law: one holds-fixture + one violated-fixture; per new role: one
   wrong candidate that must lose) remain an owner decision — they belong
   with guide provenance / the drafting contract (post-M5). Full analysis:

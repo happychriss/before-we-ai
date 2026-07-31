@@ -76,18 +76,31 @@ To search for "the ledger of record", the system must know what a ledger
 [`DomainGuide`, a curated YAML file declared as `llm.domain_guide_file` in
 `before-ai.yaml`].
 
-The domain guide names the *roles* of the domain — the nouns — each with
-one human-written definition:
+The domain guide names the **business objects** of the domain — the nouns
+— each with one human-written definition, and the **fields** each object
+carries:
 
 ```yaml
 domain: finance
-roles:
+objects:
   journal:
     decided_by: balance
     definition: >-
       The transactional ledger of record: one row per posting line,
       carrying a signed amount and a document reference; debit and
       credit lines balance per document.
+    fields:
+      amount_local:
+        decided_by: slot
+        fills: amount
+        definition: >-
+          The signed posting amount in local currency on the journal —
+          the column that must sum to zero per document.
+      period:
+        decided_by: clarification
+        definition: >-
+          The posting period on the journal, at fiscal-period
+          granularity.
   subledger_ar:
     decided_by: subledger_equals_gl
     definition: >-
@@ -95,16 +108,24 @@ roles:
       journal's control account.
 ```
 
-Two properties are deliberate:
+Three properties are deliberate:
 
 - **The domain guide does not describe the company's actual files.** No
   system names, no table names, no example values. It gives the system a
   vocabulary to search with, not answers to find.
-- **Every role declares how it can ever be settled** (`decided_by:`): a
-  domain law that can elect it, `clarification` (no arithmetic can decide
-  what a column *means* — humans decide), or `slot` (only carried inside
-  another role's law). A role without a settlement path is rejected when
-  the file loads. Silence must be a declared property, never an accident.
+- **Every entry declares how it can ever be settled** (`decided_by:`). An
+  object: a domain law that can elect it, or `clarification` (no
+  arithmetic can decide what a column *means* — humans decide). A field:
+  `slot` — carried inside its object's law, naming which slot of it
+  (`fills:`) — or `clarification`. An entry without a settlement path is
+  rejected when the file loads. Silence must be a declared property,
+  never an accident.
+- **A field can never declare a law.** The shape does not allow it: laws
+  judge objects, and a field rides its object's law. This is a fix by
+  construction for a real bug — the finance guide once declared the
+  posting amount as balance-decided, and the system then asked what
+  domain knowledge was missing about a column its passing balance check
+  had just used. What cannot be written cannot be got wrong.
 
 The domain guide is data. The *laws* of the domain — "books balance per
 document", "subledger equals general ledger", "intercompany postings
@@ -280,11 +301,21 @@ question** [`ClarificationQuestion`, drafted automatically, stored in
 > Clarification question: no check can decide the role 'period' — which
 > binding applies: table=buchungen_report | table=de_erp__gl_postings?
 
-The rule completed by this step: **every non-slot role ends in a check
-verdict or a clarification question — never in silence**
-[`resolve_mappings` in `llm/domain_guide.py`]. Checked-and-lost roles,
-roles whose law could never be bound, roles with no candidate at all —
-each becomes a question the human can answer in one pick.
+The rule completed by this step: **every business object and every
+clarification-decided field ends in a check verdict or a clarification
+question — never in silence** [`resolve_mappings` in
+`llm/domain_guide.py`]. Checked-and-lost objects, objects whose law could
+never be bound, entries with no candidate at all — each becomes a question
+the human can answer in one pick.
+
+A slot field is the one entry that may stay quiet, and only for a reason
+that can be shown: its object's passing law already consumed a column for
+it. The elected journal's balance check ran with
+`amount=amount_local_currency`, so *that* column is the posting amount —
+the evidence was there all along and no one had to be asked. If the object
+is unsettled, its own question carries the field; if the law passed
+without consuming the slot, the field asks after all
+[`settled_slots`].
 
 A human answer is stored as new evidence, with its scope spelled out
 ("applies to: all entities? which period?") before it may confirm anything
@@ -392,8 +423,10 @@ Every run is measured against it:
 | **claim** | a rule about the data, with author, evidence, and status | `Claim` (`model/`) |
 | **mapping claim** | a claim that concrete views/columns play a domain role | `MappingClaim` |
 | **status** | proposed / test-supported / contradicted / unresolved / business-confirmed — always derived from evidence | `ClaimStatus`, `resolve_status` |
-| **domain guide** | one domain's role definitions with settlement paths — curated data, never code | `DomainGuide` YAML (`llm.domain_guide_file`) |
-| **role** | a domain noun a table/column can play (journal, subledger, …) | `MappingClaim.role` |
+| **domain guide** | one domain's business objects and their fields, with definitions and settlement paths — curated data, never code | `DomainGuide` YAML (`llm.domain_guide_file`) |
+| **business object** | what a domain law judges: a thing of the domain a table can be (journal, subledger) | `ObjectSpec` (`llm/domain_guide.py`) |
+| **field** | something an object carries; a `slot` of its object's law, or a clarification — never a law of its own | `FieldSpec` (`llm/domain_guide.py`) |
+| **role** | any guide entry — object or field — a table/column can play | `MappingClaim.role` |
 | **check definition** | reusable test logic: SQL template + deterministic verdict | `CheckDefinition`, `checks/REGISTRY` |
 | **domain law** | a check definition encoding a conservation law — elects role winners | `CheckDefinition(domain="finance")` |
 | **check plan** | a check definition bound to one claim's concrete columns | `CheckPlan` (V2, `llm/v2_bind.py`) |

@@ -40,6 +40,7 @@ from before_we_ai.llm import (  # noqa: E402
     propose_mappings,
     resolve_mappings,
 )
+from before_we_ai.llm.domain_guide import settled_slots  # noqa: E402
 from before_we_ai.model import Actor  # noqa: E402
 from before_we_ai.model.objects import MappingClaim  # noqa: E402
 from before_we_ai.profile.candidates import load_matrix  # noqa: E402
@@ -245,12 +246,14 @@ def stage_role_proposals(args) -> None:
     store = need_project()
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     inputs(
-        f"role definitions ({len(roles.names)} roles, domain '{roles.domain}'): "
-        f"{DOMAIN_GUIDE_FILE.relative_to(REPO)}",
+        f"domain guide ({len(roles.objects)} business objects, "
+        f"{len(roles.names) - len(roles.objects)} fields, domain "
+        f"'{roles.domain}'): {DOMAIN_GUIDE_FILE.relative_to(REPO)}",
         "  (data, not code — the product stays domain-agnostic; this file is "
         "deliberately\n   clean: the corpus generator's roles.yaml names a decoy "
         "and must never be used)",
-        "  roles: " + ", ".join(roles.names),
+        "  objects and their fields, flattened for the prompt exactly as the "
+        "model sees them:\n   " + ", ".join(roles.names),
         "profiles + candidate matrix (llm/inputs.py: build_role_context)",
         LLM_INPUT_NOTE,
     )
@@ -264,7 +267,9 @@ def stage_role_proposals(args) -> None:
                    if isinstance(c, MappingClaim)]
     for role in roles.names:
         mine = [c for c in role_claims if c.role == role]
-        print(f"  {role:15s} {len(mine)} candidate(s)")
+        owner = roles.owner_of(role)
+        label = f"  {role}" if owner else role  # fields sit under their object
+        print(f"  {label:15s} {len(mine)} candidate(s)")
         for c in mine:
             print(f"      [{c.status.value}] {clip(', '.join(c.binding.values()), 75)}")
     refresh_llm_html()
@@ -406,6 +411,16 @@ def stage_resolve(args) -> None:
         for cid in card.claim_ids:
             c = store.claims[cid]
             print(f"    rests on [{c.status.value}] {clip(c.statement, 70)}")
+    section("slots answered by their object's law — asked nothing, because the "
+            "passing check already consumed the column")
+    answered = {}
+    for name in roles.objects:
+        answered.update(settled_slots(store, roles, name))
+    if not answered:
+        print("  none — no domain law passed on an object with slot fields")
+    for field, column in sorted(answered.items()):
+        print(f"  {field:15s} {column}  "
+              f"(via the {roles.objects[roles.owner_of(field)].decided_by} law)")
     section("all open questions in the project")
     store = ProjectStore(PROJECT)
     for card in store.questions.values():

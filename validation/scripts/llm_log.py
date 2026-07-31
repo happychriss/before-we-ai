@@ -89,16 +89,30 @@ def domain_header(project: Path) -> str:
         def _decided(spec) -> str:
             return spec.get("decided_by", "") if isinstance(spec, dict) else ""
 
+        def _entry(name, spec, indent: str = "") -> str:
+            return (
+                f"<details style='margin-left:{indent}'>"
+                f"<summary><code>{html.escape(name)}</code>"
+                + (f" <i>decided_by: {html.escape(_decided(spec))}</i>"
+                   if _decided(spec) else "")
+                + f"</summary><p>{html.escape(_definition(spec).strip())}</p></details>"
+            )
+
+        objects = pack.get("objects", {})
+        n_fields = sum(len(spec.get("fields") or {}) for spec in objects.values()
+                       if isinstance(spec, dict))
         role_items = "".join(
-            f"<details><summary><code>{html.escape(name)}</code>"
-            + (f" <i>decided_by: {html.escape(_decided(spec))}</i>" if _decided(spec) else "")
-            + f"</summary><p>{html.escape(_definition(spec).strip())}</p></details>"
-            for name, spec in pack.get("roles", {}).items())
+            _entry(name, spec)
+            + "".join(_entry(fname, fspec, "22px")
+                      for fname, fspec in (spec.get("fields") or {}).items())
+            for name, spec in objects.items())
         roles_html = (
             f"<p>domain <b>{html.escape(pack.get('domain', '?'))}</b>, "
-            f"{len(pack.get('roles', {}))} roles — human-written definitions, "
-            f"no system names; only the definitions enter prompts, decided_by is "
-            f"the linted settlement path<br><code>{html.escape(str(roles_path))}</code></p>"
+            f"{len(objects)} business objects with {n_fields} fields — "
+            f"human-written definitions, no system names; only the definitions "
+            f"enter prompts (objects and fields flattened into one list), "
+            f"decided_by is the linted settlement path"
+            f"<br><code>{html.escape(str(roles_path))}</code></p>"
             f"{role_items}")
 
     try:

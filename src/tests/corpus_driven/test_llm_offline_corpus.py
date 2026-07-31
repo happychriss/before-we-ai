@@ -22,6 +22,7 @@ import yaml
 from before_we_ai import scan
 from before_we_ai.engine import run_ready
 from before_we_ai.llm import plan_checks, hypothesize, load_domain_guide, propose_mappings, resolve_mappings
+from before_we_ai.llm.domain_guide import settled_slots
 from before_we_ai.llm.inputs import (
     build_binding_context,
     build_profile_context,
@@ -172,32 +173,44 @@ def test_verdicts_land_on_the_corpus_ground_truth(pipeline):
 
 
 def test_every_unsettled_role_becomes_a_clarification_not_a_silent_discard(pipeline):
-    """Every non-slot role ends in a check verdict or a clarification question:
-    in this recording the laws of intercompany, amount_local and
-    subledger_ar could never be bound to a candidate (honest template=null);
-    the four clarification-decided roles (account, doc_ref, entity, period)
-    list their candidates for the humans to choose. The settled role
-    (journal) drafts nothing."""
+    """Every object and every clarification-decided field ends in a check
+    verdict or a clarification question: in this recording the laws of
+    intercompany and subledger_ar could never be bound to a candidate (honest
+    template=null); the four clarification-decided journal fields (account,
+    doc_ref, entity, period) list their candidates for the humans to choose.
+    The settled object (journal) drafts nothing — and neither does its
+    amount_local slot, which the passing balance run answered."""
     cards = pipeline["role_cards"]
     by_role = {}
     for card in cards:
         role = card.question.split("'")[1]
         by_role[role] = card
     assert sorted(by_role) == [
-        "account", "amount_local", "doc_ref", "entity", "intercompany",
-        "period", "subledger_ar",
+        "account", "doc_ref", "entity", "intercompany", "period",
+        "subledger_ar",
     ]
     ic = by_role["intercompany"]
     assert "no proposed binding could be bound" in ic.question  # never bound
     assert len(ic.claim_ids) == 2  # both candidates attached
-    for role in ("amount_local", "subledger_ar"):
-        assert "what domain knowledge is missing" in by_role[role].question
+    assert "what domain knowledge is missing" in by_role["subledger_ar"].question
     for role in ("account", "doc_ref", "entity", "period"):
         card = by_role[role]
         assert "which binding applies" in card.question
         assert card.claim_ids  # the candidates ride along, answerable in one pick
     # resolution is idempotent
     assert resolve_mappings(pipeline["store"], pipeline["roles"]) == []
+
+
+def test_the_slot_of_a_settled_object_is_answered_not_asked(pipeline):
+    """What the guide restructure bought: amount_local is a slot of the
+    journal's balance law, so the passing run on the elected ledger *is* its
+    answer — no question about knowledge that was never missing. The column
+    named here is the one the check actually consumed."""
+    assert settled_slots(pipeline["store"], pipeline["roles"], "journal") == {
+        "amount_local": "de_erp__gl_postings.amount_local_currency"
+    }
+    # ... and a law that never ran answers nothing
+    assert settled_slots(pipeline["store"], pipeline["roles"], "subledger_ar") == {}
 
 
 def test_call_logs_are_complete(pipeline):

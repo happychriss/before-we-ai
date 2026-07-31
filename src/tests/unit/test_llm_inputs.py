@@ -75,16 +75,22 @@ def test_forced_trim_is_loud_and_names_the_cut(tmp_path):
 
 
 def test_role_context_leads_with_the_role_definitions(tmp_path):
+    """Objects and their fields reach the model as ONE flat list: the guide's
+    hierarchy is for the lint and the elections, never for the wire."""
     store = _store(tmp_path)
-    roles = DomainGuide(domain="testing", roles={
+    roles = DomainGuide(domain="testing", objects={
         "ledger": {"definition": "the journal of record",
-                   "decided_by": "clarification"},
+                   "decided_by": "clarification",
+                   "fields": {"line_amount": {"definition": "the signed amount",
+                                              "decided_by": "clarification"}}},
     })
     built = inputs.build_role_context(store, MATRIX, roles)
     assert built.text.startswith("## Roles to bind (domain: testing)")
-    assert "- ledger: the journal of record" in built.text
+    assert "- ledger: the journal of record\n- line_amount: the signed amount" \
+        in built.text
     # the settlement path is lint metadata, never a hint to the model
     assert "decided_by" not in built.text and "clarification" not in built.text
+    assert "fields" not in built.text
     assert "## Column profiles" in built.text
 
 

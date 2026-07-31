@@ -49,7 +49,7 @@ as input, (b) transparent to the user, (c) logically validated:
 | input | declared | transparent | validated |
 |---|---|---|---|
 | raw data | `before-ai.yaml` `sources:` (human-authored) | step-INPUT blocks; fingerprints; SYSTEM declarations | canonicalization + profiling; re-scan idempotence |
-| domain guide (data) | `llm.domain_guide_file` | INPUT block prints the file; definitions land in prompts verbatim (logged) | Pydantic `DomainGuide`, `extra="forbid"` + settlement-path lint — **the slot-side check is an M5 gap** (see "Onboarding workflow") |
+| domain guide (data) | `llm.domain_guide_file` | INPUT block prints the file; definitions land in prompts verbatim (logged) | Pydantic `DomainGuide`, `extra="forbid"` + coherence lint (settlement path, slot fillability, a field can never declare a law) |
 | check definitions / domain laws (code) | `checks/REGISTRY` | rendered template docs in the V2 prompt (logged); executed SQL kept in evidence | unit test locks `TEMPLATE_PARAMS` ↔ REGISTRY; review like all code |
 
 **The product is a general machine only together with a domain pack** —
@@ -125,31 +125,30 @@ predicted the need and sketched the first two; the third comes from the
 
 Owner discussion record: `docs/before-we-ai-key-findings-and-conclusions.md`.
 Three decisions close the "nothing tests the guide" gap **by construction**
-rather than only by testing. The first is the **pre-M6 alignment step**: it
-must land before the ReadinessMap consumes the guide's shape, because a
+rather than only by testing. The first was the **pre-M6 alignment step**, and
+it had to land before the ReadinessMap consumes the guide's shape, because a
 structure change under an already-built dependent layer is the expensive kind.
 
-1. **Objects with fields, not a flat role list.** Today's guide mixes levels:
-   `journal` (a business object) and `amount_local` (a field inside it) are
-   both "roles" with their own settlement paths — which is exactly what made
-   the `amount_local` mis-declaration *expressible*. New shape: the guide
-   declares **business objects** (`decided_by:` a domain law or
-   `clarification`) each with **fields** (`decided_by: slot` — consumed by
-   the object's law — or `clarification`; **a field can never declare a
-   law**). That makes the `amount_local` bug class inexpressible — stronger
-   than a lint that merely catches it. A slot field settles through its
-   object's passing law; the evidence for that already exists today (the
-   passing balance run records which column it consumed as its amount slot)
-   and is merely not connected. The **coherence lint** (part 3 of the
-   acceptance kit) is built against the *new* shape, not the flat one being
-   retired, and absorbs the former M5 kickoff item 5; it needs the slot-side
-   metadata on `CheckDefinition` (which roles each slot consumes).
-   **Wire-contract rule applies again:** the model keeps seeing the same
-   flat rendered definitions (`decided_by` never entered a prompt; the
+1. **Objects with fields, not a flat role list — BUILT 2026-07-31.** The old
+   guide mixed levels: `journal` (a business object) and `amount_local` (a
+   field inside it) were both "roles" with their own settlement paths — which
+   is exactly what made the `amount_local` mis-declaration *expressible*. The
+   guide now declares **business objects** (`decided_by:` a domain law or
+   `clarification`) each with **fields** (`decided_by: slot` plus `fills:`, or
+   `clarification`; **a field can never declare a law**). That makes the
+   `amount_local` bug class inexpressible — stronger than a lint that merely
+   catches it. A slot field settles through its object's passing law from
+   evidence that already existed and was simply not connected (`settled_slots`
+   — see the resolution bullets under Domain inputs). The **coherence lint**
+   (part 3 of the acceptance kit) is built against the new shape and absorbed
+   the former M5 kickoff item 5; the slot-side metadata it needs lives on
+   `CheckDefinition.slots`.
+   **Wire-contract rule applied again, and held:** the model sees the same flat
+   rendered definitions as before (`decided_by` never entered a prompt; the
    hierarchy is consumed by the lint, role resolution, and elections only).
-   The fixture drift guard proves byte-stability offline; if flat rendering
-   cannot be preserved byte-identically, the change joins the M5 fixture
-   re-record batch instead of standing alone.
+   Objects and their fields flatten in guide order, and the fixture drift guard
+   passed **untouched** — the byte-stability proof, offline. No fixture
+   re-record was needed: every recorded LLM answer replays unchanged.
 
 2. **Guide provenance — the actor discipline extends to the guide.** The
    generic half (textbook laws and concepts: journals balance, AR ties to a
@@ -333,27 +332,47 @@ structure change under an already-built dependent layer is the expensive kind.
   accordingly: `llm/` may build exactly one `EvidenceRecord`, of type
   `DECLARATION`, and may not even name a promoting evidence type
   (`tests/unit/test_llm_guardrail.py`).
-- **Every role declares its settlement path** (2026-07-12; the viewer's role
-  elections made the gap visible). Each role in the domain guide carries
-  `decided_by:` — the domain law that can elect it, `clarification` (no
-  arithmetic can decide what a column *means*: a journal balances per period
-  AND per document AND per year, so a passing law never proves what one slot
-  means), or `slot` (only carried inside another role's law). The guide lint
-  (`DomainGuide` validator) rejects a silent role and rejects a generic
-  template or a foreign domain's law as decider. `decided_by` never enters a
-  prompt — only the definitions render.
-- **Role resolution — no silence**: `resolve_mappings` completes the rule *every
-  non-slot role ends in a check verdict or a clarification question*:
-  checked-and-lost → "which source is authoritative?"; law never bindable
-  (every candidate carries V2's no-check declaration — the subledger_ar case:
-  knowledge missing to apply the law) → "what domain knowledge is missing?";
-  clarification-decided → question listing the candidates, answerable in one
-  pick; no candidate at all (once the search ran) → "does this role exist?".
-  Candidates without a check result and without a declaration are in flight
-  and draft nothing. The losing candidates keep their honest derived statuses.
-  Still open: the slot-fillability side of the lint (now the **pre-M6
-  alignment step** — see "Guide by construction") and role claims binding to
-  *generic* templates (M5, under "Onboarding workflow" below).
+- **Every entry declares its settlement path** (2026-07-12; the viewer's role
+  elections made the gap visible). Each entry in the domain guide carries
+  `decided_by:`. An **object**: the domain law that can elect it, or
+  `clarification` (no arithmetic can decide what a column *means*: a journal
+  balances per period AND per document AND per year, so a passing law never
+  proves what its grouping column means). A **field**: `slot` — plus `fills:`,
+  the slot param of its object's law it is elected into — or `clarification`.
+  The guide lint (`DomainGuide` validator) rejects a silent entry, a generic
+  template or a foreign domain's law as decider, an object declared a slot, a
+  field declaring *any* law, a `fills:` naming a slot its object's law does
+  not have, two fields in one slot, and a duplicate entry name. `decided_by`
+  never enters a prompt — only the definitions render, objects and fields
+  flattened into one list.
+- **Role resolution — no silence**: `resolve_mappings` completes the rule
+  *every business object and every clarification-decided field ends in a check
+  verdict or a clarification question*: checked-and-lost → "which source is
+  authoritative?"; law never bindable (every candidate carries V2's no-check
+  declaration — the subledger_ar case: knowledge missing to apply the law) →
+  "what domain knowledge is missing?"; clarification-decided → question listing
+  the candidates, answerable in one pick; no candidate at all (once the search
+  ran) → "does this role exist?". Candidates without a check result and without
+  a declaration are in flight and draft nothing. The losing candidates keep
+  their honest derived statuses. Still open: role claims binding to *generic*
+  templates (M5, under "Onboarding workflow" below).
+- **A slot field rides its object's law — and is answered by the run, not by a
+  question** (`settled_slots`, pre-M6 alignment). `CheckDefinition.slots` names
+  which params of a law are slots and which view param each sits on (balance:
+  `{"amount": "journal"}`). When an object's law passed, the column that run
+  consumed for a slot *is* that field's answer — the elected journal's balance
+  check ran with `amount=amount_local_currency`, so nothing about the posting
+  amount had to be asked. Deliberately narrow: `group_column` is not a slot,
+  because a pass says nothing about what the grouping column means, so
+  `doc_ref` stays a clarification. A slot whose object is unsettled rides the
+  object's own question; a slot its object's passing law never consumed draws
+  a question of its own — riding a law may not become vanishing into one. The
+  settlement is **derived, never stored**: the field's own candidate claims
+  keep their evidence-derived statuses (today `proposed`), which is why the
+  viewer shows the consumed column instead of an election. *Open for M6*:
+  whether the ReadinessMap should read that derivation, or whether the passing
+  run's evidence should attach to the field claim too and promote it —
+  a new promotion path, and therefore an owner decision, not a refactor.
 - **KNOWN GAP — elections are scope-blind** (found 2026-07-31). A role elects
   exactly one winner across the whole project, but a landscape is typically
   multi-entity: DE and US each legitimately own a journal, an account column,
@@ -475,13 +494,14 @@ re-record); piece 3 post-M5; the assembled workflow + quickstart is M8.
    finance` resolves to the bundled guide; an explicit path overrides. Flat
    YAML, no plugin framework (Regel der Drei). Shipped guides must pass the
    same leakage tripwire as prompts.
-   **Logical pack validation:** the role half shipped 2026-07-12
-   (`decided_by:` + lint). The **slot side** — each invariant
-   `CheckDefinition` declares which *roles* its slots consume, so the lint
-   can also reject an invariant whose slots the guide cannot fill (invariant
-   params like `journal`, `subledger`, `left`/`right` are not literally role
-   names today) — is now the **pre-M6 alignment step** ("Guide by
-   construction"). Still M5 (prompt
+   **Logical pack validation:** the entry half shipped 2026-07-12
+   (`decided_by:` + lint); the **slot side** shipped 2026-07-31 with the
+   objects-and-fields restructure — `CheckDefinition.slots` names each law's
+   slot params, and the lint rejects a field whose `fills:` is no slot of its
+   object's law. (Note the direction: the guide's fields must fill real slots,
+   but a law may still have slots no field names — V2 binds those from the
+   profiles directly, so requiring guide coverage would force guides to grow
+   for no epistemic gain.) Still M5 (prompt
    bytes → same re-record): mapping claims binding to *generic* templates
    where a real data property exists (`account` via anti_join against the
    chart of accounts — catches garbage, though it still cannot prove
@@ -574,7 +594,8 @@ document pipeline.
 **Ordering (owner decision 2026-07-31): M6 before M5**, with the pre-M6
 alignment step (guide objects+fields restructure + coherence lint, "Guide by
 construction") first, because the ReadinessMap must not be built on the flat
-role model. M5 stays necessary — the K3 document-only traps and three
+role model. That alignment step is **done** (2026-07-31, drift guard
+untouched). M5 stays necessary — the K3 document-only traps and three
 walkthrough claims whose V2 refusals literally name documents wait on it —
 but M5 deepens the existing flow, while M6 makes the product demonstrable;
 demonstrability is the scarcer good.

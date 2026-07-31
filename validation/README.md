@@ -75,10 +75,11 @@ predicate. Audit the prompt: profiles + matrix only, no corpus hints.
 
 ### Step 4 — mapping claims (role candidates)
 
-Look at: candidates per role.
-Good (offline pins): **22 candidates** over the 8 finance roles, all still
-`proposed`; the journal role has three competitors including the CSV report
-export — competition is wanted, the invariant checks will decide.
+Look at: candidates per role — objects first, their fields indented beneath.
+Good (offline pins): **22 candidates** over the 8 finance guide entries (3
+business objects + 5 journal fields), all still `proposed`; the journal object
+has three competitors including the CSV report export — competition is wanted,
+the invariant checks will decide.
 
 ### Step 5 — V2 check planning
 
@@ -106,24 +107,34 @@ audit **CLEAN**. Resulting AI-claim statuses: 35 test-supported, 32 proposed,
 
 ### Step 7 — role resolution
 
-Every role in the domain guide declares its settlement path (`decided_by:`,
-linted on load): the domain law that can elect it, or `clarification` — no
-arithmetic can decide what a column *means* — or `slot`. The rule is:
-**every non-slot role ends in a check verdict or a clarification question,
-never in nothing.**
+Every entry in the domain guide declares its settlement path (`decided_by:`,
+linted on load). A **business object** is elected by a domain law or by
+`clarification` — no arithmetic can decide what a column *means*. A **field**
+is a `slot` of its object's law or a `clarification`; it can never declare a
+law of its own. The rule is: **every object and every clarification-decided
+field ends in a check verdict or a clarification question, never in nothing.**
 
-Good (offline pins): **seven** clarification questions, one per unsettled role —
+Good (offline pins): **six** clarification questions, one per unsettled entry —
 
-- `intercompany`, `subledger_ar`, `amount_local` — law-decided, but in this
-  recording V2 never bound their invariant to any candidate (honest
-  `template=null`) → "no proposed binding could be bound to its invariant
-  check — what domain knowledge is missing?"
-- `account`, `doc_ref`, `entity`, `period` — clarification-decided; each
-  question lists the candidates, so it is answerable in one pick.
+- `intercompany`, `subledger_ar` — law-decided objects, but in this recording
+  V2 never bound their invariant to any candidate (honest `template=null`) →
+  "no proposed binding could be bound to its invariant check — what domain
+  knowledge is missing?"
+- `account`, `doc_ref`, `entity`, `period` — clarification-decided journal
+  fields; each question lists the candidates, so it is answerable in one pick.
 
-Only the settled role (`journal`) drafts nothing. The project now holds **14**
-open questions in total: these 7 plus 7 drafted by the engine in step 6 where
-a check failed or was inconclusive.
+Nothing is drafted for the settled object (`journal`) — nor for its
+`amount_local` slot, and the step says so explicitly: the passing balance run
+consumed `de_erp__gl_postings.amount_local_currency`, so the posting amount is
+answered by evidence that already existed. (Until 2026-07-31 the guide wrongly
+declared `amount_local` law-decided, and it drew a seventh question about
+knowledge that was never missing.) Note what a pass does *not* buy: the same
+run grouped by `period`, and `doc_ref` still has to be asked — a journal
+balances per document AND per period, so a passing law never identifies the
+grouping column.
+
+The project now holds **13** open questions in total: these 6 plus 7 drafted
+by the engine in step 6 where a check failed or was inconclusive.
 
 ### Step 8 — collect
 
@@ -148,7 +159,9 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   **funnel** on top (74 proposed → 42 planned / 19 unbindable / 6
   semantic-only / 7 skipped → 42 judged → the derived statuses, every number
   a filter), then the **clarification-questions inbox**, then the **role
-  elections** (winner, and each loser with the domain law that felled it),
+  elections** (each object with its fields nested beneath it: the winner, each
+  loser with the domain law that felled it, and for a slot field the column
+  its object's passing law consumed),
   then one claim at a time as a story: proposed → planned → judged → context.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
 - `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
@@ -188,7 +201,7 @@ DuckDB client takes an exclusive lock, and ours then fails with
   That is the guard working; online the repair gets a real short answer.
 - `us_erp__gl_postings` journal candidate is CONTRADICTED — data-honest (the
   US ledger's missing IC leg breaks the per-period balance).
-- Three roles end in "what domain knowledge is missing?" rather than a check
+- Two objects end in "what domain knowledge is missing?" rather than a check
   verdict: the model declined to bind their invariants. That is the honest
   path — an unbound law is a knowledge gap, not a silent pass.
 - Online runs sample differently each time (~50–62 hypotheses, recall

@@ -329,12 +329,79 @@ def test_check_without_a_run_says_no_sql_was_asked(tmp_path):
     assert "No rendered SQL yet" in html
 
 
+def test_a_slot_field_shows_the_column_its_object_s_law_consumed(tmp_path):
+    """A slot holds no election of its own: the journal's passing balance run
+    consumed a column, and that column is the answer — shown, not asked."""
+    root = init_project(tmp_path / "slots")
+    guide = tmp_path / "guide.yaml"
+    guide.write_text(
+        "domain: finance\n"
+        "objects:\n"
+        "  journal:\n"
+        "    decided_by: balance\n"
+        "    definition: The transactional ledger of record.\n"
+        "    fields:\n"
+        "      amount_local:\n"
+        "        decided_by: slot\n"
+        "        fills: amount\n"
+        "        definition: The signed posting amount.\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["llm"] = {"domain_guide_file": str(guide)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    store = ProjectStore(root)
+    journal = MappingClaim(
+        statement="role 'journal' is played by de_erp__gl_postings",
+        created_by=Actor.AI, role="journal",
+        binding={"table": "de_erp__gl_postings"},
+    )
+    amount = MappingClaim(
+        statement="role 'amount_local' is played by amount_local_currency",
+        created_by=Actor.AI, role="amount_local",
+        binding={"table": "de_erp__gl_postings",
+                 "amount": "de_erp__gl_postings.amount_local_currency"},
+    )
+    store.save_claim(journal)
+    store.save_claim(amount)
+    check = CheckPlan(template="balance", claim_id=journal.id, roles=["journal"],
+                      params={"journal": "de_erp__gl_postings",
+                              "amount": "amount_local_currency",
+                              "group_column": "period"})
+    store.save_check_plan(check)
+    record = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK, claim_id=journal.id,
+        check_plan_id=check.id, verdict=CheckVerdict.PASS,
+        population=383, exception_count=0,
+    )
+    store.add_evidence(record)
+    store.save_claim(attach_evidence(journal, record, []))
+
+    html = render_project(root)
+
+    assert "Answered by the balance law of" in html
+    assert "de_erp__gl_postings.amount_local_currency</code></p>" in html
+    assert "field of <code>journal</code>" in html  # nested under its object
+
+
 def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
     root = init_project(tmp_path / "domain")
     domain_guide_file = tmp_path / "domain_guide_finance.yaml"
     domain_guide_file.write_text(
-        "domain: finance\nroles:\n  journal: The transactional ledger of record.\n"
-        "  subledger_ar: The accounts-receivable open items.\n",
+        "domain: finance\n"
+        "objects:\n"
+        "  journal:\n"
+        "    decided_by: balance\n"
+        "    definition: The transactional ledger of record.\n"
+        "    fields:\n"
+        "      amount_local:\n"
+        "        decided_by: slot\n"
+        "        fills: amount\n"
+        "        definition: The signed posting amount.\n"
+        "  subledger_ar:\n"
+        "    decided_by: subledger_equals_gl\n"
+        "    definition: The accounts-receivable open items.\n",
         encoding="utf-8",
     )
     config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
@@ -349,9 +416,12 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
     assert "Domain pack — the declared domain inputs" in html
     # 1 — the declared sources
     assert "de_erp" in html and "/data/DE/erp.duckdb" in html
-    # 2 — the domain guide: file, domain, count and names
-    assert "2 roles" in html
+    # 2 — the domain guide: file, domain, shape and names
+    assert "2 business objects with 1 field" in html
     assert "journal" in html and "subledger_ar" in html
+    # the field is shown under its object, with the slot it fills
+    assert "amount_local" in html
+    assert "slot — elected as the &#x27;amount&#x27; of its object&#x27;s law" in html
     assert str(domain_guide_file) in html
     # 3 — the domain-law templates, and the generic remainder named as such
     for template in ("balance", "subledger_equals_gl", "ic_symmetry"):
@@ -383,6 +453,8 @@ def test_core_terms_define_the_canonical_vocabulary(tmp_path):
         "mapping claim",
         "status",
         "domain guide",
+        "business object",
+        "field",
         "role",
         "data profile",
         "check definition",
