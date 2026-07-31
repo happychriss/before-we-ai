@@ -35,6 +35,7 @@ packages = [
     "before_we_ai.checks",
     "before_we_ai.engine",
     "before_we_ai.llm",
+    "before_we_ai.readiness",
     "readiness_report",
 ]
 
