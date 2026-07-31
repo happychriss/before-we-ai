@@ -707,7 +707,7 @@ def _render_domain_pack(root: Path, config: dict) -> str:
         "<h3>1 · Raw data — the source list (human-authored)</h3>"
         f"{_render_declared_sources(config)}"
         "<h3>2 · Domain guide — the domain nouns (data, human-curated)</h3>"
-        f"{_render_role_pack(root, config)}"
+        f"{_render_domain_guide_panel(root, config)}"
         "<h3>3 · Domain-law templates — the guardians (code, developer-shipped)</h3>"
         f"{_render_domain_law_templates()}"
     )
@@ -726,7 +726,7 @@ def _render_declared_sources(config: dict) -> str:
     return f"<ul class='list'>{items}</ul>"
 
 
-def _render_role_pack(root: Path, config: dict) -> str:
+def _render_domain_guide_panel(root: Path, config: dict) -> str:
     path = _guide_path(root, config)
     if path is None:
         return '<p class="empty">No domain guide declared (llm.domain_guide_file).</p>'

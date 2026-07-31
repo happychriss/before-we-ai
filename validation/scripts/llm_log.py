@@ -37,12 +37,13 @@ def guide_for(contract: str, scenario: str) -> str:
             "nothing here is verified yet.")
     if contract == "role_binding":
         return (
-            "Walkthrough step 4 — casting call for the domain roles. Input: the "
-            "role-pack definitions (human-written domain nouns) + profiles. "
-            "Output: role-binding candidates ('this table could play the "
-            "journal role'), each a claim with status 'proposed'. Competing "
-            "candidates are wanted — the domain-law checks decide the election, "
-            "not the model.")
+            "Walkthrough step 4 — the search for the domain's business "
+            "objects and fields. Input: the domain-guide definitions "
+            "(human-written domain nouns, objects and their fields flattened "
+            "into one list) + profiles. Output: mapping claims ('this table "
+            "could play the journal role'), each with status 'proposed'. "
+            "Competing candidates are wanted — the domain-law checks decide "
+            "the election, not the model.")
     if contract == "v2_bind" and "roles" in scenario:
         return (
             "Walkthrough step 5 (V2), role batch — filling in the free "
