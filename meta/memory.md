@@ -22,11 +22,23 @@
   questions 7 → 6, project total 14 → 13), the walkthrough and viewer now
   *show* the consumed column. Detail: architecture.md "Guide by
   construction" + Domain inputs.
-- **NEXT: M6** (question flow + ReadinessMap, built to the narrow demo).
+- **NEXT: readiness-report redesign** (owner decision 2026-07-31 evening:
+  report first, then an owner validation run on it, then M6). Plan:
+  `/home/ubuntu/.claude/plans/readiness-report.md`. Claim viewer →
+  **readiness report**: process diagram on top (actor boundary + ghost
+  M5/M6 nodes), page reordered to pipeline flow, derived business-language
+  narration under the **three-voices rule** (derived sentences headline;
+  AI words attributed + subordinate — may headline a proposal, never a
+  status; human words verbatim), provenance strip + YAML link on every
+  entity, questions reworded to business register (no prompt bytes; test
+  re-pins listed in the plan). Owned code only — zero fixture/prompt
+  changes by construction.
+- **THEN: M6** (question flow + ReadinessMap, built to the narrow demo).
   Spec: architecture.md "Question flow & readiness"; build outline: WP2 of
-  the plan file. **Open question the M6 design must answer:** a slot field's
-  settlement is derived only — its candidate claims stay `proposed` while
-  the law vouched for the column. Either the ReadinessMap reads the
+  `/home/ubuntu/.claude/plans/guide-hierarchy-then-m6.md` (kept, WP1 marked
+  done in the file). **Open question the M6 design must answer:** a slot
+  field's settlement is derived only — its candidate claims stay `proposed`
+  while the law vouched for the column. Either the ReadinessMap reads the
   derivation, or the passing run's evidence attaches to the field claim and
   promotes it — that would be a **new promotion path**, so it is an owner
   decision, not a refactor.
