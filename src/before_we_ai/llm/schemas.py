@@ -14,6 +14,8 @@ instead, which feed the same retry loop but skip per item. (Learned from
 the first real run: 56 hypotheses died over two items missing a term.)
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 from before_we_ai.llm.vocabulary import PredicateName, TemplateName
@@ -87,3 +89,30 @@ class BindingBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     bindings: list[CheckPlanProposal]
+
+
+class KnowledgeItemProposal(BaseModel):
+    """One thing the requested answer depends on (V4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["object", "field", "rule"]
+    name: str  # an object/field of the supplied vocabulary, or a rule's name
+    of_object: str | None = None  # fields only (semantic check)
+    why: str  # the dependency in business words — what the human prunes on
+
+
+class AnswerRequestDraft(BaseModel):
+    """The V4 answer: one business question, structured, plus its dependencies.
+
+    ``required_knowledge`` is a *draft*. The human prunes it, and pruning is
+    only possible if every item says why it is there — hence the required
+    ``why`` on each one.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    requested_output: str  # what the answer must deliver, in one line
+    scope: HypothesisScope | None = None  # only when the question names one
+    required_knowledge: list[KnowledgeItemProposal]
+    rationale: str  # why this decomposition — logged, never stored

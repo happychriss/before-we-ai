@@ -15,7 +15,15 @@ they enter a ``Predicate``, so ``semantics.claim_key`` dedups paraphrases
 of the same rule.
 """
 
-from before_we_ai.llm.schemas import Hypothesis, CheckPlanProposal, MappingProposal
+from typing import TYPE_CHECKING
+
+from before_we_ai.llm.schemas import (
+    AnswerRequestDraft,
+    Hypothesis,
+    CheckPlanProposal,
+    KnowledgeItemProposal,
+    MappingProposal,
+)
 from before_we_ai.llm.vocabulary import (
     COLUMN_PARAMS,
     INVARIANT_TEMPLATES,
@@ -25,10 +33,12 @@ from before_we_ai.llm.vocabulary import (
     check_template_params,
     normalize_template_params,
 )
-from before_we_ai.model.enums import Actor
+from before_we_ai.model.enums import Actor, KnowledgeKind
 from before_we_ai.model.objects import (
+    AnswerRequest,
     Claim,
     ConceptClaim,
+    KnowledgeItem,
     Predicate,
     CheckPlan,
     MappingClaim,
@@ -37,6 +47,9 @@ from before_we_ai.model.objects import (
 )
 from before_we_ai.model.transitions import create_claim
 from before_we_ai.store.repository import ProjectStore
+
+if TYPE_CHECKING:  # domain_guide imports nothing from here; keep it that way
+    from before_we_ai.llm.domain_guide import DomainGuide
 
 
 class ProfileIndex:
@@ -198,6 +211,89 @@ def proposal_to_mapping_claim(p: MappingProposal, index: ProfileIndex) -> Mappin
         source_ids=index.source_ids(list(binding.values())),
         role=p.role,
         binding=binding,
+    )
+
+
+# -- V4: the request and what it requires ---------------------------------
+
+def check_knowledge_item(item: KnowledgeItemProposal,
+                         guide: "DomainGuide") -> list[str]:
+    """Does this dependency name something the domain vocabulary has?
+
+    Objects and fields must exist and sit where the item says they sit —
+    a required-knowledge item that names nothing is a dependency the
+    readiness evaluator could never resolve, so it never becomes silence
+    later: it fails here, visibly, and the model is told why.
+
+    Rules are the opposite case: they exist *because* the vocabulary has
+    no entry for them. So a rule is rejected only when it names a
+    vocabulary entry — that is a mis-kinded object or field, not a rule.
+    """
+    errors = []
+    if not item.name.strip():
+        errors.append("required-knowledge item: name is empty")
+    if not item.why.strip():
+        errors.append(
+            f"required-knowledge item {item.name!r}: 'why' is empty — an "
+            "item nobody can prune on may as well not be listed"
+        )
+    if item.kind == "field":
+        if not item.of_object:
+            errors.append(
+                f"field {item.name!r}: must name the object it belongs to"
+            )
+        elif item.of_object not in guide.objects:
+            errors.append(
+                f"field {item.name!r}: {item.of_object!r} is no business "
+                "object of the vocabulary"
+            )
+        elif item.name not in guide.objects[item.of_object].fields:
+            owner = guide.owner_of(item.name)
+            errors.append(
+                f"field {item.name!r} is not a field of {item.of_object!r}"
+                + (f" — it belongs to {owner!r}" if owner else
+                   " and belongs to no object in the vocabulary")
+            )
+        return errors
+    if item.of_object:
+        errors.append(
+            f"{item.kind} {item.name!r}: only a field belongs to an object"
+        )
+    if item.kind == "object" and item.name not in guide.objects:
+        errors.append(
+            f"object {item.name!r} is no business object of the vocabulary"
+            + (f" — it is a field of {guide.owner_of(item.name)!r}"
+               if guide.owner_of(item.name) else "")
+        )
+    if item.kind == "rule" and item.name in guide.entries:
+        errors.append(
+            f"rule {item.name!r} names a vocabulary entry — say "
+            f"kind={'field' if guide.owner_of(item.name) else 'object'} "
+            "instead; a rule is what the vocabulary does not contain"
+        )
+    return errors
+
+
+def draft_to_request(question: str, draft: AnswerRequestDraft) -> AnswerRequest:
+    return AnswerRequest(
+        question=question.strip(),
+        requested_output=draft.requested_output.strip(),
+        scope=Scope(**draft.scope.model_dump()) if draft.scope else Scope(),
+    )
+
+
+def item_to_knowledge(item: KnowledgeItemProposal, scope: Scope) -> KnowledgeItem:
+    """One drafted dependency, wearing the request's scope.
+
+    The scope is inherited, never taken from the model: the request says
+    what it is about, and every item it spawns is about the same thing.
+    """
+    return KnowledgeItem(
+        kind=KnowledgeKind(item.kind),
+        name=item.name.strip(),
+        of_object=item.of_object.strip() if item.of_object else None,
+        why=item.why.strip(),
+        scope=scope,
     )
 
 

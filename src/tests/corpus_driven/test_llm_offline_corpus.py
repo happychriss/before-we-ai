@@ -21,11 +21,12 @@ import yaml
 
 from before_we_ai import scan
 from before_we_ai.engine import run_ready
-from before_we_ai.llm import plan_checks, hypothesize, load_domain_guide, propose_mappings, resolve_mappings
+from before_we_ai.llm import ask, plan_checks, hypothesize, load_domain_guide, propose_mappings, resolve_mappings
 from before_we_ai.llm.domain_guide import settled_slots
 from before_we_ai.llm.inputs import (
     build_binding_context,
     build_profile_context,
+    build_question_context,
     build_role_context,
     claim_label_map,
 )
@@ -58,6 +59,10 @@ SOURCES = [
 # into the product.
 LEAK_TOKENS = ("trap", "decoy", "BLIND_", "expected_verdicts", "F27", "Seeded")
 
+# The question the whole pipeline is answering for. Generic finance, no
+# corpus knowledge — it names nothing this landscape happens to contain.
+DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
+
 
 @pytest.fixture(scope="module")
 def pipeline(tmp_path_factory):
@@ -73,6 +78,8 @@ def pipeline(tmp_path_factory):
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
 
     results = {"root": root, "roles": roles}
+    results["v4"] = ask(root, DEMO_QUESTION, guide=roles, store=store,
+                        scenario="corpus")
     results["v1"] = hypothesize(root, store=store, scenario="corpus")
     results["proposals"] = propose_mappings(root, roles=roles, store=store,
                                                  scenario="corpus")
@@ -92,7 +99,10 @@ def test_contracts_ran_clean_offline(pipeline):
     refreshed 2026-07-31 after the terminology realignment). A red here
     after a fixture refresh is the guard working: review the new numbers
     and re-pin deliberately."""
-    v1, proposals, v2 = pipeline["v1"], pipeline["proposals"], pipeline["v2"]
+    v4, v1 = pipeline["v4"], pipeline["v1"]
+    proposals, v2 = pipeline["proposals"], pipeline["v2"]
+    assert v4.failure is None and v4.skipped == []
+    assert len(v4.required.items) == 9
     assert v1.failure is None
     assert len(v1.claims_created) == 52
     assert v1.claims_deduped == 0
@@ -222,7 +232,7 @@ def test_the_slot_of_a_settled_object_is_answered_not_asked(pipeline):
 
 def test_call_logs_are_complete(pipeline):
     logs = sorted((pipeline["root"] / "cache" / "llm_log").glob("*.json"))
-    assert len(logs) == 4  # v1, role proposals, v2 role batch, v2 claim batch
+    assert len(logs) == 5  # v4, v1, role proposals, v2 role batch, v2 claim batch
     outcomes = []
     for path in logs:
         entry = json.loads(path.read_text(encoding="utf-8"))
@@ -234,7 +244,7 @@ def test_call_logs_are_complete(pipeline):
             assert entry["attempts"][-1]["validation_errors"]  # skips are visible
     # the recorded V1 and V2-claims answers keep a few bad items even after
     # their retry — replayed as "partial", same items skipped every run
-    assert sorted(outcomes) == ["ok", "ok", "partial", "partial"]
+    assert sorted(outcomes) == ["ok", "ok", "ok", "partial", "partial"]
 
 
 def test_pipeline_is_idempotent(pipeline):
@@ -256,7 +266,8 @@ def test_built_inputs_leak_no_corpus_hints(pipeline):
     matrix = load_matrix(root)
     built = build_profile_context(store, matrix)
     role_built = build_role_context(store, matrix, pipeline["roles"])
-    for text in (built.text, role_built.text):
+    question_built = build_question_context(DEMO_QUESTION, pipeline["roles"])
+    for text in (built.text, role_built.text, question_built.text):
         lowered = text.lower()
         for token in LEAK_TOKENS:
             assert token.lower() not in lowered, f"built input leaks {token!r}"
@@ -273,6 +284,8 @@ def test_fixtures_match_current_inputs(pipeline):
     def fixture(name: str) -> dict:
         return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
 
+    assert fixture("v4_request__corpus")["input_sha256"] == \
+        build_question_context(DEMO_QUESTION, pipeline["roles"]).sha256
     assert fixture("v1_hypotheses__corpus")["input_sha256"] == \
         build_profile_context(store, matrix).sha256
     assert fixture("role_binding__corpus")["input_sha256"] == \

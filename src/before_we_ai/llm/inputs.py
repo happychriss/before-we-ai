@@ -141,6 +141,28 @@ def build_role_context(store: ProjectStore, matrix: dict, roles: DomainGuide,
     return _assemble(render, max_chars)
 
 
+def build_question_context(question: str, guide: DomainGuide) -> BuiltInput:
+    """V4 input: the business question, then the domain's vocabulary.
+
+    No profiles: the request stage decomposes a question against what the
+    domain *means*, not against what the landscape happens to contain.
+    Whether the data can serve the request is the rest of the pipeline's
+    job, and answering it here would be the model deciding.
+
+    Fields are rendered under their objects — unlike the role-binding
+    input, which deliberately flattens them. Here the hierarchy is the
+    point: a field is a property *of* something, and an item that names
+    the wrong owner is a mis-decomposition we want the model able to avoid.
+    """
+    lines = ["## The business question", question.strip(), "",
+             f"## The domain vocabulary (domain: {guide.domain})"]
+    for name, spec in guide.objects.items():
+        lines.append(f"- {name}: {spec.definition}")
+        for field_name, field in spec.fields.items():
+            lines.append(f"  - {field_name}: {field.definition}")
+    return _built("\n".join(lines) + "\n")
+
+
 def _string_values(value) -> list[str]:
     if isinstance(value, str):
         return [value]
