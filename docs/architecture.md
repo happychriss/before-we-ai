@@ -62,6 +62,65 @@ domain-specific is therefore explicit and enumerable: `CheckDefinition.domain`
 the rendered V2 template docs would change prompt bytes → joins the M5
 fixture re-record batch.
 
+### The domain pack is the critical — and currently unverified — input
+
+Established in the owner validation walkthrough of 2026-07-31. This is the
+most load-bearing open weakness in the product; treat it as such.
+
+**Leverage.** The finance guide is **57 lines**, and it alone decides:
+(1) what the AI searches for — a concept not named in the guide is invisible,
+silently; (2) which candidates compete — too vague yields junk candidates,
+too specific yields a single candidate and the election becomes theatre;
+(3) which law judges which role; (4) which questions reach the human
+(`decided_by: clarification`).
+
+**The asymmetry, stated precisely.** A bad guide *cannot* give the AI power
+to promote — that is structural and guide-independent. But the guide decides
+**which claim is put to which test, and a passing test does promote.** A role
+definition loose enough to admit a wrong table, where that table happens to
+pass a real law, is therefore a genuine false-promotion path. The corollary
+already stated under "Every role declares its settlement path" is the same
+point from the other side: *a journal balances per period AND per document
+AND per year, so a passing law never proves what one slot means.* A passing
+invariant is strong evidence about **data consistency** and only weak
+evidence about **meaning**.
+
+**Measured, not assumed (2026-07-31).** No plausible impostor in the frozen
+corpus passes the balance law: `de_erp__intercompany` fails 24/24 periods,
+`us_erp__intercompany` 23/23, `de_erp__ar_open_items` 420 groups. So the risk
+is not live here — but **what protects us is the shape of this dataset, not
+the design.** A real landscape containing a clearing account, a netting
+table, or a mirrored export that sums to zero per period could realise it.
+
+**What validates the guide today: almost nothing.** Only the load-time
+Pydantic lint (`extra="forbid"`; `decided_by` names a real law of the correct
+domain). **None of the 257 tests asks whether the guide is correct.** The
+`amount_local` mis-declaration (see meta/memory.md, M5 kickoff item 5) was
+found by a human reading a generated question and thinking it looked odd —
+not by any check. That is not a repeatable quality process.
+
+**Why this is a product concern, not only a code concern.** New domain = new
+pack, so the guide is the **unit of onboarding**: every customer means a new
+one, and its quality *is* the product's quality for that customer. The person
+writing it will usually know the domain, not the machine. That places the
+guide-drafting contract (parked as "Onboarding workflow" item 3, post-M5)
+closer to the commercial centre of the product than its position suggests.
+
+**Guide acceptance kit — the three parts.** `docs/before-ai-concept.md` §6
+predicted the need and sketched the first two; the third comes from the
+2026-07-31 findings:
+
+1. **Per new law:** one fixture where it holds (check must PASS) and one
+   deliberately violated (must FAIL, and only on the seeded row). Catches the
+   trivially-passing law — the named remaining path to false confidence.
+2. **Per new role:** at least one wrong candidate that must lose its
+   election. Catches definitions too vague to discriminate.
+3. **Coherence lint** (static analysis over guide + REGISTRY, no data
+   needed): no role may declare a law it can only be a **slot** of; every
+   law's slots must be fillable by declared roles. Catches the `amount_local`
+   class automatically, and is the same mechanism as the slot-side lint
+   already queued for M5 — build them together.
+
 ## Epistemic core (`model/`, `store/` — M1, tags m1-core-v1/v2)
 
 - `model/` is pure and IO-free; `store/` is a YAML repo with append-only evidence,
@@ -239,6 +298,24 @@ fixture re-record batch.
   and draft nothing. The losing candidates keep their honest derived statuses.
   Still M5: the slot-fillability side of the lint and role claims binding to
   *generic* templates (both under "Onboarding workflow" below).
+- **KNOWN GAP — elections are scope-blind** (found 2026-07-31). A role elects
+  exactly one winner across the whole project, but a landscape is typically
+  multi-entity: DE and US each legitimately own a journal, an account column,
+  a period column, a doc_ref. Two visible consequences in the walkthrough:
+  the `account`/`period`/`doc_ref` clarification questions offer three
+  candidates that are **all correct**, so answering forces the owner to
+  discard two right mappings; and `us_erp__gl_postings` is reported
+  `contradicted` for `journal`, which reads as "not the journal" when it *is*
+  the US journal carrying a €50k data defect (F22). Note the status alone
+  cannot separate "wrong table" from "right table, broken data" — only the
+  evidence can: the decoy fails 24/24 periods by millions, the US ledger
+  fails 1 period by exactly 50,000. The missing concept already exists in the
+  core — `Scope(entity, period, segment)` is on `Claim` and used for rules;
+  `MappingClaim` elections simply never consult it. Likely shape: elect per
+  scope, so each entity gets its own occupant and only genuine decoys lose.
+  **Decide before M6** — the ReadinessMap is per-question and will inherit
+  whatever scoping the roles have. Not a quick fix; do not bundle it into the
+  M5 kickoff re-record.
 - Seeded-Recall lives in `tests/eval/seeded_recall.py` — reports, never gates.
   First measurement (M4, full report `docs/seeded-recall-m4.md`):
   **False-Promotion 0**, Seeded-Recall **15/25** in-scope traps incl. the T7
