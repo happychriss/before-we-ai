@@ -1,4 +1,4 @@
-# Product architecture — confirmed design (M1–M4)
+# Product architecture — confirmed design (M1–M4 built; M5/M6 specified where marked)
 
 Per-package confirmed decisions and gotchas for `src/before_we_ai/`. Feature
 status: `README.md` (roadmap table). Plain-language walkthrough:
@@ -120,6 +120,61 @@ predicted the need and sketched the first two; the third comes from the
    law's slots must be fillable by declared roles. Catches the `amount_local`
    class automatically, and is the same mechanism as the slot-side lint
    already queued for M5 — build them together.
+
+### Guide by construction — owner-aligned 2026-07-31 (pre-M6 + M6)
+
+Owner discussion record: `docs/before-we-ai-key-findings-and-conclusions.md`.
+Three decisions close the "nothing tests the guide" gap **by construction**
+rather than only by testing. The first is the **pre-M6 alignment step**: it
+must land before the ReadinessMap consumes the guide's shape, because a
+structure change under an already-built dependent layer is the expensive kind.
+
+1. **Objects with fields, not a flat role list.** Today's guide mixes levels:
+   `journal` (a business object) and `amount_local` (a field inside it) are
+   both "roles" with their own settlement paths — which is exactly what made
+   the `amount_local` mis-declaration *expressible*. New shape: the guide
+   declares **business objects** (`decided_by:` a domain law or
+   `clarification`) each with **fields** (`decided_by: slot` — consumed by
+   the object's law — or `clarification`; **a field can never declare a
+   law**). That makes the `amount_local` bug class inexpressible — stronger
+   than a lint that merely catches it. A slot field settles through its
+   object's passing law; the evidence for that already exists today (the
+   passing balance run records which column it consumed as its amount slot)
+   and is merely not connected. The **coherence lint** (part 3 of the
+   acceptance kit) is built against the *new* shape, not the flat one being
+   retired, and absorbs the former M5 kickoff item 5; it needs the slot-side
+   metadata on `CheckDefinition` (which roles each slot consumes).
+   **Wire-contract rule applies again:** the model keeps seeing the same
+   flat rendered definitions (`decided_by` never entered a prompt; the
+   hierarchy is consumed by the lint, role resolution, and elections only).
+   The fixture drift guard proves byte-stability offline; if flat rendering
+   cannot be preserved byte-identically, the change joins the M5 fixture
+   re-record batch instead of standing alone.
+
+2. **Guide provenance — the actor discipline extends to the guide.** The
+   generic half (textbook laws and concepts: journals balance, AR ties to a
+   control account) may be AI-drafted — it is checkable and fails loudly
+   when wrong. The **organisational half** (which price is used for expected
+   costing, whether the export is authoritative) is decided, not derivable:
+   it enters the guide **only as an answered clarification question**,
+   authored by a human. Each guide entry carries provenance
+   (`drafted-by-ai` vs `confirmed-by-human`), so the guide stops being a
+   hand-written unverified file and becomes made of the same evidence-backed
+   material the store already trusts. This sharpens the Onboarding item 3
+   guardrail from "a human signs off on the file" to "the binding half is
+   human-authored, per entry" — capability is not authority, and
+   `decided_by:` is literally an authority statement.
+
+3. **Question-first bounds the guide and makes omissions visible — but does
+   not replace the kit.** Under M6's question-first flow, a guide wrong by
+   *omission* surfaces as `blocked` in the ReadinessMap: the question is the
+   external referent the guide is measured against, and small per-question
+   guides (a page, reviewable) replace an unbounded domain model. A guide
+   wrong by **commission** — a too-loose law that a wrong table passes — is
+   untouched by question-first; the acceptance kit and coherence lint remain
+   the only protection on that path, and they matter *more* under the
+   readiness framing, because a wrong guide then produces a confident,
+   product-branded "ready".
 
 ## Epistemic core (`model/`, `store/` — M1, tags m1-core-v1/v2)
 
@@ -296,8 +351,9 @@ predicted the need and sketched the first two; the third comes from the
   pick; no candidate at all (once the search ran) → "does this role exist?".
   Candidates without a check result and without a declaration are in flight
   and draft nothing. The losing candidates keep their honest derived statuses.
-  Still M5: the slot-fillability side of the lint and role claims binding to
-  *generic* templates (both under "Onboarding workflow" below).
+  Still open: the slot-fillability side of the lint (now the **pre-M6
+  alignment step** — see "Guide by construction") and role claims binding to
+  *generic* templates (M5, under "Onboarding workflow" below).
 - **KNOWN GAP — elections are scope-blind** (found 2026-07-31). A role elects
   exactly one winner across the whole project, but a landscape is typically
   multi-entity: DE and US each legitimately own a journal, an account column,
@@ -313,9 +369,11 @@ predicted the need and sketched the first two; the third comes from the
   core — `Scope(entity, period, segment)` is on `Claim` and used for rules;
   `MappingClaim` elections simply never consult it. Likely shape: elect per
   scope, so each entity gets its own occupant and only genuine decoys lose.
-  **Decide before M6** — the ReadinessMap is per-question and will inherit
-  whatever scoping the roles have. Not a quick fix; do not bundle it into the
-  M5 kickoff re-record.
+  **Decided 2026-07-31: resolved by design in M6.** An `AnswerRequest`
+  arrives with its scope ("P&L by entity" → per entity), `RequiredKnowledge`
+  inherits it, and elections run per scope — each entity gets its own
+  occupant and only genuine decoys lose. No interim fix on the flat model;
+  see "Question flow & readiness (M6)" below.
 - Seeded-Recall lives in `tests/eval/seeded_recall.py` — reports, never gates.
   First measurement (M4, full report `docs/seeded-recall-m4.md`):
   **False-Promotion 0**, Seeded-Recall **15/25** in-scope traps incl. the T7
@@ -418,11 +476,12 @@ re-record); piece 3 post-M5; the assembled workflow + quickstart is M8.
    YAML, no plugin framework (Regel der Drei). Shipped guides must pass the
    same leakage tripwire as prompts.
    **Logical pack validation:** the role half shipped 2026-07-12
-   (`decided_by:` + lint). Remaining for M5, needs template metadata: the
-   **slot side** — each invariant `CheckDefinition` declares which *roles*
-   its slots consume, so the lint can also reject an invariant whose slots
-   the guide cannot fill (invariant params like `journal`, `subledger`,
-   `left`/`right` are not literally role names today). Also M5 (prompt
+   (`decided_by:` + lint). The **slot side** — each invariant
+   `CheckDefinition` declares which *roles* its slots consume, so the lint
+   can also reject an invariant whose slots the guide cannot fill (invariant
+   params like `journal`, `subledger`, `left`/`right` are not literally role
+   names today) — is now the **pre-M6 alignment step** ("Guide by
+   construction"). Still M5 (prompt
    bytes → same re-record): mapping claims binding to *generic* templates
    where a real data property exists (`account` via anti_join against the
    chart of accounts — catches garbage, though it still cannot prove
@@ -440,6 +499,85 @@ re-record); piece 3 post-M5; the assembled workflow + quickstart is M8.
    clarification questions); a too-**loose** law is the one path to false
    confidence — an invariant that trivially passes promotes mappings on
    evidence that tests nothing. Authorship ends with a person signing off.
+   **Refined 2026-07-31:** the sign-off is per entry, not per file — generic
+   laws/concepts may stay AI-drafted; organisational bindings must be
+   human-answered (see "Guide by construction" under Domain inputs).
+
+## Question flow & readiness (M6 — specified 2026-07-31, not built)
+
+Owner-aligned spec; discussion record
+`docs/before-we-ai-key-findings-and-conclusions.md`. Product thesis: **an
+answer-readiness control layer for enterprise AI.** The system does not ask
+whether the data landscape is generally AI-ready; it checks whether **this
+specific answer** is ready. USP in one sentence: *before-we-ai traces a
+business answer back to every mapping, meaning, and rule it depends on,
+tests what can be tested, and blocks the answer when a material dependency
+remains unsupported.*
+
+**Flow (top-down).** Today's pipeline runs bottom-up (scan everything,
+propose claims about the whole landscape) and survives unchanged as the
+middle of the machine; M6 adds the top and the bottom:
+
+```
+business question → AnswerRequest → RequiredKnowledge (scoped)
+  → domain guide → data profiles + link candidates → mapping claims
+  → check definitions → check plans → check runs → evidence
+  → claim status → clarification questions where needed
+  → ReadinessMap → ready / ready_with_limitations / blocked → permitted answer
+```
+
+The question bounds discovery: it defines what must be known, and nothing
+else *has* to be. That is the correction to the too-wide domain — domain
+knowledge is bounded by the requested use case, never by an enterprise
+ontology.
+
+**Objects** (names reserved in `glossary.py` `PLANNED` since the
+terminology realignment):
+
+- **`AnswerRequest`** — the structured form of one business question:
+  requested output + **scope**. The human question stays the *business
+  question*; the AnswerRequest is its software representation. Absorbs the
+  vestigial `sql`/`result_ref` answer-half still carried on
+  `ClarificationQuestion` (commented as such in `model/objects.py`).
+- **`RequiredKnowledge`** — derived from the AnswerRequest: the business
+  objects, fields, and rules this answer depends on, each item carrying the
+  request's scope. This is where scoped elections attach (resolves the
+  "elections are scope-blind" gap by design — see LLM contracts).
+- **`ReadinessMap`** — per required-knowledge item: claim, evidence, status,
+  remaining gap; overall verdict `ready` / `ready_with_limitations` /
+  `blocked`. **Readiness is derived, never stored** — same discipline as
+  claim status: recomputed from the claims and evidence it rests on, so it
+  can never drift from them.
+
+**Handover principle** (measurement stays separate from interpretation): a
+check never directly proves a claim or produces an answer —
+`CheckPlan → CheckRun → Evidence → claim status → readiness decision`. In
+product words: the AI proposes the path; the check engine measures what
+happened; evidence changes what the system is allowed to believe; the
+readiness evaluator decides what the system is permitted to claim.
+
+**Acceptance = the narrow demo** (discussion record §12), which doubles as
+the first user experience — the full synthetic corpus stays test
+infrastructure. One small dataset: one correct journal, one attractive but
+wrong journal export, one account master, one sign convention, one policy
+not inferable from structure. The system must (1) identify both candidates,
+(2) contradict or qualify the wrong one, (3) surface the missing business
+rule, (4) ask one focused clarification, (5) build the ReadinessMap,
+(6) permit, narrow, or block the answer. Four of the six already run in M4
+(both journal candidates found; the decoy contradicted — the F27 pattern;
+missing rules surface as V2 refusal declarations; clarifications drafted).
+M6 adds the top (AnswerRequest → RequiredKnowledge) and the bottom
+(ReadinessMap + verdict). The demo's non-inferable policy arrives as a
+**human-answered clarification**, so the demo does not wait on the M5
+document pipeline.
+
+**Ordering (owner decision 2026-07-31): M6 before M5**, with the pre-M6
+alignment step (guide objects+fields restructure + coherence lint, "Guide by
+construction") first, because the ReadinessMap must not be built on the flat
+role model. M5 stays necessary — the K3 document-only traps and three
+walkthrough claims whose V2 refusals literally name documents wait on it —
+but M5 deepens the existing flow, while M6 makes the product demonstrable;
+demonstrability is the scarcer good.
 
 ## Operations
 

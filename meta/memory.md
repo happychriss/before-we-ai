@@ -5,6 +5,19 @@
 
 ## Current focus
 
+- **Order decided 2026-07-31 (owner): pre-M6 alignment → M6 (question flow,
+  narrow demo) → M5 (documents).** Plan:
+  `/home/ubuntu/.claude/plans/guide-hierarchy-then-m6.md`. Spec + rationale:
+  `docs/architecture.md` ("Guide by construction", "Question flow &
+  readiness"); owner discussion record:
+  `docs/before-we-ai-key-findings-and-conclusions.md`.
+- **NEXT: pre-M6 alignment step** — DomainGuide restructured to business
+  objects + fields (a field can never declare a law → `amount_local` bug
+  class inexpressible), coherence lint against the new shape (absorbs former
+  M5 kickoff item 5), slot metadata on CheckDefinition. **Hard constraint:
+  prompt bytes stay identical** (drift-guard test proves it offline); if
+  flat rendering can't be preserved byte-identically, fold the change into
+  the M5 re-record batch and re-plan.
 - **Terminology realignment + documentation restructure — DONE 2026-07-31**
   (code, docs, spec, walkthrough, live fixture re-record, suite 257 green;
   committed). Post-rename Seeded-Recall: **14/25** (−1 vs baseline, flips
@@ -16,20 +29,19 @@
   amount_local settled via clarification questions in the recording).
 - **M5 — documents & V3** (spec: docs/spec/ — PDF pipeline, anchors,
   multi-anchor reconciliation; acceptance: T8 negatives, real PDF). Queued
-  behind the re-record above.
-- **M5 kickoff batch** (decide/do first; items 3+4 touch prompt bytes →
-  ONE shared fixture re-record at M5 kickoff. Deliberately NOT bundled into
-  the rename re-record: the rename run must stay a null test — same shape,
-  reworded prompts — so the recall delta is attributable; an M5 re-record
-  is cheap, ~4 calls):
+  after the M6 demo (owner decision 2026-07-31).
+- **M5 kickoff batch** (runs at M5 start, i.e. after M6; items 3+4+6 touch
+  prompt bytes → ONE shared fixture re-record at M5 kickoff; ~4 calls.
+  **Item 5 moved out**: it is now the pre-M6 alignment step above):
   1. E4 noise PDFs blocker (see open items) — decide before anything.
   2. `discover(root)` sources discovery + bundled domain guides
      (architecture.md "Onboarding workflow").
   3. Show the domain tag in V2 template docs (architecture.md "Domain inputs").
   4. Mapping claims binding to *generic* templates where a real data property
      exists (`account` via anti_join against the chart of accounts).
-  5. Slot-side guide lint: CheckDefinition declares which roles its slots
-     consume (architecture.md "Onboarding workflow"). **Concrete case found
+  5. ~~Slot-side guide lint~~ — **moved to the pre-M6 alignment step**
+     (2026-07-31): CheckDefinition declares which roles its slots
+     consume (architecture.md "Guide by construction"). **Concrete case found
      2026-07-31:** the finance guide declares BOTH `journal` and
      `amount_local` as `decided_by: balance`, but balance's *subject* is the
      journal — the amount is one of its slots. Consequences: (a)
@@ -77,23 +89,21 @@
 
 ## Open items
 
-- **Decide before M6: scope-aware role elections.** Full analysis and
-  evidence: `docs/architecture.md` → LLM contracts → "KNOWN GAP — elections
-  are scope-blind". Short version: one role elects one winner project-wide,
-  but DE and US each legitimately own a journal/account/period/doc_ref, so
-  four clarification questions currently ask the owner to pick one of three
-  correct answers, and the US ledger reads as "not the journal" when it is
-  the US journal with a €50k defect. `Scope` already exists on `Claim` and
-  is simply not consulted by elections. The ReadinessMap will inherit
-  whatever scoping roles have — hence the M6 deadline. Not a quick fix.
-- **Decide: build the domain-guide acceptance kit.** Full analysis:
-  `docs/architecture.md` → Domain inputs → "The domain pack is the critical
-  — and currently unverified — input". Short version: 57 lines of guide
-  control what is searched for, which candidates compete, which law judges
-  which role, and which questions reach the owner — and **none of the 257
-  tests checks it**. Part 3 of the kit (the coherence lint) is cheap, needs
-  no data, catches the `amount_local` bug class automatically, and shares a
-  mechanism with M5 kickoff item 5 — build them together.
+- ~~Decide before M6: scope-aware role elections~~ — **DECIDED 2026-07-31:
+  resolved by design in M6.** AnswerRequest carries scope → RequiredKnowledge
+  inherits it → elections run per scope. No interim fix on the flat model.
+  See architecture.md → "Question flow & readiness (M6)".
+- **Domain-guide acceptance kit — part 3 scheduled, parts 1+2 open.** The
+  coherence lint is now the pre-M6 alignment step (Current focus). Parts 1+2
+  (per new law: one holds-fixture + one violated-fixture; per new role: one
+  wrong candidate that must lose) remain an owner decision — they belong
+  with guide provenance / the drafting contract (post-M5). Full analysis:
+  `docs/architecture.md` → Domain inputs.
+- **Owner: fate of `docs/before-we-ai-key-findings-and-conclusions.md`.**
+  Its decisions are absorbed into architecture.md (2026-07-31: "Guide by
+  construction" + "Question flow & readiness"); the file also restates the
+  terminology table glossary.py owns. Keep it as a discussion record, or
+  delete per one-fact-one-home — owner's call, not deleted unilaterally.
 - **M5 blocker: E4 noise PDFs missing from the frozen corpus**
   (`reisekostenrichtlinie.pdf`, `lieferantenkatalog.pdf`,
   `pressemitteilung_2022_divested_unit.pdf` — trap F26 poisoned anchor,
