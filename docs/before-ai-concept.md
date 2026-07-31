@@ -4,7 +4,7 @@ This document walks through the whole system once, from a business question
 to a defensible answer. Every concept is introduced by the problem that
 forces it, then named. Behind each plain name stands exactly one code
 object, shown in brackets — the same word is used everywhere: here, in the
-code, in the claim viewer. No synonyms (`before_we_ai/glossary.py` is the
+code, in the readiness report. No synonyms (`before_we_ai/glossary.py` is the
 one home of these words).
 
 Two stages of honesty apply throughout:

@@ -29,9 +29,9 @@ but never restate it:
   `conventions.md` (project rules), `memory.md` (live state only — slim it when
   items become durable), environment notes
 - `scripts/` — (reserved, added later) self-contained ops scripts: start the
-  process, claim viewer, cleanup of stale processes; runnable directly after login
+  process, readiness report, cleanup of stale processes; runnable directly after login
 - `validation/` — owner-facing validation walkthrough: `README.md` (the test
-  steps) + `scripts/` (runnable stage & viewer tools); `data/` is generated
+  steps) + `scripts/` (runnable stage & report tools); `data/` is generated
   and git-ignored
 - `README.md` — human-facing product front page AND the one home of feature
   status (roadmap table; exempt from no-restating: may summarize)

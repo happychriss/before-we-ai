@@ -23,7 +23,7 @@ from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.model.objects import DataProfile
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.store import ProjectStore, init_project
-from claim_viewer import render_project
+from readiness_report import render_project
 
 
 def test_render_project_handles_empty_project(tmp_path):
@@ -196,7 +196,7 @@ def test_funnel_counts_the_pipeline_stages(tmp_path):
 
     html = render_project(root)
 
-    assert "The funnel" in html
+    assert "3 · Proposed — what the AI guessed" in html
     assert 'data-stage-chip="bound"' in html
     # one claim per stage: bound / unbindable / semantic-only
     assert html.count('data-stage="bound"') == 1
@@ -263,15 +263,104 @@ def test_role_elections_show_winner_loser_and_clarification(tmp_path):
 
     html = render_project(root)
 
-    assert "Role elections" in html
+    assert "4 · Decided — what the checks settled" in html
     assert "Elected:" in html
     assert "felled by" in html
     assert "24 exceptions in 383 rows" in html
     assert "finance law" in html  # the domain-law tag of the invariant template
     assert "No winner → clarification question" in html
     assert f'href="#question-{card.id}"' in html
-    # the Clarification questions inbox lists the open question on top
-    assert "Clarification questions — open questions (1)" in html
+    # the open-questions inbox is its own pipeline step, and counts
+    assert "5 · Open — what only a human can answer (1)" in html
+
+
+def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
+    """The diagram is the map into the page: every stage links to its section,
+    every number is counted from the store, and the actor boundary is drawn
+    where authorship shifts — a proposal can never promote itself."""
+    root = init_project(tmp_path / "diagram")
+    store = ProjectStore(root)
+
+    guide_file = tmp_path / "guide.yaml"
+    guide_file.write_text(
+        "domain: finance\n"
+        "objects:\n"
+        "  journal:\n"
+        "    decided_by: balance\n"
+        "    definition: The ledger of record.\n"
+        "    fields:\n"
+        "      amount_local:\n"
+        "        decided_by: slot\n"
+        "        fills: amount\n"
+        "        definition: The signed posting amount.\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["sources"] = [
+        {"name": "de_erp", "kind": "duckdb", "location": "/data/DE/erp.duckdb"}
+    ]
+    config["llm"] = {"domain_guide_file": str(guide_file)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    source = Source(name="de_erp", kind="duckdb", location="/data/DE/erp.duckdb")
+    store.save_source(source)
+    store.save_profile(
+        DataProfile(source_id=source.id, table="gl_postings", column="amount", stats={})
+    )
+
+    elected = MappingClaim(
+        statement="role 'journal' is played by de_erp__gl_postings",
+        created_by=Actor.AI,
+        role="journal",
+        binding={"table": "de_erp__gl_postings"},
+    )
+    beaten = MappingClaim(
+        statement="role 'intercompany' is played by de_erp__intercompany",
+        created_by=Actor.AI,
+        role="intercompany",
+        binding={"table": "de_erp__intercompany"},
+    )
+    for claim, verdict in ((elected, CheckVerdict.PASS), (beaten, CheckVerdict.FAIL)):
+        store.save_claim(claim)
+        check = CheckPlan(template="balance", claim_id=claim.id, roles=[claim.role], params={})
+        store.save_check_plan(check)
+        record = EvidenceRecord(
+            type=EvidenceType.CHECK_RESULT,
+            actor=Actor.CHECK,
+            claim_id=claim.id,
+            check_plan_id=check.id,
+            verdict=verdict,
+            population=383,
+            exception_count=0 if verdict is CheckVerdict.PASS else 24,
+        )
+        store.add_evidence(record)
+        store.save_claim(attach_evidence(claim, record, []))
+    store.save_question(
+        ClarificationQuestion(question="Which source leads?", claim_ids=[beaten.id])
+    )
+
+    html = render_project(root)
+
+    # every stage is a link into the section that produced it
+    for anchor in ("inputs", "measured", "proposed", "decided", "open"):
+        assert f'<div class="node-title"><a href="#{anchor}">' in html
+    # the counts are read from this project, not written into the template
+    laws = sum(1 for spec in REGISTRY.values() if spec.domain)
+    assert "<strong>1</strong> source" in html
+    assert "<strong>1+1</strong> objects + fields" in html
+    assert f"<strong>{laws}</strong> domain laws" in html
+    assert "<strong>1</strong> column profiles" in html
+    assert "<strong>2</strong> claims" in html
+    assert "<strong>2</strong> check runs" in html
+    assert "<strong>1/2</strong> roles elected" in html
+    assert "<strong>1</strong> open question" in html
+    # the invariant, drawn: the AI's side of the line proposes and nothing more
+    assert "no proposal may promote itself" in html
+    assert "AI — proposals only" in html
+    assert "check — may promote" in html
+    # what is not built says so, rather than being left out
+    assert "M5 · documents" in html and "M6 · question → readiness" in html
+    assert html.count("not built") == 2
 
 
 def test_check_card_shows_the_rendered_sql_that_was_asked(tmp_path):
@@ -413,7 +502,7 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
 
     html = render_project(root)
 
-    assert "Domain pack — the declared domain inputs" in html
+    assert "1 · Inputs — what a human declared" in html
     # 1 — the declared sources
     assert "de_erp" in html and "/data/DE/erp.duckdb" in html
     # 2 — the domain guide: file, domain, shape and names
@@ -445,7 +534,6 @@ def test_core_terms_define_the_canonical_vocabulary(tmp_path):
 
     html = render_project(root)
 
-    assert "How to read this page" in html
     assert "Core terms" in html
     for term in (
         "hypothesis",
@@ -472,7 +560,7 @@ def test_module_cli_writes_output_outside_project_by_default(tmp_path):
     repo_root = Path(__file__).resolve().parents[2]
 
     result = subprocess.run(
-        [sys.executable, "-m", "claim_viewer", str(root)],
+        [sys.executable, "-m", "readiness_report", str(root)],
         cwd=repo_root,
         check=True,
         capture_output=True,
@@ -480,6 +568,6 @@ def test_module_cli_writes_output_outside_project_by_default(tmp_path):
     )
 
     output = Path(result.stdout.strip())
-    assert output == root.parent / f"{root.name}-claim-viewer.html"
+    assert output == root.parent / f"{root.name}-readiness-report.html"
     assert output.is_file()
     assert not (root / output.name).exists()

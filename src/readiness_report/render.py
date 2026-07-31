@@ -51,13 +51,14 @@ STAGE_LABELS = {
 
 
 READING_GUIDE = (
-    "This page mirrors the pipeline: the AI proposes, the checks decide. Read it "
-    "top down — the funnel says how many claims survived each step, the Clarification questions "
-    "are what the data could not settle, the role elections show which candidate "
-    "won its role and which domain law felled the others. Then pick one claim on "
-    "the left and read its story: 1 proposed → 2 bound → 3 judged → 4 context. "
-    "Nothing here is hand-set: every status is derived from the evidence shown "
-    "with it."
+    "This page is the pipeline itself, rendered from the project store: humans "
+    "declare the inputs, measurement describes the data, the AI proposes, the "
+    "checks decide, and whatever the data cannot settle becomes a question for a "
+    "human. Read it top down, or jump in from the diagram — every number there is "
+    "a link into the section that produced it. Then pick one claim on the left and "
+    "read its story: 1 proposed → 2 bound → 3 judged → 4 context. Nothing here is "
+    "hand-set: every status is derived from the evidence shown next to it, and the "
+    "AI cannot author evidence that promotes a claim."
 )
 
 DOMAIN_PACK_INTRO = (
@@ -87,7 +88,7 @@ class ClaimFacts:
 
 
 def default_output_path(root: Path) -> Path:
-    return root.resolve().parent / f"{root.name}-claim-viewer.html"
+    return root.resolve().parent / f"{root.name}-readiness-report.html"
 
 
 def write_project_view(root: str | Path, output: str | Path | None = None) -> Path:
@@ -168,12 +169,32 @@ def render_project(root: str | Path) -> str:
     warning_html = "".join(f"<li>{escape(warning)}</li>" for warning in matrix.get("warnings", []))
     integrity_html = "".join(f"<li>{escape(finding)}</li>" for finding in integrity)
 
+    answered_slots = _settled_slot_columns(root_path, config, store)
+    guide_fields = len(guide_owner)
+    elected, elections = _election_tally(facts, answered_slots)
+    diagram = _render_process_diagram(
+        declared_sources=len(config.get("sources") or []),
+        guide_objects=len(guide_order) - guide_fields,
+        guide_fields=guide_fields,
+        domain_laws=sum(1 for spec in REGISTRY.values() if spec.domain),
+        profiles=len(profiles),
+        candidates=candidate_count,
+        claims=len(claims),
+        runs=sum(
+            1 for record in store.evidence.values()
+            if record.type is EvidenceType.CHECK_RESULT
+        ),
+        elected=elected,
+        elections=elections,
+        questions=len(questions),
+    )
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Claim Viewer — {escape(root_path.name)}</title>
+  <title>Readiness report — {escape(root_path.name)}</title>
   <style>
     :root {{
       color-scheme: light dark;
@@ -350,6 +371,78 @@ def render_project(root: str | Path) -> str:
     .chip.active {{ border-color: var(--link); box-shadow: 0 0 0 1px var(--link) inset; }}
     .chip strong {{ font-size: 16px; }}
     .chip .label {{ color: var(--muted); font-size: 12px; }}
+    /* the process diagram: the whole machine on one line, with live counts */
+    .flow {{
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }}
+    .node {{
+      flex: 1 1 150px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }}
+    .node-step {{
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
+    .node-title a {{ color: var(--text); font-weight: 700; }}
+    .node-counts {{ display: grid; gap: 2px; margin-top: 2px; }}
+    .node-count {{ font-size: 12px; color: var(--muted); }}
+    .node-count strong {{ color: var(--text); font-size: 14px; }}
+    .node-count:hover, .node-count:hover strong {{ color: var(--link); }}
+    .node-actor {{
+      margin-top: auto;
+      padding-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      font-style: italic;
+    }}
+    .arrow {{ align-self: center; color: var(--muted); }}
+    .boundary {{
+      align-self: stretch;
+      border-left: 2px dashed var(--contradicted);
+      margin: 0 6px;
+      padding-left: 4px;
+      display: flex;
+      align-items: center;
+    }}
+    .boundary span {{
+      writing-mode: vertical-rl;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
+    .ghosts {{ display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }}
+    .ghost {{
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }}
+    .ghost strong {{ color: var(--text); }}
+    @media (max-width: 700px) {{
+      .arrow {{ display: none; }}
+      .boundary {{
+        border-left: 0;
+        border-top: 2px dashed var(--contradicted);
+        width: 100%;
+        padding: 6px 0 0;
+        margin: 0;
+      }}
+      .boundary span {{ writing-mode: horizontal-tb; }}
+    }}
     .banner {{
       border: 1px solid var(--unresolved);
       background: rgba(217, 119, 6, 0.15);
@@ -386,7 +479,7 @@ def render_project(root: str | Path) -> str:
     .cand.winner {{ border-left-color: var(--test-supported); }}
     .cand.loser {{ border-left-color: var(--contradicted); }}
     .fine {{ font-size: 12px; color: var(--muted); }}
-    details.sql > summary, #domain-pack details > summary, #how-to-read details > summary {{
+    details.sql > summary, #inputs details > summary, #terms details > summary {{
       text-transform: none;
       letter-spacing: 0;
       font-size: 13px;
@@ -408,16 +501,18 @@ def render_project(root: str | Path) -> str:
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <h1>Claim Viewer</h1>
+      <h1>Readiness report</h1>
       <p class="muted">{escape(str(root_path))}</p>
       <div class="section-links">
-        <a href="#how-to-read">How to read</a>
-        <a href="#domain-pack">Domain pack</a>
-        <a href="#overview">Funnel</a>
-        <a href="#questions">Clarification questions</a>
-        <a href="#roles">Role elections</a>
-        <a href="#data">Data</a>
+        <a href="#process">Process</a>
+        <a href="#inputs">1 Inputs</a>
+        <a href="#measured">2 Measured</a>
+        <a href="#proposed">3 Proposed</a>
+        <a href="#decided">4 Decided</a>
+        <a href="#open">5 Open</a>
+        <a href="#claims">Claim detail</a>
         <a href="#integrity">Integrity</a>
+        <a href="#terms">Core terms</a>
       </div>
       <div class="panel">
         <h2 id="claims-index">Claims ({len(claims)})</h2>
@@ -441,50 +536,57 @@ def render_project(root: str | Path) -> str:
       </div>
     </aside>
     <main class="content">
-      <section class="panel" id="how-to-read">
-        <h2>How to read this page</h2>
-        {_render_core_terms()}
+      <section class="panel" id="process">
+        <h2>How this project got from data to knowledge</h2>
+        {diagram}
+        <p class="muted">{escape(READING_GUIDE)}</p>
       </section>
-      <section class="panel" id="domain-pack">
-        <h2>Domain pack — the declared domain inputs</h2>
+      <section class="panel" id="inputs">
+        <h2>1 · Inputs — what a human declared</h2>
         {_render_domain_pack(root_path, config)}
       </section>
-      <section class="panel" id="overview">
-        <h2>The funnel — from guess to verdict</h2>
-        <p class="muted">The AI proposes; the checks decide. Click any number to filter the claim list.</p>
-        {_render_funnel(facts)}
+      <section class="panel" id="measured">
+        <h2>2 · Measured — what the data says about itself ({len(sources)} sources)</h2>
+        <p class="muted">No model has seen anything yet. These are counted facts:
+        every column profiled, every value overlap between tables measured.</p>
         <p class="muted">{escape(_project_line(store, sources, profiles, candidate_count))}</p>
         {_render_matrix_summary(matrix, warning_html)}
-      </section>
-      <section class="panel" id="questions">
-        <h2>Clarification questions — open questions ({len(questions)})</h2>
-        <p class="muted">What the checks could not settle. This is the human's to-do list.</p>
-        {question_sections}
-      </section>
-      <section class="panel" id="roles">
-        <h2>Role elections</h2>
-        <p class="muted">Every role the AI proposed candidates for. Each role declares its
-        settlement path: a domain law elects the winner, or the humans decide via clarification question —
-        never silence.</p>
-        {_render_role_elections(facts, questions, guide_decided_by,
-                                guide_order, guide_owner,
-                                _settled_slot_columns(root_path, config, store))}
-      </section>
-      <section class="panel" id="claims">
-        <h2>Claim detail</h2>
-        <p id="claim-empty" class="muted">Pick a claim on the left.</p>
-        {claim_sections}
-      </section>
-      <section class="panel" id="data">
-        <h2>Sources &amp; columns ({len(sources)})</h2>
         {source_index or '<p class="empty">No sources yet.</p>'}
         <details><summary>All profiled tables and columns</summary>
         {source_sections}
         </details>
       </section>
+      <section class="panel" id="proposed">
+        <h2>3 · Proposed — what the AI guessed, and how far each guess got</h2>
+        <p class="muted">Everything the model writes enters as <em>proposed</em> and
+        nothing it writes can change that. Click any number to filter the claim list.</p>
+        {_render_funnel(facts)}
+      </section>
+      <section class="panel" id="decided">
+        <h2>4 · Decided — what the checks settled</h2>
+        <p class="muted">Every role the AI proposed candidates for. Each role declares its
+        settlement path: a domain law elects the winner, or the humans decide via clarification question —
+        never silence.</p>
+        {_render_role_elections(facts, questions, guide_decided_by,
+                                guide_order, guide_owner, answered_slots)}
+      </section>
+      <section class="panel" id="open">
+        <h2>5 · Open — what only a human can answer ({len(questions)})</h2>
+        <p class="muted">What the checks could not settle. This is the human's to-do list.</p>
+        {question_sections}
+      </section>
+      <section class="panel" id="claims">
+        <h2>6 · Claim detail — one claim, its whole story</h2>
+        <p id="claim-empty" class="muted">Pick a claim on the left.</p>
+        {claim_sections}
+      </section>
       <section class="panel" id="integrity">
         <h2>Integrity</h2>
         {"<p>No integrity findings.</p>" if not integrity else f"<ul class='list'>{integrity_html}</ul>"}
+      </section>
+      <section class="panel" id="terms">
+        <h2>Core terms</h2>
+        {_render_core_terms()}
       </section>
     </main>
   </div>
@@ -681,12 +783,103 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
     return f"<div class='funnel'>{proposed}{bound}{judged}{verdicts}</div>{caveat}"
 
 
+def _election_tally(facts: dict[str, ClaimFacts], answered: dict[str, str]) -> tuple[int, int]:
+    """(roles settled, roles with candidates). A slot answered by its object's
+    passing law counts as settled even though its own claims stay proposed."""
+    by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
+    for fact in facts.values():
+        if isinstance(fact.claim, MappingClaim):
+            by_role[fact.claim.role].append(fact)
+    settled = sum(
+        1
+        for role, candidates in by_role.items()
+        if role in answered
+        or any(
+            fact.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
+            for fact in candidates
+        )
+    )
+    return settled, len(by_role)
+
+
+def _node(step: str, title: str, target: str, actor: str, counts: list[tuple[str, str]]) -> str:
+    """One stage of the process diagram: what it is, who authors it, its live counts."""
+    lines = "".join(
+        f'<a class="node-count" href="#{escape(target)}">'
+        f"<strong>{escape(number)}</strong> {escape(label)}</a>"
+        for number, label in counts
+    )
+    return (
+        f'<div class="node"><div class="node-step">{escape(step)}</div>'
+        f'<div class="node-title"><a href="#{escape(target)}">{escape(title)}</a></div>'
+        f'<div class="node-counts">{lines}</div>'
+        f'<div class="node-actor">{escape(actor)}</div></div>'
+    )
+
+
+def _render_process_diagram(
+    *,
+    declared_sources: int,
+    guide_objects: int,
+    guide_fields: int,
+    domain_laws: int,
+    profiles: int,
+    candidates: int,
+    claims: int,
+    runs: int,
+    elected: int,
+    elections: int,
+    questions: int,
+) -> str:
+    """The whole machine on one line, with this project's numbers in it.
+
+    The actor boundary is drawn where authorship shifts: everything left of it
+    is a proposal, and no proposal can promote a claim. That is not a drawing
+    convention — it is the structural invariant (`Actor.AI` cannot author
+    promoting evidence), made visible.
+    """
+    arrow = '<div class="arrow" aria-hidden="true">→</div>'
+    flow = arrow.join([
+        _node("1 · inputs", "Humans declare", "inputs", "human", [
+            (str(declared_sources), f"source{'s' if declared_sources != 1 else ''}"),
+            (f"{guide_objects}+{guide_fields}", "objects + fields"),
+            (str(domain_laws), f"domain law{'s' if domain_laws != 1 else ''}"),
+        ]),
+        _node("2 · measured", "The data describes itself", "measured", "no model involved", [
+            (str(profiles), "column profiles"),
+            (str(candidates), "candidate overlaps"),
+        ]),
+        _node("3 · proposed", "The AI guesses", "proposed", "AI — proposals only", [
+            (str(claims), f"claim{'s' if claims != 1 else ''}"),
+        ]),
+        '<div class="boundary"><span>no proposal may promote itself</span></div>',
+        _node("4 · decided", "The checks judge", "decided", "check — may promote", [
+            (str(runs), f"check run{'s' if runs != 1 else ''}"),
+            (f"{elected}/{elections}", "roles elected"),
+        ]),
+        _node("5 · open", "Humans decide the rest", "open", "human — may promote", [
+            (str(questions), f"open question{'s' if questions != 1 else ''}"),
+        ]),
+    ])
+    ghosts = (
+        '<div class="ghosts">'
+        '<div class="ghost"><strong>M5 · documents</strong> — not built. '
+        "Policies, manuals and contracts become a fourth input, anchored back to "
+        "the passage they came from.</div>"
+        '<div class="ghost"><strong>M6 · question → readiness</strong> — not built. '
+        "A business question enters at the front and decides what must be known; "
+        "this report's evidence then answers "
+        "<em>ready</em> / <em>ready with limitations</em> / <em>blocked</em>.</div>"
+        "</div>"
+    )
+    return f'<div class="flow">{flow}</div>{ghosts}'
+
+
 def _render_core_terms() -> str:
     terms = "".join(
         f"<dt>{escape(term)}</dt><dd>{escape(text)}</dd>" for term, text in GLOSSARY
     )
     return (
-        f"<p>{escape(READING_GUIDE)}</p>"
         "<details><summary>Core terms — the words this page uses, and no synonyms</summary>"
         f"<dl>{terms}</dl>"
         "<p class='fine'>Full glossary: docs/before-ai-concept.md.</p></details>"
@@ -704,11 +897,11 @@ def _project_config(root: Path) -> dict:
 def _render_domain_pack(root: Path, config: dict) -> str:
     return (
         f"<p class='muted'>{escape(DOMAIN_PACK_INTRO)}</p>"
-        "<h3>1 · Raw data — the source list (human-authored)</h3>"
+        "<h3>1.1 · Raw data — the source list (human-authored)</h3>"
         f"{_render_declared_sources(config)}"
-        "<h3>2 · Domain guide — the domain nouns (data, human-curated)</h3>"
+        "<h3>1.2 · Domain guide — the domain nouns (data, human-curated)</h3>"
         f"{_render_domain_guide_panel(root, config)}"
-        "<h3>3 · Domain-law templates — the guardians (code, developer-shipped)</h3>"
+        "<h3>1.3 · Domain-law templates — the guardians (code, developer-shipped)</h3>"
         f"{_render_domain_law_templates()}"
     )
 

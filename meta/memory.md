@@ -22,11 +22,21 @@
   questions 7 → 6, project total 14 → 13), the walkthrough and viewer now
   *show* the consumed column. Detail: architecture.md "Guide by
   construction" + Domain inputs.
-- **NEXT: readiness-report redesign** (owner decision 2026-07-31 evening:
-  report first, then an owner validation run on it, then M6). Plan:
-  `/home/ubuntu/.claude/plans/readiness-report.md`. Claim viewer →
-  **readiness report**: process diagram on top (actor boundary + ghost
-  M5/M6 nodes), page reordered to pipeline flow, derived business-language
+- **IN PROGRESS: readiness-report redesign** (owner decision 2026-07-31
+  evening: report first, then an owner validation run on it, then M6). Plan:
+  `/home/ubuntu/.claude/plans/readiness-report.md`.
+  **WP-A DONE 2026-07-31** (suite 271 green): `src/claim_viewer` →
+  `src/readiness_report` (module `render.py`, `viewer.sh` → `report.sh`,
+  output `data/report/readiness.html`, stage `report`), process diagram with
+  live counts + actor boundary + M5/M6 ghost nodes, page reordered to
+  pipeline flow (process → 1 inputs → 2 measured → 3 proposed → 4 decided →
+  5 open → 6 claim detail → integrity → core terms). `_env.sh` now exports
+  `PYTHONPATH=$BW_REPO/src` so a package rename can never break the
+  walkthrough via a stale editable install. **NEXT: WP-B** (derived business
+  sentences, the amount_local narration fix, provenance strips + YAML links,
+  attributed AI rationale from `cache/llm_log/`, questions in business
+  register with the re-pins the plan lists), then WP-C.
+  The redesign's centrepiece is derived business-language
   narration under the **three-voices rule** (derived sentences headline;
   AI words attributed + subordinate — may headline a proposal, never a
   status; human words verbatim), provenance strip + YAML link on every
@@ -134,4 +144,4 @@
 - M5 will likely unlock three of the walkthrough's untested claims — their
   V2 refusals literally say the rule lives in a document (`decodes` account
   ranges, AR control account, opening-balances coverage; read them in the
-  claim viewer).
+  readiness report).

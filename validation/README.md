@@ -90,7 +90,7 @@ definition exists — the semantic-equivalence class lives here), **7 skipped**
 (validation rejected the model's binding — e.g. `accounts` given as a string
 where the contract requires a list). Nothing disappears silently: each of
 those **32** claims carries a DECLARATION in the store with the verbatim
-reason, so the claim viewer shows *why* it was never tested — read them, they
+reason, so the readiness report shows *why* it was never tested — read them, they
 are the sharpest evidence of what the domain pack is still missing (several
 say, in effect: "the rule is in a document I cannot see" → M5).
 
@@ -138,7 +138,7 @@ by the engine in step 6 where a check failed or was inconclusive.
 
 ### Step 8 — collect
 
-Builds `validation/data/report/index.html` linking the claim viewer, the
+Builds `validation/data/report/index.html` linking the readiness report, the
 LLM-call browser, the candidate matrix, and (if `recall.sh` ran) the
 Seeded-Recall report. Open it in a browser or VS Code and click around.
 
@@ -153,16 +153,21 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   every call carries a comment mapping it back to its walkthrough step, and
   the page grows as you progress (steps 6–8 add nothing: they never talk to
   the model).
-- `viewer.sh` — rebuild the claim viewer HTML at any point mid-walkthrough.
-  Steps 3–7 also refresh it automatically at `data/report/claims.html`
-  (every step that changes the store). The page mirrors the pipeline: the
-  **funnel** on top (74 proposed → 42 planned / 19 unbindable / 6
-  semantic-only / 7 skipped → 42 judged → the derived statuses, every number
-  a filter), then the **clarification-questions inbox**, then the **role
-  elections** (each object with its fields nested beneath it: the winner, each
-  loser with the domain law that felled it, and for a slot field the column
-  its object's passing law consumed),
-  then one claim at a time as a story: proposed → planned → judged → context.
+- `report.sh` — rebuild the readiness report HTML at any point mid-walkthrough.
+  Steps 3–7 also refresh it automatically at `data/report/readiness.html`
+  (every step that changes the store). The page *is* this walkthrough,
+  rendered from the store, in the same order: a **process diagram** on top
+  carrying this project's live numbers (each one a link into the section that
+  produced it, with the actor boundary drawn where the AI's proposals stop and
+  promotion begins, and M5/M6 shown as not-built ghosts), then
+  **1 inputs** (the three declared domain inputs), **2 measured** (sources,
+  column profiles, candidate overlaps), **3 proposed** (the funnel: 74 proposed
+  → 42 planned / 19 unbindable / 6 semantic-only / 7 skipped → 42 judged → the
+  derived statuses, every number a filter), **4 decided** (the role elections —
+  each object with its fields nested beneath it: the winner, each loser with
+  the domain law that felled it, and for a slot field the column its object's
+  passing law consumed), **5 open** (the clarification-questions inbox), then
+  one claim at a time as a story: proposed → planned → judged → context.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
 - `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
   (`data/project/cache/export.duckdb`) — this is what you point DataGrip at.

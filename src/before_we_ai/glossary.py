@@ -1,6 +1,6 @@
 """The core terms — the canonical vocabulary as data, one home.
 
-Every owner-facing surface that defines the terms (the claim viewer, the
+Every owner-facing surface that defines the terms (the readiness report, the
 validation LLM-call log) renders THIS list, so the definitions cannot
 drift apart. The full human-facing explanation of the flow lives in
 docs/before-ai-concept.md; this is the short subset shown where it is
@@ -44,6 +44,9 @@ GLOSSARY: list[tuple[str, str]] = [
      "settles its slot fields with the columns the passing run consumed"),
     ("clarification question", "a drafted question to the humans when data "
      "alone cannot decide"),
+    ("readiness report", "the rendered state of knowledge — what is known, "
+     "what is assumed, what is unknown — derived live from the store; one "
+     "self-contained page, disposable, the YAML underneath is the truth"),
 ]
 
 # Specified for M6 (question flow) — defined here so the words exist in one

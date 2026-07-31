@@ -35,7 +35,7 @@ packages = [
     "before_we_ai.checks",
     "before_we_ai.engine",
     "before_we_ai.llm",
-    "claim_viewer",
+    "readiness_report",
 ]
 
 [tool.setuptools.package-data]

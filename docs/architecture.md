@@ -37,7 +37,7 @@ and `tested` → `test-supported`, actor/evidence `probe`/`probe_result` →
   (`pyproject.toml` lives in `src/`)
 - Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
   `/workspace/src`; run `python -m pytest -q` there (257 tests green after M4,
-  incl. claim_viewer; CI runs fully offline from recorded fixtures)
+  incl. readiness_report; CI runs fully offline from recorded fixtures)
 - Authoritative German spec: `docs/spec/`
 
 ## Domain inputs — declared, transparent, validated (cross-cutting)
@@ -414,50 +414,66 @@ structure change under an already-built dependent layer is the expensive kind.
 - No hard token limit — the goal is complete, well-structured context
   (~25k tokens is an orientation, not a cap).
 
-## Claim viewer (`claim_viewer/` — owned code since 2026-07-12)
+## Readiness report (`readiness_report/` — owned code since 2026-07-12)
 
 ```bash
-python -m claim_viewer <project_root> -o <out.html>
+python -m readiness_report <project_root> -o <out.html>
 ```
 
-Read-only, click-through HTML viewer for validators: start at a claim, walk
-outward to evidence, sources, lineage, and the questions that depend on it —
-without hand-reading YAML. Renders one self-contained HTML file; works for an
-empty project. Originally built by an external agent (PR #2); owned and
-maintained like the rest of the codebase since 2026-07-12.
+The rendered state of knowledge: what is known, what is assumed, what is
+unknown — derived live from the store, never stored. Read-only and
+click-through for validators: start at the process diagram, walk down the
+pipeline, pick a claim and follow it outward to evidence, sources, lineage,
+and the questions that depend on it — without hand-reading YAML. Renders one
+self-contained HTML file; works for an empty project. Originally built by an
+external agent (PR #2) as the *claim viewer*; owned and maintained like the
+rest of the codebase since 2026-07-12, renamed 2026-07-31 when it became the
+owner's primary validation *and* understanding surface (it was never only a
+claim view). M6 adds the per-question ReadinessMap on the same machinery; the
+page already carries its slot as a ghost node.
 
 **Binding constraints (in force):**
 
 - Strictly read-only: `ProjectStore(root)` load/convenience methods only;
   never `save_*` / `add_*` / `mark_*_stale`; modifies nothing in the project.
-- The core must not know the viewer exists: no dependency from
-  `before_we_ai/*` on `claim_viewer/`. (The viewer imports
-  `admissible_templates` and `REGISTRY` read-only — still one-directional.)
+- The core must not know the report exists: no dependency from
+  `before_we_ai/*` on `readiness_report/`. (The report imports
+  `admissible_templates`, `REGISTRY`, `load_domain_guide` and `settled_slots`
+  read-only — still one-directional.)
 - Static HTML, no runtime dependency beyond a browser. No graph libraries,
   no chart libraries, no multi-file output.
 
-**What it renders** (the page mirrors the pipeline — outcome first, the story
-of one claim second, raw fields last; master–detail with search + status/
-predicate/role filters; deep links reveal their claim):
+**What it renders** — the page *is* the pipeline, in pipeline order, each
+section headed by the step that produced it; master–detail with search +
+status/predicate/role filters; deep links reveal their claim:
 
-- **How to read this page** — intro + the core terms, rendered from
-  `before_we_ai/glossary.py` (one home, no drift).
-- **Domain pack** — the three declared domain inputs, live from the project:
+- **The process diagram** (top) — the whole machine on one line, carrying this
+  project's live counts, every count a link into the section that produced it:
+  inputs → measured → the AI proposes → the checks decide → humans decide the
+  rest. Two things are drawn, not written: the **actor boundary** between
+  "proposed" and "decided" (nothing the AI authors can promote a claim — the
+  structural False-Promotion invariant, made visible), and **ghost nodes** for
+  M5 (documents) and M6 (question → readiness), dashed and labelled "not
+  built", so what is missing is stated rather than omitted.
+- **1 · Inputs** — the three declared domain inputs, live from the project:
   sources, the domain guide (domain, count, names, definitions, settlement
   paths), and the domain-law check definitions (naming the generic remainder
   as such).
-- **The funnel** — proposed → planned / unbindable / semantic-only / skipped →
-  judged → derived status; each number a clickable filter. The buckets are
-  read from the `DECLARATION` records V2 writes ("A refusal is a result"), so
-  they match the step-5 report exactly, and each claim shows the model's
-  verbatim reason where its check would have been.
-- **Clarification-questions inbox** — every open question on top, with the
-  claims it rests on: the human's to-do list.
-- **Role elections** — per role: the candidates, the elected winner, each
-  loser with the domain law that felled it; a role whose candidates were
-  never bound to an invariant says so; a role that lost every candidate ends
-  in its clarification question.
-- **Claim detail as a story**: statement, one derived-status badge (a loud
+- **2 · Measured** — sources, column profiles, candidate-overlap summary:
+  counted facts, no model involved yet.
+- **3 · Proposed** — the funnel: proposed → planned / unbindable /
+  semantic-only / skipped → judged → derived status; each number a clickable
+  filter. The buckets are read from the `DECLARATION` records V2 writes ("A
+  refusal is a result"), so they match the step-5 report exactly, and each
+  claim shows the model's verbatim reason where its check would have been.
+- **4 · Decided** — the role elections, per role: the candidates, the elected
+  winner, each loser with the domain law that felled it; a role whose
+  candidates were never bound to an invariant says so; a slot field shows the
+  column its object's passing law consumed; a role that lost every candidate
+  ends in its clarification question.
+- **5 · Open** — the clarification-questions inbox with the claims each
+  question rests on: the human's to-do list.
+- **6 · Claim detail as a story**: statement, one derived-status badge (a loud
   banner only when the stored status diverges), then collapsible
   *1 proposed → 2 planned → 3 judged → 4 context*; ids and timestamps in
   collapsed fine print. Check-plan cards show template, params, roles,
@@ -466,9 +482,12 @@ predicate/role filters; deep links reveal their claim):
   question that was asked of the data**. A check that never ran says so.
   Invariant check plans carry no `claim_id`; they are reached through the
   `check_plan_id` on the mapping claim's evidence.
+- **Core terms** (bottom) — rendered from `before_we_ai/glossary.py` (one
+  home, no drift).
 
-`tests/unit/test_claim_viewer.py` locks the funnel stage counts and the
-winner / loser-with-its-law / clarification-question of the role elections.
+`tests/unit/test_readiness_report.py` locks the funnel stage counts, the
+winner / loser-with-its-law / clarification-question of the role elections,
+and the process diagram (live counts, actor boundary, ghost nodes).
 
 ## Onboarding workflow (design owner-aligned 2026-07-12, not yet built)
 
@@ -621,5 +640,5 @@ demonstrability is the scarcer good.
   `python tests/eval/seeded_recall.py` (report the delta vs the last
   published number honestly, including "unchanged").
 - **Owner validation walkthrough**: `validation/README.md` +
-  `validation/scripts/` (numbered stages, offline by default; `viewer.sh`
-  renders the claim viewer, `llm-log.sh` the verbatim call log).
+  `validation/scripts/` (numbered stages, offline by default; `report.sh`
+  renders the readiness report, `llm-log.sh` the verbatim call log).

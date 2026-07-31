@@ -51,9 +51,10 @@ about how to work.
   confirmed design decisions; slim `meta/memory.md` back to live state.
 - Tag milestones `mN-<name>-vX` and push.
 
-## Claim viewer
+## Readiness report
 
-`src/claim_viewer/` was originally built by an external agent (PR #2) but is now
+`src/readiness_report/` was originally built by an external agent (PR #2, then
+called the claim viewer) but is now
 **fully owned code** (ownership transferred 2026-07-12): review it, maintain it,
 extend it, and hold it to the same standards as the rest of the codebase.
 

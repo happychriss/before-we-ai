@@ -84,14 +84,14 @@ def refresh_llm_html() -> None:
     print(f"\nLLM-call log (updated, grows with every step): {out}")
 
 
-def refresh_claims_html() -> None:
-    """Re-render the claim viewer after every step that changed the store —
+def refresh_report_html() -> None:
+    """Re-render the readiness report after every step that changed the store —
     same fixed path, so the browser tab just needs a reload."""
     REPORT.mkdir(parents=True, exist_ok=True)
-    out = REPORT / "claims.html"
-    subprocess.run([sys.executable, "-m", "claim_viewer", str(PROJECT),
+    out = REPORT / "readiness.html"
+    subprocess.run([sys.executable, "-m", "readiness_report", str(PROJECT),
                     "-o", str(out)], check=True, stdout=subprocess.DEVNULL)
-    print(f"claim viewer (updated): {out}")
+    print(f"readiness report (updated): {out}")
 
 
 def clip(text: str, width: int = 90) -> str:
@@ -238,7 +238,7 @@ def stage_hypotheses(args) -> None:
                   f"{clip(claim.statement, 80)}")
     print(f"\nfull detail: {PROJECT}/claims/")
     refresh_llm_html()
-    refresh_claims_html()
+    refresh_report_html()
     print("next: 4-role-proposals.sh")
 
 
@@ -273,7 +273,7 @@ def stage_role_proposals(args) -> None:
         for c in mine:
             print(f"      [{c.status.value}] {clip(', '.join(c.binding.values()), 75)}")
     refresh_llm_html()
-    refresh_claims_html()
+    refresh_report_html()
     print("next: 5-plan-checks.sh")
 
 
@@ -336,7 +336,7 @@ def stage_bind(args) -> None:
             print(f"  {clip(store.claims[cid].statement, 85)}")
     print(f"\nfull detail: {PROJECT}/checks/")
     refresh_llm_html()
-    refresh_claims_html()
+    refresh_report_html()
     print("next: 6-run-checks.sh")
 
 
@@ -388,7 +388,7 @@ def stage_run(args) -> None:
     print(f"\nfull detail: {PROJECT}/evidence/  ·  exception sets: "
           f"{PROJECT}/cache/check_runs/")
     print()
-    refresh_claims_html()
+    refresh_report_html()
     print("next: 7-resolve-roles.sh")
 
 
@@ -427,7 +427,7 @@ def stage_resolve(args) -> None:
         print(f"  - {clip(card.question, 100)}")
     print(f"\nfull detail: {PROJECT}/questions/")
     print()
-    refresh_claims_html()
+    refresh_report_html()
     print("next: 8-collect.sh")
 
 
@@ -435,8 +435,8 @@ def stage_collect(args) -> None:
     need_project()
     REPORT.mkdir(parents=True, exist_ok=True)
 
-    subprocess.run([sys.executable, "-m", "claim_viewer", str(PROJECT),
-                    "-o", str(REPORT / "claims.html")], check=True)
+    subprocess.run([sys.executable, "-m", "readiness_report", str(PROJECT),
+                    "-o", str(REPORT / "readiness.html")], check=True)
 
     import llm_log
     llm_log.render_html(PROJECT, REPORT / "llm_calls.html")
@@ -449,7 +449,7 @@ def stage_collect(args) -> None:
         shutil.copy2(recall_md, REPORT / "seeded_recall.md")
 
     links = [
-        ("claims.html", "Claim viewer — every claim with status, evidence and questions"),
+        ("readiness.html", "Readiness report — inputs, measurements, proposals, verdicts, open questions"),
         ("llm_calls.html", "LLM calls — verbatim prompts, answers, retries, errors"),
         ("candidate_matrix.md", "Candidate matrix — measured table:table value overlap"),
     ]
@@ -475,18 +475,18 @@ def stage_collect(args) -> None:
     print(f"\nopen in a browser / VS Code: {REPORT / 'index.html'}")
 
 
-def stage_viewer(args) -> None:
+def stage_report(args) -> None:
     need_project()
     REPORT.mkdir(parents=True, exist_ok=True)
-    subprocess.run([sys.executable, "-m", "claim_viewer", str(PROJECT),
-                    "-o", str(REPORT / "claims.html")], check=True)
+    subprocess.run([sys.executable, "-m", "readiness_report", str(PROJECT),
+                    "-o", str(REPORT / "readiness.html")], check=True)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=[
         "scan", "matrix", "hypotheses", "role-proposals", "bind", "run",
-        "resolve", "collect", "viewer"])
+        "resolve", "collect", "report"])
     parser.add_argument("--online", action="store_true",
                         help="scan only: configure real model calls "
                              "(needs ANTHROPIC_API_KEY for stages 3-5)")
@@ -502,7 +502,7 @@ def main() -> None:
         "run": stage_run,
         "resolve": stage_resolve,
         "collect": stage_collect,
-        "viewer": stage_viewer,
+        "report": stage_report,
     }[args.stage](args)
 
 

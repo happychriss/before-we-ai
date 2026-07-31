@@ -1,12 +1,12 @@
 import argparse
 from pathlib import Path
 
-from claim_viewer.viewer import default_output_path, write_project_view
+from readiness_report.render import default_output_path, write_project_view
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Generate a read-only HTML viewer for a before-we-ai project."
+        description="Render the readiness report of a before-we-ai project as one HTML page."
     )
     parser.add_argument("root", help="Path to the before-we-ai project directory")
     parser.add_argument(
