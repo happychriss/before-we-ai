@@ -38,8 +38,8 @@ One Python package, no services: point it at a directory. Files (YAML/Markdown) 
 the source of truth; everything under `cache/` is disposable and reconstructible.
 **DuckDB is the only execution engine** — it attaches databases, reads CSV/Parquet/
 Excel, and runs the profiling and check SQL. The LLM is a subroutine behind **typed
-contracts** (hypothesis generation, mapping proposals, check planning; document
-interpretation and question flow to follow), each with deterministic input building,
+contracts** (question decomposition, hypothesis generation, mapping proposals,
+check planning; document interpretation to follow), each with deterministic input building,
 schema-validated output, full logging, and an offline stub mode for deterministic
 tests. Everything domain-specific enters through a declared **domain pack** (a
 curated domain-guide YAML + domain-law check definitions) — new domain, new pack,
@@ -51,6 +51,7 @@ myproject/
   sources/       # dropped files (csv, xlsx, pdf, txt)
   claims/        # one YAML per claim (5 statuses, evidence refs)
   evidence/      # append-only check results, anchors, confirmations
+  answers/       # answer requests + the knowledge each one requires
   questions/     # clarification questions
   checks/        # persisted check plans
   profiles/      # data profiles, candidate matrix
@@ -84,8 +85,8 @@ Full report: `docs/seeded-recall-m4.md`. Owner-facing validation walkthrough:
 | M4 | LLM contracts V1/V2 (hypotheses, check planning) + offline stub mode | ✅ done — `m4-llm-v1` |
 | — | Readiness report (read-only validation UI, one self-contained HTML) | ✅ done — owned code |
 | — | Pre-M6 alignment: domain guide → business objects + fields, coherence lint | ✅ done — 2026-07-31, prompts byte-identical |
-| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked) | next — specified in `docs/architecture.md`, pulled ahead of M5 (owner decision 2026-07-31) |
-| M5 | Document pipeline + V3 (interpretation with anchor validation) | queued — after the M6 demo |
+| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked) | ✅ done — 2026-07-31; elections now run per scope; standalone demo dataset pending one live recording |
+| M5 | Document pipeline + V3 (interpretation with anchor validation) | next — see `docs/architecture.md`; M5 kickoff batch in `meta/memory.md` |
 | M7 | Staleness propagation & replay against a "prod" copy | planned |
 | M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart | planned |
 

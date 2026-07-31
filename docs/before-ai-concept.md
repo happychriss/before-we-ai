@@ -11,9 +11,9 @@ Two stages of honesty apply throughout:
 
 - Steps marked **(built)** run today and are validated against a frozen
   test corpus.
-- Steps marked **(M5)** or **(M6)** are specified but not built yet — the
-  document pipeline and the question flow. This document describes them so
-  the whole flow reads as one piece, and says so at each step.
+- Steps marked **(M5)** are specified but not built yet — the document
+  pipeline. This document describes them so the whole flow reads as one
+  piece, and says so at each step.
 
 ---
 
@@ -30,7 +30,7 @@ The system first writes down exactly what the user wants to know, which
 part of the business is in scope, and what the result should contain.
 
 The structured software representation of the business question is called
-the **answer request** [`AnswerRequest` — **M6**, specified, not built].
+the **answer request** [`AnswerRequest` — **built**].
 
 For example:
 
@@ -57,15 +57,15 @@ can produce the answer. For group revenue it must know, at least:
 * whether the two entities' books are internally consistent at all.
 
 This required information is called the **required knowledge**
-[`RequiredKnowledge` — **M6**]. The answer request identifies the required
+[`RequiredKnowledge` — **built**]. The answer request identifies the required
 knowledge; from here on, the system hunts for exactly these items and
 nothing else.
 
-> **(built) today, honestly stated:** the shipped pipeline runs this hunt
-> *bottom-up* — it scans the whole landscape and proposes everything it
-> can find, without a question narrowing the scope. M6 adds the top-down
-> half: the question decides what must be known. Everything below the
-> next heading is built and validated.
+> **(built) honestly stated:** the middle of the pipeline still runs
+> *bottom-up* — it scans the whole landscape and proposes everything it can
+> find. What M6 added is the frame: the question decides what must be known,
+> and the readiness map at the end judges only those items. An item the
+> question does not depend on is not a gap.
 
 ---
 
@@ -340,11 +340,11 @@ promotes nothing, exactly like the AI's rationale.
 
 ---
 
-## Finally: is the answer allowed? (M6)
+## Finally: is the answer allowed? (built)
 
 For every item of required knowledge, the system identifies the relevant
 claim, its evidence, its current status, and any remaining gap. This
-complete view is the **readiness map** [`ReadinessMap` — **M6**]:
+complete view is the **readiness map** [`ReadinessMap` — **built**]:
 
 ```text
 External group revenue 2023
@@ -384,8 +384,8 @@ allowed to be quiet about not knowing.**
 ## The complete flow
 
 ```text
-Business question         → AnswerRequest            (M6)
-AnswerRequest             → RequiredKnowledge        (M6)
+Business question         → AnswerRequest            (built)
+AnswerRequest             → RequiredKnowledge        (built)
 RequiredKnowledge + DomainGuide guide the discovery  (guide: built)
 Data discovery            → DataProfiles + LinkCandidates
 Profiles + guide          → Claims + MappingClaims   (proposed)
@@ -394,8 +394,8 @@ CheckPlan                 → CheckRun
 CheckRun                  → Evidence
 Claim + Evidence          → Claim status             (derived, never set)
 Undecidable knowledge     → ClarificationQuestion → human answer → Evidence
-Everything                → ReadinessMap             (M6)
-ReadinessMap              → ready / ready with limitations / blocked (M6)
+Everything                → ReadinessMap             (built)
+ReadinessMap              → ready / ready with limitations / blocked (built)
 ```
 
 ---
@@ -441,9 +441,9 @@ Every run is measured against it:
 | **check run** | the deterministic execution of a check plan | `run_check` (`engine/`) |
 | **evidence** | an append-only finding: check result, document anchor, confirmation, testimonial, declaration | `EvidenceRecord` (five types) |
 | **clarification question** | a drafted question to the humans when data alone cannot decide | `ClarificationQuestion` |
-| **answer request** | the structured form of one business question | *M6 — specified* |
-| **required knowledge** | what must be known before the answer may be produced | *M6 — specified* |
-| **readiness map** | per knowledge item: claim, evidence, status, gap → ready / limited / blocked | *M6 — specified* |
+| **answer request** | the structured form of one business question: requested output + scope | `AnswerRequest` (V4, `llm/v4_request.py`) |
+| **required knowledge** | the objects, fields and rules one answer depends on, each scoped | `RequiredKnowledge`, `KnowledgeItem` |
+| **readiness map** | per knowledge item: claim, evidence, gap, and how each satisfied one is satisfied → ready / limited / blocked | `readiness/` (derived, never stored) |
 
 ---
 
@@ -451,9 +451,9 @@ Every run is measured against it:
 
 - **M5 — documents**: read the policy PDFs, back figures with source
   anchors; the poisoned figures in the divested-unit press release must
-  not get through.
-- **M6 — question flow**: `AnswerRequest`, `RequiredKnowledge`,
-  `ReadinessMap` — the top-down half described above.
+  not get through. It is also what the three unsupported *rules* in the
+  readiness map above are waiting for — a sign convention lives in a
+  policy, not in a column.
 - M7 staleness propagation, M8 packaging.
 
 ---

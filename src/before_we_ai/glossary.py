@@ -57,19 +57,25 @@ GLOSSARY: list[tuple[str, str]] = [
     ("readiness report", "the rendered state of knowledge — what is known, "
      "what is assumed, what is unknown — derived live from the store; one "
      "self-contained page, disposable, the YAML underneath is the truth"),
+    ("answer request", "the structured form of one business question: the "
+     "requested output and its scope; it bounds the work — what the answer "
+     "does not depend on, nobody has to know"),
+    ("required knowledge", "the objects, fields and rules one answer depends "
+     "on, each carrying the request's scope; drafted by the model, pruned by "
+     "a human"),
+    ("readiness map", "per required-knowledge item: its claim, evidence and "
+     "remaining gap, and how each satisfied item is satisfied; grounds the "
+     "verdict ready / ready_with_limitations / blocked, which always names "
+     "the dependency it rests on — derived on every read, never stored"),
+    ("scope", "the entity, period or segment a claim, question or request is "
+     "about; roles are elected once per scope, so two parts of a landscape "
+     "can each own their occupant without competing"),
 ]
 
-# Specified for M6 (question flow) — defined here so the words exist in one
-# place before the objects do; see docs/before-ai-concept.md.
-PLANNED: list[tuple[str, str]] = [
-    ("answer request", "the structured form of one business question: scope "
-     "and required output"),
-    ("required knowledge", "what must be known before the requested answer "
-     "can be produced — derived from the answer request"),
-    ("readiness map", "per required-knowledge item: claim, evidence, status, "
-     "remaining gap; grounds the verdict ready / ready_with_limitations / "
-     "blocked"),
-]
+# Reserved for a milestone that has not shipped: the words exist in one place
+# before the objects do. Emptied when M6 landed; the next reservation goes
+# here. See docs/before-ai-concept.md.
+PLANNED: list[tuple[str, str]] = []
 
 # German terms of art from the owner's spec (docs/spec/, German by design)
 # mapped to the canonical English vocabulary.

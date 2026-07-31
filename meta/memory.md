@@ -5,86 +5,45 @@
 
 ## Current focus
 
-- **Order decided 2026-07-31 (owner): pre-M6 alignment → M6 (question flow,
-  narrow demo) → M5 (documents).** Plan:
-  `/home/ubuntu/.claude/plans/guide-hierarchy-then-m6.md`. Spec + rationale:
-  `docs/architecture.md` ("Guide by construction", "Question flow &
-  readiness"); owner discussion record:
-  `docs/before-we-ai-key-findings-and-conclusions.md`.
-- **Pre-M6 alignment step — DONE 2026-07-31** (suite 270 green, drift guard
-  untouched ⇒ prompt bytes identical, no fixture re-record). DomainGuide is
-  business objects with fields (`objects:` / `fields:`, `fills:`); the
-  coherence lint rejects a field declaring a law, a slot its object's law
-  does not have, two fields in one slot, an object declared a slot, a
-  duplicate name; `CheckDefinition.slots` carries the slot metadata;
-  `settled_slots` answers a slot from the column its object's passing law
-  consumed. Visible: the spurious `amount_local` question is gone (role
-  questions 7 → 6, project total 14 → 13), the walkthrough and viewer now
-  *show* the consumed column. Detail: architecture.md "Guide by
-  construction" + Domain inputs.
-- **Readiness-report redesign — DONE 2026-07-31** (owner decision: report
-  first, then an owner validation run on it, then M6). Plan:
-  `/home/ubuntu/.claude/plans/readiness-report.md`. Suite **273 green**;
-  zero diffs under `tests/fixtures/llm/`, `llm/inputs.py`, `llm/prompts.py`,
-  `llm/vocabulary.py` ⇒ prompt bytes untouched by construction.
-  Claim viewer → **readiness report** (`src/readiness_report/render.py`,
-  `report.sh`, `data/report/readiness.html`, stage `report`); process
-  diagram with live counts, actor boundary and M5/M6 ghost nodes; page in
-  pipeline order (process → 1 inputs → 2 measured → 3 proposed → 4 decided →
-  5 open → 6 claim detail → integrity → core terms); derived business
-  narration under the **three-voices rule**; the `amount_local` story fixed
-  where it confused the owner; provenance strip + relative YAML link on
-  every entity with ids/timestamps behind "Technical details"; AI rationale
-  read best-effort from `cache/llm_log/` (100% matched on the current run);
-  questions rewritten ask-first with the guide's definition and the
-  candidates as links. Detail: architecture.md → "Readiness report".
-  **NEXT: the owner's validation run using only the report.** New knobs
-  worth knowing: `CheckDefinition.tests` (business sentence per check,
-  never in a prompt) and `_env.sh` exporting `PYTHONPATH=$BW_REPO/src`.
-- **Second-domain portability proven 2026-07-31** (owner question: would a
-  shipbuilding BOM/supply-chain guide work, or would the wording break?).
-  Tested by writing that guide and rendering it: the narration needs no
-  change — it composes from the guide's definition + the law's name + the
-  verdict numbers. What a new domain costs is **laws, not prose**; a guide
-  naming a law that does not exist is rejected at load. Two leaks found and
-  fixed (glossary explained general terms with finance examples; the law
-  panel listed the whole REGISTRY), both now test-enforced. Detail:
-  architecture.md → "Portability — measured, not assumed".
-- **THEN: M6** (question flow + ReadinessMap, built to the narrow demo).
-  Spec: architecture.md "Question flow & readiness"; build outline: WP2 of
-  `/home/ubuntu/.claude/plans/guide-hierarchy-then-m6.md` (kept, WP1 marked
-  done in the file). **Open question the M6 design must answer:** a slot
-  field's settlement is derived only — its candidate claims stay `proposed`
-  while the law vouched for the column. Either the ReadinessMap reads the
-  derivation, or the passing run's evidence attaches to the field claim and
-  promotes it — that would be a **new promotion path**, so it is an owner
-  decision, not a refactor.
-- **Terminology realignment + documentation restructure — DONE 2026-07-31**
-  (code, docs, spec, walkthrough, live fixture re-record, suite 257 green;
-  committed). Post-rename Seeded-Recall: **14/25** (−1 vs baseline, flips
-  both ways ⇒ sampling noise; run-to-run noise is ±2–3 traps — factor into
-  the recall-bar decision); **False-Promotion 0**; leakage CLEAN
-  (`docs/seeded-recall-m4.md` "Post-rename re-measurement"). Finding to
-  watch at the M5 re-record: the reworded V2 mapping prompt binds
-  invariants more hesitantly (19/22 template=null vs 15/23; intercompany +
-  amount_local settled via clarification questions in the recording).
+- **M6 — question flow + ReadinessMap: DONE 2026-07-31.** Suite **349
+  green**; prompt bytes of V1/V2 untouched at every commit (drift guard
+  green, which is the proof). Built: `AnswerRequest` / `RequiredKnowledge`
+  (`answers/` in the store), **V4** (`llm/v4_request.py`, hand-authored
+  corpus fixture marked as such), scoped elections (role × scope; a source
+  declares whose books it is in `before-ai.yaml`), the **readiness
+  evaluator** (`before_we_ai/readiness/`, derived never stored), the
+  report's section 6 + real M6 diagram node, and walkthrough step
+  **`8-ask.sh`** (collect moved to `9-collect.sh`). Design + the five spec
+  updates: `docs/architecture.md` → "Question flow & readiness (M6 — BUILT)".
+  Plan file (now historical): `/home/ubuntu/.claude/plans/you-are-in-the-federated-forest.md`.
+  - Walkthrough pins after M6: **9** required-knowledge items, 0 skipped;
+    verdict **blocked**, naming `journal.entity`, `journal.period`,
+    `journal.account`, `intercompany`. Answering the six open cards narrows
+    it to `ready_with_limitations` with the three business rules named.
+    Unchanged upstream: 52/0/3 · 22 candidates · 42 plans/19 unbindable/6
+    semantic-only/7 skipped · 42 executed/35 pass/7 fail · 6 role questions
+    / 13 total.
+  - **Not built, deliberately:** the small standalone demo dataset
+    (findings §12) meant to double as the first user experience. Offline it
+    needs its own recorded V1/role/V2 answers, and hand-authoring those
+    would mean writing the model's answers and then asserting the system
+    found them. The six acceptance behaviours are proved against the frozen
+    corpus and its recorded real answers instead. **Needs one live
+    recording session — queue it with the key rotation.**
+- **NEXT: the owner's validation run using only the readiness report**
+  (deferred once already, before M6). Then **M5**.
 - **M5 — documents & V3** (spec: docs/spec/ — PDF pipeline, anchors,
-  multi-anchor reconciliation; acceptance: T8 negatives, real PDF). Queued
-  after the M6 demo (owner decision 2026-07-31).
-- **M5 kickoff batch** (runs at M5 start, i.e. after M6; items 3+4+6 touch
-  prompt bytes → ONE shared fixture re-record at M5 kickoff; ~4 calls.
-  **Item 5 moved out**: it is now the pre-M6 alignment step above):
+  multi-anchor reconciliation; acceptance: T8 negatives, real PDF).
+- **M5 kickoff batch** (runs at M5 start; items 3+4+6 touch prompt bytes →
+  ONE shared fixture re-record at M5 kickoff, ~5 calls now that V4 rides
+  along and gets its first real recording):
   1. E4 noise PDFs blocker (see open items) — decide before anything.
   2. `discover(root)` sources discovery + bundled domain guides
      (architecture.md "Onboarding workflow").
   3. Show the domain tag in V2 template docs (architecture.md "Domain inputs").
   4. Mapping claims binding to *generic* templates where a real data property
      exists (`account` via anti_join against the chart of accounts).
-  5. ~~Slot-side guide lint~~ — **DONE 2026-07-31** in the pre-M6 alignment
-     step (`CheckDefinition.slots` + the coherence lint; the `amount_local`
-     mis-declaration is now inexpressible). Detail: architecture.md "Guide
-     by construction".
-  6. **Concept claims are lost to a redundant field** (found in the
+  5. **Concept claims are lost to a redundant field** (found in the
      2026-07-31 validation walkthrough). `Hypothesis.kind` is a pure
      function of the predicate (`concept` iff `concept_definition`), yet the
      model must supply it — and when it omits it, the `"rule"` default
@@ -97,7 +56,7 @@
      batch's re-record. Note: it would NOT have flipped F21 (that matcher
      also needs the revenue link, which the claim never states) — the gain
      is admitting the K3 concept class at all, not a recall number.
-  7. **Owner decision: normalize `view.column` given for view params?**
+  6. **Owner decision: normalize `view.column` given for view params?**
      (same walkthrough). 6 of the 7 V2 skips are one shape error — the model
      answers `de_erp__gl_postings.account_id` where the param must name a
      bare *view*; it cascades across every param of that template. The
@@ -110,24 +69,25 @@
      miniature. Decide deliberately. (The 7th skip — `accounts` given as a
      column instead of literal account numbers — is a real error and should
      keep failing.)
-- **M4 COMPLETE** — tag `m4-llm-v1`. Seeded-Recall 15/25, False-Promotion 0
-  (`docs/seeded-recall-m4.md`). Step 8 (`8-collect.sh`) + optional online pass
-  remain available anytime (`validation/README.md`).
-- Suite: **257 pass** when fixtures are current (`cd /workspace/src &&
+- **M4 COMPLETE** — tag `m4-llm-v1`. Seeded-Recall 15/25 baseline, 14/25
+  after the terminology rename (flips both ways ⇒ sampling noise; run-to-run
+  noise is ±2–3 traps — factor into the recall-bar decision). False-Promotion
+  **0**; leakage CLEAN (`docs/seeded-recall-m4.md`). Finding to watch at the
+  M5 re-record: the reworded V2 mapping prompt binds invariants more
+  hesitantly (19/22 template=null vs 15/23).
+- Suite: **349 pass** when fixtures are current (`cd /workspace/src &&
   python -m pytest -q`, venv `/workspace/.venv`).
 
 ## Open items
 
-- ~~Decide before M6: scope-aware role elections~~ — **DECIDED 2026-07-31:
-  resolved by design in M6.** AnswerRequest carries scope → RequiredKnowledge
-  inherits it → elections run per scope. No interim fix on the flat model.
-  See architecture.md → "Question flow & readiness (M6)".
 - **Domain-guide acceptance kit — part 3 DONE, parts 1+2 open.** The
   coherence lint shipped with the pre-M6 alignment step. Parts 1+2
   (per new law: one holds-fixture + one violated-fixture; per new role: one
   wrong candidate that must lose) remain an owner decision — they belong
-  with guide provenance / the drafting contract (post-M5). Full analysis:
-  `docs/architecture.md` → Domain inputs.
+  with guide provenance / the drafting contract (post-M5). This matters
+  *more* under readiness framing: a wrong guide now produces a confident,
+  product-branded "ready". Full analysis: `docs/architecture.md` → Domain
+  inputs.
 - **Owner: fate of `docs/before-we-ai-key-findings-and-conclusions.md`.**
   Its decisions are absorbed into architecture.md (2026-07-31: "Guide by
   construction" + "Question flow & readiness"); the file also restates the
@@ -143,12 +103,14 @@
 - **Owner: set the numeric Seeded-Recall bar** (first measurement 15/25;
   misses cluster in K3 definition-style traps — they need the M5 document
   pipeline; consider a bar over relationship-style traps only).
-- **Owner: rotate the Anthropic API key** — shared in chat 2026-07-12 and
-  2026-07-30 (neither written to any file or commit); a third share happens
-  at the fixture re-record. Rotate all after the re-record.
+- **Owner: rotate the Anthropic API key** — shared in chat 2026-07-12,
+  2026-07-30 and twice 2026-07-31 (never written to any file or commit).
+  Two things want a live session afterwards: the M5 fixture re-record, and
+  the standalone demo dataset. Rotate after them.
 - Remote branch `copilot/create-scripts-folder` (1 unmerged commit:
   `scripts/copy_raw_data.sh`) — owner's delete/merge decision pending.
 - M5 will likely unlock three of the walkthrough's untested claims — their
   V2 refusals literally say the rule lives in a document (`decodes` account
   ranges, AR control account, opening-balances coverage; read them in the
-  readiness report).
+  readiness report). It is also what the three unsupported *rules* in the
+  M6 readiness map are waiting for: a sign convention lives in a policy.
