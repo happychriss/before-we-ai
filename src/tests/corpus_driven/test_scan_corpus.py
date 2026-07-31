@@ -164,7 +164,7 @@ def test_negative_control_is_in_and_nothing_is_promoted(project):
 def test_k4_blindness_is_honest(project):
     # F7 (positional hierarchy string) and F9 (PLZ BETWEEN ranges) are
     # NOT equality overlaps — the matrix must not pretend to see them.
-    # Their recall belongs to V1 (M4) / the range_join & decode probes.
+    # Their recall belongs to V1 (M4) / the range_join & decode checks.
     root, _ = project
     matrix, _ = matrix_pairs(root)
     for c in matrix["candidates"]:

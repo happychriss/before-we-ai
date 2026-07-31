@@ -7,13 +7,13 @@ import pytest
 from before_we_ai.model import (
     Actor,
     ClaimStatus,
-    ColumnProfile,
+    DataProfile,
     ConceptClaim,
     EvidenceRecord,
     EvidenceType,
-    ProbeVerdict,
-    QuestionCard,
-    RoleBindingClaim,
+    CheckVerdict,
+    ClarificationQuestion,
+    MappingClaim,
     Source,
     create_claim,
 )
@@ -61,21 +61,21 @@ class TestRoundTrip:
             term="revenue",
             definition="external, net, after rebates",
         )
-        binding = RoleBindingClaim(
+        binding = MappingClaim(
             statement="journal role binds to a postings table",
             created_by=Actor.AI,
             role="journal",
             binding={"table": "postings_x"},
         )
         record = EvidenceRecord(
-            type=EvidenceType.PROBE_RESULT,
-            actor=Actor.PROBE,
-            verdict=ProbeVerdict.PASS,
+            type=EvidenceType.CHECK_RESULT,
+            actor=Actor.CHECK,
+            verdict=CheckVerdict.PASS,
             claim_id=claim.id,
         )
-        card = QuestionCard(question="does it close?", claim_ids=[claim.id])
+        card = ClarificationQuestion(question="does it close?", claim_ids=[claim.id])
         source = Source(name="erp", kind="duckdb", location="sources/erp.duckdb")
-        profile = ColumnProfile(
+        profile = DataProfile(
             source_id=source.id, table="t", column="c", stats={"cardinality": 42}
         )
 
@@ -90,7 +90,7 @@ class TestRoundTrip:
         assert reloaded.claims[claim.id] == claim
         assert type(reloaded.claims[concept.id]) is ConceptClaim
         assert reloaded.claims[concept.id].term == "revenue"
-        assert type(reloaded.claims[binding.id]) is RoleBindingClaim
+        assert type(reloaded.claims[binding.id]) is MappingClaim
         assert reloaded.claims[binding.id].binding == {"table": "postings_x"}
         assert reloaded.evidence[record.id] == record
         assert reloaded.questions[card.id] == card
@@ -135,7 +135,7 @@ class TestIntegrity:
         claim.evidence_ids = [record.id]
         store.save_claim(claim)
         store.add_evidence(record)
-        store.save_question(QuestionCard(question="q", claim_ids=[claim.id]))
+        store.save_question(ClarificationQuestion(question="q", claim_ids=[claim.id]))
         assert check_integrity(store) == []
 
     def test_dangling_references_are_found(self, store):
@@ -143,10 +143,10 @@ class TestIntegrity:
         claim.evidence_ids = ["01GONE0000000000000000GON2"]
         store.save_claim(claim)
         store.save_question(
-            QuestionCard(question="q", claim_ids=["01GONE0000000000000000GON3"])
+            ClarificationQuestion(question="q", claim_ids=["01GONE0000000000000000GON3"])
         )
         store.save_profile(
-            ColumnProfile(source_id="01GONE0000000000000000GON4", table="t", column="c")
+            DataProfile(source_id="01GONE0000000000000000GON4", table="t", column="c")
         )
         findings = check_integrity(store)
         assert len(findings) == 4

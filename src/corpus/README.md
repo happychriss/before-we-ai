@@ -158,8 +158,8 @@ traps correctly, not just the known ones.
 Once this corpus is frozen and validated:
 - **M1**: Build the epistemic core (model, state machine, promotion rules)
 - **M2**: Ingestion & profiling — test against T1/T9 (normalization), candidate matrix
-- **M3**: Probe engine — validate without any LLM (T1-T6, T11, T12)
-- **M4**: LLM contracts V1/V2 — hypothesis generation, probe binding (with offline stub mode)
+- **M3**: Check engine — validate without any LLM (T1-T6, T11, T12)
+- **M4**: LLM contracts V1/V2 — hypothesis generation, check planning (with offline stub mode)
 - **M5**: Document pipeline V3 — interpretation with anchor validation (T8 negative cases, real PDF)
 - **M6**: Question flow V4 — SQL generation, assumption capture, gap report (T5, T10, gap-list content)
 - **M7**: Staleness & replay — M0 corpus frozen, future runs against live data with version tracking

@@ -124,15 +124,15 @@ claims:
   - id: F1                             # trap id, must match sources_manifest.yaml
     trap_class: K6
     sources: [A1_orders]
-    expected_status: inferred          # inferred | tested | contradicted | unresolved | business-confirmed
-    expected_evidence_types: [probe_result, document_anchor]
-    probe_verdicts:
-      orphan_probe: has_orphans        # verdict for each probe relevant to this trap
-    note: "Open orders (no invoice) are legitimate; fachfrage expected, not error."
+    expected_status: proposed          # proposed | test-supported | contradicted | unresolved | business-confirmed
+    expected_evidence_types: [check_result, document_anchor]
+    check_verdicts:
+      orphan_check: has_orphans        # verdict for each check relevant to this trap
+    note: "Open orders (no invoice) are legitimate; clarification question expected, not error."
 
 recall_set: [F1, F2, F3, ...]          # claims that MUST exist in expected_verdicts
                                         # after generator runs (completeness check)
-deny_set: [F26, ...]                   # claims that MUST NOT be promoted past inferred
+deny_set: [F26, ...]                   # claims that MUST NOT be promoted past proposed
                                         # (e.g., poisoned anchors, documented orphans)
 
 reference_results:
@@ -164,7 +164,7 @@ reference_results:
 
 ### Notes on `expected_verdicts.yaml`:
 - **Every claim in `recall_set` must have an entry in `claims`.**
-- **Every claim in `deny_set` must also have an entry; its `expected_status` should be `inferred`.**
+- **Every claim in `deny_set` must also have an entry; its `expected_status` should be `proposed`.**
 - **Additional traps beyond F1–F29 are welcome** if they improve coverage. Each must have:
   - A unique `id` (e.g., F30, F31)
   - A `trap_class` (K1–K7)
@@ -206,10 +206,10 @@ reference_results:
   assertions (e.g., K6 claims must not resolve to `contradicted`).
 - **Spot-checks on business-rule correctness (F14/F15/F19/F21/F22/F25):** Recomputed independently
   from the spec's prose, not from the generator's code, to catch semantic errors.
-- **Invariant probes (K5):** Z4 balance-sheet-closes must hold per entity × period, or the data
+- **Invariant checks (K5):** Z4 balance-sheet-closes must hold per entity × period, or the data
   itself is broken (not a valid corpus).
 - **Recall and deny sets:** All claims in `recall_set` exist in `expected_verdicts.yaml`.
-  All claims in `deny_set` stay at `inferred` (or lower) status.
+  All claims in `deny_set` stay at `proposed` (or lower) status.
 - **Seed stability (3+ seeds minimum):** Every trap's verdict and every Z1–Z4 reference result
   must be identical across seeds (only per-record data varies, not aggregate outcomes).
 

@@ -33,7 +33,7 @@ def profiles_for(con, tables):
     return out
 
 
-class TestColumnProfiles:
+class TestDataProfiles:
     def test_stats(self, con):
         by_col = {p.column: p for p in profile_view(con, "t_customers", "src")}
         stats = by_col["customer_id"].stats

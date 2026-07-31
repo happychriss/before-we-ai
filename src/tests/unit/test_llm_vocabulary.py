@@ -1,4 +1,4 @@
-"""The controlled vocabulary is locked to the probe library and the schemas
+"""The controlled vocabulary is locked to the check library and the schemas
 reject anything outside it — this is what keeps LLM output dedupable and
 bindable without trusting the model."""
 
@@ -11,8 +11,8 @@ from before_we_ai.llm.schemas import (
     BindingBatch,
     Hypothesis,
     HypothesisBatch,
-    ProbeBinding,
-    RoleBindingProposal,
+    CheckPlanProposal,
+    MappingProposal,
 )
 from before_we_ai.llm.vocabulary import (
     COLUMN_PARAMS,
@@ -23,7 +23,7 @@ from before_we_ai.llm.vocabulary import (
     TemplateName,
     check_template_params,
 )
-from before_we_ai.probes.library import REGISTRY
+from before_we_ai.checks.library import REGISTRY
 
 
 def test_template_params_mirror_the_registry_exactly():
@@ -95,9 +95,9 @@ def test_cross_field_rules_are_semantic_not_schema():
     (learned from the first real run). The rules live in mapping.check_*."""
     incomplete_concept = Hypothesis.model_validate(_hypothesis(kind="concept"))
     assert incomplete_concept.term is None  # schema-valid; semantically skipped
-    no_reason = ProbeBinding.model_validate({"claim_id": "c1", "template": None})
+    no_reason = CheckPlanProposal.model_validate({"claim_id": "c1", "template": None})
     assert no_reason.no_template_reason is None
-    empty_binding = RoleBindingProposal.model_validate(
+    empty_binding = MappingProposal.model_validate(
         {"role": "journal", "binding": {}, "rationale": "?"}
     )
     assert empty_binding.binding == {}
@@ -105,13 +105,13 @@ def test_cross_field_rules_are_semantic_not_schema():
 
 def test_unknown_template_is_rejected():
     with pytest.raises(ValidationError):
-        ProbeBinding.model_validate(
-            {"claim_id": "c1", "template": "clever_new_probe", "params": {}}
+        CheckPlanProposal.model_validate(
+            {"claim_id": "c1", "template": "clever_new_check", "params": {}}
         )
 
 
 def test_valid_none_binding_round_trips():
-    ok = ProbeBinding.model_validate(
+    ok = CheckPlanProposal.model_validate(
         {"claim_id": "c1", "template": None,
          "no_template_reason": "semantic-only relationship"}
     )

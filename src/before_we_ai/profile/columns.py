@@ -6,7 +6,7 @@ and a text column holding the same values profile alike.
 
 import re
 
-from before_we_ai.model.objects import ColumnProfile
+from before_we_ai.model.objects import DataProfile
 from before_we_ai.sources.canonical import canonical_sql_expr
 
 TOP_K = 10
@@ -34,7 +34,7 @@ def pattern_mask(value: str) -> str:
     return re.sub(r"[^\W\d_]", "A", mask)
 
 
-def profile_view(con, view: str, source_id: str) -> list[ColumnProfile]:
+def profile_view(con, view: str, source_id: str) -> list[DataProfile]:
     columns = [(r[0], r[1]) for r in con.execute(f'DESCRIBE "{view}"').fetchall()]
     profiles = []
     for column, dtype in columns:
@@ -56,7 +56,7 @@ def profile_view(con, view: str, source_id: str) -> list[ColumnProfile]:
         for s in samples:
             masks[pattern_mask(s)] = masks.get(pattern_mask(s), 0) + 1
         top_masks = sorted(masks.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
-        profiles.append(ColumnProfile(
+        profiles.append(DataProfile(
             source_id=source_id,
             table=view,
             column=column,

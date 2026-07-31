@@ -6,10 +6,10 @@ Validates claims by their trap_class:
 - K1 (green-but-wrong): Z1-Z4 must match expected values OR have documented assumption
 - K2 (double-counting): subledger complications (not structurally checked here)
 - K3 (convention): convention-dependent (not structurally checked here)
-- K4 (non-value joins): structural validity (not data-checked here; harness validates via probes)
+- K4 (non-value joins): structural validity (not data-checked here; harness validates via checks)
 - K5 (invariants): landscape-bound conditions must hold (checked via invariants harness)
 - K6 (legitimate orphans): orphan ≠ error; expect some unresolved claims
-- K7 (poisoned anchors): deny_promotion=true, must NOT be promoted past inferred
+- K7 (poisoned anchors): deny_promotion=true, must NOT be promoted past proposed
 """
 
 import sys
@@ -25,7 +25,7 @@ def load_expected_verdicts():
         return yaml.safe_load(f)
 
 def check_deny_set():
-    """Verify claims in deny_set are not promoted past 'inferred'."""
+    """Verify claims in deny_set are not promoted past 'proposed'."""
     verdicts = load_expected_verdicts()
     deny_set = verdicts.get("deny_set", [])
     traps = verdicts.get("traps", {})

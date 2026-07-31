@@ -15,12 +15,12 @@ from pydantic import BaseModel
 
 from before_we_ai.model.objects import (
     Claim,
-    ColumnProfile,
+    DataProfile,
     ConceptClaim,
     EvidenceRecord,
-    Probe,
-    QuestionCard,
-    RoleBindingClaim,
+    CheckPlan,
+    ClarificationQuestion,
+    MappingClaim,
     Source,
 )
 from before_we_ai.model.semantics import claim_key
@@ -29,7 +29,7 @@ from before_we_ai.store.layout import CONFIG_FILE, init_project
 _CLAIM_TYPES = {
     "Claim": Claim,
     "ConceptClaim": ConceptClaim,
-    "RoleBindingClaim": RoleBindingClaim,
+    "MappingClaim": MappingClaim,
 }
 
 
@@ -66,10 +66,10 @@ class ProjectStore:
             raise FileNotFoundError(f"not a before-we-ai project: {self.root}")
         self.claims: dict[str, Claim] = {}
         self.evidence: dict[str, EvidenceRecord] = {}
-        self.questions: dict[str, QuestionCard] = {}
+        self.questions: dict[str, ClarificationQuestion] = {}
         self.sources: dict[str, Source] = {}
-        self.profiles: dict[str, ColumnProfile] = {}
-        self.probes: dict[str, Probe] = {}
+        self.profiles: dict[str, DataProfile] = {}
+        self.checks: dict[str, CheckPlan] = {}
         self._load()
 
     # -- loading ---------------------------------------------------------
@@ -87,16 +87,16 @@ class ProjectStore:
             o.id: o for o in self._read_dir("evidence", EvidenceRecord.model_validate)
         }
         self.questions = {
-            o.id: o for o in self._read_dir("questions", QuestionCard.model_validate)
+            o.id: o for o in self._read_dir("questions", ClarificationQuestion.model_validate)
         }
         self.sources = {
             o.id: o for o in self._read_dir("sources_meta", Source.model_validate)
         }
         self.profiles = {
-            o.id: o for o in self._read_dir("profiles", ColumnProfile.model_validate)
+            o.id: o for o in self._read_dir("profiles", DataProfile.model_validate)
         }
-        self.probes = {
-            o.id: o for o in self._read_dir("probes", Probe.model_validate)
+        self.checks = {
+            o.id: o for o in self._read_dir("checks", CheckPlan.model_validate)
         }
 
     def _read_dir(self, dirname: str, parse, keep_type: bool = False) -> list:
@@ -165,7 +165,7 @@ class ProjectStore:
         self.evidence[evidence_id] = updated
         return updated
 
-    def save_question(self, card: QuestionCard) -> None:
+    def save_question(self, card: ClarificationQuestion) -> None:
         self._write("questions", card)
         self.questions[card.id] = card
 
@@ -174,13 +174,13 @@ class ProjectStore:
         self._write("sources_meta", source)
         self.sources[source.id] = source
 
-    def save_profile(self, profile: ColumnProfile) -> None:
+    def save_profile(self, profile: DataProfile) -> None:
         self._write("profiles", profile)
         self.profiles[profile.id] = profile
 
-    def save_probe(self, probe: Probe) -> None:
-        self._write("probes", probe)
-        self.probes[probe.id] = probe
+    def save_check_plan(self, check: CheckPlan) -> None:
+        self._write("checks", check)
+        self.checks[check.id] = check
 
     # -- convenience -----------------------------------------------------
 

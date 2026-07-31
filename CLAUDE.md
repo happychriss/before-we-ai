@@ -4,11 +4,12 @@
 
 At the start of every session — and after any context compaction — read, in order:
 
-1. `docs/requirements.md` — what is being built + per-feature status (canonical)
+1. `README.md` — what is being built + roadmap with per-milestone status (canonical)
 2. `meta/*.md` — process conventions, project rules, live state (`meta/memory.md`)
 3. `docs/architecture.md` + `docs/corpus.md` — confirmed design decisions and gotchas
 
-These are sufficient to resume work with full context.
+These are sufficient to resume work with full context. The canonical vocabulary
+lives in `src/before_we_ai/glossary.py` — use those words, never synonyms.
 
 ## Repository layout & one fact, one home
 
@@ -17,11 +18,13 @@ but never restate it:
 
 - `src/` — all code (Python package, corpus, tests; `pyproject.toml` lives here —
   install/test from `src/`)
-- `docs/` — everything about the software: `requirements.md` (WHAT + status),
-  `architecture.md` / `corpus.md` (confirmed design facts & gotchas),
-  `SIMPLE-README.md` (plain-English explainer linking metaphors to real
-  code objects, grows per milestone),
-  `spec/` (authoritative German spec — read-only, never edit)
+- `docs/` — everything about the software:
+  `before-ai-concept.md` (plain-language walkthrough of the whole flow, one
+  concept at a time, each tied to its real code object),
+  `architecture.md` (confirmed design, component detail, operations),
+  `corpus.md` (test-corpus facts & gotchas),
+  `seeded-recall-*.md` (published measurement reports),
+  `spec/` (authoritative German spec — edit only on explicit owner decision)
 - `meta/` — how we work, not what we build: `project-setup.md` (workflow),
   `conventions.md` (project rules), `memory.md` (live state only — slim it when
   items become durable), environment notes
@@ -30,7 +33,8 @@ but never restate it:
 - `validation/` — owner-facing validation walkthrough: `README.md` (the test
   steps) + `scripts/` (runnable stage & viewer tools); `data/` is generated
   and git-ignored
-- `README.md` — human-facing product front page (exempt: may summarize)
+- `README.md` — human-facing product front page AND the one home of feature
+  status (roadmap table; exempt from no-restating: may summarize)
 
 When recording something new, place it in its home and update — don't append copies.
 

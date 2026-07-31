@@ -20,15 +20,15 @@ from before_we_ai.model import (
     EvidenceRecord,
     EvidenceType,
     Predicate,
-    ProbeVerdict,
+    CheckVerdict,
     PromotionError,
-    QuestionCard,
+    ClarificationQuestion,
     Scope,
     Validity,
     create_claim,
     escalate_exception,
     gap_load,
-    ready_for_probe,
+    ready_for_check,
 )
 from before_we_ai.model.transitions import attach_evidence, resolve_status
 from before_we_ai.store import ProjectStore, check_integrity, checkpoint, init_project
@@ -54,10 +54,10 @@ def test_umsatz_claim_walkthrough(tmp_path):
     root = init_project(project, name="umsatz-demo")
     assert (root / "before-ai.yaml").is_file()
 
-    # Step 2 — die KI vermutet eine Regel (nur inferred, mehr kann sie nicht)
+    # Step 2 — die KI vermutet eine Regel (nur proposed, mehr kann sie nicht)
     store = ProjectStore(root)
     rule = store.add_claim(revenue_rule("Umsatzerlöse sind die Konten 4000-4999"))
-    assert rule.status is ClaimStatus.INFERRED
+    assert rule.status is ClaimStatus.PROPOSED
 
     # Step 3 — Dedup: dieselbe Regel, anders formuliert, bleibt EINE Karte
     again = store.add_claim(revenue_rule("Revenue lives in the 4xxx account range"))
@@ -67,10 +67,10 @@ def test_umsatz_claim_walkthrough(tmp_path):
     # Step 4 — Sonde über 40.000 Zeilen widerspricht: EIN Aggregat-Beweis
     store = ProjectStore(root)
     rule = store.claims[rule.id]
-    probe = EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT,
-        actor=Actor.PROBE,
-        verdict=ProbeVerdict.FAIL,
+    check = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        verdict=CheckVerdict.FAIL,
         claim_id=rule.id,
         population=40_000,
         exception_count=576,
@@ -78,19 +78,19 @@ def test_umsatz_claim_walkthrough(tmp_path):
             {"account_id": 4800, "text": "Erlösschmälerung Rabatt"},
             {"account_id": 4805, "text": "Rückstellung Retro-Rabatt"},
         ],
-        result_ref="cache/probe_runs/reconcile_e1_q3.parquet",
+        result_ref="cache/check_runs/reconcile_e1_q3.parquet",
     )
-    store.add_evidence(probe)
-    rule = attach_evidence(rule, probe, [])
+    store.add_evidence(check)
+    rule = attach_evidence(rule, check, [])
     store.save_claim(rule)
     assert rule.status is ClaimStatus.CONTRADICTED
-    assert probe.exception_rate() == pytest.approx(576 / 40_000)
+    assert check.exception_rate() == pytest.approx(576 / 40_000)
     assert len(list((root / "evidence").glob("*.yaml"))) == 1
 
     # Step 5 — Eskalation: das Ausnahme-Muster (F15) wird eine eigene Karte
     child = escalate_exception(
         rule,
-        probe,
+        check,
         statement="Konten 4800-4809 sind Erlösschmälerungen, kein Umsatz",
         created_by=Actor.HUMAN,
         predicate=Predicate(
@@ -100,10 +100,10 @@ def test_umsatz_claim_walkthrough(tmp_path):
         scope=Scope(entity="DE"),
     )
     store.add_claim(child)
-    assert child.status is ClaimStatus.INFERRED
+    assert child.status is ClaimStatus.PROPOSED
     assert child.evidence_ids == []  # Provenienz ist keine Evidenz
     assert child.derived_from == rule.id
-    assert child.derived_from_evidence == probe.id
+    assert child.derived_from_evidence == check.id
 
     # Step 6 — Abhängigkeit gated die Sonde; Gap-Lastliste zeigt den Impact
     store = ProjectStore(root)
@@ -120,19 +120,19 @@ def test_umsatz_claim_walkthrough(tmp_path):
     )
     store.add_claim(refined)
     store.save_question(
-        QuestionCard(
+        ClarificationQuestion(
             question="Z2: externer Umsatz je Kunde (netto, EUR)",
             claim_ids=[refined.id, child.id],
         )
     )
-    assert ready_for_probe(refined, store.claims) is False
+    assert ready_for_check(refined, store.claims) is False
     load = dict((c.id, n) for c, n in gap_load(store.claims.values(), store.questions.values()))
     assert load[refined.id] == 1 and load[child.id] == 1
 
     ok = EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT,
-        actor=Actor.PROBE,
-        verdict=ProbeVerdict.PASS,
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        verdict=CheckVerdict.PASS,
         claim_id=child.id,
         population=576,
         exception_count=0,
@@ -140,8 +140,8 @@ def test_umsatz_claim_walkthrough(tmp_path):
     store.add_evidence(ok)
     child = attach_evidence(child, ok, [])
     store.save_claim(child)
-    assert child.status is ClaimStatus.TESTED
-    assert ready_for_probe(refined, store.claims) is True
+    assert child.status is ClaimStatus.TEST_SUPPORTED
+    assert ready_for_check(refined, store.claims) is True
 
     # Step 7 — Spiegel-Schleife (F29): Bestätigung braucht den Geltungsbereich
     store = ProjectStore(root)
@@ -171,9 +171,9 @@ def test_umsatz_claim_walkthrough(tmp_path):
     store = ProjectStore(root)
     fiscal = store.claims[fiscal.id]
     contra = EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT,
-        actor=Actor.PROBE,
-        verdict=ProbeVerdict.FAIL,
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        verdict=CheckVerdict.FAIL,
         claim_id=fiscal.id,
         population=24,
         exception_count=12,

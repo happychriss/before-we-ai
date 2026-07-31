@@ -1,13 +1,13 @@
 """Deterministic mapping from validated LLM answers to core objects.
 
 Pure functions, no IO, no LLM: given a schema-valid answer and the
-project's profile index, produce Claims and Probes via the M1 core — or a
+project's profile index, produce Claims and Checks via the M1 core — or a
 list of error strings. The ``check_*`` functions double as the semantic
 half of the retry loop: their errors are fed back to the model verbatim,
 so retry feedback and final mapping can never disagree.
 
 Everything created here carries ``Actor.AI`` and therefore starts (and,
-without probe/human evidence, stays) ``inferred`` — that is the M1 core's
+without check/human evidence, stays) ``proposed`` — that is the M1 core's
 law, not this module's choice.
 
 Params are canonicalized (stripped strings, sorted string lists) before
@@ -15,7 +15,7 @@ they enter a ``Predicate``, so ``semantics.claim_key`` dedups paraphrases
 of the same rule.
 """
 
-from before_we_ai.llm.schemas import Hypothesis, ProbeBinding, RoleBindingProposal
+from before_we_ai.llm.schemas import Hypothesis, CheckPlanProposal, MappingProposal
 from before_we_ai.llm.vocabulary import (
     COLUMN_PARAMS,
     INVARIANT_TEMPLATES,
@@ -30,8 +30,8 @@ from before_we_ai.model.objects import (
     Claim,
     ConceptClaim,
     Predicate,
-    Probe,
-    RoleBindingClaim,
+    CheckPlan,
+    MappingClaim,
     Scope,
     Validity,
 )
@@ -167,7 +167,7 @@ def hypothesis_to_claim(h: Hypothesis, index: ProfileIndex) -> Claim:
 
 # -- role bindings --------------------------------------------------------
 
-def check_role_proposal(p: RoleBindingProposal, role_names: list[str],
+def check_mapping_proposal(p: MappingProposal, role_names: list[str],
                         index: ProfileIndex) -> list[str]:
     errors = []
     if p.role not in role_names:
@@ -185,10 +185,10 @@ def check_role_proposal(p: RoleBindingProposal, role_names: list[str],
     return errors
 
 
-def proposal_to_role_claim(p: RoleBindingProposal, index: ProfileIndex) -> RoleBindingClaim:
+def proposal_to_mapping_claim(p: MappingProposal, index: ProfileIndex) -> MappingClaim:
     binding = {k: v.strip() for k, v in sorted(p.binding.items())}
     rendered = ", ".join(f"{k}={v}" for k, v in binding.items())
-    return RoleBindingClaim(
+    return MappingClaim(
         statement=f"role '{p.role}' is played by {rendered}",
         created_by=Actor.AI,
         predicate=Predicate(
@@ -201,17 +201,17 @@ def proposal_to_role_claim(p: RoleBindingProposal, index: ProfileIndex) -> RoleB
     )
 
 
-# -- V2: probe bindings ---------------------------------------------------
+# -- V2: check bindings ---------------------------------------------------
 
 def admissible_templates(claim: Claim) -> tuple[str, ...]:
-    if isinstance(claim, RoleBindingClaim):
+    if isinstance(claim, MappingClaim):
         return INVARIANT_TEMPLATES
     if claim.predicate and claim.predicate.name in PREDICATES:
         return PREDICATES[claim.predicate.name].templates
     return ()
 
 
-def check_binding(b: ProbeBinding, claims_by_id: dict[str, Claim],
+def check_binding(b: CheckPlanProposal, claims_by_id: dict[str, Claim],
                   index: ProfileIndex) -> list[str]:
     claim = claims_by_id.get(b.claim_id)
     if claim is None:
@@ -260,13 +260,13 @@ def check_binding(b: ProbeBinding, claims_by_id: dict[str, Claim],
     return errors
 
 
-def binding_to_probe(b: ProbeBinding, claim: Claim) -> Probe | None:
-    """Deterministic ProbeBinding -> Probe; assumes checks passed."""
+def proposal_to_check_plan(b: CheckPlanProposal, claim: Claim) -> CheckPlan | None:
+    """Deterministic CheckPlanProposal -> CheckPlan; assumes checks passed."""
     if b.template is None:
         return None
-    return Probe(
+    return CheckPlan(
         template=b.template,
         claim_id=claim.id,
-        roles=[claim.role] if isinstance(claim, RoleBindingClaim) else [],
+        roles=[claim.role] if isinstance(claim, MappingClaim) else [],
         params=_canonical_params(normalize_template_params(b.template, b.params)),
     )

@@ -6,12 +6,12 @@ then skip). This is what makes ``semantics.claim_key`` work for AI-born
 claims — the same rule proposed twice, worded differently, lands on one
 claim.
 
-Two tables anchor the set to the probe library:
+Two tables anchor the set to the check library:
 
 * ``PREDICATES`` — per predicate: which templates may test it (empty for
   the two LLM-only forms) and which hypothesis param keys are allowed.
 * ``TEMPLATE_PARAMS`` — per template: the param keys its ``prepare``
-  function reads. Mirrors ``probes.library`` and is locked against drift
+  function reads. Mirrors ``checks.library`` and is locked against drift
   by a unit test.
 """
 
@@ -59,7 +59,7 @@ TemplateName = Literal[
 class PredicateSpec:
     """What a predicate means operationally: testable-by and param contract."""
 
-    templates: tuple[str, ...]  # admissible probe templates; () = LLM-only
+    templates: tuple[str, ...]  # admissible check definitions; () = LLM-only
     required_params: frozenset[str]
     optional_params: frozenset[str] = frozenset()
 
@@ -74,7 +74,7 @@ def _spec(templates: tuple[str, ...], required: set[str],
 
 
 # Hypothesis params reference columns as "view.column" and views by their
-# catalog name — they describe the RULE, not probe mechanics (measure
+# catalog name — they describe the RULE, not check mechanics (measure
 # expressions, SQL snippets and the like are V2/engine territory).
 PREDICATES: dict[str, PredicateSpec] = {
     # child rows reference parent rows (FK/containment)
@@ -119,17 +119,17 @@ PREDICATES: dict[str, PredicateSpec] = {
                           {"left", "right", "left_period", "right_period"}),
     # two columns/groupings mean the same thing without value overlap —
     # findable only semantically; no template can test it, so it stays
-    # inferred until a human or a document weighs in
+    # proposed until a human or a document weighs in
     "semantic_equivalent": _spec((), {"left", "right"}),
     # a business concept/definition (carried by a ConceptClaim)
     "concept_definition": _spec((), set(), {"term"}),
 }
 
-# The invariant templates are bound to roles (RoleBindingClaims), not to
+# The invariant templates are bound to roles (MappingClaims), not to
 # ordinary hypothesis claims — V2 splits on this.
 INVARIANT_TEMPLATES: tuple[str, ...] = ("balance", "subledger_equals_gl", "ic_symmetry")
 
-# Predicate name assigned by the mapping layer to RoleBindingClaims. Not
+# Predicate name assigned by the mapping layer to MappingClaims. Not
 # part of the hypothesis vocabulary (V1 cannot choose it) — it exists so
 # role-binding claims have a claim_key and dedup like everything else.
 ROLE_BINDING_PREDICATE = "role_binding"
@@ -159,7 +159,7 @@ def _params(required: set[str], optional: set[str] | None = None,
     )
 
 
-# Mirrors the _prep_* functions in probes/library.py, key for key.
+# Mirrors the _prep_* functions in checks/library.py, key for key.
 TEMPLATE_PARAMS: dict[str, TemplateParams] = {
     "anti_join": _params({"child", "parent", "child_column", "parent_column"},
                          {"canonical", "expectation"}),

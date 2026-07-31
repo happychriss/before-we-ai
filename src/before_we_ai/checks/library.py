@@ -1,4 +1,4 @@
-"""The probe template registry.
+"""The check definition registry.
 
 One entry per template, and a new template exists only because a corpus
 case forces it (Regel gegen Wildwuchs): anti_join (T1/F1/F5), duplicate/
@@ -7,16 +7,16 @@ contradiction (F5-continuity), reconciliation (F27), validity_join (F6),
 range_join (F9), decode (F7), and the invariants balance (Z4/F22),
 subledger_equals_gl (F20), ic_symmetry (F22).
 
-Each spec knows its SQL file, how to build the Jinja context from probe
+Each spec knows its SQL file, how to build the Jinja context from check
 params (``prepare``), its deterministic verdict function, its default
-tolerances (overridable ONLY via before-ai.yaml), and the Fachfrage it
+tolerances (overridable ONLY via before-ai.yaml), and the clarification question it
 drafts on FAIL/INCONCLUSIVE.
 """
 
 from dataclasses import dataclass, field
 from typing import Callable
 
-from before_we_ai.probes import verdicts
+from before_we_ai.checks import verdicts
 from before_we_ai.sources.canonical import canonical_sql_expr
 
 
@@ -47,13 +47,13 @@ def column_expr(con, view: str, column: str, canonical: bool = True,
 
 
 @dataclass
-class TemplateSpec:
+class CheckDefinition:
     file: str
     prepare: Callable  # (con, params, tolerances) -> jinja context
     verdict: Callable  # (rows, columns, ctx) -> verdicts.Assessment
     tolerances: dict[str, float] = field(default_factory=dict)
-    question: str | None = None  # Fachfrage template, formatted with the context
-    # None = generic data probe, works in any domain. A domain name marks a
+    question: str | None = None  # clarification question template, formatted with the context
+    # None = generic data check, works in any domain. A domain name marks a
     # domain law — these templates are part of that domain's pack, and what
     # is domain-specific must always be enumerable (the product is a general
     # machine only together with a domain pack, never on its own).
@@ -196,89 +196,89 @@ def _prep_ic_symmetry(con, p, tol):
     }
 
 
-REGISTRY: dict[str, TemplateSpec] = {
-    "anti_join": TemplateSpec(
+REGISTRY: dict[str, CheckDefinition] = {
+    "anti_join": CheckDefinition(
         file="anti_join.sql.j2",
         prepare=_prep_anti_join,
         verdict=verdicts.anti_join_verdict,
-        question="Fachfrage: {child} hat Einträge ohne Gegenstück in {parent} — Datenschnitt, Wartezustand oder Fehler?",
+        question="Clarification question: {child} has entries without a counterpart in {parent} — data cut, pending state, or an error?",
     ),
-    "duplicate": TemplateSpec(
+    "duplicate": CheckDefinition(
         file="duplicate.sql.j2",
         prepare=_prep_duplicate,
         verdict=verdicts.empty_expected,
-        question="Fachfrage: {table} enthält Dubletten über ({key_list}) — welche Sätze sind führend?",
+        question="Clarification question: {table} contains duplicates over ({key_list}) — which records are authoritative?",
     ),
-    "grain": TemplateSpec(
+    "grain": CheckDefinition(
         file="duplicate.sql.j2",
         prepare=_prep_duplicate,
         verdict=verdicts.empty_expected,
-        question="Fachfrage: {table} ist nicht eindeutig auf der angenommenen Körnung ({key_list}) — was ist die echte Körnung?",
+        question="Clarification question: {table} is not unique on the assumed grain ({key_list}) — what is the true grain?",
     ),
-    "coverage": TemplateSpec(
+    "coverage": CheckDefinition(
         file="coverage.sql.j2",
         prepare=_prep_coverage,
         verdict=verdicts.coverage_verdict,
-        question="Fachfrage: {table} deckt erwartete Einheiten nicht vollständig ab — Datenschnitt oder Lücke?",
+        question="Clarification question: {table} does not fully cover the expected units — data cut or gap?",
     ),
-    "cardinality": TemplateSpec(
+    "cardinality": CheckDefinition(
         file="cardinality.sql.j2",
         prepare=_prep_cardinality,
         verdict=verdicts.cardinality_verdict,
         tolerances={"min_containment": 0.95, "min_uniqueness": 0.99},
     ),
-    "attribute_contradiction": TemplateSpec(
+    "attribute_contradiction": CheckDefinition(
         file="attribute_contradiction.sql.j2",
         prepare=_prep_attribute_contradiction,
         verdict=verdicts.empty_expected,
-        question="Fachfrage: {left} und {right} widersprechen sich in verknüpften Attributen — welche Quelle führt?",
+        question="Clarification question: {left} and {right} contradict each other on linked attributes — which source leads?",
     ),
-    "reconciliation": TemplateSpec(
+    "reconciliation": CheckDefinition(
         file="reconciliation.sql.j2",
         prepare=_prep_reconciliation,
         verdict=verdicts.empty_expected,
         tolerances={"absolute": 0.01},
-        question="Fachfrage: {left} und {right} stimmen je Gruppe nicht überein — welche Abgrenzung fehlt?",
+        question="Clarification question: {left} and {right} do not agree per group — which cutoff or accrual is missing?",
     ),
-    "validity_join": TemplateSpec(
+    "validity_join": CheckDefinition(
         file="validity_join.sql.j2",
         prepare=_prep_validity_join,
         verdict=verdicts.empty_expected,
-        question="Fachfrage: {table} hat überlappende Gültigkeitszeiträume — welche Version gilt?",
+        question="Clarification question: {table} has overlapping validity periods — which version applies?",
     ),
-    "range_join": TemplateSpec(
+    "range_join": CheckDefinition(
         file="range_join.sql.j2",
         prepare=_prep_range_join,
         verdict=verdicts.empty_expected,
-        question="Fachfrage: Werte aus {table} fallen in keinen oder mehrere Bereiche von {ranges} — wie ist die Zuordnung gemeint?",
+        question="Clarification question: values from {table} fall into no range or several ranges of {ranges} — how is the assignment meant?",
     ),
-    "decode": TemplateSpec(
+    "decode": CheckDefinition(
         file="decode.sql.j2",
         prepare=_prep_decode,
         verdict=verdicts.empty_expected,
-        question="Fachfrage: Positionscodes in {encoded} decodieren nicht eindeutig gegen {decode} — stimmt die Positionslogik?",
+        question="Clarification question: positional codes in {encoded} do not decode uniquely against {decode} — is the positional logic right?",
     ),
-    "balance": TemplateSpec(
+    "balance": CheckDefinition(
         file="balance.sql.j2",
         prepare=_prep_balance,
         verdict=verdicts.empty_expected,
         tolerances={"absolute": 0.01},
-        question="Fachfrage: {journal} ist je Gruppe nicht ausgeglichen — fehlt eine Gegenbuchung?",
+        question="Clarification question: {journal} does not balance per group — is an offsetting entry missing?",
         domain="finance",
     ),
-    "subledger_equals_gl": TemplateSpec(
+    "subledger_equals_gl": CheckDefinition(
         file="subledger_equals_gl.sql.j2",
         prepare=_prep_subledger,
         verdict=verdicts.empty_expected,
         tolerances={"absolute": 0.01},
-        question="Fachfrage: Nebenbuch {subledger} weicht vom Hauptbuch {journal} ab — welche Posten fehlen?",
+        question="Clarification question: subledger {subledger} deviates from the general ledger {journal} — which items are missing?",
         domain="finance",
     ),
-    "ic_symmetry": TemplateSpec(
+    "ic_symmetry": CheckDefinition(
         file="ic_symmetry.sql.j2",
         prepare=_prep_ic_symmetry,
         verdict=verdicts.empty_expected,
-        question="Fachfrage: Intercompany-Buchungen sind zwischen {left} und {right} nicht symmetrisch — wo fehlt die Gegenseite?",
+        question="Clarification question: intercompany postings are not symmetric between {left} and {right} — where is the counterpart missing?",
         domain="finance",
     ),
 }

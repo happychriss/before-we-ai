@@ -1,7 +1,7 @@
 """Measurement: column profiles and the candidate matrix.
 
 Profiles are statistics, the matrix is measured value overlap — neither
-is a judgment. Judgment (promotion, rejection) belongs to probes and
+is a judgment. Judgment (promotion, rejection) belongs to checks and
 humans; the matrix therefore also *contains* chance overlaps, on purpose.
 """
 

@@ -19,7 +19,7 @@ from before_we_ai.model import (
     ClaimStatus,
     EvidenceRecord,
     EvidenceType,
-    ProbeVerdict,
+    CheckVerdict,
     PromotionError,
     Scope,
     create_claim,
@@ -54,46 +54,46 @@ K8_TELL = trap_ids(lambda tid, t: "K8" in classes(t))
 
 
 def test_every_recall_trap_is_representable():
-    """recall_set: every trap must be able to exist as a claim — inferred."""
+    """recall_set: every trap must be able to exist as a claim — proposed."""
     for tid in _DATA["recall_set"]:
         assert tid in TRAPS
-        assert claim_for(tid, []).status is ClaimStatus.INFERRED
+        assert claim_for(tid, []).status is ClaimStatus.PROPOSED
 
 
 @pytest.mark.parametrize("tid", DENY)
 def test_deny_traps_never_promote_on_ai_evidence(tid):
     """K7 poisoned anchors: the tempting evidence is a document hit authored
     by AI (a press-release number, a chart-only figure, a restated value).
-    No stack of such evidence may ever move the claim past inferred."""
+    No stack of such evidence may ever move the claim past proposed."""
     records = [
         EvidenceRecord(type=EvidenceType.DOCUMENT_ANCHOR, actor=Actor.AI),
         EvidenceRecord(type=EvidenceType.DOCUMENT_ANCHOR, actor=Actor.AI),
         EvidenceRecord(type=EvidenceType.DECLARATION, actor=Actor.AI),
     ]
     claim = claim_for(tid, records)
-    assert resolve_status(claim, records) is ClaimStatus.INFERRED
+    assert resolve_status(claim, records) is ClaimStatus.PROPOSED
 
 
 @pytest.mark.parametrize("tid", K6_ORPHANS)
 def test_k6_orphans_are_not_contradictions(tid):
-    """K6 legitimate orphans: the probe finding is inconclusive (a business
+    """K6 legitimate orphans: the check finding is inconclusive (a business
     question), never a contradiction — Waise ist kein Fehler."""
     records = [
         EvidenceRecord(
-            type=EvidenceType.PROBE_RESULT,
-            actor=Actor.PROBE,
-            verdict=ProbeVerdict.INCONCLUSIVE,
+            type=EvidenceType.CHECK_RESULT,
+            actor=Actor.CHECK,
+            verdict=CheckVerdict.INCONCLUSIVE,
         )
     ]
     claim = claim_for(tid, records)
     status = resolve_status(claim, records)
     assert status is not ClaimStatus.CONTRADICTED
-    assert status is ClaimStatus.INFERRED  # open question, still unpromoted
+    assert status is ClaimStatus.PROPOSED  # open question, still unpromoted
 
 
 @pytest.mark.parametrize("tid", K8_TELL)
 def test_k8_statement_contradicted_by_data_goes_unresolved(tid):
-    """F28 pattern: a user statement vs. a contradicting probe is a loud
+    """F28 pattern: a user statement vs. a contradicting check is a loud
     conflict — the statement must not silently win, nor silently lose."""
     records = [
         EvidenceRecord(
@@ -102,9 +102,9 @@ def test_k8_statement_contradicted_by_data_goes_unresolved(tid):
             statement=TRAPS[tid]["description"],
         ),
         EvidenceRecord(
-            type=EvidenceType.PROBE_RESULT,
-            actor=Actor.PROBE,
-            verdict=ProbeVerdict.FAIL,
+            type=EvidenceType.CHECK_RESULT,
+            actor=Actor.CHECK,
+            verdict=CheckVerdict.FAIL,
         ),
     ]
     claim = claim_for(tid, records)
@@ -144,6 +144,6 @@ def test_false_promotion_rate_is_zero_across_all_traps():
             EvidenceRecord(type=EvidenceType.DECLARATION, actor=Actor.AI),
         ]
         claim = claim_for(tid, records)
-        if resolve_status(claim, records) is not ClaimStatus.INFERRED:
+        if resolve_status(claim, records) is not ClaimStatus.PROPOSED:
             promoted.append(tid)
     assert promoted == [], f"false promotions: {promoted}"

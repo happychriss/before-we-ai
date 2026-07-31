@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, model_validator
 
-from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, ProbeVerdict
+from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, CheckVerdict
 from before_we_ai.model.ids import new_id
 
 
@@ -70,7 +70,7 @@ class Source(BaseModel):
     created_at: datetime = Field(default_factory=_now)
 
 
-class ColumnProfile(BaseModel):
+class DataProfile(BaseModel):
     """Measured statistics of one column — input for hypotheses, never data."""
 
     id: str = Field(default_factory=new_id)
@@ -81,7 +81,7 @@ class ColumnProfile(BaseModel):
     created_at: datetime = Field(default_factory=_now)
 
 
-# Row-level observations are evidence *content*, strictly bounded: a probe
+# Row-level observations are evidence *content*, strictly bounded: a check
 # reports the aggregate plus a hand-picked, representative sample of
 # counterexamples. Anything larger belongs in cache/ (via result_ref),
 # never in the truth files.
@@ -92,11 +92,11 @@ class EvidenceRecord(BaseModel):
     """One append-only piece of evidence.
 
     Records are never modified or deleted; ``stale`` is the single mutable
-    flag (set when source fingerprints no longer match). A probe result
-    must carry a verdict and be authored by a probe; confirmations and
+    flag (set when source fingerprints no longer match). A check result
+    must carry a verdict and be authored by a check; confirmations and
     testimonials can only come from a human.
 
-    A probe over N rows produces exactly one record: ``population`` rows
+    A check over N rows produces exactly one record: ``population`` rows
     checked, ``exception_count`` violations, at most
     ``MAX_EXCEPTION_SAMPLES`` representative counterexamples in
     ``exception_samples``, and optionally a ``result_ref`` pointing at the
@@ -107,8 +107,8 @@ class EvidenceRecord(BaseModel):
     type: EvidenceType
     actor: Actor
     claim_id: str | None = None
-    probe_id: str | None = None  # the persisted Probe whose run produced this record
-    verdict: ProbeVerdict | None = None
+    check_plan_id: str | None = None  # the persisted CheckPlan whose run produced this record
+    verdict: CheckVerdict | None = None
     scope: Scope | None = None
     statement: str | None = None  # verbatim user statement for testimonials
     population: int | None = None
@@ -122,14 +122,14 @@ class EvidenceRecord(BaseModel):
 
     @model_validator(mode="after")
     def _check_consistency(self) -> "EvidenceRecord":
-        if self.type is EvidenceType.PROBE_RESULT:
+        if self.type is EvidenceType.CHECK_RESULT:
             if self.verdict is None:
-                raise ValueError("probe_result evidence requires a verdict")
-            if self.actor is not Actor.PROBE:
-                raise ValueError("probe_result evidence must be authored by a probe")
+                raise ValueError("check_result evidence requires a verdict")
+            if self.actor is not Actor.CHECK:
+                raise ValueError("check_result evidence must be authored by a check")
         else:
             if self.verdict is not None:
-                raise ValueError("only probe_result evidence carries a verdict")
+                raise ValueError("only check_result evidence carries a verdict")
         if self.type in (EvidenceType.CONFIRMATION, EvidenceType.TESTIMONIAL):
             if self.actor is not Actor.HUMAN:
                 raise ValueError(f"{self.type.value} evidence must come from a human")
@@ -160,11 +160,11 @@ class Claim(BaseModel):
     A claim describes a *rule or relationship* over a scope — never a fact
     about an individual row. Row-level material enters only as bounded
     evidence content; a dataset of 100,000 rows therefore yields one claim
-    with one probe record, not 100,000 claims.
+    with one check record, not 100,000 claims.
 
     Status is a derivation from the claim's evidence (``resolve_status``),
     persisted for readability — never hand-edited truth. ``depends_on``
-    gates probe execution: prerequisites must be at least ``tested``.
+    gates check execution: prerequisites must be at least ``test-supported``.
     Identity for deduplication is (predicate, scope, validity, sources) —
     see ``semantics.claim_key``.
     """
@@ -172,7 +172,7 @@ class Claim(BaseModel):
     id: str = Field(default_factory=new_id)
     statement: str
     created_by: Actor
-    status: ClaimStatus = ClaimStatus.INFERRED
+    status: ClaimStatus = ClaimStatus.PROPOSED
     predicate: Predicate | None = None
     scope: Scope | None = None
     validity: Validity | None = None
@@ -181,7 +181,7 @@ class Claim(BaseModel):
     depends_on: list[str] = Field(default_factory=list)
     # provenance when escalated from an exception: the parent claim and the
     # evidence record whose exceptions surfaced it — provenance only, NOT
-    # status-bearing evidence (the parent's probe verdict says nothing
+    # status-bearing evidence (the parent's check verdict says nothing
     # about the child rule)
     derived_from: str | None = None
     derived_from_evidence: str | None = None
@@ -196,11 +196,11 @@ class ConceptClaim(Claim):
     definition: str
 
 
-class RoleBindingClaim(Claim):
+class MappingClaim(Claim):
     """A claim binding a domain role to concrete columns.
 
     Roles come from a flat, curated per-domain YAML (data, not code);
-    invariant probes are formulated against roles, so the binding itself
+    invariant checks are formulated against roles, so the binding itself
     must earn its status like any other claim.
     """
 
@@ -208,10 +208,10 @@ class RoleBindingClaim(Claim):
     binding: dict[str, str] = Field(default_factory=dict)  # e.g. {"table": ..., "column": ...}
 
 
-class Probe(BaseModel):
+class CheckPlan(BaseModel):
     """A falsification attempt: an SQL template instance with a verdict function.
 
-    ``claim_id`` is empty for invariant probes — those are bound to the
+    ``claim_id`` is empty for invariant checks — those are bound to the
     landscape (via roles), not to a single claim.
     """
 
@@ -223,15 +223,17 @@ class Probe(BaseModel):
     created_at: datetime = Field(default_factory=_now)
 
 
-class QuestionCard(BaseModel):
-    """A business question with its epistemic bill of materials.
+class ClarificationQuestion(BaseModel):
+    """A question drafted to resolve one specific uncertainty.
 
-    ``claim_ids`` lists every claim the answer rests on — this is what
+    ``claim_ids`` lists every claim the answer would touch — this is what
     makes an answer auditable and what staleness propagates into.
     """
 
     id: str = Field(default_factory=new_id)
     question: str
+    # sql/result_ref are a vestigial answer-half kept from the pre-M6 card;
+    # they migrate to AnswerRequest when M6 builds the question flow.
     sql: str | None = None
     result_ref: str | None = None
     claim_ids: list[str] = Field(default_factory=list)

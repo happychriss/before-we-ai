@@ -43,9 +43,9 @@ def render_predicate_docs() -> str:
 
 
 def render_template_docs() -> str:
-    """Generic documentation of the probe templates, for the V2 prompt."""
+    """Generic documentation of the check definitions, for the V2 prompt."""
     lines = [
-        "## Probe templates",
+        "## Check definitions",
         "Each template is a falsification attempt rendered as SQL. "
         "Params reference views and columns by their catalog names.",
     ]
@@ -75,7 +75,7 @@ V1_SYSTEM = (
     "Propose claim hypotheses: reusable semantic rules about how the "
     "tables relate and what constraints the data appears to obey. Every "
     "hypothesis you produce starts as an unverified inference and will be "
-    "tested by deterministic probes or reviewed by a human — you cannot "
+    "tested by deterministic checks or reviewed by a human — you cannot "
     "confirm anything, so propose freely but ground every hypothesis in "
     "the supplied profiles.\n\n"
     "Guidance:\n"
@@ -99,15 +99,15 @@ V1_SYSTEM = (
     + render_predicate_docs()
 )
 
-ROLE_BINDING_SYSTEM = (
-    "You are the role-binding stage of an evidence-based data-discovery "
+MAPPING_SYSTEM = (
+    "You are the mapping stage of an evidence-based data-discovery "
     "tool. You receive a flat list of domain roles with definitions, plus "
     "column profiles and a candidate matrix from a data landscape you "
     "have never seen.\n\n"
     "Propose candidate bindings: for each role, which view (and columns) "
     "most plausibly plays that role. Propose multiple competing "
     "candidates for a role when the landscape offers more than one "
-    "plausible occupant — an invariant probe will decide, not you. "
+    "plausible occupant — an invariant check will decide, not you. "
     "Binding parts use keys named after the role's aspects (for example "
     "table, column, amount, key) with values that are view or "
     "view.column references exactly as profiled. It is better to propose "
@@ -115,10 +115,10 @@ ROLE_BINDING_SYSTEM = (
 )
 
 V2_SYSTEM = (
-    "You are the probe-binding stage of an evidence-based data-discovery "
+    "You are the check-planning stage of an evidence-based data-discovery "
     "tool. You receive claims (each with a predicate and params), the "
     "profiles of the columns they touch, the schemas of the views "
-    "involved, and the documentation of the available probe templates.\n\n"
+    "involved, and the documentation of the available check definitions.\n\n"
     "For every claim (answer with its claim id exactly as given in the "
     "input), either instantiate the most suitable template — filling "
     "every required param with concrete view/column names from the "
@@ -135,7 +135,7 @@ V2_ROLES_SYSTEM = V2_SYSTEM + (
     "specific views/columns play a domain role. A role binding IS "
     "falsifiable — by instantiating the conservation law implied by the "
     "role's definition against the bound columns (its admissible "
-    "templates are the invariant probes). A binding whose invariant holds "
+    "templates are the invariant checks). A binding whose invariant holds "
     "is supported; one whose invariant fails is refuted — that is how "
     "competing candidates for the same role are decided. Bind each "
     "role-binding claim to the invariant template its role definition "

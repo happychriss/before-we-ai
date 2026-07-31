@@ -5,13 +5,13 @@ hard cap — the pair space is quadratic). Stage 2 counts exact overlap on
 distinct canonical values, set-based in one query. The output contains
 every pair above the containment threshold, *including* chance overlaps:
 the matrix reports what the data shows; rejecting a spurious candidate
-is probe/human work (M3+), and nothing in this artifact carries a status.
+is check/human work (M3+), and nothing in this artifact carries a status.
 """
 
 import json
 from pathlib import Path
 
-from before_we_ai.model.objects import ColumnProfile
+from before_we_ai.model.objects import DataProfile
 from before_we_ai.sources.canonical import canonical_sql_expr
 
 MAX_CANDIDATE_PAIRS = 50_000
@@ -24,13 +24,13 @@ def _compatible(class_a: str, class_b: str) -> bool:
     return class_a == class_b or (class_a in _NUMERIC and class_b in _NUMERIC)
 
 
-def _key(profile: ColumnProfile) -> str:
+def _key(profile: DataProfile) -> str:
     return f"{profile.table}.{profile.column}"
 
 
 def build_matrix(
     con,
-    profiles: list[ColumnProfile],
+    profiles: list[DataProfile],
     *,
     threshold: float = CONTAINMENT_THRESHOLD,
     max_pairs: int = MAX_CANDIDATE_PAIRS,

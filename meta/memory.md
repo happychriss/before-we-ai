@@ -1,38 +1,40 @@
 # Project Memory — live state only
 
-<!-- Only what changes session to session. Durable facts belong in docs/requirements.md
-     (what + status), docs/ (confirmed design), meta/ (conventions). -->
+<!-- Only what changes session to session. Durable facts belong in README.md
+     (roadmap + status), docs/ (confirmed design), meta/ (conventions). -->
 
 ## Current focus
 
-- **NOW: M5 — documents & V3** (spec: docs/spec/ — PDF pipeline, anchors,
-  multi-anchor reconciliation; acceptance: T8 negatives, real PDF). Owner
-  moved here 2026-07-12 after validating M4 through step 7.
-- **M5 kickoff batch** (decide/do first, ONE shared fixture re-record since
-  they all touch prompt bytes — procedure below):
+- **Terminology realignment + documentation restructure — DONE 2026-07-31**
+  (code, docs, spec, walkthrough, live fixture re-record, suite 257 green;
+  committed). Post-rename Seeded-Recall: **14/25** (−1 vs baseline, flips
+  both ways ⇒ sampling noise; run-to-run noise is ±2–3 traps — factor into
+  the recall-bar decision); **False-Promotion 0**; leakage CLEAN
+  (`docs/seeded-recall-m4.md` "Post-rename re-measurement"). Finding to
+  watch at the M5 re-record: the reworded V2 mapping prompt binds
+  invariants more hesitantly (19/22 template=null vs 15/23; intercompany +
+  amount_local settled via clarification questions in the recording).
+- **M5 — documents & V3** (spec: docs/spec/ — PDF pipeline, anchors,
+  multi-anchor reconciliation; acceptance: T8 negatives, real PDF). Queued
+  behind the re-record above.
+- **M5 kickoff batch** (decide/do first; items 3+4 touch prompt bytes →
+  ONE shared fixture re-record at M5 kickoff. Deliberately NOT bundled into
+  the rename re-record: the rename run must stay a null test — same shape,
+  reworded prompts — so the recall delta is attributable; an M5 re-record
+  is cheap, ~4 calls):
   1. E4 noise PDFs blocker (see open items) — decide before anything.
-  2. `discover(root)` sources discovery + bundled role packs
-     (docs/onboarding-workflow.md).
+  2. `discover(root)` sources discovery + bundled domain guides
+     (architecture.md "Onboarding workflow").
   3. Show the domain tag in V2 template docs (architecture.md "Domain inputs").
-  4. Role claims binding to *generic* templates where a real data property
+  4. Mapping claims binding to *generic* templates where a real data property
      exists (`account` via anti_join against the chart of accounts).
-  5. Slot-side pack lint: TemplateSpec declares which roles its slots
-     consume (docs/onboarding-workflow.md "Logical pack validation").
+  5. Slot-side guide lint: CheckDefinition declares which roles its slots
+     consume (architecture.md "Onboarding workflow").
 - **M4 COMPLETE** — tag `m4-llm-v1`. Seeded-Recall 15/25, False-Promotion 0
-  (`docs/seeded-recall-m4.md`). Validation walkthrough done through step 7
-  with the final data; step 8 (`8-collect.sh`) + optional online pass remain
-  available anytime (`validation/README.md`). The online pass would also show
-  whether the two-tier retry turns `partial` into `repaired_ok` (architecture.md
-  "Retry contract, two-tier").
-- Suite: **257 pass** (`cd /workspace/src && python -m pytest -q`,
-  venv `/workspace/.venv`).
-- Shipped during validation, all durable in docs now: claim-viewer redesign
-  (docs/claim-viewer.md), V2 persists refusals as DECLARATIONs + role
-  settlement paths `decided_by:` with pack lint — every non-slot role ends in
-  a probe verdict or a Fachfrage, step 7 pins 6 Fachfragen
-  (architecture.md "A refusal is a result" / "Every role declares its
-  settlement path"); `TemplateSpec.domain` tags; core-terms glossary has one
-  home (`before_we_ai/glossary.py`).
+  (`docs/seeded-recall-m4.md`). Step 8 (`8-collect.sh`) + optional online pass
+  remain available anytime (`validation/README.md`).
+- Suite: **257 pass** when fixtures are current (`cd /workspace/src &&
+  python -m pytest -q`, venv `/workspace/.venv`).
 
 ## Open items
 
@@ -46,12 +48,9 @@
 - **Owner: set the numeric Seeded-Recall bar** (first measurement 15/25;
   misses cluster in K3 definition-style traps — they need the M5 document
   pipeline; consider a bar over relationship-style traps only).
-- **Owner: rotate the Anthropic API key** shared in chat 2026-07-12 (never
-  written to any file or commit).
-- Fixture refresh procedure (only when prompts/builders change and the
-  drift guard goes red): from `src/` run
-  `python tests/eval/refresh_fixtures.py`, re-pin counts in
-  `tests/corpus_driven/test_llm_offline_corpus.py`, commit.
+- **Owner: rotate the Anthropic API key** — shared in chat 2026-07-12 and
+  2026-07-30 (neither written to any file or commit); a third share happens
+  at the fixture re-record. Rotate all after the re-record.
 - Remote branch `copilot/create-scripts-folder` (1 unmerged commit:
   `scripts/copy_raw_data.sh`) — owner's delete/merge decision pending.
 - M5 will likely unlock three of the walkthrough's untested claims — their

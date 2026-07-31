@@ -2,9 +2,9 @@
 
 The epistemic laws implemented here:
 
-* AI can only create ``inferred`` claims; nothing an AI authors ever
+* AI can only create ``proposed`` claims; nothing an AI authors ever
   changes a status.
-* Only probe results and human confirmations promote.
+* Only check results and human confirmations promote.
 * Conflicting evidence forces ``unresolved`` — conflict is never averaged
   away and never silently resolved by recency.
 * A confirmation on a testimonial claim must carry an explicit scope
@@ -15,7 +15,7 @@ Status is always *derived* from the evidence list via ``resolve_status``;
 the stored status field is a cached rendering of that derivation.
 """
 
-from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, ProbeVerdict
+from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, CheckVerdict
 from before_we_ai.model.objects import (
     Claim,
     EvidenceRecord,
@@ -40,14 +40,14 @@ def create_claim(
     depends_on: list[str] | None = None,
     open_assumptions: list[str] | None = None,
 ) -> Claim:
-    """Create a claim. Every claim starts ``inferred`` — no exceptions.
+    """Create a claim. Every claim starts ``proposed`` — no exceptions.
 
     Promotion happens only afterwards, through evidence.
     """
     return Claim(
         statement=statement,
         created_by=created_by,
-        status=ClaimStatus.INFERRED,
+        status=ClaimStatus.PROPOSED,
         predicate=predicate,
         scope=scope,
         validity=validity,
@@ -75,7 +75,7 @@ def escalate_exception(
     becomes a *new* claim: scoped to the exception and linked to its
     origin via ``derived_from`` / ``derived_from_evidence``. That link is
     provenance, not status-bearing evidence — the child starts at
-    ``inferred`` with an empty evidence list and must earn its own status.
+    ``proposed`` with an empty evidence list and must earn its own status.
     Escalation is a hypothesis, not a promotion.
     """
     if evidence.id not in parent.evidence_ids:
@@ -143,12 +143,12 @@ def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
     """
     live = [e for e in _for_claim(claim, evidence) if not e.stale]
 
-    probe_pass = any(
-        e.type is EvidenceType.PROBE_RESULT and e.verdict is ProbeVerdict.PASS
+    check_pass = any(
+        e.type is EvidenceType.CHECK_RESULT and e.verdict is CheckVerdict.PASS
         for e in live
     )
-    probe_fail = any(
-        e.type is EvidenceType.PROBE_RESULT and e.verdict is ProbeVerdict.FAIL
+    check_fail = any(
+        e.type is EvidenceType.CHECK_RESULT and e.verdict is CheckVerdict.FAIL
         for e in live
     )
     testimonial = any(e.type is EvidenceType.TESTIMONIAL for e in live)
@@ -158,18 +158,18 @@ def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
         for e in live
     )
 
-    if probe_fail and (probe_pass or confirmed or testimonial):
-        # Conflict: contradicting probe vs. supporting probe, human
+    if check_fail and (check_pass or confirmed or testimonial):
+        # Conflict: contradicting check vs. supporting check, human
         # confirmation, or user statement. Conflict forces unresolved —
         # this is also the only expiry of business-confirmed claims.
         return ClaimStatus.UNRESOLVED
-    if probe_fail:
+    if check_fail:
         return ClaimStatus.CONTRADICTED
     if confirmed:
         return ClaimStatus.BUSINESS_CONFIRMED
-    if probe_pass:
-        return ClaimStatus.TESTED
-    return ClaimStatus.INFERRED
+    if check_pass:
+        return ClaimStatus.TEST_SUPPORTED
+    return ClaimStatus.PROPOSED
 
 
 def attach_evidence(

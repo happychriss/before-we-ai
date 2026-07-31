@@ -19,8 +19,8 @@ from before_we_ai.model import (
     EvidenceRecord,
     EvidenceType,
     Predicate,
-    ProbeVerdict,
-    QuestionCard,
+    CheckVerdict,
+    ClarificationQuestion,
     Scope,
     Validity,
     create_claim,
@@ -73,25 +73,25 @@ def test_one_rule_over_100k_rows_is_one_claim(store):
     assert store.add_claim(duplicate).id == rule.id
     assert files_in(store, "claims") == 1
 
-    # The probe sweeps 100,000 rows and finds 37 violations. Row-level
+    # The check sweeps 100,000 rows and finds 37 violations. Row-level
     # observations enter as ONE aggregate evidence record: counts, a
     # bounded representative sample, and a cache pointer to the full set.
     violations = [
         {"row_id": rng.randrange(N_ROWS), "document_reference": f"DOC{rng.randrange(99999):05d}"}
         for _ in range(37)
     ]
-    probe_record = EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT,
-        actor=Actor.PROBE,
-        verdict=ProbeVerdict.FAIL,
+    check_record = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        verdict=CheckVerdict.FAIL,
         claim_id=rule.id,
         population=N_ROWS,
         exception_count=len(violations),
         exception_samples=violations[:MAX_EXCEPTION_SAMPLES],
-        result_ref="cache/probe_runs/anti_join_ar_gl.parquet",
+        result_ref="cache/check_runs/anti_join_ar_gl.parquet",
     )
-    store.add_evidence(probe_record)
-    rule = attach_evidence(rule, probe_record, [])
+    store.add_evidence(check_record)
+    rule = attach_evidence(rule, check_record, [])
     store.save_claim(rule)
 
     # THE claim count: 100,000 rows -> 1 claim, 1 evidence file.
@@ -100,15 +100,15 @@ def test_one_rule_over_100k_rows_is_one_claim(store):
     assert rule.status is ClaimStatus.CONTRADICTED  # loud, but singular
 
     # The truth file stays reviewable: bounded, small, human-readable.
-    evidence_file = store.root / "evidence" / f"{probe_record.id}.yaml"
+    evidence_file = store.root / "evidence" / f"{check_record.id}.yaml"
     assert evidence_file.stat().st_size < 10_000
-    assert len(store.evidence[probe_record.id].exception_samples) <= MAX_EXCEPTION_SAMPLES
+    assert len(store.evidence[check_record.id].exception_samples) <= MAX_EXCEPTION_SAMPLES
 
     # A materially different exception: review shows 30 of the 37 misses
     # share the pre-migration ID pattern — that is a rule of its own.
     child = escalate_exception(
         rule,
-        probe_record,
+        check_record,
         statement="pre-2025 documents reference GL through the legacy numbering",
         created_by=Actor.HUMAN,
         predicate=Predicate(
@@ -121,15 +121,15 @@ def test_one_rule_over_100k_rows_is_one_claim(store):
 
     # Exactly one more claim — and it must earn its own status from scratch.
     assert files_in(store, "claims") == 2
-    assert child.status is ClaimStatus.INFERRED
+    assert child.status is ClaimStatus.PROPOSED
     assert child.derived_from == rule.id
-    assert child.derived_from_evidence == probe_record.id
+    assert child.derived_from_evidence == check_record.id
     assert child.evidence_ids == []
 
     # Question dependency and impact survive the round-trip: the open
     # child claim carries the question load, the answered world sees it.
     store.save_question(
-        QuestionCard(question="Z2: external revenue per customer", claim_ids=[rule.id, child.id])
+        ClarificationQuestion(question="Z2: external revenue per customer", claim_ids=[rule.id, child.id])
     )
     reloaded = ProjectStore(store.root)
     assert len(reloaded.claims) == 2

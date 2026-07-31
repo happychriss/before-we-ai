@@ -1,7 +1,7 @@
-"""The inferred-only guardrail holds structurally through the LLM path.
+"""The proposed-only guardrail holds structurally through the LLM path.
 
 Nothing here is new enforcement — the M1 core owns the law. These tests
-prove the LLM layer rides on it: AI-born claims start inferred, AI cannot
+prove the LLM layer rides on it: AI-born claims start proposed, AI cannot
 author promoting evidence, and the contract modules do not even contain
 the calls that write evidence."""
 
@@ -11,20 +11,20 @@ import pytest
 from pydantic import ValidationError
 
 from before_we_ai.llm import call_log, client, config, inputs, mapping, prompts
-from before_we_ai.llm import roles as roles_module
+from before_we_ai.llm import domain_guide as roles_module
 from before_we_ai.llm import schemas, stub, v1_hypotheses, v2_bind, vocabulary
 from before_we_ai.llm.mapping import ProfileIndex, hypothesis_to_claim
 from before_we_ai.llm.schemas import Hypothesis
 from before_we_ai.model import Actor, ClaimStatus, EvidenceType, resolve_status
-from before_we_ai.model.enums import ProbeVerdict
-from before_we_ai.model.objects import ColumnProfile, EvidenceRecord
+from before_we_ai.model.enums import CheckVerdict
+from before_we_ai.model.objects import DataProfile, EvidenceRecord
 from before_we_ai.store import ProjectStore, init_project
 
 
 @pytest.fixture()
 def hypothesized_claim(tmp_path):
     store = ProjectStore(init_project(tmp_path / "p"), create=True)
-    store.save_profile(ColumnProfile(
+    store.save_profile(DataProfile(
         source_id="s1", table="a__t", column="c",
         stats={"duckdb_type": "BIGINT", "value_class": "integer_like",
                "row_count": 1, "null_count": 0, "distinct_count": 1},
@@ -39,15 +39,15 @@ def hypothesized_claim(tmp_path):
     return hypothesis_to_claim(hypothesis, ProfileIndex(store))
 
 
-def test_hypothesized_claims_start_and_stay_inferred(hypothesized_claim):
-    assert hypothesized_claim.status is ClaimStatus.INFERRED
-    assert resolve_status(hypothesized_claim, []) is ClaimStatus.INFERRED
+def test_hypothesized_claims_start_and_stay_proposed(hypothesized_claim):
+    assert hypothesized_claim.status is ClaimStatus.PROPOSED
+    assert resolve_status(hypothesized_claim, []) is ClaimStatus.PROPOSED
 
 
 def test_ai_cannot_author_promoting_evidence(hypothesized_claim):
-    with pytest.raises(ValidationError, match="authored by a probe"):
-        EvidenceRecord(type=EvidenceType.PROBE_RESULT, actor=Actor.AI,
-                       claim_id=hypothesized_claim.id, verdict=ProbeVerdict.PASS)
+    with pytest.raises(ValidationError, match="authored by a check"):
+        EvidenceRecord(type=EvidenceType.CHECK_RESULT, actor=Actor.AI,
+                       claim_id=hypothesized_claim.id, verdict=CheckVerdict.PASS)
     with pytest.raises(ValidationError, match="must come from a human"):
         EvidenceRecord(type=EvidenceType.CONFIRMATION, actor=Actor.AI,
                        claim_id=hypothesized_claim.id)
@@ -57,8 +57,8 @@ def test_ai_cannot_author_promoting_evidence(hypothesized_claim):
 
 
 def test_llm_modules_never_write_evidence():
-    """The contract layer creates claims and probes — evidence writes do not
-    appear anywhere in its source. Probes produce evidence when the ENGINE
+    """The contract layer creates claims and checks — evidence writes do not
+    appear anywhere in its source. Checks produce evidence when the ENGINE
     runs them; the LLM layer only files the falsification requests.
 
     The one exception is ``v2_bind``, covered by the next test."""
@@ -73,7 +73,7 @@ def test_llm_modules_never_write_evidence():
 
 def test_v2_writes_only_declarations_and_they_cannot_promote(hypothesized_claim):
     """V2's single evidence write: a DECLARATION saying why a claim got no
-    probe (unbindable / semantic-only / skipped). It is process metadata, the
+    check (unbindable / semantic-only / skipped). It is process metadata, the
     same class as a normalization declaration — authored by the SYSTEM, never
     by the AI, and structurally unable to move a status. Without it the
     model's reason would live only in the disposable call log."""
@@ -82,7 +82,7 @@ def test_v2_writes_only_declarations_and_they_cannot_promote(hypothesized_claim)
     assert source.count("EvidenceRecord(") == 1  # exactly one, the declaration
     assert "type=EvidenceType.DECLARATION" in source
     assert "actor=Actor.SYSTEM" in source
-    for promoting in ("PROBE_RESULT", "CONFIRMATION", "TESTIMONIAL", "DOCUMENT_ANCHOR"):
+    for promoting in ("CHECK_RESULT", "CONFIRMATION", "TESTIMONIAL", "DOCUMENT_ANCHOR"):
         assert promoting not in source, f"v2_bind names {promoting}"
 
     declaration = EvidenceRecord(
@@ -91,4 +91,4 @@ def test_v2_writes_only_declarations_and_they_cannot_promote(hypothesized_claim)
         claim_id=hypothesized_claim.id,
         payload={"decision": "unbindable", "reason": "no pairs available"},
     )
-    assert resolve_status(hypothesized_claim, [declaration]) is ClaimStatus.INFERRED
+    assert resolve_status(hypothesized_claim, [declaration]) is ClaimStatus.PROPOSED

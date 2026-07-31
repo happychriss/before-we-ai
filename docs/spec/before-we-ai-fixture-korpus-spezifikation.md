@@ -1,4 +1,7 @@
 # before-we-ai – Fixture-Korpus-Spezifikation
+
+> **Terminologie-Hinweis (2026-07-31):** Die kanonischen englischen Objektnamen wurden neu ausgerichtet — Sonde → *Check* (`CheckDefinition`/`CheckPlan`), Fachfrage → *ClarificationQuestion*, Rollenbindung → *MappingClaim*, Status `inferred`/`tested` → `proposed`/`test-supported`. Deutsch↔Englisch-Tabelle: `src/before_we_ai/glossary.py` (GERMAN_TERMS). Die deutsche Fachsprache dieses Dokuments bleibt unverändert.
+
 *Testbasis vor dem Tool: Quellen, eingebaute Fallen, erwartete Verdikte, Messgrößen*
 
 > **Status: abgelöst durch `before-we-ai-testdatensatz-finance-anforderungen.md`.** Der Finanz-Korpus enthält das Handelsszenario als Teilmenge (Aufträge, Rechnungen, Kunden, Hierarchien); es wird nur **ein** Generator gebaut. Dieses Dokument bleibt als Fallenreferenz gültig — die Fallenklassen T1–T12, die Kennzahlen-Definition und die „Regeln gegen Selbstbetrug" gelten unverändert und werden vom Finanz-Korpus referenziert.
@@ -15,12 +18,12 @@ Der Korpus ist der Prüfstand, der den Tool-Code ehrlich hält. Er wird **vor** 
 
 | # | Falle | Erwartetes Endverdikt | Prüft |
 |---|---|---|---|
-| T1 | Führende Nullen: `invoices.cust_no` '0001042' vs. `customer_id` 1042 | technically tested **nur mit** dokumentierter Normalisierung; ohne Normalisierung muss die Sonde scheitern | Normalisierungsschicht |
-| T2 | 13 % Retouren-Waisen, alle vor 2022 | Status bleibt inferred **plus** generierte Fachfrage „Datenschnitt?" — weder tested noch contradicted | Verdikt-Granularität, Fragen-Ausbeute |
+| T1 | Führende Nullen: `invoices.cust_no` '0001042' vs. `customer_id` 1042 | test-supported **nur mit** dokumentierter Normalisierung; ohne Normalisierung muss die Sonde scheitern | Normalisierungsschicht |
+| T2 | 13 % Retouren-Waisen, alle vor 2022 | Status bleibt proposed **plus** generierte Fachfrage „Datenschnitt?" — weder test-supported noch contradicted | Verdikt-Granularität, Fragen-Ausbeute |
 | T3 | ID-Recycling Legacy: 61 % ID-Treffer, davon 38 % mit anderem Namen/PLZ | contradicted | Widerspruchssonde, Identitäts-Claims |
 | T4 | Hierarchie-Excel joint über Namen (71 % Match), CRM-Notiz sagt „über Debitorennummer" | unresolved (Konflikt, laut) | Konflikt ≠ Mittelwert |
 | T5 | Grain-Mismatch Forecast (Monat×Gruppe) vs. Items (Tag×SKU); Gruppen-Mapping fehlt | in Phase 4 lazy materialisierter inferred-Claim | Assumption Capture |
-| T6 | Zufalls-Überlappung: zwei fachlich unverwandte Spalten mit gleichem Wertebereich (1–500) | darf hypothetisiert werden, darf aber **nie** über inferred hinaus; Kardinalitäts-/Fan-out-Sonde liefert Gegenindiz | Negativkontrolle, False-Positive-Pfad |
+| T6 | Zufalls-Überlappung: zwei fachlich unverwandte Spalten mit gleichem Wertebereich (1–500) | darf hypothetisiert werden, darf aber **nie** über proposed hinaus; Kardinalitäts-/Fan-out-Sonde liefert Gegenindiz | Negativkontrolle, False-Positive-Pfad |
 | T7 | Nur semantisch findbare Beziehung: Produktgruppen deutsch vs. Kategorien englisch („Zubehör"/„Accessories"), keine Wertüberlappung | Claim muss in Phase 2 **existieren** (Kandidatenmatrix ist hier blind) | V1-Recall auf mindestens einer Instanz |
 | T8 | Dokument-Anker: gerundete 12,3 Mio (netto? brutto?); eine Zahl nur in einer Grafik; eine Zahl, die zufällig ein falsches Aggregat trifft | Einzeltreffer bleibt schwache Evidenz; Zufallstreffer darf **nicht** promoten; Grafik-Zahl darf nicht als Text-Anker erscheinen | V3-Negativfälle, Mehrfach-Anker-Regel |
 | T9 | Excel-Schmutz: Kundennummern als Zahl gespeichert (Nullen verloren), verbundene Header, Dezimalkomma | Ingestion übersteht das; Sonden weisen Normalisierungsannahmen aus | Ingestion/Normalisierung |

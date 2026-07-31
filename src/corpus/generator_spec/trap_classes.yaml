@@ -6,7 +6,7 @@ trap_classes:
   K1:
     name: "Grün-aber-falsch (Green but wrong)"
     description: >-
-      Probe passes, claim is mechanically consistent, but semantically false.
+      Check passes, claim is mechanically consistent, but semantically false.
       Sign convention misread, FX pair inverted, IC revenue not excluded, rebate accrual forgotten—
       the books can still close perfectly while answers are wrong.
     traps: [F6, F14, F19]
@@ -49,18 +49,18 @@ trap_classes:
     traps: [F6, F7, F9]
     tool_consequence: >-
       Candidate matrix is blind to these (no value overlap to seed hypotheses).
-      Requires three new probe templates: validity_join, range_join, decode.
-      Rule: new templates only if a corpus trap mandates them; otherwise defer as a fachfrage.
+      Requires three new check definitions: validity_join, range_join, decode.
+      Rule: new templates only if a corpus trap mandates them; otherwise defer as a clarification question.
 
   K5:
-    name: "Invariantensonden (Invariant probes)"
+    name: "Invariantensonden (Invariant checks)"
     description: >-
       Correctness constraints that are landscape-bound, not claim-bound.
       Balance sheet closes (debits = credits per entity and period), subledger = GL totals,
       IC transactions symmetric across entities, no cash unapplied without documented reason.
     traps: []
     tool_consequence: >-
-      A second class of probes that exist without an associated claim.
+      A second class of checks that exist without an associated claim.
       They live in the domain's own invariant catalog and are run as part of the
       epistemics engine's consistency checks, not as evidence for a user-authored claim.
       New system metric: all invariants must hold or explicitly emit a gap/finding.
@@ -73,9 +73,9 @@ trap_classes:
       in master (prospecting), returns dated before the order book (data lag).
     traps: [F1, F13]
     tool_consequence: >-
-      Verdict granularity: a claim "orders have invoices" fails the probe but does not
-      get marked contradicted—instead generates a fachfrage "what about open orders?"
-      Orphan ≠ error; the claim stays inferred and a question surfaces.
+      Verdict granularity: a claim "orders have invoices" fails the check but does not
+      get marked contradicted—instead generates a clarification question "what about open orders?"
+      Orphan ≠ error; the claim stays proposed and a question surfaces.
       The system must not auto-promote over legitimate doubt.
 
   K7:

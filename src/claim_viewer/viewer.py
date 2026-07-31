@@ -9,49 +9,49 @@ import yaml
 
 from before_we_ai.glossary import GLOSSARY
 from before_we_ai.llm.mapping import admissible_templates
-from before_we_ai.model import ClaimStatus, EvidenceType, ProbeVerdict, resolve_status
+from before_we_ai.model import ClaimStatus, EvidenceType, CheckVerdict, resolve_status
 from before_we_ai.model.objects import (
     Claim,
-    ColumnProfile,
+    DataProfile,
     EvidenceRecord,
-    Probe,
-    QuestionCard,
-    RoleBindingClaim,
+    CheckPlan,
+    ClarificationQuestion,
+    MappingClaim,
     Source,
 )
-from before_we_ai.probes.library import REGISTRY
+from before_we_ai.checks.library import REGISTRY
 from before_we_ai.store import ProjectStore, check_integrity
 from before_we_ai.store.layout import CONFIG_FILE
 
 STATUS_COLORS = {
-    ClaimStatus.INFERRED.value: "status-inferred",
-    ClaimStatus.TESTED.value: "status-tested",
+    ClaimStatus.PROPOSED.value: "status-proposed",
+    ClaimStatus.TEST_SUPPORTED.value: "status-test-supported",
     ClaimStatus.CONTRADICTED.value: "status-contradicted",
     ClaimStatus.UNRESOLVED.value: "status-unresolved",
     ClaimStatus.BUSINESS_CONFIRMED.value: "status-business-confirmed",
 }
 
 VERDICT_COLORS = {
-    ProbeVerdict.PASS.value: "verdict-pass",
-    ProbeVerdict.FAIL.value: "verdict-fail",
-    ProbeVerdict.INCONCLUSIVE.value: "verdict-inconclusive",
+    CheckVerdict.PASS.value: "verdict-pass",
+    CheckVerdict.FAIL.value: "verdict-fail",
+    CheckVerdict.INCONCLUSIVE.value: "verdict-inconclusive",
 }
 
 
 STAGE_LABELS = {
-    "bound": "bound to a probe",
+    "bound": "bound to a check",
     "unbindable": "unbindable — the model gave a reason",
-    "semantic_only": "semantic-only — no probe template can test it",
+    "semantic_only": "semantic-only — no check definition can test it",
     "skipped": "skipped — validation rejected the binding",
-    "unbound": "no probe, no recorded reason",
+    "unbound": "no check, no recorded reason",
 }
 
 
 
 
 READING_GUIDE = (
-    "This page mirrors the pipeline: the AI proposes, the probes decide. Read it "
-    "top down — the funnel says how many claims survived each step, the Fachfragen "
+    "This page mirrors the pipeline: the AI proposes, the checks decide. Read it "
+    "top down — the funnel says how many claims survived each step, the Clarification questions "
     "are what the data could not settle, the role elections show which candidate "
     "won its role and which domain law felled the others. Then pick one claim on "
     "the left and read its story: 1 proposed → 2 bound → 3 judged → 4 context. "
@@ -74,11 +74,11 @@ class ClaimFacts:
 
     claim: Claim
     evidence: list[EvidenceRecord] = field(default_factory=list)
-    probes: list[Probe] = field(default_factory=list)
-    derived: ClaimStatus = ClaimStatus.INFERRED
+    checks: list[CheckPlan] = field(default_factory=list)
+    derived: ClaimStatus = ClaimStatus.PROPOSED
     stage: str = "unbound"  # a key of STAGE_LABELS
     executed: bool = False
-    no_probe_reason: str = ""  # verbatim, from the DECLARATION V2 wrote
+    no_check_reason: str = ""  # verbatim, from the DECLARATION V2 wrote
 
     @property
     def diverges(self) -> bool:
@@ -182,8 +182,8 @@ def render_project(root: str | Path) -> str:
       --muted: #9eb0d1;
       --line: #33415f;
       --link: #7dd3fc;
-      --inferred: #64748b;
-      --tested: #059669;
+      --proposed: #64748b;
+      --test-supported: #059669;
       --contradicted: #dc2626;
       --unresolved: #d97706;
       --business-confirmed: #7c3aed;
@@ -254,8 +254,8 @@ def render_project(root: str | Path) -> str:
       text-transform: lowercase;
       border: 1px solid transparent;
     }}
-    .status-inferred {{ background: rgba(100, 116, 139, 0.22); color: #d4dbe8; border-color: rgba(100, 116, 139, 0.55); }}
-    .status-tested {{ background: rgba(5, 150, 105, 0.18); color: #a7f3d0; border-color: rgba(5, 150, 105, 0.55); }}
+    .status-proposed {{ background: rgba(100, 116, 139, 0.22); color: #d4dbe8; border-color: rgba(100, 116, 139, 0.55); }}
+    .status-test-supported {{ background: rgba(5, 150, 105, 0.18); color: #a7f3d0; border-color: rgba(5, 150, 105, 0.55); }}
     .status-contradicted {{ background: rgba(220, 38, 38, 0.18); color: #fecaca; border-color: rgba(220, 38, 38, 0.55); }}
     .status-unresolved {{ background: rgba(217, 119, 6, 0.2); color: #fed7aa; border-color: rgba(217, 119, 6, 0.55); }}
     .status-business-confirmed {{ background: rgba(124, 58, 237, 0.2); color: #ddd6fe; border-color: rgba(124, 58, 237, 0.55); }}
@@ -379,7 +379,7 @@ def render_project(root: str | Path) -> str:
       padding: 6px 0 6px 10px;
       margin: 8px 0;
     }}
-    .cand.winner {{ border-left-color: var(--tested); }}
+    .cand.winner {{ border-left-color: var(--test-supported); }}
     .cand.loser {{ border-left-color: var(--contradicted); }}
     .fine {{ font-size: 12px; color: var(--muted); }}
     details.sql > summary, #domain-pack details > summary, #how-to-read details > summary {{
@@ -410,7 +410,7 @@ def render_project(root: str | Path) -> str:
         <a href="#how-to-read">How to read</a>
         <a href="#domain-pack">Domain pack</a>
         <a href="#overview">Funnel</a>
-        <a href="#questions">Fachfragen</a>
+        <a href="#questions">Clarification questions</a>
         <a href="#roles">Role elections</a>
         <a href="#data">Data</a>
         <a href="#integrity">Integrity</a>
@@ -447,20 +447,20 @@ def render_project(root: str | Path) -> str:
       </section>
       <section class="panel" id="overview">
         <h2>The funnel — from guess to verdict</h2>
-        <p class="muted">The AI proposes; the probes decide. Click any number to filter the claim list.</p>
+        <p class="muted">The AI proposes; the checks decide. Click any number to filter the claim list.</p>
         {_render_funnel(facts)}
         <p class="muted">{escape(_project_line(store, sources, profiles, candidate_count))}</p>
         {_render_matrix_summary(matrix, warning_html)}
       </section>
       <section class="panel" id="questions">
-        <h2>Fachfragen — open questions ({len(questions)})</h2>
-        <p class="muted">What the probes could not settle. This is the human's to-do list.</p>
+        <h2>Clarification questions — open questions ({len(questions)})</h2>
+        <p class="muted">What the checks could not settle. This is the human's to-do list.</p>
         {question_sections}
       </section>
       <section class="panel" id="roles">
         <h2>Role elections</h2>
         <p class="muted">Every role the AI proposed candidates for. Each role declares its
-        settlement path: a domain law elects the winner, or the humans decide via Fachfrage —
+        settlement path: a domain law elects the winner, or the humans decide via clarification question —
         never silence.</p>
         {_render_role_elections(facts, questions, _load_decided_by(root_path, config))}
       </section>
@@ -573,26 +573,26 @@ def render_project(root: str | Path) -> str:
 
 
 def _claim_facts(store: ProjectStore, claims: list[Claim]) -> dict[str, ClaimFacts]:
-    """One pass over the store: evidence, probes, derived status, funnel stage."""
+    """One pass over the store: evidence, checks, derived status, funnel stage."""
     facts: dict[str, ClaimFacts] = {}
     for claim in claims:
         evidence = store.evidence_for(claim)
-        # Persisted probes: bound directly (claim_id) or — for invariant probes,
+        # Persisted checks: bound directly (claim_id) or — for invariant checks,
         # which are bound to roles, not to one claim — reachable only through the
-        # probe_id on this claim's evidence records.
-        evidence_probe_ids = {record.probe_id for record in evidence if record.probe_id}
-        probes = sorted(
+        # check_plan_id on this claim's evidence records.
+        evidence_check_plan_ids = {record.check_plan_id for record in evidence if record.check_plan_id}
+        checks = sorted(
             (
-                probe
-                for probe in store.probes.values()
-                if probe.claim_id == claim.id or probe.id in evidence_probe_ids
+                check
+                for check in store.checks.values()
+                if check.claim_id == claim.id or check.id in evidence_check_plan_ids
             ),
-            key=lambda probe: (probe.created_at, probe.id),
+            key=lambda check: (check.created_at, check.id),
         )
-        # V2 declares why a claim got no probe (unbindable / semantic_only /
+        # V2 declares why a claim got no check (unbindable / semantic_only /
         # skipped) — the model's own words, persisted, not left in the cache.
-        decision, reason = _no_probe_decision(evidence)
-        if probes:
+        decision, reason = _no_check_decision(evidence)
+        if checks:
             stage = "bound"
         elif decision:
             stage = decision
@@ -603,18 +603,18 @@ def _claim_facts(store: ProjectStore, claims: list[Claim]) -> dict[str, ClaimFac
         facts[claim.id] = ClaimFacts(
             claim=claim,
             evidence=evidence,
-            probes=probes,
+            checks=checks,
             derived=resolve_status(claim, evidence),
             stage=stage,
             executed=any(
-                record.type is EvidenceType.PROBE_RESULT for record in evidence
+                record.type is EvidenceType.CHECK_RESULT for record in evidence
             ),
-            no_probe_reason=reason,
+            no_check_reason=reason,
         )
     return facts
 
 
-def _no_probe_decision(evidence: list[EvidenceRecord]) -> tuple[str, str]:
+def _no_check_decision(evidence: list[EvidenceRecord]) -> tuple[str, str]:
     for record in evidence:
         if record.type is not EvidenceType.DECLARATION:
             continue
@@ -644,7 +644,7 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
 
     proposed = (
         "<div class='funnel-stage'><span class='step'>proposed</span>"
-        + _chip(len(values), "claims (all inferred when created)", "")
+        + _chip(len(values), "claims (all proposed when created)", "")
         + "</div>"
     )
     bound = (
@@ -658,7 +658,7 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
     )
     judged = (
         "<div class='funnel-stage'><span class='step'>judged</span>"
-        + _chip(executed, "claims a probe actually ran against", "executed")
+        + _chip(executed, "claims a check actually ran against", "executed")
         + "</div>"
     )
     verdicts = "<div class='funnel-stage'><span class='step'>status</span>" + "".join(
@@ -668,9 +668,9 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
         if by_status[status.value]
     ) + "</div>"
     caveat = (
-        "<p class='fine'>A claim without a probe is not a claim that failed — it is a claim "
-        "nobody tested, and it stays <em>inferred</em>. Every one of them carries the reason "
-        "it got no probe; open the claim to read it in the model's own words.</p>"
+        "<p class='fine'>A claim without a check is not a claim that failed — it is a claim "
+        "nobody tested, and it stays <em>proposed</em>. Every one of them carries the reason "
+        "it got no check; open the claim to read it in the model's own words.</p>"
     )
     return f"<div class='funnel'>{proposed}{bound}{judged}{verdicts}</div>{caveat}"
 
@@ -683,7 +683,7 @@ def _render_core_terms() -> str:
         f"<p>{escape(READING_GUIDE)}</p>"
         "<details><summary>Core terms — the words this page uses, and no synonyms</summary>"
         f"<dl>{terms}</dl>"
-        "<p class='fine'>Full glossary: docs/SIMPLE-README.md.</p></details>"
+        "<p class='fine'>Full glossary: docs/before-ai-concept.md.</p></details>"
     )
 
 
@@ -700,7 +700,7 @@ def _render_domain_pack(root: Path, config: dict) -> str:
         f"<p class='muted'>{escape(DOMAIN_PACK_INTRO)}</p>"
         "<h3>1 · Raw data — the source list (human-authored)</h3>"
         f"{_render_declared_sources(config)}"
-        "<h3>2 · Role pack — the domain nouns (data, human-curated)</h3>"
+        "<h3>2 · Domain guide — the domain nouns (data, human-curated)</h3>"
         f"{_render_role_pack(root, config)}"
         "<h3>3 · Domain-law templates — the guardians (code, developer-shipped)</h3>"
         f"{_render_domain_law_templates()}"
@@ -721,9 +721,9 @@ def _render_declared_sources(config: dict) -> str:
 
 
 def _render_role_pack(root: Path, config: dict) -> str:
-    declared = (config.get("llm") or {}).get("roles_file")
+    declared = (config.get("llm") or {}).get("domain_guide_file")
     if not declared:
-        return '<p class="empty">No role pack declared (llm.roles_file).</p>'
+        return '<p class="empty">No domain guide declared (llm.domain_guide_file).</p>'
     path = Path(declared)
     if not path.is_absolute():
         path = root / path
@@ -731,7 +731,7 @@ def _render_role_pack(root: Path, config: dict) -> str:
         pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except OSError:
         return (
-            f'<p class="empty">Role pack declared but unreadable: '
+            f'<p class="empty">Domain guide declared but unreadable: '
             f"<code>{escape(str(path))}</code></p>"
         )
     roles = pack.get("roles") or {}
@@ -759,16 +759,16 @@ def _decided_by_label(spec) -> str:
     decided_by = spec.get("decided_by", "") if isinstance(spec, dict) else ""
     if not decided_by:
         return ""
-    if decided_by == "fachfrage":
-        return "decided by humans (Fachfrage)"
+    if decided_by == "clarification":
+        return "decided by humans (clarification question)"
     if decided_by == "slot":
         return "slot only — carried inside another role's law"
     return f"elected by the {decided_by} law"
 
 
 def _load_decided_by(root: Path, config: dict) -> dict[str, str]:
-    """role -> decided_by from the declared role pack; empty if unreadable."""
-    declared = (config.get("llm") or {}).get("roles_file")
+    """role -> decided_by from the declared domain guide; empty if unreadable."""
+    declared = (config.get("llm") or {}).get("domain_guide_file")
     if not declared:
         return {}
     path = Path(declared)
@@ -793,39 +793,39 @@ def _render_domain_law_templates() -> str:
     items = "".join(
         f"<li><code>{escape(name)}</code> "
         f'<span class="badge status-business-confirmed">{escape(spec.domain)} law</span> — '
-        f"<code>probes/templates/{escape(spec.file)}</code></li>"
+        f"<code>checks/templates/{escape(spec.file)}</code></li>"
         for name, spec in tagged
     )
     return (
         f"<ul class='list'>{items}</ul>"
         f"<p class='fine'>The other {generic} templates in the catalog are generic data "
-        "probes (reference check, duplicates, coverage …) — they carry no domain "
+        "checks (reference check, duplicates, coverage …) — they carry no domain "
         "knowledge and work in any domain.</p>"
     )
 
 
 def _render_role_elections(
-    facts: dict[str, ClaimFacts], questions: list[QuestionCard],
+    facts: dict[str, ClaimFacts], questions: list[ClarificationQuestion],
     decided_by: dict[str, str],
 ) -> str:
     by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
     for fact in facts.values():
-        if isinstance(fact.claim, RoleBindingClaim):
+        if isinstance(fact.claim, MappingClaim):
             by_role[fact.claim.role].append(fact)
     if not by_role:
         return '<p class="empty">No role-binding candidates yet.</p>'
 
     rank = {
-        ClaimStatus.TESTED: 0,
+        ClaimStatus.TEST_SUPPORTED: 0,
         ClaimStatus.BUSINESS_CONFIRMED: 0,
         ClaimStatus.UNRESOLVED: 1,
-        ClaimStatus.INFERRED: 2,
+        ClaimStatus.PROPOSED: 2,
         ClaimStatus.CONTRADICTED: 3,
     }
     blocks = []
     for role, candidates in sorted(by_role.items()):
         candidates.sort(key=lambda f: (rank[f.derived], f.claim.id))
-        winners = [f for f in candidates if f.derived in (ClaimStatus.TESTED, ClaimStatus.BUSINESS_CONFIRMED)]
+        winners = [f for f in candidates if f.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)]
         rows = "".join(_render_candidate(fact, fact in winners) for fact in candidates)
         claim_ids = {fact.claim.id for fact in candidates}
         cards = [card for card in questions if claim_ids & set(card.claim_ids)]
@@ -835,20 +835,20 @@ def _render_role_elections(
                 f"{_status_badge(winners[0].derived.value)}</p>"
             )
         elif cards:
-            # the drafted Fachfrage is the outcome, whatever kept a law from
-            # electing — probed-and-lost, unbindable, or a fachfrage-decided role
+            # the drafted clarification question is the outcome, whatever kept a law from
+            # electing — checked-and-lost, unbindable, or a clarification-decided role
             outcome = "".join(
-                f"<p><strong>No winner → Fachfrage:</strong> {_question_link(card)}</p>"
+                f"<p><strong>No winner → clarification question:</strong> {_question_link(card)}</p>"
                 for card in cards
             )
-        elif not any(fact.probes for fact in candidates):
+        elif not any(fact.checks for fact in candidates):
             outcome = (
-                "<p class='muted'><strong>Not decided yet:</strong> no invariant probe "
-                "bound and no Fachfrage drafted — binding is still in flight.</p>"
+                "<p class='muted'><strong>Not decided yet:</strong> no invariant check "
+                "bound and no clarification question drafted — binding is still in flight.</p>"
             )
         else:
             outcome = (
-                "<p class='muted'>No winner — every tested candidate lost, and no Fachfrage "
+                "<p class='muted'>No winner — every tested candidate lost, and no clarification question "
                 "is drafted yet (run role resolution).</p>"
             )
         path_note = _decided_by_label({"decided_by": decided_by.get(role, "")})
@@ -870,10 +870,10 @@ def _render_candidate(fact: ClaimFacts, won: bool) -> str:
         + f" — {detail}</div>"
         for template, domain, detail in _defeats(fact)
     )
-    if not fact.probes and fact.no_probe_reason:
+    if not fact.checks and fact.no_check_reason:
         reasons += (
             f"<div class='fine'>never tested — {escape(fact.stage)}: "
-            f"{escape(fact.no_probe_reason)}</div>"
+            f"{escape(fact.no_check_reason)}</div>"
         )
     return (
         f"<div class='cand {css}'>"
@@ -883,14 +883,14 @@ def _render_candidate(fact: ClaimFacts, won: bool) -> str:
 
 
 def _defeats(fact: ClaimFacts) -> list[tuple[str, str, str]]:
-    """(template, domain, human detail) for every failing probe on this claim."""
-    probes = {probe.id: probe for probe in fact.probes}
+    """(template, domain, human detail) for every failing check on this claim."""
+    checks = {check.id: check for check in fact.checks}
     out = []
     for record in fact.evidence:
-        if record.type is not EvidenceType.PROBE_RESULT or record.verdict is not ProbeVerdict.FAIL:
+        if record.type is not EvidenceType.CHECK_RESULT or record.verdict is not CheckVerdict.FAIL:
             continue
-        probe = probes.get(record.probe_id or "")
-        template = probe.template if probe else "unknown template"
+        check = checks.get(record.check_plan_id or "")
+        template = check.template if check else "unknown template"
         spec = REGISTRY.get(template)
         detail = _population_text(record)
         out.append((template, (spec.domain if spec else None) or "", detail))
@@ -899,7 +899,7 @@ def _defeats(fact: ClaimFacts) -> list[tuple[str, str, str]]:
 
 def _population_text(record: EvidenceRecord) -> str:
     if record.exception_count is None or record.population is None:
-        return "probe failed"
+        return "check failed"
     return (
         f"{record.exception_count:,} exception"
         f"{'s' if record.exception_count != 1 else ''} in {record.population:,} rows"
@@ -907,11 +907,11 @@ def _population_text(record: EvidenceRecord) -> str:
 
 
 def _project_line(
-    store: ProjectStore, sources: list[Source], profiles: list[ColumnProfile], candidates: int
+    store: ProjectStore, sources: list[Source], profiles: list[DataProfile], candidates: int
 ) -> str:
     return (
         f"{len(sources)} sources · {len(profiles)} column profiles · {candidates} candidate "
-        f"overlaps · {len(store.probes)} probes · {len(store.evidence)} evidence records."
+        f"overlaps · {len(store.checks)} checks · {len(store.evidence)} evidence records."
     )
 
 
@@ -929,7 +929,7 @@ def _predicate_options(claims: list[Claim]) -> str:
 
 def _role_options(claims: list[Claim]) -> str:
     roles = sorted(
-        {claim.role for claim in claims if isinstance(claim, RoleBindingClaim)}
+        {claim.role for claim in claims if isinstance(claim, MappingClaim)}
     )
     return "".join(f'<option value="{escape(r)}">{escape(r)}</option>' for r in roles)
 
@@ -953,7 +953,7 @@ def _render_matrix_summary(matrix: dict, warning_html: str) -> str:
 def _render_claim_index_card(fact: ClaimFacts) -> str:
     claim = fact.claim
     predicate = claim.predicate.name if claim.predicate else ""
-    role = claim.role if isinstance(claim, RoleBindingClaim) else ""
+    role = claim.role if isinstance(claim, MappingClaim) else ""
     search = " ".join(
         filter(None, [claim.statement, fact.derived.value, predicate, role])
     ).lower()
@@ -979,7 +979,7 @@ def _render_claim_section(
     fact: ClaimFacts,
     *,
     store: ProjectStore,
-    questions_by_claim: dict[str, list[QuestionCard]],
+    questions_by_claim: dict[str, list[ClarificationQuestion]],
     reverse_depends: dict[str, list[Claim]],
     reverse_derived: dict[str, list[Claim]],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
@@ -987,7 +987,7 @@ def _render_claim_section(
     claim = fact.claim
     evidence = fact.evidence
     resolved = fact.derived
-    probes = fact.probes
+    checks = fact.checks
     sources = [store.sources[sid] for sid in claim.source_ids if sid in store.sources]
     fingerprints = _source_fingerprint_names(evidence)
     source_links = [f"<li>{_source_link(source)}</li>" for source in sources]
@@ -1015,13 +1015,13 @@ def _render_claim_section(
             )
 
     evidence_html = "".join(
-        _render_evidence_card(record, claim, store.claims, declarations_by_key, store.probes)
+        _render_evidence_card(record, claim, store.claims, declarations_by_key, store.checks)
         for record in evidence
     ) or '<p class="empty">No evidence attached yet.</p>'
-    rendered_sql = _rendered_sql_by_probe(evidence)
-    probes_html = "".join(
-        _render_probe_card(probe, rendered_sql.get(probe.id, "")) for probe in probes
-    ) or _no_probe_html(fact)
+    rendered_sql = _rendered_sql_by_check_plan(evidence)
+    check_plans_html = "".join(
+        _render_check_plan_card(check, rendered_sql.get(check.id, "")) for check in checks
+    ) or _no_check_html(fact)
     dependency_html = "".join(
         f"<li>{_claim_link(dep)} { _status_badge(dep.status.value) }</li>"
         for dep in (store.claims[dep_id] for dep_id in claim.depends_on if dep_id in store.claims)
@@ -1075,8 +1075,8 @@ def _render_claim_section(
         f"{banner}"
         "<details open><summary>1 · Proposed — what the AI guessed</summary>"
         f"{proposed}{subtype}</details>"
-        f"<details open><summary>2 · Bound — the probes that were meant to falsify it</summary>"
-        f"{probes_html}</details>"
+        f"<details open><summary>2 · Bound — the checks that were meant to falsify it</summary>"
+        f"{check_plans_html}</details>"
         f"<details open><summary>3 · Judged — what the data answered</summary>"
         f"{evidence_html}</details>"
         "<details><summary>4 · Context — sources, lineage, questions</summary>"
@@ -1095,36 +1095,36 @@ def _render_claim_section(
     )
 
 
-def _no_probe_html(fact: ClaimFacts) -> str:
-    """What stands where the probe would have stood: why none was built."""
+def _no_check_html(fact: ClaimFacts) -> str:
+    """What stands where the check would have stood: why none was built."""
     if fact.stage == "unbound":
         return (
-            '<p class="empty">No probe, and no recorded reason — V2 has not run on this '
+            '<p class="empty">No check, and no recorded reason — V2 has not run on this '
             "claim yet.</p>"
         )
     who = {
         "unbindable": "The model declined to bind this claim",
-        "semantic_only": "No probe template can test this claim",
+        "semantic_only": "No check definition can test this claim",
         "skipped": "Validation rejected the model's binding",
     }[fact.stage]
-    reason = escape(fact.no_probe_reason) if fact.no_probe_reason else "no reason recorded"
+    reason = escape(fact.no_check_reason) if fact.no_check_reason else "no reason recorded"
     return (
         f"<div class='banner'><strong>Not bound — {escape(fact.stage)}.</strong> {who}, "
-        f"so nothing ever tested it and it stays <em>inferred</em>."
+        f"so nothing ever tested it and it stays <em>proposed</em>."
         f"<blockquote class='fine'>{reason}</blockquote></div>"
     )
 
 
-def _render_probe_card(probe: Probe, rendered_sql: str = "") -> str:
+def _render_check_plan_card(check: CheckPlan, rendered_sql: str = "") -> str:
     details = [
-        ("id", probe.id),
-        ("template", probe.template),
-        ("created_at", probe.created_at.isoformat()),
-        ("params", _json_text(probe.params)),
+        ("id", check.id),
+        ("template", check.template),
+        ("created_at", check.created_at.isoformat()),
+        ("params", _json_text(check.params)),
     ]
-    if probe.roles:
-        details.insert(2, ("roles", ", ".join(probe.roles)))
-    spec = REGISTRY.get(probe.template)
+    if check.roles:
+        details.insert(2, ("roles", ", ".join(check.roles)))
+    spec = REGISTRY.get(check.template)
     domain_badge = ""
     if spec is not None:
         if spec.domain:
@@ -1134,9 +1134,9 @@ def _render_probe_card(probe: Probe, rendered_sql: str = "") -> str:
         if spec.tolerances:
             details.append(("default tolerances", _json_text(spec.tolerances)))
     return (
-        f'<div class="evidence-card" id="probe-{escape(probe.id)}">'
-        f"<div><a href=\"#probe-{escape(probe.id)}\"><strong>{escape(_short_id(probe.id))}</strong></a> "
-        f"<code>{escape(probe.template)}</code> {domain_badge}</div>"
+        f'<div class="evidence-card" id="check-{escape(check.id)}">'
+        f"<div><a href=\"#check-{escape(check.id)}\"><strong>{escape(_short_id(check.id))}</strong></a> "
+        f"<code>{escape(check.template)}</code> {domain_badge}</div>"
         f"{_definition_list(details)}"
         f"{_render_rendered_sql(rendered_sql)}"
         "</div>"
@@ -1146,13 +1146,13 @@ def _render_probe_card(probe: Probe, rendered_sql: str = "") -> str:
 def _render_rendered_sql(sql: str) -> str:
     """The exact question that was asked of the data — the SQL the engine ran.
 
-    The rendered SQL is not on the Probe; the runner puts it on the payload of the
-    probe-result evidence it writes (`payload['sql']`). Until a probe has run there
-    is nothing to show — a probe is a question that was asked, not one that could be.
+    The rendered SQL is not on the CheckPlan; the runner puts it on the payload of the
+    check-result evidence it writes (`payload['sql']`). Until a check has run there
+    is nothing to show — a check is a question that was asked, not one that could be.
     """
     if not sql:
         return (
-            "<p class='fine'>No rendered SQL yet — this probe has not been run, so no "
+            "<p class='fine'>No rendered SQL yet — this check has not been run, so no "
             "question has actually been put to the data.</p>"
         )
     open_attr = " open" if sql.count("\n") < 12 else ""
@@ -1162,15 +1162,15 @@ def _render_rendered_sql(sql: str) -> str:
     )
 
 
-def _rendered_sql_by_probe(evidence: list[EvidenceRecord]) -> dict[str, str]:
-    """probe id → the rendered SQL its result recorded (latest run wins)."""
+def _rendered_sql_by_check_plan(evidence: list[EvidenceRecord]) -> dict[str, str]:
+    """check id → the rendered SQL its result recorded (latest run wins)."""
     out: dict[str, str] = {}
     for record in evidence:
-        if record.type is not EvidenceType.PROBE_RESULT or not record.probe_id:
+        if record.type is not EvidenceType.CHECK_RESULT or not record.check_plan_id:
             continue
         sql = str(record.payload.get("sql", "")) if record.payload else ""
         if sql:
-            out[record.probe_id] = sql
+            out[record.check_plan_id] = sql
     return out
 
 
@@ -1206,7 +1206,7 @@ def _render_evidence_card(
     claim: Claim,
     claims: dict[str, Claim],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
-    probes: dict[str, Probe],
+    checks: dict[str, CheckPlan],
 ) -> str:
     details = [
         ("id", record.id),
@@ -1218,7 +1218,7 @@ def _render_evidence_card(
     if record.claim_id:
         linked = claims.get(record.claim_id)
         details.append(("claim", linked.statement if linked else record.claim_id))
-    if record.type is EvidenceType.PROBE_RESULT:
+    if record.type is EvidenceType.CHECK_RESULT:
         details.extend([
             ("verdict", record.verdict.value if record.verdict else "—"),
             ("population", str(record.population) if record.population is not None else "—"),
@@ -1250,17 +1250,17 @@ def _render_evidence_card(
             "<div><strong>Exception samples</strong>"
             f"<table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>"
         )
-    probe_hint = ""
-    if record.probe_id:
-        probe = probes.get(record.probe_id)
-        if probe:
-            probe_hint = (
-                f"<p><strong>Produced by probe:</strong> "
-                f"<a href='#probe-{escape(probe.id)}'><code>{escape(probe.template)}</code> "
-                f"{escape(_short_id(probe.id))}</a></p>"
+    check_plan_hint = ""
+    if record.check_plan_id:
+        check = checks.get(record.check_plan_id)
+        if check:
+            check_plan_hint = (
+                f"<p><strong>Produced by check:</strong> "
+                f"<a href='#check-{escape(check.id)}'><code>{escape(check.template)}</code> "
+                f"{escape(_short_id(check.id))}</a></p>"
             )
         else:
-            details.append(("probe_id", f"{record.probe_id} (not persisted)"))
+            details.append(("check_plan_id", f"{record.check_plan_id} (not persisted)"))
     declaration_hint = ""
     if record.type is EvidenceType.DECLARATION:
         source = str(record.payload.get("source", ""))
@@ -1285,14 +1285,14 @@ def _render_evidence_card(
         f'<div class="evidence-card" id="evidence-{escape(record.id)}">'
         f"<div><a href=\"#evidence-{escape(record.id)}\"><strong>{escape(_short_id(record.id))}</strong></a> {verdict_badge}</div>"
         f"{_definition_list(details)}"
-        f"{probe_hint}"
+        f"{check_plan_hint}"
         f"{samples}"
         f"{declaration_hint}"
         "</div>"
     )
 
 
-def _render_question_section(card: QuestionCard, claims: dict[str, Claim]) -> str:
+def _render_question_section(card: ClarificationQuestion, claims: dict[str, Claim]) -> str:
     claims_html = "".join(
         f"<li>{_claim_link(claims[cid])}</li>" for cid in card.claim_ids if cid in claims
     ) or '<li class="empty">No linked claims.</li>'
@@ -1305,7 +1305,7 @@ def _render_question_section(card: QuestionCard, claims: dict[str, Claim]) -> st
     )
 
 
-def _render_source_index_card(source: Source, profiles: dict[str, list[ColumnProfile]]) -> str:
+def _render_source_index_card(source: Source, profiles: dict[str, list[DataProfile]]) -> str:
     count = len(profiles.get(source.id, []))
     return (
         f'<div class="claim-card"><a href="#source-{escape(source.id)}"><strong>{escape(source.name)}</strong></a>'
@@ -1315,7 +1315,7 @@ def _render_source_index_card(source: Source, profiles: dict[str, list[ColumnPro
 
 def _render_source_section(
     source: Source,
-    profiles: list[ColumnProfile],
+    profiles: list[DataProfile],
     claims: list[Claim],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
     role_bindings: dict[str, list[Claim]],
@@ -1324,7 +1324,7 @@ def _render_source_section(
     claims_html = "".join(
         f"<li>{_claim_link(claim)} { _status_badge(claim.status.value) }</li>" for claim in claims
     ) or '<li class="empty">No claims attach this source directly.</li>'
-    tables: dict[str, list[ColumnProfile]] = defaultdict(list)
+    tables: dict[str, list[DataProfile]] = defaultdict(list)
     for profile in profiles:
         tables[profile.table].append(profile)
     table_html = "".join(
@@ -1349,12 +1349,12 @@ def _render_source_section(
 
 
 def _render_orphan_profiles(
-    profiles: list[ColumnProfile],
+    profiles: list[DataProfile],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
     role_bindings: dict[str, list[Claim]],
     candidates_by_column: dict[str, list[dict]],
 ) -> str:
-    tables: dict[str, list[ColumnProfile]] = defaultdict(list)
+    tables: dict[str, list[DataProfile]] = defaultdict(list)
     for profile in profiles:
         tables[profile.table].append(profile)
     body = "".join(
@@ -1374,7 +1374,7 @@ def _render_orphan_profiles(
 def _render_table_section(
     source_name: str,
     table: str,
-    columns: list[ColumnProfile],
+    columns: list[DataProfile],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
     role_bindings: dict[str, list[Claim]],
     candidates_by_column: dict[str, list[dict]],
@@ -1405,7 +1405,7 @@ def _render_table_section(
 
 def _render_column_card(
     source_name: str,
-    profile: ColumnProfile,
+    profile: DataProfile,
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
     role_bindings: dict[str, list[Claim]],
     candidates_by_column: dict[str, list[dict]],
@@ -1456,7 +1456,7 @@ def _definition_list(items: Iterable[tuple[str, str]]) -> str:
 
 
 def _status_badge(status: str) -> str:
-    return f'<span class="badge {STATUS_COLORS.get(status, "status-inferred")}">{escape(status)}</span>'
+    return f'<span class="badge {STATUS_COLORS.get(status, "status-proposed")}">{escape(status)}</span>'
 
 
 def _verdict_badge(verdict: str) -> str:
@@ -1464,7 +1464,7 @@ def _verdict_badge(verdict: str) -> str:
 
 
 def _type_badge(kind: str) -> str:
-    return f'<span class="badge status-inferred">{escape(kind)}</span>'
+    return f'<span class="badge status-proposed">{escape(kind)}</span>'
 
 
 def _claim_link(claim: Claim | None) -> str:
@@ -1483,7 +1483,7 @@ def _source_link(source: Source) -> str:
     return f'<a href="#source-{escape(source.id)}">{escape(source.name)}</a>'
 
 
-def _question_link(card: QuestionCard) -> str:
+def _question_link(card: ClarificationQuestion) -> str:
     return f'<a href="#question-{escape(card.id)}">{escape(_short_id(card.id))} — {escape(card.question)}</a>'
 
 
@@ -1497,43 +1497,43 @@ def _column_link(column: str) -> str:
 
 def _headline(fact: ClaimFacts) -> str:
     """The one line a validator should be able to stop reading after."""
-    if fact.derived is ClaimStatus.INFERRED and fact.stage != "bound":
+    if fact.derived is ClaimStatus.PROPOSED and fact.stage != "bound":
         return f"Never tested — {STAGE_LABELS[fact.stage]}."
     return _status_rationale(fact.claim, fact.evidence)
 
 
 def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
     live = [record for record in evidence if not record.stale]
-    probe_pass = sum(
+    check_pass = sum(
         1 for record in live
-        if record.type is EvidenceType.PROBE_RESULT and record.verdict is ProbeVerdict.PASS
+        if record.type is EvidenceType.CHECK_RESULT and record.verdict is CheckVerdict.PASS
     )
-    probe_fail = sum(
+    check_fail = sum(
         1 for record in live
-        if record.type is EvidenceType.PROBE_RESULT and record.verdict is ProbeVerdict.FAIL
+        if record.type is EvidenceType.CHECK_RESULT and record.verdict is CheckVerdict.FAIL
     )
     confirmation = sum(1 for record in live if record.type is EvidenceType.CONFIRMATION)
     testimonial = sum(1 for record in live if record.type is EvidenceType.TESTIMONIAL)
     parts = []
-    if probe_pass:
-        parts.append(f"{probe_pass} passing probe result{'s' if probe_pass != 1 else ''}")
-    if probe_fail:
-        parts.append(f"{probe_fail} failing probe result{'s' if probe_fail != 1 else ''}")
+    if check_pass:
+        parts.append(f"{check_pass} passing check result{'s' if check_pass != 1 else ''}")
+    if check_fail:
+        parts.append(f"{check_fail} failing check result{'s' if check_fail != 1 else ''}")
     if confirmation:
         parts.append(f"{confirmation} confirmation{'s' if confirmation != 1 else ''}")
     if testimonial:
         parts.append(f"{testimonial} testimonial{'s' if testimonial != 1 else ''}")
     trail = ", ".join(parts) if parts else "no live status-bearing evidence"
     if claim.status is ClaimStatus.UNRESOLVED:
-        why = "Conflict is present: at least one failing probe coexists with supporting evidence."
+        why = "Conflict is present: at least one failing check coexists with supporting evidence."
     elif claim.status is ClaimStatus.CONTRADICTED:
-        why = "At least one failing probe is present and no competing supporting evidence remains live."
+        why = "At least one failing check is present and no competing supporting evidence remains live."
     elif claim.status is ClaimStatus.BUSINESS_CONFIRMED:
-        why = "At least one admissible human confirmation is live and no failing probe overrides it."
-    elif claim.status is ClaimStatus.TESTED:
-        why = "At least one passing probe is live and no failing probe overrides it."
+        why = "At least one admissible human confirmation is live and no failing check overrides it."
+    elif claim.status is ClaimStatus.TEST_SUPPORTED:
+        why = "At least one passing check is live and no failing check overrides it."
     else:
-        why = "Nothing stronger than inferred evidence is live yet."
+        why = "Nothing stronger than proposed evidence is live yet."
     return f"{why} Live trail: {trail}."
 
 
@@ -1560,8 +1560,8 @@ def _load_candidate_matrix(root: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _questions_by_claim(questions: list[QuestionCard]) -> dict[str, list[QuestionCard]]:
-    out: dict[str, list[QuestionCard]] = defaultdict(list)
+def _questions_by_claim(questions: list[ClarificationQuestion]) -> dict[str, list[ClarificationQuestion]]:
+    out: dict[str, list[ClarificationQuestion]] = defaultdict(list)
     for card in questions:
         for claim_id in card.claim_ids:
             out[claim_id].append(card)
@@ -1639,8 +1639,8 @@ def _candidates_by_column(matrix: dict) -> dict[str, list[dict]]:
     return out
 
 
-def _profiles_by_source(profiles: list[ColumnProfile]) -> dict[str, list[ColumnProfile]]:
-    out: dict[str, list[ColumnProfile]] = defaultdict(list)
+def _profiles_by_source(profiles: list[DataProfile]) -> dict[str, list[DataProfile]]:
+    out: dict[str, list[DataProfile]] = defaultdict(list)
     for profile in profiles:
         out[profile.source_id].append(profile)
     return out

@@ -1,16 +1,16 @@
-"""Contract V2 — probe binding (and the role-binding proposals it needs).
+"""Contract V2 — check binding (and the role-binding proposals it needs).
 
-``propose_role_bindings`` is the frontier-tier search task: candidate
-RoleBindingClaims for the supplied domain roles, competing candidates
-welcome — the invariant probes decide, never the model.
+``propose_mappings`` is the frontier-tier search task: candidate
+MappingClaims for the supplied domain roles, competing candidates
+welcome — the invariant checks decide, never the model.
 
-``bind_probes`` turns unbound AI claims into ``Probe`` records: role-
+``plan_checks`` turns unbound AI claims into ``CheckPlan`` records: role-
 binding claims go to the invariant templates (frontier tier, per the
 architecture's exception), ordinary claims to the rest (mid tier). A
 claim whose predicate no template can test is reported as
 ``semantic_only``; a claim the model honestly cannot bind is reported as
 ``unbindable`` with the model's reason. Nothing is silently dropped: every
-claim that ends without a probe carries a DECLARATION saying why, so the
+claim that ends without a check carries a DECLARATION saying why, so the
 refusal survives the disposable call log. No SQL is run and no
 status-bearing evidence is written — the engine does that, later.
 """
@@ -29,22 +29,22 @@ from before_we_ai.llm.inputs import (
 from before_we_ai.llm.mapping import (
     ProfileIndex,
     admissible_templates,
-    binding_to_probe,
+    proposal_to_check_plan,
     check_binding,
-    check_role_proposal,
-    proposal_to_role_claim,
+    check_mapping_proposal,
+    proposal_to_mapping_claim,
 )
 from before_we_ai.llm.prompts import (
-    ROLE_BINDING_SYSTEM,
+    MAPPING_SYSTEM,
     V2_ROLES_SYSTEM,
     V2_SYSTEM,
     render_template_docs,
     with_schema,
 )
-from before_we_ai.llm.roles import RoleSet, load_roles
-from before_we_ai.llm.schemas import BindingBatch, RoleBindingBatch
+from before_we_ai.llm.domain_guide import DomainGuide, load_domain_guide
+from before_we_ai.llm.schemas import BindingBatch, MappingProposalBatch
 from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType
-from before_we_ai.model.objects import Claim, EvidenceRecord, RoleBindingClaim
+from before_we_ai.model.objects import Claim, EvidenceRecord, MappingClaim
 from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.profile.candidates import load_matrix
 from before_we_ai.store.repository import ProjectStore
@@ -54,7 +54,7 @@ CONTRACT_BIND = "v2_bind"
 
 
 @dataclass
-class RoleProposalReport:
+class MappingProposalReport:
     claims_created: list[str] = field(default_factory=list)
     claims_deduped: int = 0
     skipped: list[tuple[str, str]] = field(default_factory=list)  # (role, reason)
@@ -64,24 +64,24 @@ class RoleProposalReport:
     log_ref: str | None = None
 
 
-def propose_role_bindings(
+def propose_mappings(
     root: str | Path,
     *,
-    roles: RoleSet | None = None,
+    roles: DomainGuide | None = None,
     client: LLMClient | None = None,
     store: ProjectStore | None = None,
     scenario: str = "default",
-) -> RoleProposalReport:
+) -> MappingProposalReport:
     root = Path(root)
     store = store or ProjectStore(root)
     config = LLMConfig.from_project(root)
     client = client or build_client(config)
     if roles is None:
-        if not config.roles_file:
+        if not config.domain_guide_file:
             raise ValueError(
-                "no role set: pass roles= or set llm.roles_file in before-ai.yaml"
+                "no role set: pass roles= or set llm.domain_guide_file in before-ai.yaml"
             )
-        roles = load_roles(root / config.roles_file)
+        roles = load_domain_guide(root / config.domain_guide_file)
 
     built = build_role_context(store, load_matrix(root), roles)
     index = ProfileIndex(store)
@@ -91,27 +91,27 @@ def propose_role_bindings(
         contract=CONTRACT_ROLES,
         scenario=scenario,
         model=config.models[CONTRACT_ROLES],
-        system=with_schema(ROLE_BINDING_SYSTEM, RoleBindingBatch),
+        system=with_schema(MAPPING_SYSTEM, MappingProposalBatch),
         built=built,
-        schema=RoleBindingBatch,
+        schema=MappingProposalBatch,
         repair=BatchRepair(
             "proposals",
-            lambda p: check_role_proposal(p, roles.names, index),
+            lambda p: check_mapping_proposal(p, roles.names, index),
         ),
         logger=CallLogger(root),
     )
-    report = RoleProposalReport(retries=result.retries, usage=result.usage,
+    report = MappingProposalReport(retries=result.retries, usage=result.usage,
                                 log_ref=result.log_ref)
     if result.parsed is None:
         report.failure = result.failure
         return report
 
     for proposal in result.parsed.proposals:
-        errors = check_role_proposal(proposal, roles.names, index)
+        errors = check_mapping_proposal(proposal, roles.names, index)
         if errors:
             report.skipped.append((proposal.role, "; ".join(errors)))
             continue
-        claim = proposal_to_role_claim(proposal, index)
+        claim = proposal_to_mapping_claim(proposal, index)
         kept = store.add_claim(claim)
         if kept.id == claim.id:
             report.claims_created.append(claim.id)
@@ -122,8 +122,8 @@ def propose_role_bindings(
 
 @dataclass
 class V2Report:
-    probes_created: list[str] = field(default_factory=list)
-    probes_deduped: int = 0
+    check_plans_created: list[str] = field(default_factory=list)
+    check_plans_deduped: int = 0
     unbindable: list[tuple[str, str]] = field(default_factory=list)  # (claim_id, model's reason)
     semantic_only: list[str] = field(default_factory=list)  # never sent — no admissible template
     skipped: list[tuple[str, str]] = field(default_factory=list)  # (claim_id, validation reason)
@@ -136,11 +136,11 @@ class V2Report:
 
 def _unbound_ai_claims(store: ProjectStore,
                        claim_ids: list[str] | None) -> list[Claim]:
-    bound = {p.claim_id for p in store.probes.values() if p.claim_id}
+    bound = {p.claim_id for p in store.checks.values() if p.claim_id}
     selected = [
         c for c in store.claims.values()
         if c.created_by is Actor.AI
-        and c.status is ClaimStatus.INFERRED
+        and c.status is ClaimStatus.PROPOSED
         and c.predicate is not None
         and c.id not in bound
         and (claim_ids is None or c.id in claim_ids)
@@ -148,11 +148,11 @@ def _unbound_ai_claims(store: ProjectStore,
     return sorted(selected, key=lambda c: c.id)
 
 
-def _declare_no_probe(store: ProjectStore, claim: Claim, decision: str,
+def _declare_no_check(store: ProjectStore, claim: Claim, decision: str,
                       reason: str) -> None:
-    """Record in the store why this claim got no probe.
+    """Record in the store why this claim got no check.
 
-    The refusal is as much a result as a probe is — but it lived only in the
+    The refusal is as much a result as a check is — but it lived only in the
     disposable call log. A DECLARATION is the canonical home: a declared
     processing decision, weak evidence that can never promote. The SYSTEM
     authors it (the AI never authors evidence); the model's verbatim reason
@@ -175,16 +175,16 @@ def _declare_no_probe(store: ProjectStore, claim: Claim, decision: str,
     store.save_claim(attach_evidence(claim, record, existing))
 
 
-def _existing_probe(store: ProjectStore, probe) -> bool:
+def _existing_check_plan(store: ProjectStore, check) -> bool:
     return any(
-        p.template == probe.template
-        and p.claim_id == probe.claim_id
-        and p.params == probe.params
-        for p in store.probes.values()
+        p.template == check.template
+        and p.claim_id == check.claim_id
+        and p.params == check.params
+        for p in store.checks.values()
     )
 
 
-def bind_probes(
+def plan_checks(
     root: str | Path,
     *,
     client: LLMClient | None = None,
@@ -202,15 +202,15 @@ def bind_probes(
     candidates = _unbound_ai_claims(store, claim_ids)
     role_claims, ordinary = [], []
     for claim in candidates:
-        if isinstance(claim, RoleBindingClaim):
+        if isinstance(claim, MappingClaim):
             role_claims.append(claim)
         elif admissible_templates(claim):
             ordinary.append(claim)
         else:
             report.semantic_only.append(claim.id)
-            _declare_no_probe(
+            _declare_no_check(
                 store, claim, "semantic_only",
-                f"no probe template can test predicate "
+                f"no check definition can test predicate "
                 f"{claim.predicate.name!r} — this claim is decided by a human, "
                 "not by SQL",
             )
@@ -245,21 +245,21 @@ def bind_probes(
             if errors:
                 report.skipped.append((binding.claim_id, "; ".join(errors)))
                 if binding.claim_id in labels:
-                    _declare_no_probe(store, labels[binding.claim_id], "skipped",
+                    _declare_no_check(store, labels[binding.claim_id], "skipped",
                                       "; ".join(errors))
                 continue
             claim = labels[binding.claim_id]
-            probe = binding_to_probe(binding, claim)
-            if probe is None:
+            check = proposal_to_check_plan(binding, claim)
+            if check is None:
                 report.unbindable.append((claim.id, binding.no_template_reason))
-                _declare_no_probe(store, claim, "unbindable",
+                _declare_no_check(store, claim, "unbindable",
                                   binding.no_template_reason or "")
                 continue
-            if _existing_probe(store, probe):
-                report.probes_deduped += 1
+            if _existing_check_plan(store, check):
+                report.check_plans_deduped += 1
                 continue
-            store.save_probe(probe)
-            report.probes_created.append(probe.id)
+            store.save_check_plan(check)
+            report.check_plans_created.append(check.id)
         report.unanswered += [
             labels[label].id for label in labels if label not in answered
         ]

@@ -144,7 +144,7 @@ target_questions:
         2. SUM(gl_postings) for AR/AP accounts matches SUM(ar_open_items + payments applied)
       Generator itself runs "balance closes" as a self-test before freezing.
       Trap F20: opening balance integrity and unapplied cash handling.
-      Trap F22: deliberate IC break (DE posts, US omits) to test invariant probe detection.
+      Trap F22: deliberate IC break (DE posts, US omits) to test invariant check detection.
     expected_reference_result: |-
       {
         "invariant": "balance_sheet_closes",
@@ -163,4 +163,4 @@ target_questions:
       Z4 is not a question with a numeric answer; it is a landscape-level invariant (K5).
       Must hold for all periods or emit a structural error (the generated data itself is broken).
       The IC break trap (F22) is deliberately constructed to fail Z4 unless the invariant
-      probe correctly detects the symmetric rule violation and flags it as a finding.
+      check correctly detects the symmetric rule violation and flags it as a finding.

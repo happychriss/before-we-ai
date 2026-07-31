@@ -33,5 +33,5 @@ generator-added, not in the spec catalog.
 - F20 causes AR≠GL — 100k tolerance on subledger_equals_gl
 - Z3/Z4 FX-averaging variance ~8.2k EUR (0.012%) vs generator — 10k tolerance
   (generator's FX method not exactly reproduced; accepted as spot-check)
-- US:2024-06 imbalance is F22's intentional IC break (probe finds doc `IC-2024-06`,
+- US:2024-06 imbalance is F22's intentional IC break (check finds doc `IC-2024-06`,
   50k)

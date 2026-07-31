@@ -2,7 +2,7 @@
 stub-driven, deterministic, no network.
 
 scan -> V1 hypothesize -> role proposals -> V2 bind -> engine run_ready ->
-resolve_roles, with every LLM answer replayed from recorded fixtures
+resolve_mappings, with every LLM answer replayed from recorded fixtures
 through the exact validation/mapping path of the real client. Corpus
 knowledge (and the fixtures that encode it) stays test-side.
 
@@ -21,7 +21,7 @@ import yaml
 
 from before_we_ai import scan
 from before_we_ai.engine import run_ready
-from before_we_ai.llm import bind_probes, hypothesize, load_roles, propose_role_bindings, resolve_roles
+from before_we_ai.llm import plan_checks, hypothesize, load_domain_guide, propose_mappings, resolve_mappings
 from before_we_ai.llm.inputs import (
     build_binding_context,
     build_profile_context,
@@ -32,14 +32,14 @@ from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.llm.prompts import render_template_docs
 from before_we_ai.llm.v2_bind import _unbound_ai_claims
 from before_we_ai.model import Actor, ClaimStatus, EvidenceType
-from before_we_ai.model.objects import RoleBindingClaim
+from before_we_ai.model.objects import MappingClaim
 from before_we_ai.profile.candidates import load_matrix
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, init_project
 
 CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
-ROLES_FILE = Path(__file__).resolve().parents[1] / "fixtures" / "roles_finance.yaml"
+DOMAIN_GUIDE_FILE = Path(__file__).resolve().parents[1] / "fixtures" / "domain_guide_finance.yaml"
 
 SOURCES = [
     {"name": "de_erp", "kind": "duckdb", "location": str(CORPUS / "DE" / "erp.duckdb")},
@@ -64,47 +64,48 @@ def pipeline(tmp_path_factory):
     config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8"))
     config["sources"] = SOURCES
     config["llm"] = {"offline": True, "fixtures_dir": str(FIXTURES),
-                     "roles_file": str(ROLES_FILE)}
+                     "domain_guide_file": str(DOMAIN_GUIDE_FILE)}
     (root / "before-ai.yaml").write_text(yaml.safe_dump(config, sort_keys=False),
                                          encoding="utf-8")
     scan(root)
     store = ProjectStore(root)
-    roles = load_roles(ROLES_FILE)
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)
 
     results = {"root": root, "roles": roles}
     results["v1"] = hypothesize(root, store=store, scenario="corpus")
-    results["proposals"] = propose_role_bindings(root, roles=roles, store=store,
+    results["proposals"] = propose_mappings(root, roles=roles, store=store,
                                                  scenario="corpus")
-    results["v2"] = bind_probes(root, store=store, scenario="corpus")
+    results["v2"] = plan_checks(root, store=store, scenario="corpus")
     con = open_catalog(root)
     try:
         results["engine"] = run_ready(store, con)
     finally:
         con.close()
     results["store"] = ProjectStore(root)  # reload from disk
-    results["role_cards"] = resolve_roles(results["store"], roles)
+    results["role_cards"] = resolve_mappings(results["store"], roles)
     return results
 
 
 def test_contracts_ran_clean_offline(pipeline):
     """Pinned against the recorded real answers (Opus 4.8 / Sonnet 5,
-    refreshed 2026-07-12). A red here after a fixture refresh is the guard
-    working: review the new numbers and re-pin deliberately."""
+    refreshed 2026-07-31 after the terminology realignment). A red here
+    after a fixture refresh is the guard working: review the new numbers
+    and re-pin deliberately."""
     v1, proposals, v2 = pipeline["v1"], pipeline["proposals"], pipeline["v2"]
     assert v1.failure is None
-    assert len(v1.claims_created) == 62
-    assert v1.claims_deduped == 1  # the real batch contains one paraphrase pair
-    assert len(v1.skipped) == 2  # residual bad items skipped, batch survived
-    assert proposals.failure is None and len(proposals.claims_created) == 23
+    assert len(v1.claims_created) == 52
+    assert v1.claims_deduped == 0
+    assert len(v1.skipped) == 3  # residual bad items skipped, batch survived
+    assert proposals.failure is None and len(proposals.claims_created) == 22
     assert v2.failures == [] and v2.unanswered == []
-    assert len(v2.probes_created) == 58
-    assert len(v2.skipped) == 1  # the ranges=[] binding — skipped, not crashed
-    assert len(v2.semantic_only) == 8  # no admissible template — never sent
-    assert len(v2.unbindable) == 18  # honest template=null answers
-    assert len(pipeline["engine"].executed) == 58
+    assert len(v2.check_plans_created) == 42
+    assert len(v2.skipped) == 7  # validation-rejected bindings — skipped, not crashed
+    assert len(v2.semantic_only) == 6  # no admissible template — never sent
+    assert len(v2.unbindable) == 19  # honest template=null answers
+    assert len(pipeline["engine"].executed) == 42
     assert pipeline["engine"].skipped == []
 
-    # every claim that ends without a probe says why, in the store — the reason
+    # every claim that ends without a check says why, in the store — the reason
     # must outlive the disposable call log
     store = pipeline["store"]
     reasons = {
@@ -112,86 +113,91 @@ def test_contracts_ran_clean_offline(pipeline):
         for record in store.evidence.values()
         if record.type is EvidenceType.DECLARATION and "decision" in record.payload
     }
-    assert len(reasons) == 27  # 18 unbindable + 8 semantic-only + 1 skipped
+    assert len(reasons) == 32  # 19 unbindable + 6 semantic-only + 7 skipped
     assert sorted(p["decision"] for p in reasons.values()) == (
-        ["semantic_only"] * 8 + ["skipped"] + ["unbindable"] * 18
+        ["semantic_only"] * 6 + ["skipped"] * 7 + ["unbindable"] * 19
     )
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
     for claim_id in reasons:
-        assert store.claims[claim_id].status is ClaimStatus.INFERRED
+        assert store.claims[claim_id].status is ClaimStatus.PROPOSED
 
 
 def test_llm_path_cannot_promote(pipeline):
     """False-Promotion = 0 on the LLM path: every AI-created object was an
-    inferred claim or a probe; status changes came from probe evidence only."""
+    proposed claim or a check; status changes came from check evidence only."""
     store = pipeline["store"]
     ai_claims = [c for c in store.claims.values() if c.created_by is Actor.AI]
-    assert len(ai_claims) == 85  # 62 hypotheses + 23 role candidates
+    assert len(ai_claims) == 74  # 52 hypotheses + 22 role candidates
     for evidence in store.evidence.values():
         assert evidence.actor is not Actor.AI
-    # promotions happened, but only through probe evidence
+    # promotions happened, but only through check evidence
     for claim in ai_claims:
-        if claim.status is not ClaimStatus.INFERRED:
+        if claim.status is not ClaimStatus.PROPOSED:
             assert any(
-                store.evidence[eid].actor is Actor.PROBE
+                store.evidence[eid].actor is Actor.CHECK
                 for eid in claim.evidence_ids
             )
 
 
 def test_verdicts_land_on_the_corpus_ground_truth(pipeline):
-    """The invariants decided the roles — the epistemic heart of M4: the
+    """The invariants decided the journal — the epistemic heart of M4: the
     real ledger wins, the F27 decoy loses, the US ledger honestly fails on
-    the F22 imbalance, and untestable claims stay inferred."""
+    the F22 imbalance. In this recording the model declined to bind the
+    intercompany invariant (template=null), so those candidates stay
+    proposed and settle via a clarification question — the honest path,
+    never a silent discard."""
     store = pipeline["store"]
 
     def role_claims(role: str, token: str):
         return [c for c in store.claims.values()
-                if isinstance(c, RoleBindingClaim) and c.role == role
+                if isinstance(c, MappingClaim) and c.role == role
                 and any(token in v for v in c.binding.values())]
 
     (gl,) = role_claims("journal", "de_erp__gl_postings")
-    assert gl.status is ClaimStatus.TESTED
+    assert gl.status is ClaimStatus.TEST_SUPPORTED
     (decoy,) = role_claims("journal", "buchungen_report")
     assert decoy.status is ClaimStatus.CONTRADICTED  # F27
     (us_gl,) = role_claims("journal", "us_erp__gl_postings")
     assert us_gl.status is ClaimStatus.CONTRADICTED  # F22 missing IC leg
     ic = [c for c in store.claims.values()
-          if isinstance(c, RoleBindingClaim) and c.role == "intercompany"]
-    assert ic and all(c.status is ClaimStatus.CONTRADICTED for c in ic)  # F22
-    # claims V2 could not bind stay inferred — visible, never promoted
+          if isinstance(c, MappingClaim) and c.role == "intercompany"]
+    assert ic and all(c.status is ClaimStatus.PROPOSED for c in ic)  # unbound this recording
+    # claims V2 could not bind stay proposed — visible, never promoted
     unbound_ids = {cid for cid, _ in pipeline["v2"].unbindable}
-    assert all(store.claims[cid].status is ClaimStatus.INFERRED
+    assert all(store.claims[cid].status is ClaimStatus.PROPOSED
                for cid in unbound_ids)
-    # semantic-only claims (T7 class among them) stay inferred
+    # semantic-only claims (T7 class among them) stay proposed
     for cid in pipeline["v2"].semantic_only:
-        assert store.claims[cid].status is ClaimStatus.INFERRED
+        assert store.claims[cid].status is ClaimStatus.PROPOSED
 
 
-def test_every_unsettled_role_becomes_a_fachfrage_not_a_silent_discard(pipeline):
-    """Every non-slot role ends in a probe verdict or a Fachfrage:
-    intercompany was probed and lost everywhere; subledger_ar's law could
-    never be bound to a candidate; the four fachfrage-decided roles
-    (account, doc_ref, entity, period) list their candidates for the
-    humans to choose. The settled roles (journal, amount_local) draft
-    nothing."""
+def test_every_unsettled_role_becomes_a_clarification_not_a_silent_discard(pipeline):
+    """Every non-slot role ends in a check verdict or a clarification question:
+    in this recording the laws of intercompany, amount_local and
+    subledger_ar could never be bound to a candidate (honest template=null);
+    the four clarification-decided roles (account, doc_ref, entity, period)
+    list their candidates for the humans to choose. The settled role
+    (journal) drafts nothing."""
     cards = pipeline["role_cards"]
     by_role = {}
     for card in cards:
         role = card.question.split("'")[1]
         by_role[role] = card
     assert sorted(by_role) == [
-        "account", "doc_ref", "entity", "intercompany", "period", "subledger_ar",
+        "account", "amount_local", "doc_ref", "entity", "intercompany",
+        "period", "subledger_ar",
     ]
     ic = by_role["intercompany"]
-    assert "Invarianten-Sonde bestanden" in ic.question  # probed, all lost
-    assert len(ic.claim_ids) == 2  # both losing candidates attached
-    assert "welches Fachwissen fehlt" in by_role["subledger_ar"].question
+    assert "no proposed binding could be bound" in ic.question  # never bound
+    assert len(ic.claim_ids) == 2  # both candidates attached
+    for role in ("amount_local", "subledger_ar"):
+        assert "what domain knowledge is missing" in by_role[role].question
     for role in ("account", "doc_ref", "entity", "period"):
         card = by_role[role]
-        assert "welche Bindung gilt" in card.question
+        assert "which binding applies" in card.question
         assert card.claim_ids  # the candidates ride along, answerable in one pick
     # resolution is idempotent
-    assert resolve_roles(pipeline["store"], pipeline["roles"]) == []
+    assert resolve_mappings(pipeline["store"], pipeline["roles"]) == []
 
 
 def test_call_logs_are_complete(pipeline):
@@ -216,13 +222,13 @@ def test_pipeline_is_idempotent(pipeline):
     claims; bound claims drop out of the V2 selection entirely."""
     root, store = pipeline["root"], pipeline["store"]
     again = hypothesize(root, store=store, scenario="corpus")
-    assert again.claims_created == [] and again.claims_deduped == 63
-    proposals = propose_role_bindings(root, roles=pipeline["roles"], store=store,
+    assert again.claims_created == [] and again.claims_deduped == 52
+    proposals = propose_mappings(root, roles=pipeline["roles"], store=store,
                                       scenario="corpus")
-    assert proposals.claims_created == [] and proposals.claims_deduped == 23
+    assert proposals.claims_created == [] and proposals.claims_deduped == 22
     # only the honestly unbound claims are still selectable for V2:
-    # 18 unbindable + 8 semantic-only + 1 skipped binding
-    assert len(_unbound_ai_claims(store, None)) == 27
+    # 19 unbindable + 6 semantic-only + 7 skipped bindings
+    assert len(_unbound_ai_claims(store, None)) == 32
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):
@@ -252,17 +258,17 @@ def test_fixtures_match_current_inputs(pipeline):
     assert fixture("role_binding__corpus")["input_sha256"] == \
         build_role_context(store, matrix, pipeline["roles"]).sha256
 
-    # reconstruct the V2 batches exactly as bind_probes selects them, from a
-    # claim set as it stood before binding (probes exclude claims, so take
+    # reconstruct the V2 batches exactly as plan_checks selects them, from a
+    # claim set as it stood before binding (checks exclude claims, so take
     # all AI claims and ignore the bound-filter)
     ai_claims = sorted(
         (c for c in store.claims.values()
          if c.created_by is Actor.AI and c.predicate is not None),
         key=lambda c: c.id,
     )
-    role_claims = [c for c in ai_claims if isinstance(c, RoleBindingClaim)]
+    role_claims = [c for c in ai_claims if isinstance(c, MappingClaim)]
     ordinary = [c for c in ai_claims
-                if not isinstance(c, RoleBindingClaim) and admissible_templates(c)]
+                if not isinstance(c, MappingClaim) and admissible_templates(c)]
     docs = render_template_docs()
     assert fixture("v2_bind__corpus_roles")["input_sha256"] == \
         build_binding_context(store, claim_label_map(role_claims), docs).sha256

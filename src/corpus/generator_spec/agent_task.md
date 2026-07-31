@@ -74,7 +74,7 @@ Do NOT manually code GL balances; derive them from transaction rules:
 
 ### 5. Compute `expected_verdicts.yaml` from the actual data:
 - Iterate over every trap ID (F1–F29, plus any extras you add)
-- For each trap: extract the actual records involved, classify the expected claim status (inferred | tested | contradicted | unresolved | business-confirmed)
+- For each trap: extract the actual records involved, classify the expected claim status (proposed | test-supported | contradicted | unresolved | business-confirmed)
 - For Z1–Z4: compute actual values from the generated GL/AR/plan data using the formulas in `target_questions.yaml`
 - Document any assumptions (e.g., "Z2 assumes postings on document_date, not posting_date") in `expected_verdicts.yaml`
 - **Do NOT hand-write verdicts; derive them programmatically**
@@ -111,8 +111,8 @@ The harness is trap-class-generic (K1–K7), so **additional traps beyond F1–F
 
 - Define 2–3 blind traps in your generator's own config (a separate YAML or dict, NOT in `expected_verdicts.yaml` and NOT in this repo)
 - Tag them with a K-class (K1–K7) in `expected_verdicts.yaml` so the harness can validate them, but do NOT describe what makes them traps
-- This is how the downstream M1+ tool gets tested on *unexpected* trap patterns
-- Example: `{id: "BLIND_1", trap_class: K4, sources: ["B2", "D9"], expected_status: "inferred"}` — the harness checks it, you know what it is, but the M1+ implementation won't
+- This is how the downstream M1+ tool gets test-supported on *unexpected* trap patterns
+- Example: `{id: "BLIND_1", trap_class: K4, sources: ["B2", "D9"], expected_status: "proposed"}` — the harness checks it, you know what it is, but the M1+ implementation won't
 
 ## Output Checklist
 

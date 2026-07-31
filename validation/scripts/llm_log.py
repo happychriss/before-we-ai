@@ -23,7 +23,7 @@ DEFAULT_PROJECT = Path(__file__).resolve().parents[1] / "data" / "project"
 
 # --- process guide -----------------------------------------------------------
 # One comment per call kind, matching the walkthrough steps and the flow in
-# docs/SIMPLE-README.md ("The big picture"): the AI guesses, the probes decide.
+# docs/before-ai-concept.md: the AI guesses, the checks decide.
 
 
 def guide_for(contract: str, scenario: str) -> str:
@@ -33,15 +33,15 @@ def guide_for(contract: str, scenario: str) -> str:
             "profiles + candidate matrix (measured statistics, never raw rows). "
             "Output: hypotheses — proposed rules about THIS data ('the document "
             "number in the report references the general ledger'). Every "
-            "accepted hypothesis becomes a claim with status 'inferred' — "
+            "accepted hypothesis becomes a claim with status 'proposed' — "
             "nothing here is verified yet.")
     if contract == "role_binding":
         return (
             "Walkthrough step 4 — casting call for the domain roles. Input: the "
             "role-pack definitions (human-written domain nouns) + profiles. "
             "Output: role-binding candidates ('this table could play the "
-            "journal role'), each a claim with status 'inferred'. Competing "
-            "candidates are wanted — the domain-law probes decide the election, "
+            "journal role'), each a claim with status 'proposed'. Competing "
+            "candidates are wanted — the domain-law checks decide the election, "
             "not the model.")
     if contract == "v2_bind" and "roles" in scenario:
         return (
@@ -53,7 +53,7 @@ def guide_for(contract: str, scenario: str) -> str:
     if contract == "v2_bind":
         return (
             "Walkthrough step 5 (V2), ordinary batch — a binding for each "
-            "remaining claim: the fitting generic probe template + parameters "
+            "remaining claim: the fitting generic check definition + parameters "
             "from the closed catalog. 'template: null' answers are honest 'not "
             "testable with the current toolbox' — reported, never hidden.")
     return ""
@@ -78,8 +78,8 @@ def domain_header(project: Path) -> str:
         f"<li><code>{html.escape(s['name'])}</code> ({html.escape(s['kind'])}) — "
         f"{html.escape(s['location'])}</li>" for s in sources)
 
-    roles_html = "<p class='err'>no role pack declared (llm.roles_file)</p>"
-    roles_path = (config.get("llm") or {}).get("roles_file")
+    roles_html = "<p class='err'>no domain guide declared (llm.domain_guide_file)</p>"
+    roles_path = (config.get("llm") or {}).get("domain_guide_file")
     if roles_path:
         pack = yaml.safe_load(Path(roles_path).read_text(encoding="utf-8"))
 
@@ -102,19 +102,19 @@ def domain_header(project: Path) -> str:
             f"{role_items}")
 
     try:
-        from before_we_ai.probes.library import REGISTRY
+        from before_we_ai.checks.library import REGISTRY
         tagged = [(n, s) for n, s in REGISTRY.items() if s.domain]
         generic = len(REGISTRY) - len(tagged)
         law_items = "".join(
             f"<li><code>{html.escape(n)}</code> (domain {html.escape(s.domain)}) — "
-            f"<code>probes/templates/{html.escape(s.file)}</code></li>"
+            f"<code>checks/templates/{html.escape(s.file)}</code></li>"
             for n, s in tagged)
         laws_html = (
             f"<ul>{law_items}</ul><p>The other {generic} templates in the catalog "
-            f"are generic data probes (reference check, duplicates, coverage …) — "
+            f"are generic data checks (reference check, duplicates, coverage …) — "
             f"they carry no domain knowledge and work in any domain.</p>")
     except ImportError:
-        laws_html = "<p class='err'>probe registry not importable — activate the venv</p>"
+        laws_html = "<p class='err'>check registry not importable — activate the venv</p>"
 
     terms = "".join(
         f"<dt>{html.escape(term)}</dt><dd>{html.escape(text)}</dd>"
@@ -122,14 +122,14 @@ def domain_header(project: Path) -> str:
     return (
         "<section class='domain'><h2>Core terms</h2>"
         "<p>The comments on the calls below use exactly these words "
-        "(full glossary: docs/SIMPLE-README.md).</p>"
+        "(full glossary: docs/before-ai-concept.md).</p>"
         f"<dl>{terms}</dl></section>"
         "<section class='domain'><h2>Domain knowledge &amp; declared inputs</h2>"
         "<p>Everything domain-specific enters through three declared inputs "
         "(docs/architecture.md 'Domain inputs'); the model additionally sees "
         "only measured statistics, never raw rows.</p>"
         f"<h3>1 · Raw data — the source list (human-authored)</h3><ul>{source_lines}</ul>"
-        f"<h3>2 · Role pack — the domain nouns (data, human-curated)</h3>{roles_html}"
+        f"<h3>2 · Domain guide — the domain nouns (data, human-curated)</h3>{roles_html}"
         f"<h3>3 · Domain-law templates — the guardians (code, developer-shipped)</h3>{laws_html}"
         f"<p class='note'>{html.escape(GROWTH_NOTE)}</p></section>")
 

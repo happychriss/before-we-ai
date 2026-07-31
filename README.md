@@ -10,76 +10,83 @@ unknown*. That layer is the product.
 
 ## Core idea
 
-Most tools let the AI guess relationships and definitions. before-we-ai treats the
-**knowledge status as a first-class object**:
+Most tools ask: how do we make the LLM more reliable? This project asks: **how do we
+make the LLM's unreliability irrelevant?** Knowledge status is a first-class object:
 
-- **Claims** are versioned files with five statuses and an evidence list — no
+- **Claims** are versioned files with five statuses (`proposed`, `test-supported`,
+  `contradicted`, `unresolved`, `business-confirmed`) and an evidence list — no
   confidence scores, just bookkeeping.
-- **The AI can only ever produce `inferred`.** Status promotions belong to probes
-  (automated SQL tests) and humans. Conflicting evidence forces `unresolved` —
-  conflict is never averaged away.
-- **Evidence is append-only.** Every probe run records its rendered SQL, verdict,
+- **The AI can only ever produce `proposed`.** Status promotions belong to checks
+  (deterministic SQL, fixed verdicts) and humans. Conflicting evidence forces
+  `unresolved` — conflict is never averaged away.
+- **Evidence is append-only.** Every check run records its rendered SQL, verdict,
   and data fingerprints. Nothing is edited, only superseded.
-- **Relevance shows itself through use.** Nothing is curated up front; a claim
-  becomes load-bearing when questions rest on it (the "epistemic bill of materials"
-  per question). Unverified assumptions form a gap list, weighted by how many
-  answers depend on them.
+- **What data cannot decide becomes a question, never silence.** Every domain role
+  ends in a check verdict or a drafted clarification question — the system is
+  allowed not to know, but not allowed to be quiet about it.
 
-Hard invariants: **false-promotion rate = 0** and **zero silent wrong answers**.
-The test suite punishes decisiveness where "unresolved" is the correct answer.
+Hard invariants: **false-promotion rate = 0** (structural — the AI cannot author
+promoting evidence) and **zero silent wrong answers**. The test suite punishes
+decisiveness where "unresolved" is the correct answer.
+
+Plain-language walkthrough of the whole flow: [`docs/before-ai-concept.md`](docs/before-ai-concept.md).
+Design detail: [`docs/architecture.md`](docs/architecture.md).
 
 ## Architecture in one paragraph
 
-One Python package, no services: `pipx install before-we-ai`, point it at a directory.
-Files (YAML/Markdown) are the source of truth; everything under `cache/` is
-disposable and reconstructible. **DuckDB is the only execution engine** — it
-attaches Postgres/MySQL, reads CSV/Parquet, runs the profiling and probe SQL, and
-provides full-text search over documents. The LLM is a subroutine behind **four
-typed contracts** (hypothesis generation, probe binding, document interpretation,
-SQL generation), each with tailored context, schema-validated output, full logging,
-and an offline stub mode for deterministic tests. Model quality affects efficiency,
-never correctness.
+One Python package, no services: point it at a directory. Files (YAML/Markdown) are
+the source of truth; everything under `cache/` is disposable and reconstructible.
+**DuckDB is the only execution engine** — it attaches databases, reads CSV/Parquet/
+Excel, and runs the profiling and check SQL. The LLM is a subroutine behind **typed
+contracts** (hypothesis generation, mapping proposals, check planning; document
+interpretation and question flow to follow), each with deterministic input building,
+schema-validated output, full logging, and an offline stub mode for deterministic
+tests. Everything domain-specific enters through a declared **domain pack** (a
+curated domain-guide YAML + domain-law check definitions) — new domain, new pack,
+same machine. Model quality affects efficiency, never correctness.
 
 ```
 myproject/
-  before-ai.yaml # sources, model tiers, tolerance overrides
+  before-ai.yaml # sources, domain guide, model tiers, tolerance overrides
   sources/       # dropped files (csv, xlsx, pdf, txt)
   claims/        # one YAML per claim (5 statuses, evidence refs)
-  evidence/      # append-only probe results, anchors, confirmations
-  questions/     # question cards (question, SQL, result, bill of materials)
-  profiles/      # column profiles, candidate matrix
+  evidence/      # append-only check results, anchors, confirmations
+  questions/     # clarification questions
+  checks/        # persisted check plans
+  profiles/      # data profiles, candidate matrix
   reports/       # rendered status / gap reports
   cache/         # DISPOSABLE: duckdb file, fingerprints, llm_log/
 ```
 
-CLI-first: `init`, `scan`, `hypothesize`, `probe`, `ask "…"`, `tell "…"`,
-`confirm <claim>`, `status`, `check`, `report`.
-
 ## Validation before code
 
 A **frozen, generated fixture corpus** (finance domain: bookkeeping rules, balance
-check as self-test) is built *before* the tool, with seeded traps — leading zeros,
-recycled legacy IDs, name-based Excel joins that contradict a CRM note, chance
-column overlaps, grain mismatches, dirty Excel headers. Each trap has an expected
-verdict; several are designed so the only correct answer is "unresolved". Blind
-traps are held back by the owner to test what the implementer didn't anticipate.
+check as self-test) was built *before* the tool, with 32 seeded traps — leading
+zeros, recycled legacy IDs, a lookalike journal, chance column overlaps, grain
+mismatches, dirty Excel headers, policy rules that live only in PDFs. Each trap has
+an expected verdict; several are designed so the only correct answer is
+"unresolved". Blind traps are held back by the owner to test what the implementer
+didn't anticipate.
 
-## Status
+First measured run (M4): **False-Promotion 0**, Seeded-Recall **15/25** — reported
+honestly, misses diagnosed (they cluster in document-only rules, which is M5's job).
+Full report: `docs/seeded-recall-m4.md`. Owner-facing validation walkthrough:
+`validation/README.md`.
 
-Concept, architecture, and validation basis are complete. Implementation follows
-milestones **M0–M8**; **M0–M3 are done** (tags `m0-corpus-v1` … `m3-probes-v1`, plus the
-merged claim viewer) and the current step is **M4: LLM contracts V1/V2**.
+## Roadmap & status
 
-## Roadmap
+| Milestone | Deliverable | Status |
+|---|---|---|
+| M0 | Fixture corpus generator + expected verdicts (self-checking ground truth) | ✅ done — `m0-corpus-v1` |
+| M1 | Epistemic core: models, state machine, promotion rules (pure functions) | ✅ done — `m1-core-v1/v2` |
+| M2 | Ingestion & profiling (incl. dirty-Excel normalization) | ✅ done — `m2-ingestion-v1` |
+| M3 | Check engine + epistemics runtime — validated **without any LLM** | ✅ done — `m3-probes-v1` |
+| M4 | LLM contracts V1/V2 (hypotheses, check planning) + offline stub mode | ✅ done — `m4-llm-v1` |
+| — | Claim viewer (read-only validation UI, one self-contained HTML) | ✅ done — owned code |
+| M5 | Document pipeline + V3 (interpretation with anchor validation) | next |
+| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / limited / blocked) | specified |
+| M7 | Staleness propagation & replay against a "prod" copy | planned |
+| M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart | planned |
 
-| Milestone | Deliverable |
-|---|---|
-| M0 | Fixture corpus generator + expected verdicts (self-checking ground truth) |
-| M1 | Epistemic core: models, state machine, promotion rules (pure functions) |
-| M2 | Ingestion & profiling (incl. dirty-Excel normalization) |
-| M3 | Probe engine + epistemics runtime — validated **without any LLM** |
-| M4 | LLM contracts V1/V2 (hypotheses, probe binding) + offline stub mode |
-| M5 | Document pipeline + V3 (interpretation with anchor validation) |
-| M6 | Question flow + V4 (SQL generation, assumption capture, gap report) |
-| M7 | Staleness propagation & replay against a "prod" copy |
-| M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart |
+Authoritative German spec: `docs/spec/` (read-only). Live project state:
+`meta/memory.md`.

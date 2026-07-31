@@ -1,7 +1,7 @@
 """The ``llm:`` block of before-ai.yaml — provider, tiers, offline switch.
 
 Model tiers follow the architecture: hypothesis generation (V1) and role
-binding are frontier-class work, plain probe binding (V2) runs mid-tier.
+binding are frontier-class work, plain check binding (V2) runs mid-tier.
 All overridable per project. The API key is read from an environment
 variable only — never from any file, never logged, never committed.
 """
@@ -28,7 +28,7 @@ class LLMConfig(BaseModel):
     offline: bool = False
     api_key_env: str = "ANTHROPIC_API_KEY"
     models: dict[str, str] = DEFAULT_MODELS
-    roles_file: str | None = None
+    domain_guide_file: str | None = None
     fixtures_dir: str | None = None  # required when offline
 
     @classmethod

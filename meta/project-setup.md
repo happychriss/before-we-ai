@@ -27,10 +27,9 @@ This is required when `claude install` warns that the install location is not in
 ├── README.md        # human-facing product front page
 ├── src/             # all code (pyproject.toml lives here; install/test from src/)
 ├── docs/            # everything about the software:
-│   ├── requirements.md   #   what + status (canonical)
 │   ├── architecture.md   #   confirmed design decisions & gotchas
 │   ├── corpus.md         #   frozen corpus facts
-│   ├── SIMPLE-README.md  #   plain-German explainer, grows per milestone
+│   ├── before-ai-concept.md  #   plain-language walkthrough of the flow
 │   └── spec/             #   authoritative external spec (read-only, never edit)
 ├── meta/            # how we work: this file, conventions.md, memory.md, env notes
 └── scripts/         # (added later) self-contained ops scripts: start, viewer, cleanup
@@ -61,7 +60,7 @@ docs/spec/            →    docs/*.md              →    meta/memory.md
 
 ### meta/memory.md
 - Live state only: current focus + open items that change session to session
-- Gotchas and confirmed detail belong in `docs/`; feature status in `docs/requirements.md`
+- Gotchas and confirmed detail belong in `docs/`; feature status in the `README.md` roadmap table
 
 ---
 

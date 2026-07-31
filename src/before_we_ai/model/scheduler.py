@@ -1,7 +1,7 @@
 """Claim-dependency resolution — a mini-scheduler, not a workflow system.
 
-Claims may declare dependencies; a probe only runs once every prerequisite
-claim is at least ``tested`` (e.g. subledger=GL only after both role
+Claims may declare dependencies; a check only runs once every prerequisite
+claim is at least ``test-supported`` (e.g. subledger=GL only after both role
 bindings hold). Resolution is a plain topological sort.
 """
 
@@ -10,7 +10,7 @@ from collections.abc import Iterable
 from before_we_ai.model.enums import ClaimStatus
 from before_we_ai.model.objects import Claim
 
-_PROBE_READY = (ClaimStatus.TESTED, ClaimStatus.BUSINESS_CONFIRMED)
+_CHECK_READY = (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
 
 
 class CycleError(Exception):
@@ -49,11 +49,11 @@ def topological_order(claims: Iterable[Claim]) -> list[str]:
     return order
 
 
-def ready_for_probe(claim: Claim, claims_by_id: dict[str, Claim]) -> bool:
-    """A probe may run once every prerequisite is at least ``tested``."""
+def ready_for_check(claim: Claim, claims_by_id: dict[str, Claim]) -> bool:
+    """A check may run once every prerequisite is at least ``test-supported``."""
     for dep in claim.depends_on:
         if dep not in claims_by_id:
             raise KeyError(f"claim {claim.id} depends on unknown claim {dep}")
-        if claims_by_id[dep].status not in _PROBE_READY:
+        if claims_by_id[dep].status not in _CHECK_READY:
             return False
     return True

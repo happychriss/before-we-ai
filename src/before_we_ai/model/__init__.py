@@ -4,23 +4,23 @@ No IO, no filesystem, no network. Everything here is unit-testable in
 isolation; persistence lives in ``before_we_ai.store``.
 """
 
-from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, ProbeVerdict
+from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, CheckVerdict
 from before_we_ai.model.ids import new_id
 from before_we_ai.model.objects import (
     MAX_EXCEPTION_SAMPLES,
     Claim,
-    ColumnProfile,
+    DataProfile,
     ConceptClaim,
     EvidenceRecord,
     Predicate,
-    Probe,
-    QuestionCard,
-    RoleBindingClaim,
+    CheckPlan,
+    ClarificationQuestion,
+    MappingClaim,
     Scope,
     Source,
     Validity,
 )
-from before_we_ai.model.scheduler import CycleError, ready_for_probe, topological_order
+from before_we_ai.model.scheduler import CycleError, ready_for_check, topological_order
 from before_we_ai.model.semantics import claim_key, gap_load, questions_resting_on
 from before_we_ai.model.transitions import (
     PromotionError,
@@ -33,18 +33,18 @@ __all__ = [
     "Actor",
     "Claim",
     "ClaimStatus",
-    "ColumnProfile",
+    "DataProfile",
     "ConceptClaim",
     "CycleError",
     "EvidenceRecord",
     "EvidenceType",
     "MAX_EXCEPTION_SAMPLES",
     "Predicate",
-    "Probe",
-    "ProbeVerdict",
+    "CheckPlan",
+    "CheckVerdict",
     "PromotionError",
-    "QuestionCard",
-    "RoleBindingClaim",
+    "ClarificationQuestion",
+    "MappingClaim",
     "Scope",
     "Source",
     "Validity",

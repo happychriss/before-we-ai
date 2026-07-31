@@ -12,10 +12,10 @@ about how to work.
 
 - **Corpus is test infrastructure, product stays domain-agnostic.** `src/corpus/`
   (incl. its finance answer-key logic) is never imported by `src/before_we_ai/`.
-  Domain rules enter the product only as data — tell statements, documents, probed
+  Domain rules enter the product only as data — tell statements, documents, checked
   patterns — becoming Claims, never Python. When tempted to add domain logic, ask:
   "should this be a Claim instead?"
-- **Status changes only via probe or human evidence.** A new evidence type or status
+- **Status changes only via check or human evidence.** A new evidence type or status
   is an epistemic-law change — treat as such. AI/system actors structurally cannot
   author promoting evidence.
 - **Growth contract:** a new normalization rule = one case in `sources/canonical.py`
@@ -43,9 +43,11 @@ about how to work.
 
 ## Documentation duties (per milestone, before tagging)
 
-- Append a plain-German section to `docs/SIMPLE-README.md` (analogies, no jargon,
-  ends with "Mx in einem Satz") and update its "Wie geht es weiter?" list.
-- Update `docs/requirements.md` feature status and `docs/architecture.md` with
+- Update `docs/before-ai-concept.md`: fold what the milestone added into the
+  one linear flow (plain language, canonical vocabulary only — the words in
+  `before_we_ai/glossary.py`, no synonyms, no metaphors) and refresh its
+  "What comes next?" list and M5/M6 markers.
+- Update the `README.md` roadmap status and `docs/architecture.md` with
   confirmed design decisions; slim `meta/memory.md` back to live state.
 - Tag milestones `mN-<name>-vX` and push.
 
@@ -57,10 +59,11 @@ extend it, and hold it to the same standards as the rest of the codebase.
 
 ## Language policy
 
-- `docs/spec/` stays **German** — it is the owner's authoritative spec and reading aid.
-- `docs/SIMPLE-README.md` stays **plain German** by design (per-milestone explainer).
+- `docs/spec/` stays **German** — it is the owner's authoritative spec and reading
+  aid; new canonical English object names appear there as proper nouns.
 - Everything else — all other documentation, code, comments, commit messages — is
-  **English**. German terms encountered outside spec/ and SIMPLE-README may simply
-  be replaced with English equivalents.
+  **English**. German terms encountered outside spec/ may simply be replaced with
+  English equivalents (the German↔English table lives in
+  `before_we_ai/glossary.py`).
 - No mass rewrite of existing mixed-language content: clean it up opportunistically
   whenever you touch a file anyway.

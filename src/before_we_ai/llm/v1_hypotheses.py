@@ -2,7 +2,7 @@
 
 One frontier-tier call: the full profile context in, a validated
 ``HypothesisBatch`` out, every surviving hypothesis mapped to an
-``inferred`` claim and saved with claim-key dedup. Hypotheses that fail
+``proposed`` claim and saved with claim-key dedup. Hypotheses that fail
 the semantic checks even after the retry are skipped individually and
 reported — a bad hypothesis never sinks the batch, and a failed call
 never raises.

@@ -1,4 +1,7 @@
 # before-we-ai – Evidenzbasierte Context Discovery
+
+> **Terminologie-Hinweis (2026-07-31):** Die kanonischen englischen Objektnamen wurden neu ausgerichtet — Sonde → *Check* (`CheckDefinition`/`CheckPlan`), Fachfrage → *ClarificationQuestion*, Rollenbindung → *MappingClaim*, Status `inferred`/`tested` → `proposed`/`test-supported`. Deutsch↔Englisch-Tabelle: `src/before_we_ai/glossary.py` (GERMAN_TERMS). Die deutsche Fachsprache dieses Dokuments bleibt unverändert.
+
 *Konzeptzusammenfassung v3 — das „Warum" und die Leitplanken. Das „Wie" steht in den referenzierten Dokumenten und wird hier nicht wiederholt.*
 
 ## 1. Dokumentenlandkarte
@@ -15,7 +18,7 @@ Die Wissenschaft liefert alle Bausteine, zusammengesetzt hat sie niemand: Datase
 
 ## 4. Kernprinzipien (das Destillat)
 
-**Epistemik ohne Mathematik, dafür mit Buchhaltung.** Der Mensch in der Loop ersetzt Kalibrierung, Fusionsmathematik und Relevanz-Engine; das Tool leistet, was Menschen nicht können: Behauptung und Beleg strukturell trennen, automatisch falsifizieren, Konflikt von Nichtwissen unterscheiden. Claims sind Git-versionierte Dateien mit fünf Status und Evidenzliste statt Konfidenzzahl; die KI kann strukturell nur `inferred` erzeugen — Statuswechsel gehören Sonde und Mensch. **Das Brain sitzt in der Pipeline, nicht in der KI:** Das LLM ist Subroutine an vier Vertragsstellen mit zugeschnittenem Kontext; Modellqualität bestimmt Effizienz, nie Korrektheit. **Relevanz zeigt sich am Gebrauch:** Hypothesen und Nutzeraussagen werden nicht vorab kuratiert — tragfähig wird, worauf Fragen ruhen (epistemische Stückliste); der Governance-Gap ist eine Lastliste, kein Score. **Sonden speisen sich aus vier Quellen:** Claim-Negation, Strukturformen-Katalog, Domänen-Invarianten (gegen Rollen formuliert, die Bindung ist selbst ein Claim), Fehler-Archäologie — Letztere ist kristallisierte Berufserfahrung und der eigentliche, nicht kopierbare Kern.
+**Epistemik ohne Mathematik, dafür mit Buchhaltung.** Der Mensch in der Loop ersetzt Kalibrierung, Fusionsmathematik und Relevanz-Engine; das Tool leistet, was Menschen nicht können: Behauptung und Beleg strukturell trennen, automatisch falsifizieren, Konflikt von Nichtwissen unterscheiden. Claims sind Git-versionierte Dateien mit fünf Status und Evidenzliste statt Konfidenzzahl; die KI kann strukturell nur `proposed` erzeugen — Statuswechsel gehören Sonde und Mensch. **Das Brain sitzt in der Pipeline, nicht in der KI:** Das LLM ist Subroutine an vier Vertragsstellen mit zugeschnittenem Kontext; Modellqualität bestimmt Effizienz, nie Korrektheit. **Relevanz zeigt sich am Gebrauch:** Hypothesen und Nutzeraussagen werden nicht vorab kuratiert — tragfähig wird, worauf Fragen ruhen (epistemische Stückliste); der Governance-Gap ist eine Lastliste, kein Score. **Sonden speisen sich aus vier Quellen:** Claim-Negation, Strukturformen-Katalog, Domänen-Invarianten (gegen Rollen formuliert, die Bindung ist selbst ein Claim), Fehler-Archäologie — Letztere ist kristallisierte Berufserfahrung und der eigentliche, nicht kopierbare Kern.
 
 ## 5. Leitplanken und Risiken
 

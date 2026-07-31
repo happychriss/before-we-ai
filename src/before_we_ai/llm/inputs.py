@@ -19,9 +19,9 @@ import json
 
 from pydantic import BaseModel
 
-from before_we_ai.llm.roles import RoleSet
+from before_we_ai.llm.domain_guide import DomainGuide
 from before_we_ai.llm.vocabulary import INVARIANT_TEMPLATES, PREDICATES
-from before_we_ai.model.objects import Claim, ColumnProfile, RoleBindingClaim
+from before_we_ai.model.objects import Claim, DataProfile, MappingClaim
 from before_we_ai.store.repository import ProjectStore
 
 
@@ -39,11 +39,11 @@ def _built(text: str, trim_notices: list[str] | None = None) -> BuiltInput:
     )
 
 
-def _sorted_profiles(store: ProjectStore) -> list[ColumnProfile]:
+def _sorted_profiles(store: ProjectStore) -> list[DataProfile]:
     return sorted(store.profiles.values(), key=lambda p: (p.table, p.column))
 
 
-def _render_profile(p: ColumnProfile, *, top_k: int | None = None,
+def _render_profile(p: DataProfile, *, top_k: int | None = None,
                     patterns: bool = True) -> str:
     s = p.stats
     lines = [
@@ -125,7 +125,7 @@ def build_profile_context(store: ProjectStore, matrix: dict,
     return _assemble(render, max_chars)
 
 
-def build_role_context(store: ProjectStore, matrix: dict, roles: RoleSet,
+def build_role_context(store: ProjectStore, matrix: dict, roles: DomainGuide,
                        *, max_chars: int | None = None) -> BuiltInput:
     """Role-binding input: the role definitions first, then the V1 context."""
     def render(patterns: bool = True, top_k: int | None = None) -> str:
@@ -200,7 +200,7 @@ def build_binding_context(store: ProjectStore, labels: dict[str, Claim],
         claim_blocks = []
         for label, claim in labels.items():
             predicate = claim.predicate
-            if isinstance(claim, RoleBindingClaim):
+            if isinstance(claim, MappingClaim):
                 admissible = INVARIANT_TEMPLATES
             elif predicate and predicate.name in PREDICATES:
                 admissible = PREDICATES[predicate.name].templates

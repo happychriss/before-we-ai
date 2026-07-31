@@ -12,16 +12,16 @@ from before_we_ai.model import (
     EvidenceRecord,
     EvidenceType,
     Predicate,
-    Probe,
-    ProbeVerdict,
-    QuestionCard,
-    RoleBindingClaim,
+    CheckPlan,
+    CheckVerdict,
+    ClarificationQuestion,
+    MappingClaim,
     Source,
     create_claim,
 )
 from before_we_ai.model.transitions import attach_evidence
-from before_we_ai.model.objects import ColumnProfile
-from before_we_ai.probes.library import REGISTRY
+from before_we_ai.model.objects import DataProfile
+from before_we_ai.checks.library import REGISTRY
 from before_we_ai.store import ProjectStore, init_project
 from claim_viewer import render_project
 
@@ -48,19 +48,19 @@ def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
         source_ids=[source.id],
     )
     store.save_claim(parent)
-    probe = EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT,
-        actor=Actor.PROBE,
+    check = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
         claim_id=parent.id,
-        verdict=ProbeVerdict.FAIL,
+        verdict=CheckVerdict.FAIL,
         population=12,
         exception_count=2,
         exception_samples=[{"invoice_id": "INV-1", "order_id": "missing"}],
-        result_ref="cache/probe.parquet",
+        result_ref="cache/check.parquet",
         source_fingerprints={"erp": "abc"},
     )
-    store.add_evidence(probe)
-    parent = attach_evidence(parent, probe, [])
+    store.add_evidence(check)
+    parent = attach_evidence(parent, check, [])
     assert parent.status is ClaimStatus.CONTRADICTED
     store.save_claim(parent)
 
@@ -69,10 +69,10 @@ def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
         Actor.HUMAN,
         depends_on=[parent.id],
         source_ids=[source.id],
-    ).model_copy(update={"derived_from": parent.id, "derived_from_evidence": probe.id})
+    ).model_copy(update={"derived_from": parent.id, "derived_from_evidence": check.id})
     store.save_claim(child)
 
-    binding = RoleBindingClaim(
+    binding = MappingClaim(
         statement="Invoice id binds to invoice column",
         created_by=Actor.AI,
         role="invoice_id",
@@ -81,9 +81,9 @@ def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
     )
     store.save_claim(binding)
 
-    store.save_question(QuestionCard(question="Which invoices are missing orders?", claim_ids=[parent.id]))
+    store.save_question(ClarificationQuestion(question="Which invoices are missing orders?", claim_ids=[parent.id]))
     store.save_profile(
-        profile := ColumnProfile(
+        profile := DataProfile(
             source_id=source.id,
             table="erp__invoices",
             column="invoice_id",
@@ -124,9 +124,9 @@ def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
     html = render_project(root)
 
     assert "Invoices reference orders" in html
-    assert "Conflict is present" in html or "failing probe" in html
+    assert "Conflict is present" in html or "failing check" in html
     assert f'href="#claim-{parent.id}"' in html
-    assert f'id="evidence-{probe.id}"' in html
+    assert f'id="evidence-{check.id}"' in html
     assert "Exception samples" in html
     assert "Which invoices are missing orders?" in html
     assert "erp__invoices.invoice_id" in html
@@ -148,14 +148,14 @@ def test_funnel_counts_the_pipeline_stages(tmp_path):
         ),
     )
     store.save_claim(bound)
-    probe = Probe(template="anti_join", claim_id=bound.id, params={})
-    store.save_probe(probe)
+    check = CheckPlan(template="anti_join", claim_id=bound.id, params={})
+    store.save_check_plan(check)
     result = EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT,
-        actor=Actor.PROBE,
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
         claim_id=bound.id,
-        probe_id=probe.id,
-        verdict=ProbeVerdict.PASS,
+        check_plan_id=check.id,
+        verdict=CheckVerdict.PASS,
         population=10,
         exception_count=0,
     )
@@ -171,7 +171,7 @@ def test_funnel_counts_the_pipeline_stages(tmp_path):
         ),
     )
     store.save_claim(unbound)
-    # V2 declares why it built no probe — the model's verbatim reason, persisted
+    # V2 declares why it built no check — the model's verbatim reason, persisted
     refusal = EvidenceRecord(
         type=EvidenceType.DECLARATION,
         actor=Actor.SYSTEM,
@@ -203,30 +203,30 @@ def test_funnel_counts_the_pipeline_stages(tmp_path):
     assert html.count('data-stage="unbindable"') == 1
     assert html.count('data-stage="semantic_only"') == 1
     assert html.count('data-executed="yes"') == 1
-    # the refusal is readable where the probe would have been
+    # the refusal is readable where the check would have been
     assert "no documented pairs available to populate the template" in html
     assert "Never tested" in html
     # the funnel filters on the derived status, not the stored one
-    assert 'data-status="tested"' in html
+    assert 'data-status="test-supported"' in html
 
 
-def test_role_elections_show_winner_loser_and_fachfrage(tmp_path):
+def test_role_elections_show_winner_loser_and_clarification(tmp_path):
     root = init_project(tmp_path / "elections")
     store = ProjectStore(root)
 
-    winner = RoleBindingClaim(
+    winner = MappingClaim(
         statement="role 'journal' is played by de_erp__gl_postings",
         created_by=Actor.AI,
         role="journal",
         binding={"table": "de_erp__gl_postings"},
     )
-    loser = RoleBindingClaim(
+    loser = MappingClaim(
         statement="role 'journal' is played by buchungen_report",
         created_by=Actor.AI,
         role="journal",
         binding={"table": "buchungen_report"},
     )
-    orphan = RoleBindingClaim(
+    orphan = MappingClaim(
         statement="role 'intercompany' is played by de_erp__intercompany",
         created_by=Actor.AI,
         role="intercompany",
@@ -236,18 +236,18 @@ def test_role_elections_show_winner_loser_and_fachfrage(tmp_path):
         store.save_claim(claim)
 
     for claim, verdict, exceptions in (
-        (winner, ProbeVerdict.PASS, 0),
-        (loser, ProbeVerdict.FAIL, 24),
-        (orphan, ProbeVerdict.FAIL, 1),
+        (winner, CheckVerdict.PASS, 0),
+        (loser, CheckVerdict.FAIL, 24),
+        (orphan, CheckVerdict.FAIL, 1),
     ):
         template = "balance" if claim is not orphan else "ic_symmetry"
-        probe = Probe(template=template, claim_id=claim.id, roles=[claim.role], params={})
-        store.save_probe(probe)
+        check = CheckPlan(template=template, claim_id=claim.id, roles=[claim.role], params={})
+        store.save_check_plan(check)
         record = EvidenceRecord(
-            type=EvidenceType.PROBE_RESULT,
-            actor=Actor.PROBE,
+            type=EvidenceType.CHECK_RESULT,
+            actor=Actor.CHECK,
             claim_id=claim.id,
-            probe_id=probe.id,
+            check_plan_id=check.id,
             verdict=verdict,
             population=383,
             exception_count=exceptions,
@@ -255,7 +255,7 @@ def test_role_elections_show_winner_loser_and_fachfrage(tmp_path):
         store.add_evidence(record)
         store.save_claim(attach_evidence(claim, record, []))
 
-    card = QuestionCard(
+    card = ClarificationQuestion(
         question="Für die Rolle 'intercompany' hat keine Bindung ihre Sonde bestanden — welche Quelle führt?",
         claim_ids=[orphan.id],
     )
@@ -268,13 +268,13 @@ def test_role_elections_show_winner_loser_and_fachfrage(tmp_path):
     assert "felled by" in html
     assert "24 exceptions in 383 rows" in html
     assert "finance law" in html  # the domain-law tag of the invariant template
-    assert "No winner → Fachfrage" in html
+    assert "No winner → clarification question" in html
     assert f'href="#question-{card.id}"' in html
-    # the Fachfragen inbox lists the open question on top
-    assert "Fachfragen — open questions (1)" in html
+    # the Clarification questions inbox lists the open question on top
+    assert "Clarification questions — open questions (1)" in html
 
 
-def test_probe_card_shows_the_rendered_sql_that_was_asked(tmp_path):
+def test_check_card_shows_the_rendered_sql_that_was_asked(tmp_path):
     root = init_project(tmp_path / "sql")
     store = ProjectStore(root)
 
@@ -284,22 +284,22 @@ def test_probe_card_shows_the_rendered_sql_that_was_asked(tmp_path):
         predicate=Predicate(name="balance", params={"journal": "de_erp__gl_postings"}),
     )
     store.save_claim(claim)
-    probe = Probe(template="balance", claim_id=claim.id, roles=["journal"], params={})
-    store.save_probe(probe)
+    check = CheckPlan(template="balance", claim_id=claim.id, roles=["journal"], params={})
+    store.save_check_plan(check)
     sql = (
         'SELECT "doc_ref", sum(CAST("amount_local_currency" AS DOUBLE)) AS total\n'
         'FROM "de_erp__gl_postings"\n'
         'GROUP BY "doc_ref"\n'
         "HAVING abs(total) > 0.01"
     )
-    # The runner records the rendered SQL on the probe-result payload — that is
+    # The runner records the rendered SQL on the check-result payload — that is
     # where the viewer must read it from.
     record = EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT,
-        actor=Actor.PROBE,
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
         claim_id=claim.id,
-        probe_id=probe.id,
-        verdict=ProbeVerdict.PASS,
+        check_plan_id=check.id,
+        verdict=CheckVerdict.PASS,
         population=4020,
         exception_count=0,
         payload={"template": "balance", "sql": sql, "summary": "no violations"},
@@ -310,19 +310,19 @@ def test_probe_card_shows_the_rendered_sql_that_was_asked(tmp_path):
     html = render_project(root)
 
     assert "Rendered SQL — the question that was asked of the data" in html
-    # the exact SQL, escaped, inside a code block under the probe card
+    # the exact SQL, escaped, inside a code block under the check card
     assert "<pre><code>" in html
     assert "GROUP BY &quot;doc_ref&quot;" in html
     assert "HAVING abs(total) &gt; 0.01" in html
 
 
-def test_probe_without_a_run_says_no_sql_was_asked(tmp_path):
+def test_check_without_a_run_says_no_sql_was_asked(tmp_path):
     root = init_project(tmp_path / "no-sql")
     store = ProjectStore(root)
 
     claim = create_claim("Postings reference invoices", Actor.AI)
     store.save_claim(claim)
-    store.save_probe(Probe(template="anti_join", claim_id=claim.id, params={}))
+    store.save_check_plan(CheckPlan(template="anti_join", claim_id=claim.id, params={}))
 
     html = render_project(root)
 
@@ -331,8 +331,8 @@ def test_probe_without_a_run_says_no_sql_was_asked(tmp_path):
 
 def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
     root = init_project(tmp_path / "domain")
-    roles_file = tmp_path / "roles_finance.yaml"
-    roles_file.write_text(
+    domain_guide_file = tmp_path / "domain_guide_finance.yaml"
+    domain_guide_file.write_text(
         "domain: finance\nroles:\n  journal: The transactional ledger of record.\n"
         "  subledger_ar: The accounts-receivable open items.\n",
         encoding="utf-8",
@@ -341,7 +341,7 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
     config["sources"] = [
         {"name": "de_erp", "kind": "duckdb", "location": "/data/DE/erp.duckdb"}
     ]
-    config["llm"] = {"roles_file": str(roles_file)}
+    config["llm"] = {"domain_guide_file": str(domain_guide_file)}
     (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
 
     html = render_project(root)
@@ -349,10 +349,10 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
     assert "Domain pack — the declared domain inputs" in html
     # 1 — the declared sources
     assert "de_erp" in html and "/data/DE/erp.duckdb" in html
-    # 2 — the role pack: file, domain, count and names
+    # 2 — the domain guide: file, domain, count and names
     assert "2 roles" in html
     assert "journal" in html and "subledger_ar" in html
-    assert str(roles_file) in html
+    assert str(domain_guide_file) in html
     # 3 — the domain-law templates, and the generic remainder named as such
     for template in ("balance", "subledger_equals_gl", "ic_symmetry"):
         assert f"<code>{template}</code>" in html
@@ -367,7 +367,7 @@ def test_domain_pack_panel_is_honest_when_nothing_is_declared(tmp_path):
     html = render_project(root)
 
     assert "No sources declared in before-ai.yaml." in html
-    assert "No role pack declared (llm.roles_file)." in html
+    assert "No domain guide declared (llm.domain_guide_file)." in html
 
 
 def test_core_terms_define_the_canonical_vocabulary(tmp_path):
@@ -380,13 +380,17 @@ def test_core_terms_define_the_canonical_vocabulary(tmp_path):
     for term in (
         "hypothesis",
         "claim",
+        "mapping claim",
         "status",
+        "domain guide",
         "role",
-        "role-binding candidate",
-        "binding",
-        "probe",
-        "domain-law template",
-        "Fachfrage",
+        "data profile",
+        "check definition",
+        "check plan",
+        "check run",
+        "evidence",
+        "domain law",
+        "clarification question",
     ):
         assert f"<dt>{term}</dt>" in html
 

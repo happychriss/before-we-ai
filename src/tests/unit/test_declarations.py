@@ -29,5 +29,5 @@ def test_declarations_never_change_status():
     records = [declaration() for _ in range(3)]
     for record in records:
         claim = attach_evidence(claim, record, [])
-    assert claim.status is ClaimStatus.INFERRED
-    assert resolve_status(claim, records) is ClaimStatus.INFERRED
+    assert claim.status is ClaimStatus.PROPOSED
+    assert resolve_status(claim, records) is ClaimStatus.PROPOSED

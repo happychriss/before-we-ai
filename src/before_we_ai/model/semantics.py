@@ -12,9 +12,9 @@ import json
 from collections.abc import Iterable
 
 from before_we_ai.model.enums import ClaimStatus
-from before_we_ai.model.objects import Claim, QuestionCard
+from before_we_ai.model.objects import Claim, ClarificationQuestion
 
-_PROVEN = (ClaimStatus.TESTED, ClaimStatus.BUSINESS_CONFIRMED)
+_PROVEN = (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
 
 
 def claim_key(claim: Claim) -> str | None:
@@ -39,14 +39,14 @@ def claim_key(claim: Claim) -> str | None:
 
 
 def questions_resting_on(
-    claim_id: str, questions: Iterable[QuestionCard]
-) -> list[QuestionCard]:
+    claim_id: str, questions: Iterable[ClarificationQuestion]
+) -> list[ClarificationQuestion]:
     """All question cards whose bill of materials includes the claim."""
     return [q for q in questions if claim_id in q.claim_ids]
 
 
 def gap_load(
-    claims: Iterable[Claim], questions: Iterable[QuestionCard]
+    claims: Iterable[Claim], questions: Iterable[ClarificationQuestion]
 ) -> list[tuple[Claim, int]]:
     """Unproven claims ranked by how many questions rest on them.
 

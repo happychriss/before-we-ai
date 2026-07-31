@@ -10,9 +10,9 @@
 #
 # decided_by declares each role's settlement path (linted on load; it
 # never enters a prompt): the domain law that can elect it, or
-# "fachfrage" — no arithmetic can decide what a column *means*, the
+# "clarification" — no arithmetic can decide what a column *means*, the
 # candidates go to the humans — or "slot" (only carried inside another
-# role's law). Every role ends in a probe verdict or a Fachfrage,
+# role's law). Every role ends in a check verdict or a clarification question,
 # never in nothing.
 domain: finance
 roles:
@@ -28,21 +28,21 @@ roles:
       The signed posting amount in local currency on the journal — the column
       that must sum to zero per document.
   doc_ref:
-    decided_by: fachfrage
+    decided_by: clarification
     definition: >-
       The document (voucher) reference that groups journal lines into balanced
       postings.
   account:
-    decided_by: fachfrage
+    decided_by: clarification
     definition: >-
       The account identifier on the journal, resolvable against a chart of
       accounts.
   period:
-    decided_by: fachfrage
+    decided_by: clarification
     definition: >-
       The posting period on the journal, at fiscal-period granularity.
   entity:
-    decided_by: fachfrage
+    decided_by: clarification
     definition: >-
       The legal entity or company code a posting belongs to.
   subledger_ar:

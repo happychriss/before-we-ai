@@ -29,18 +29,18 @@ from pathlib import Path
 
 import yaml
 
-from _corpus import EXPECTED_VERDICTS, ROLES_FILE, build_corpus_project
+from _corpus import EXPECTED_VERDICTS, DOMAIN_GUIDE_FILE, build_corpus_project
 
 from before_we_ai.engine import run_ready
 from before_we_ai.llm import (
-    bind_probes,
+    plan_checks,
     hypothesize,
-    load_roles,
-    propose_role_bindings,
-    resolve_roles,
+    load_domain_guide,
+    propose_mappings,
+    resolve_mappings,
 )
 from before_we_ai.model import Actor, ClaimStatus
-from before_we_ai.model.objects import Claim, ConceptClaim, RoleBindingClaim
+from before_we_ai.model.objects import Claim, ConceptClaim, MappingClaim
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore
 
@@ -115,7 +115,7 @@ def _haystack(claim: Claim) -> str:
                         sort_keys=True, ensure_ascii=False, default=str)]
     if isinstance(claim, ConceptClaim):
         parts += [claim.term, claim.definition]
-    if isinstance(claim, RoleBindingClaim):
+    if isinstance(claim, MappingClaim):
         parts.append(json.dumps(claim.binding, sort_keys=True, ensure_ascii=False))
     return " ".join(p for p in parts if p).lower()
 
@@ -143,28 +143,28 @@ def main() -> int:
     workdir = Path(args.keep) if args.keep else Path(tempfile.mkdtemp(prefix="recall-"))
     root = build_corpus_project(workdir / "project", offline=args.offline)
     store = ProjectStore(root)
-    roles = load_roles(ROLES_FILE)
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     scenario = "corpus"  # fixtures and logs share the scenario name
 
     v1 = hypothesize(root, store=store, scenario=scenario)
-    proposals = propose_role_bindings(root, roles=roles, store=store,
+    proposals = propose_mappings(root, roles=roles, store=store,
                                       scenario=scenario)
-    v2 = bind_probes(root, store=store, scenario=scenario)
+    v2 = plan_checks(root, store=store, scenario=scenario)
     con = open_catalog(root)
     try:
         engine = run_ready(store, con)
     finally:
         con.close()
     store = ProjectStore(root)
-    role_cards = resolve_roles(store, roles)
+    role_cards = resolve_mappings(store, roles)
 
     ai_claims = [c for c in store.claims.values() if c.created_by is Actor.AI]
 
     # -- false promotion (hard invariant, reported not gated) -------------
     false_promotions = [
         c for c in ai_claims
-        if c.status is not ClaimStatus.INFERRED
-        and not any(store.evidence[eid].actor is Actor.PROBE
+        if c.status is not ClaimStatus.PROPOSED
+        and not any(store.evidence[eid].actor is Actor.CHECK
                     for eid in c.evidence_ids if eid in store.evidence)
     ]
 
@@ -212,9 +212,9 @@ def main() -> int:
         f"claims: {len(v1.claims_created)} hypotheses "
         f"(+{v1.claims_deduped} deduped, {len(v1.skipped)} skipped), "
         f"{len(proposals.claims_created)} role candidates",
-        f"probes: {len(v2.probes_created)} bound, {len(v2.unbindable)} unbindable, "
+        f"checks: {len(v2.check_plans_created)} bound, {len(v2.unbindable)} unbindable, "
         f"{len(v2.semantic_only)} semantic-only, {len(v2.unanswered)} unanswered",
-        f"engine: {len(engine.executed)} probes executed, {len(engine.skipped)} skipped",
+        f"engine: {len(engine.executed)} checks executed, {len(engine.skipped)} skipped",
         f"role questions: {len(role_cards)}",
         f"token usage: {usage or 'n/a (stub)'}",
         "",

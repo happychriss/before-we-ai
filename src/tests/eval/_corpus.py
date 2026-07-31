@@ -15,7 +15,7 @@ from before_we_ai.store import init_project
 SRC = Path(__file__).resolve().parents[2]
 CORPUS = SRC / "corpus" / "data"
 FIXTURES = SRC / "tests" / "fixtures" / "llm"
-ROLES_FILE = SRC / "tests" / "fixtures" / "roles_finance.yaml"
+DOMAIN_GUIDE_FILE = SRC / "tests" / "fixtures" / "domain_guide_finance.yaml"
 EXPECTED_VERDICTS = CORPUS / "expected_verdicts.yaml"
 
 SOURCES = [
@@ -35,7 +35,7 @@ def build_corpus_project(root: Path, *, offline: bool) -> Path:
     init_project(root, name="seeded-recall")
     config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8"))
     config["sources"] = SOURCES
-    llm_block = {"roles_file": str(ROLES_FILE)}
+    llm_block = {"domain_guide_file": str(DOMAIN_GUIDE_FILE)}
     if offline:
         llm_block |= {"offline": True, "fixtures_dir": str(FIXTURES)}
     config["llm"] = llm_block

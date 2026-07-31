@@ -26,7 +26,7 @@ SCENARIO = "corpus"  # shared with fixtures and the eval tools
 
 sys.path.insert(0, str(REPO / "src" / "tests" / "eval"))  # _corpus (test-side)
 import _corpus  # noqa: E402
-from _corpus import ROLES_FILE, build_corpus_project  # noqa: E402
+from _corpus import DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
 
 
 def _corpus_file() -> str:
@@ -34,14 +34,14 @@ def _corpus_file() -> str:
 
 from before_we_ai.engine import run_ready  # noqa: E402
 from before_we_ai.llm import (  # noqa: E402
-    bind_probes,
+    plan_checks,
     hypothesize,
-    load_roles,
-    propose_role_bindings,
-    resolve_roles,
+    load_domain_guide,
+    propose_mappings,
+    resolve_mappings,
 )
 from before_we_ai.model import Actor  # noqa: E402
-from before_we_ai.model.objects import RoleBindingClaim  # noqa: E402
+from before_we_ai.model.objects import MappingClaim  # noqa: E402
 from before_we_ai.profile.candidates import load_matrix  # noqa: E402
 from before_we_ai.sources import open_catalog  # noqa: E402
 from before_we_ai.store import ProjectStore  # noqa: E402
@@ -231,7 +231,7 @@ def stage_hypotheses(args) -> None:
         for name, n in Counter(
                 c.predicate.name for c in created if c.predicate).most_common():
             print(f"  {n:3d} × {name}")
-        section("sample claims (all must be inferred, created_by=ai)")
+        section("sample claims (all must be proposed, created_by=ai)")
         for claim in created[: args.top]:
             print(f"  [{claim.status.value}] ({claim.predicate.name}) "
                   f"{clip(claim.statement, 80)}")
@@ -243,10 +243,10 @@ def stage_hypotheses(args) -> None:
 
 def stage_role_proposals(args) -> None:
     store = need_project()
-    roles = load_roles(ROLES_FILE)
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     inputs(
         f"role definitions ({len(roles.names)} roles, domain '{roles.domain}'): "
-        f"{ROLES_FILE.relative_to(REPO)}",
+        f"{DOMAIN_GUIDE_FILE.relative_to(REPO)}",
         "  (data, not code — the product stays domain-agnostic; this file is "
         "deliberately\n   clean: the corpus generator's roles.yaml names a decoy "
         "and must never be used)",
@@ -254,14 +254,14 @@ def stage_role_proposals(args) -> None:
         "profiles + candidate matrix (llm/inputs.py: build_role_context)",
         LLM_INPUT_NOTE,
     )
-    report = propose_role_bindings(PROJECT, roles=roles, store=store,
+    report = propose_mappings(PROJECT, roles=roles, store=store,
                                    scenario=SCENARIO)
     section("role-binding proposals (frontier tier)")
     _print_call_report(report, store)
     section("candidates per role (competing candidates are wanted — "
-            "probes decide, not the model)")
+            "checks decide, not the model)")
     role_claims = [c for c in store.claims.values()
-                   if isinstance(c, RoleBindingClaim)]
+                   if isinstance(c, MappingClaim)]
     for role in roles.names:
         mine = [c for c in role_claims if c.role == role]
         print(f"  {role:15s} {len(mine)} candidate(s)")
@@ -269,35 +269,35 @@ def stage_role_proposals(args) -> None:
             print(f"      [{c.status.value}] {clip(', '.join(c.binding.values()), 75)}")
     refresh_llm_html()
     refresh_claims_html()
-    print("next: 5-bind-probes.sh")
+    print("next: 5-plan-checks.sh")
 
 
 def stage_bind(args) -> None:
     store = need_project()
-    if store.probes:
+    if store.checks:
         # Offline fixture answers are keyed to the FIRST run's claim labels;
         # after binding, the unbound set (and so the labels) shifts and the
         # recorded answers would land on the wrong claims.
-        sys.exit(f"{len(store.probes)} probes already exist — binding ran. "
+        sys.exit(f"{len(store.checks)} checks already exist — binding ran. "
                  "For a fresh pass run 0-reset.sh and start over.")
     unbound = [c for c in store.claims.values() if c.created_by is Actor.AI]
-    n_roles = sum(isinstance(c, RoleBindingClaim) for c in unbound)
+    n_roles = sum(isinstance(c, MappingClaim) for c in unbound)
     inputs(
         f"the {len(unbound)} AI claims already in the store: "
         f"{len(unbound) - n_roles} hypotheses from step 3\n  "
         f"+ {n_roles} role-binding candidates from step 4 "
         f"(labelled c1..cN — ULIDs never enter\n  a prompt, so the input stays "
         f"byte-stable)",
-        "the probe template catalog: probes/library.py REGISTRY, rendered by "
+        "the check definition catalog: checks/library.py REGISTRY, rendered by "
         "llm/prompts.py:\n  render_template_docs — only templates admissible "
         "for a claim's predicate are offered",
         "view schemas + profile digests (llm/inputs.py: build_binding_context)",
         LLM_INPUT_NOTE,
     )
-    report = bind_probes(PROJECT, store=store, scenario=SCENARIO)
-    section("V2 — probe binding (roles: frontier · ordinary claims: mid tier)")
-    print(f"  probes created: {len(report.probes_created)}   "
-          f"deduped: {report.probes_deduped}   retries: {report.retries}   "
+    report = plan_checks(PROJECT, store=store, scenario=SCENARIO)
+    section("V2 — check binding (roles: frontier · ordinary claims: mid tier)")
+    print(f"  checks created: {len(report.check_plans_created)}   "
+          f"deduped: {report.check_plans_deduped}   retries: {report.retries}   "
           f"usage: {report.usage or 'n/a (stub)'}")
     print(f"  unbindable (honest template=null): {len(report.unbindable)}   "
           f"semantic-only (never sent): {len(report.semantic_only)}   "
@@ -308,8 +308,8 @@ def stage_bind(args) -> None:
         print(f"  verbatim call log: {ref}")
 
     section("templates bound")
-    probes = [store.probes[pid] for pid in report.probes_created]
-    for name, n in Counter(p.template for p in probes).most_common():
+    checks = [store.checks[pid] for pid in report.check_plans_created]
+    for name, n in Counter(p.template for p in checks).most_common():
         print(f"  {n:3d} × {name}")
 
     if report.skipped:
@@ -319,7 +319,7 @@ def stage_bind(args) -> None:
         for label, reason in report.skipped:
             print(f"  answer for claim label {label}\n      -> {clip(reason)}")
     if report.unbindable:
-        section("unbindable — model answered template=null (stay inferred)")
+        section("unbindable — model answered template=null (stay proposed)")
         for cid, reason in report.unbindable[: args.top]:
             print(f"  {clip(store.claims[cid].statement, 55)}\n"
                   f"      -> {clip(reason or '', 85)}")
@@ -329,18 +329,18 @@ def stage_bind(args) -> None:
         section("semantic-only — no admissible template exists (T7 class here)")
         for cid in report.semantic_only:
             print(f"  {clip(store.claims[cid].statement, 85)}")
-    print(f"\nfull detail: {PROJECT}/probes/")
+    print(f"\nfull detail: {PROJECT}/checks/")
     refresh_llm_html()
     refresh_claims_html()
-    print("next: 6-run-probes.sh")
+    print("next: 6-run-checks.sh")
 
 
 def stage_run(args) -> None:
     store = need_project()
     inputs(
-        f"the {len(store.probes)} probes from step 5: "
-        f"{(PROJECT / 'probes').relative_to(REPO)}/ (template + params, as YAML)",
-        "their SQL: probes/templates/*.sql.j2 — rendered per probe, the "
+        f"the {len(store.checks)} checks from step 5: "
+        f"{(PROJECT / 'checks').relative_to(REPO)}/ (template + params, as YAML)",
+        "their SQL: checks/templates/*.sql.j2 — rendered per check, the "
         "rendered SQL is\n  kept on the evidence record",
         "the data: cache/analysis.duckdb (browse it with db.sh / db-export.sh)",
         "NO LLM is involved from here on — verdicts are deterministic SQL",
@@ -353,10 +353,10 @@ def stage_run(args) -> None:
     store = ProjectStore(PROJECT)  # reload -> statuses derived from evidence
 
     section("engine sweep")
-    print(f"  probes executed: {len(report.executed)}   "
+    print(f"  checks executed: {len(report.executed)}   "
           f"skipped: {len(report.skipped)}")
-    for probe_id, reason in report.skipped:
-        print(f"  skipped {probe_id}: {clip(reason)}")
+    for check_plan_id, reason in report.skipped:
+        print(f"  skipped {check_plan_id}: {clip(reason)}")
     for verdict, n in Counter(
             e.verdict.value for e in report.executed if e.verdict).most_common():
         print(f"  {n:3d} × verdict {verdict}")
@@ -367,21 +367,21 @@ def stage_run(args) -> None:
         print(f"  {n:3d} × {status}")
 
     section("role verdicts — the invariants decided")
-    for c in sorted((c for c in ai if isinstance(c, RoleBindingClaim)),
+    for c in sorted((c for c in ai if isinstance(c, MappingClaim)),
                     key=lambda c: (c.role, c.id)):
         print(f"  {c.role:15s} [{c.status.value:13s}] "
               f"{clip(', '.join(c.binding.values()), 60)}")
 
     section("false-promotion audit (must always hold)")
     bad = [c for c in ai
-           if c.status.value != "inferred"
-           and not any(store.evidence[eid].actor is Actor.PROBE
+           if c.status.value != "proposed"
+           and not any(store.evidence[eid].actor is Actor.CHECK
                        for eid in c.evidence_ids if eid in store.evidence)]
-    print("  CLEAN — every promoted AI claim traces to probe evidence"
+    print("  CLEAN — every promoted AI claim traces to check evidence"
           if not bad else
           "\n".join(f"  !! {c.id} [{c.status.value}] {c.statement}" for c in bad))
     print(f"\nfull detail: {PROJECT}/evidence/  ·  exception sets: "
-          f"{PROJECT}/cache/probe_runs/")
+          f"{PROJECT}/cache/check_runs/")
     print()
     refresh_claims_html()
     print("next: 7-resolve-roles.sh")
@@ -389,20 +389,20 @@ def stage_run(args) -> None:
 
 def stage_resolve(args) -> None:
     store = need_project()
-    roles = load_roles(ROLES_FILE)
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     inputs(
-        f"the same role definitions as step 4: {ROLES_FILE.relative_to(REPO)}",
+        f"the same role definitions as step 4: {DOMAIN_GUIDE_FILE.relative_to(REPO)}",
         "the derived statuses of the role claims after step 6 — a role with "
-        "candidates but\n  none reaching `tested` has lost, and becomes a "
+        "candidates but\n  none reaching `test-supported` has lost, and becomes a "
         "question instead of a silent discard",
         "NO LLM: this is pure bookkeeping over statuses",
     )
-    cards = resolve_roles(store, roles)
-    section("role resolution — lost roles become Fachfragen, never discards")
+    cards = resolve_mappings(store, roles)
+    section("role resolution — lost roles become Clarification questions, never discards")
     if not cards:
         print("  no new questions (already resolved? resolution is idempotent)")
     for card in cards:
-        print(f"  FACHFRAGE: {card.question}")
+        print(f"  CLARIFICATION: {card.question}")
         for cid in card.claim_ids:
             c = store.claims[cid]
             print(f"    rests on [{c.status.value}] {clip(c.statement, 70)}")
@@ -441,7 +441,7 @@ def stage_collect(args) -> None:
     if (REPORT / "seeded_recall.md").is_file():
         links.append(("seeded_recall.md",
                       "Seeded-Recall report (from recall.sh)"))
-    links.append(("../project/", "Raw project files — claims/ probes/ evidence/ questions/ as YAML"))
+    links.append(("../project/", "Raw project files — claims/ checks/ evidence/ questions/ as YAML"))
     items = "\n".join(
         f'<li><a href="{href}">{href.rstrip("/")}</a> — {html.escape(text)}</li>'
         for href, text in links)

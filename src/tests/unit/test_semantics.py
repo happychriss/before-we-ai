@@ -10,8 +10,8 @@ from before_we_ai.model import (
     EvidenceRecord,
     EvidenceType,
     Predicate,
-    ProbeVerdict,
-    QuestionCard,
+    CheckVerdict,
+    ClarificationQuestion,
     Scope,
     Validity,
     claim_key,
@@ -66,33 +66,33 @@ class TestClaimKey:
 
 
 class TestBoundedEvidence:
-    def test_aggregate_probe_record(self):
+    def test_aggregate_check_record(self):
         record = EvidenceRecord(
-            type=EvidenceType.PROBE_RESULT,
-            actor=Actor.PROBE,
-            verdict=ProbeVerdict.FAIL,
+            type=EvidenceType.CHECK_RESULT,
+            actor=Actor.CHECK,
+            verdict=CheckVerdict.FAIL,
             population=100_000,
             exception_count=42,
             exception_samples=[{"row_id": i} for i in range(10)],
-            result_ref="cache/probe_runs/xyz.parquet",
+            result_ref="cache/check_runs/xyz.parquet",
         )
         assert record.exception_rate() == pytest.approx(0.00042)
 
     def test_sample_cap_is_enforced(self):
         with pytest.raises(ValidationError):
             EvidenceRecord(
-                type=EvidenceType.PROBE_RESULT,
-                actor=Actor.PROBE,
-                verdict=ProbeVerdict.FAIL,
+                type=EvidenceType.CHECK_RESULT,
+                actor=Actor.CHECK,
+                verdict=CheckVerdict.FAIL,
                 exception_samples=[{"row_id": i} for i in range(MAX_EXCEPTION_SAMPLES + 1)],
             )
 
     def test_exceptions_cannot_exceed_population(self):
         with pytest.raises(ValidationError):
             EvidenceRecord(
-                type=EvidenceType.PROBE_RESULT,
-                actor=Actor.PROBE,
-                verdict=ProbeVerdict.FAIL,
+                type=EvidenceType.CHECK_RESULT,
+                actor=Actor.CHECK,
+                verdict=CheckVerdict.FAIL,
                 population=10,
                 exception_count=11,
             )
@@ -106,9 +106,9 @@ class TestEscalation:
     def _parent_with_evidence(self):
         parent = rule_claim()
         record = EvidenceRecord(
-            type=EvidenceType.PROBE_RESULT,
-            actor=Actor.PROBE,
-            verdict=ProbeVerdict.FAIL,
+            type=EvidenceType.CHECK_RESULT,
+            actor=Actor.CHECK,
+            verdict=CheckVerdict.FAIL,
             claim_id=parent.id,
             population=100_000,
             exception_count=42,
@@ -117,7 +117,7 @@ class TestEscalation:
         parent = parent.model_copy(update={"evidence_ids": [record.id]})
         return parent, record
 
-    def test_escalated_exception_becomes_own_inferred_claim(self):
+    def test_escalated_exception_becomes_own_proposed_claim(self):
         parent, record = self._parent_with_evidence()
         child = escalate_exception(
             parent,
@@ -126,20 +126,20 @@ class TestEscalation:
             created_by=Actor.HUMAN,
             predicate=Predicate(name="range_membership", params={"low": 4800, "high": 4809}),
         )
-        assert child.status is ClaimStatus.INFERRED
+        assert child.status is ClaimStatus.PROPOSED
         assert child.derived_from == parent.id
         assert child.derived_from_evidence == record.id
         assert child.id != parent.id
         assert child.source_ids == parent.source_ids
 
     def test_provenance_is_not_status_bearing_evidence(self):
-        # the parent's failing probe must not contradict the child rule
+        # the parent's failing check must not contradict the child rule
         parent, record = self._parent_with_evidence()
         child = escalate_exception(
             parent, record, statement="exception rule", created_by=Actor.AI
         )
         assert child.evidence_ids == []
-        assert resolve_status(child, [record]) is ClaimStatus.INFERRED
+        assert resolve_status(child, [record]) is ClaimStatus.PROPOSED
 
     def test_escalation_requires_attached_evidence(self):
         parent, _ = self._parent_with_evidence()
@@ -153,18 +153,18 @@ class TestEscalation:
 class TestImpact:
     def test_questions_resting_on(self):
         claim = rule_claim()
-        q1 = QuestionCard(question="Z2?", claim_ids=[claim.id])
-        q2 = QuestionCard(question="unrelated", claim_ids=[])
+        q1 = ClarificationQuestion(question="Z2?", claim_ids=[claim.id])
+        q2 = ClarificationQuestion(question="unrelated", claim_ids=[])
         assert questions_resting_on(claim.id, [q1, q2]) == [q1]
 
     def test_gap_load_ranks_unproven_claims_by_dependent_questions(self):
         heavy, light, proven = rule_claim(), rule_claim(scope=Scope(entity="US")), rule_claim(scope=Scope(entity="CH"))
-        proven.status = ClaimStatus.TESTED
+        proven.status = ClaimStatus.TEST_SUPPORTED
         questions = [
-            QuestionCard(question=f"q{i}", claim_ids=[heavy.id]) for i in range(3)
+            ClarificationQuestion(question=f"q{i}", claim_ids=[heavy.id]) for i in range(3)
         ] + [
-            QuestionCard(question="q_light", claim_ids=[light.id]),
-            QuestionCard(question="q_proven", claim_ids=[proven.id]),
+            ClarificationQuestion(question="q_light", claim_ids=[light.id]),
+            ClarificationQuestion(question="q_proven", claim_ids=[proven.id]),
         ]
         ranked = gap_load([light, heavy, proven], questions)
         assert [(c.id, n) for c, n in ranked] == [(heavy.id, 3), (light.id, 1)]

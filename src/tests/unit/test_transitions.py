@@ -13,7 +13,7 @@ from before_we_ai.model import (
     ClaimStatus,
     EvidenceRecord,
     EvidenceType,
-    ProbeVerdict,
+    CheckVerdict,
     PromotionError,
     Scope,
     create_claim,
@@ -21,9 +21,9 @@ from before_we_ai.model import (
 from before_we_ai.model.transitions import attach_evidence, resolve_status
 
 
-def probe(verdict: ProbeVerdict) -> EvidenceRecord:
+def check(verdict: CheckVerdict) -> EvidenceRecord:
     return EvidenceRecord(
-        type=EvidenceType.PROBE_RESULT, actor=Actor.PROBE, verdict=verdict
+        type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK, verdict=verdict
     )
 
 
@@ -55,35 +55,35 @@ def with_evidence(records: list[EvidenceRecord], **claim_kw):
 
 class TestCreation:
     @pytest.mark.parametrize("actor", list(Actor))
-    def test_every_claim_starts_inferred(self, actor):
-        assert create_claim("x", actor).status is ClaimStatus.INFERRED
+    def test_every_claim_starts_proposed(self, actor):
+        assert create_claim("x", actor).status is ClaimStatus.PROPOSED
 
 
 class TestPromotionMatrix:
     """(evidence set) -> expected status, independent of arrival order."""
 
     CASES = [
-        ([], ClaimStatus.INFERRED),
-        ([probe(ProbeVerdict.PASS)], ClaimStatus.TESTED),
-        ([probe(ProbeVerdict.FAIL)], ClaimStatus.CONTRADICTED),
-        ([probe(ProbeVerdict.INCONCLUSIVE)], ClaimStatus.INFERRED),
-        ([anchor()], ClaimStatus.INFERRED),
-        ([declaration()], ClaimStatus.INFERRED),
-        ([tell()], ClaimStatus.INFERRED),
+        ([], ClaimStatus.PROPOSED),
+        ([check(CheckVerdict.PASS)], ClaimStatus.TEST_SUPPORTED),
+        ([check(CheckVerdict.FAIL)], ClaimStatus.CONTRADICTED),
+        ([check(CheckVerdict.INCONCLUSIVE)], ClaimStatus.PROPOSED),
+        ([anchor()], ClaimStatus.PROPOSED),
+        ([declaration()], ClaimStatus.PROPOSED),
+        ([tell()], ClaimStatus.PROPOSED),
         ([confirmation()], ClaimStatus.BUSINESS_CONFIRMED),
         # conflict forces unresolved
-        ([probe(ProbeVerdict.PASS), probe(ProbeVerdict.FAIL)], ClaimStatus.UNRESOLVED),
-        ([confirmation(), probe(ProbeVerdict.FAIL)], ClaimStatus.UNRESOLVED),
-        ([tell(), probe(ProbeVerdict.FAIL)], ClaimStatus.UNRESOLVED),
-        # confirmation outranks a passing probe, fail still forces conflict
-        ([confirmation(), probe(ProbeVerdict.PASS)], ClaimStatus.BUSINESS_CONFIRMED),
+        ([check(CheckVerdict.PASS), check(CheckVerdict.FAIL)], ClaimStatus.UNRESOLVED),
+        ([confirmation(), check(CheckVerdict.FAIL)], ClaimStatus.UNRESOLVED),
+        ([tell(), check(CheckVerdict.FAIL)], ClaimStatus.UNRESOLVED),
+        # confirmation outranks a passing check, fail still forces conflict
+        ([confirmation(), check(CheckVerdict.PASS)], ClaimStatus.BUSINESS_CONFIRMED),
         (
-            [confirmation(), probe(ProbeVerdict.PASS), probe(ProbeVerdict.FAIL)],
+            [confirmation(), check(CheckVerdict.PASS), check(CheckVerdict.FAIL)],
             ClaimStatus.UNRESOLVED,
         ),
         # weak evidence adds nothing on top of strong evidence
-        ([anchor(), probe(ProbeVerdict.PASS)], ClaimStatus.TESTED),
-        ([anchor(), declaration(), probe(ProbeVerdict.FAIL)], ClaimStatus.CONTRADICTED),
+        ([anchor(), check(CheckVerdict.PASS)], ClaimStatus.TEST_SUPPORTED),
+        ([anchor(), declaration(), check(CheckVerdict.FAIL)], ClaimStatus.CONTRADICTED),
     ]
 
     @pytest.mark.parametrize("records,expected", CASES)
@@ -98,18 +98,18 @@ class TestPromotionMatrix:
 
 
 class TestAICannotPromote:
-    def test_ai_evidence_never_leaves_inferred(self):
+    def test_ai_evidence_never_leaves_proposed(self):
         # every evidence type an AI is allowed to author, stacked together
         records = [anchor(), declaration(), anchor(), declaration()]
         claim, evidence = with_evidence(records)
-        assert resolve_status(claim, evidence) is ClaimStatus.INFERRED
+        assert resolve_status(claim, evidence) is ClaimStatus.PROPOSED
 
-    def test_ai_cannot_author_probe_results(self):
+    def test_ai_cannot_author_check_results(self):
         with pytest.raises(ValidationError):
             EvidenceRecord(
-                type=EvidenceType.PROBE_RESULT,
+                type=EvidenceType.CHECK_RESULT,
                 actor=Actor.AI,
-                verdict=ProbeVerdict.PASS,
+                verdict=CheckVerdict.PASS,
             )
 
     @pytest.mark.parametrize(
@@ -148,43 +148,43 @@ class TestMirrorLoop:
         # defense in depth: even bypassing attach_evidence, the derivation
         # refuses to count an inadmissible confirmation
         claim, evidence = with_evidence([tell(), confirmation()])
-        assert resolve_status(claim, evidence) is ClaimStatus.INFERRED
+        assert resolve_status(claim, evidence) is ClaimStatus.PROPOSED
 
 
 class TestBusinessConfirmedExpiry:
-    def test_contradicting_probe_pulls_confirmed_claim_to_unresolved(self):
+    def test_contradicting_check_pulls_confirmed_claim_to_unresolved(self):
         claim, evidence = with_evidence([tell(), confirmation(Scope(entity="US"))])
         assert resolve_status(claim, evidence) is ClaimStatus.BUSINESS_CONFIRMED
-        failing = probe(ProbeVerdict.FAIL)
+        failing = check(CheckVerdict.FAIL)
         updated = attach_evidence(claim, failing, evidence)
         assert updated.status is ClaimStatus.UNRESOLVED
 
 
 class TestStaleness:
     def test_stale_evidence_carries_no_weight(self):
-        passing = probe(ProbeVerdict.PASS)
+        passing = check(CheckVerdict.PASS)
         claim, evidence = with_evidence([passing])
-        assert resolve_status(claim, evidence) is ClaimStatus.TESTED
+        assert resolve_status(claim, evidence) is ClaimStatus.TEST_SUPPORTED
         stale = passing.model_copy(update={"stale": True})
-        assert resolve_status(claim, [stale]) is ClaimStatus.INFERRED
+        assert resolve_status(claim, [stale]) is ClaimStatus.PROPOSED
 
     def test_stale_contradiction_releases_conflict(self):
-        passing, failing = probe(ProbeVerdict.PASS), probe(ProbeVerdict.FAIL)
+        passing, failing = check(CheckVerdict.PASS), check(CheckVerdict.FAIL)
         claim, evidence = with_evidence([passing, failing])
         assert resolve_status(claim, evidence) is ClaimStatus.UNRESOLVED
         stale_fail = failing.model_copy(update={"stale": True})
-        assert resolve_status(claim, [passing, stale_fail]) is ClaimStatus.TESTED
+        assert resolve_status(claim, [passing, stale_fail]) is ClaimStatus.TEST_SUPPORTED
 
 
 class TestEvidenceScoping:
     def test_unreferenced_evidence_has_no_effect(self):
         claim = create_claim("x", Actor.AI)  # no evidence_ids
-        assert resolve_status(claim, [probe(ProbeVerdict.FAIL)]) is ClaimStatus.INFERRED
+        assert resolve_status(claim, [check(CheckVerdict.FAIL)]) is ClaimStatus.PROPOSED
 
     def test_attach_evidence_appends_and_recomputes(self):
         claim = create_claim("x", Actor.AI)
-        record = probe(ProbeVerdict.PASS)
+        record = check(CheckVerdict.PASS)
         updated = attach_evidence(claim, record, [])
         assert updated.evidence_ids == [record.id]
-        assert updated.status is ClaimStatus.TESTED
-        assert claim.status is ClaimStatus.INFERRED  # original untouched
+        assert updated.status is ClaimStatus.TEST_SUPPORTED
+        assert claim.status is ClaimStatus.PROPOSED  # original untouched

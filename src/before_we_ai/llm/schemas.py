@@ -56,7 +56,7 @@ class HypothesisBatch(BaseModel):
     hypotheses: list[Hypothesis]
 
 
-class RoleBindingProposal(BaseModel):
+class MappingProposal(BaseModel):
     """One candidate binding of a domain role to concrete columns."""
 
     model_config = ConfigDict(extra="forbid")
@@ -66,13 +66,13 @@ class RoleBindingProposal(BaseModel):
     rationale: str
 
 
-class RoleBindingBatch(BaseModel):
+class MappingProposalBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    proposals: list[RoleBindingProposal]  # competing candidates per role are welcome
+    proposals: list[MappingProposal]  # competing candidates per role are welcome
 
 
-class ProbeBinding(BaseModel):
+class CheckPlanProposal(BaseModel):
     """The V2 answer for one claim: a template instance, or an honest 'none'."""
 
     model_config = ConfigDict(extra="forbid")
@@ -86,4 +86,4 @@ class ProbeBinding(BaseModel):
 class BindingBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    bindings: list[ProbeBinding]
+    bindings: list[CheckPlanProposal]

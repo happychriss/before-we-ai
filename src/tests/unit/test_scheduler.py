@@ -1,12 +1,12 @@
-"""Dependency scheduler: topological order, cycles, probe gating."""
+"""Dependency scheduler: topological order, cycles, check gating."""
 
 import pytest
 
 from before_we_ai.model import Actor, ClaimStatus, CycleError, create_claim
-from before_we_ai.model.scheduler import ready_for_probe, topological_order
+from before_we_ai.model.scheduler import ready_for_check, topological_order
 
 
-def claim(statement, depends_on=(), status=ClaimStatus.INFERRED):
+def claim(statement, depends_on=(), status=ClaimStatus.PROPOSED):
     c = create_claim(statement, Actor.AI, depends_on=list(depends_on))
     c.status = status
     return c
@@ -44,26 +44,26 @@ class TestTopologicalOrder:
             topological_order([a])
 
 
-class TestReadyForProbe:
+class TestReadyForCheck:
     @pytest.mark.parametrize(
         "dep_status,ready",
         [
-            (ClaimStatus.INFERRED, False),
+            (ClaimStatus.PROPOSED, False),
             (ClaimStatus.UNRESOLVED, False),
             (ClaimStatus.CONTRADICTED, False),
-            (ClaimStatus.TESTED, True),
+            (ClaimStatus.TEST_SUPPORTED, True),
             (ClaimStatus.BUSINESS_CONFIRMED, True),
         ],
     )
     def test_prerequisite_must_be_at_least_tested(self, dep_status, ready):
         dep = claim("dep", status=dep_status)
         dependent = claim("dependent", [dep.id])
-        assert ready_for_probe(dependent, {dep.id: dep}) is ready
+        assert ready_for_check(dependent, {dep.id: dep}) is ready
 
     def test_no_dependencies_is_always_ready(self):
-        assert ready_for_probe(claim("a"), {}) is True
+        assert ready_for_check(claim("a"), {}) is True
 
     def test_unknown_dependency_raises(self):
         dependent = claim("dependent", ["01JUNKJUNKJUNKJUNKJUNKJUNK"])
         with pytest.raises(KeyError):
-            ready_for_probe(dependent, {})
+            ready_for_check(dependent, {})

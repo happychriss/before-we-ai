@@ -4,13 +4,13 @@ loud. Plus the prompt-leakage tripwire on the frozen prompt strings."""
 import pytest
 
 from before_we_ai.llm import inputs, prompts
-from before_we_ai.llm.roles import RoleSet
+from before_we_ai.llm.domain_guide import DomainGuide
 from before_we_ai.model import Actor, Predicate, create_claim
-from before_we_ai.model.objects import ColumnProfile
+from before_we_ai.model.objects import DataProfile
 from before_we_ai.store import ProjectStore, init_project
 
 
-def _profile(table: str, column: str, **stats) -> ColumnProfile:
+def _profile(table: str, column: str, **stats) -> DataProfile:
     base = {
         "duckdb_type": "BIGINT", "value_class": "integer_like",
         "row_count": 100, "null_count": 0, "distinct_count": 40,
@@ -18,7 +18,7 @@ def _profile(table: str, column: str, **stats) -> ColumnProfile:
         "top_values": [{"value": "1", "count": 5}, {"value": "2", "count": 4}],
         "patterns": [{"mask": "9", "count": 60}, {"mask": "99", "count": 40}],
     }
-    return ColumnProfile(source_id="src1", table=table, column=column,
+    return DataProfile(source_id="src1", table=table, column=column,
                          stats={**base, **stats})
 
 
@@ -76,15 +76,15 @@ def test_forced_trim_is_loud_and_names_the_cut(tmp_path):
 
 def test_role_context_leads_with_the_role_definitions(tmp_path):
     store = _store(tmp_path)
-    roles = RoleSet(domain="testing", roles={
+    roles = DomainGuide(domain="testing", roles={
         "ledger": {"definition": "the journal of record",
-                   "decided_by": "fachfrage"},
+                   "decided_by": "clarification"},
     })
     built = inputs.build_role_context(store, MATRIX, roles)
     assert built.text.startswith("## Roles to bind (domain: testing)")
     assert "- ledger: the journal of record" in built.text
     # the settlement path is lint metadata, never a hint to the model
-    assert "decided_by" not in built.text and "fachfrage" not in built.text
+    assert "decided_by" not in built.text and "clarification" not in built.text
     assert "## Column profiles" in built.text
 
 
@@ -107,7 +107,7 @@ def test_binding_context_carries_claim_columns_and_template_docs(tmp_path):
     assert "admissible templates: anti_join, cardinality" in built.text
     assert "### beta__orders.customer_id" in built.text  # profile digest inlined
     assert "- alpha__customers: " in built.text  # view schema line
-    assert "## Probe templates" in built.text
+    assert "## Check definitions" in built.text
     assert "- anti_join: required [child, child_column, parent, parent_column]" in built.text
 
 
@@ -119,7 +119,7 @@ _DENYLIST = ("trap", "decoy", "corpus", "expected_verdicts", "BLIND_",
 
 
 @pytest.mark.parametrize("text", [
-    prompts.V1_SYSTEM, prompts.ROLE_BINDING_SYSTEM, prompts.V2_SYSTEM,
+    prompts.V1_SYSTEM, prompts.MAPPING_SYSTEM, prompts.V2_SYSTEM,
     prompts.V2_ROLES_SYSTEM,
     prompts.render_template_docs(), prompts.render_predicate_docs(),
 ], ids=["v1", "roles", "v2", "v2_roles", "template_docs", "predicate_docs"])

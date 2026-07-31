@@ -1,4 +1,7 @@
 # Expdash – Testdatensatz Finance (Anforderungen)
+
+> **Terminologie-Hinweis (2026-07-31):** Die kanonischen englischen Objektnamen wurden neu ausgerichtet — Sonde → *Check* (`CheckDefinition`/`CheckPlan`), Fachfrage → *ClarificationQuestion*, Rollenbindung → *MappingClaim*, Status `inferred`/`tested` → `proposed`/`test-supported`. Deutsch↔Englisch-Tabelle: `src/before_we_ai/glossary.py` (GERMAN_TERMS). Die deutsche Fachsprache dieses Dokuments bleibt unverändert.
+
 *Korpus v2, Domäne Finanzen/Vertrieb: Quellenliste mit Eigenschaften und eingebauten Fallen. Keine Testdaten — die Bauvorlage für den Generator.*
 
 ## Zweck und Validierungsprinzip
@@ -24,7 +27,7 @@ Dieser Korpus bildet eine Mini-Unternehmensgruppe ab, deren Belege am Ende eine 
 | Quelle | Eigenschaften | Fallen |
 |---|---|---|
 | B1 `customers` | Inkl. IC-Kunden im Nummernkreis 9xxxx; Dubletten; ein Kunde 2025 auf neue Nummer migriert | **F5** Alt→Neu-Mapping existiert **nur** in `kunden_migration.xlsx` — ohne sie zerfällt die Kundenentwicklung (Z2) in zwei Kunden |
-| B2 `customer_hierarchy` | Versioniert (valid_from/valid_to); Umhängung eines Großkunden zum 01.07.2025 | **F6 (Kernfalle)** Join ohne Gültigkeitsprädikat: hohe Überlappung, Anti-Join grün — Vorjahre laufen auf falschen Key Account. Erwartet: technically tested erlaubt, aber Z2 muss die Zeitannahme als offene Annahme ausweisen (Silent-Wrong-Answer-Test) |
+| B2 `customer_hierarchy` | Versioniert (valid_from/valid_to); Umhängung eines Großkunden zum 01.07.2025 | **F6 (Kernfalle)** Join ohne Gültigkeitsprädikat: hohe Überlappung, Anti-Join grün — Vorjahre laufen auf falschen Key Account. Erwartet: test-supported erlaubt, aber Z2 muss die Zeitannahme als offene Annahme ausweisen (Silent-Wrong-Answer-Test) |
 | B3 `materials` | Beschreibungen DE/EN gemischt; Produkthierarchie als Positionsstring (PRODH-artig, '0001 0002 0003' konkateniert) | **F7** Beziehung steckt **im** String — kein Wert-Overlap, kein Gleichheits-Join; erfordert Decode-Sonde oder Fachfrage |
 | B4 `material_hierarchy` + `marketing_grouping.xlsx` | Offizielle Decodier-Tabelle vs. konkurrierende Marketing-Gruppierung | **F8** Zwei Hierarchien beanspruchen „Produktgruppe"; Plan (D6) referenziert stillschweigend die Marketing-Sicht — erwartet: unresolved bis Mensch klärt |
 | B5 `sales_reps` + `territory_plz` + `kontakte_aussendienst.xlsx` | Gebietszuordnung über PLZ-**Bereiche** (von–bis); ein Mitarbeiter scheidet zum 30.09.2025 aus; Kontaktliste mit privaten Handynummern | **F9** BETWEEN-Beziehung — Kandidatenmatrix blind (strukturelles Pendant zu T7). **F10** Aktivitäten nach Austritt (Datenfehler, muss als Befund auftauchen). Kontaktliste: legitime Quelle für Rep-Stamm, darf aber in keiner Umsatzfrage landen |

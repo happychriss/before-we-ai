@@ -1,6 +1,6 @@
-"""M3 acceptance: probes against handwritten ground-truth claims.
+"""M3 acceptance: checks against handwritten ground-truth claims.
 
-Per the architecture milestone plan: probes run against **handwritten
+Per the architecture milestone plan: checks run against **handwritten
 claims from the ground truth** — expected verdicts for the T1–T6/T11/T12
 trap shapes, and **False-Promotion = 0**. All finance knowledge in this
 file (accounts, sign conventions, role bindings) is test-side data; the
@@ -18,8 +18,8 @@ import yaml
 
 from before_we_ai import scan
 from before_we_ai.engine import load_tolerances, run_ready
-from before_we_ai.model import Actor, ClaimStatus, Probe, ProbeVerdict, create_claim
-from before_we_ai.model.objects import RoleBindingClaim
+from before_we_ai.model import Actor, ClaimStatus, CheckPlan, CheckVerdict, create_claim
+from before_we_ai.model.objects import MappingClaim
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, check_integrity, init_project
 
@@ -37,15 +37,15 @@ MONTHS_36 = MONTHS_24 + [f"2026-{m:02d}" for m in range(1, 13)]
 
 
 def build_ground_truth(store) -> dict[str, str]:
-    """Handwritten claims + probes; returns scenario key -> claim id."""
+    """Handwritten claims + checks; returns scenario key -> claim id."""
     ids = {}
 
-    def add(key, statement, probes, claim=None):
+    def add(key, statement, checks, claim=None):
         claim = claim or create_claim(statement, Actor.AI)
         store.add_claim(claim)
         ids[key] = claim.id
-        for template, params in probes:
-            store.save_probe(Probe(template=template, claim_id=claim.id, params=params))
+        for template, params in checks:
+            store.save_check_plan(CheckPlan(template=template, claim_id=claim.id, params=params))
 
     # --- T1: normalization is part of the claim -------------------------
     add("t1_refs", "Offene-Posten-Referenzen zeigen auf Rechnungen", [
@@ -153,7 +153,7 @@ def build_ground_truth(store) -> dict[str, str]:
     ])
 
     # --- Invariants against role bindings (K5) ---------------------------
-    binding_gl = RoleBindingClaim(
+    binding_gl = MappingClaim(
         statement="Rolle journal = de_erp__gl_postings", created_by=Actor.AI,
         role="journal",
         binding={"table": "de_erp__gl_postings", "amount_local": "amount_local_currency",
@@ -165,7 +165,7 @@ def build_ground_truth(store) -> dict[str, str]:
                      "group_column": "document_reference"}),
     ], claim=binding_gl)
 
-    binding_report = RoleBindingClaim(
+    binding_report = MappingClaim(
         statement="Rolle journal = buchungen_report (verführerisch, falsch — F27)",
         created_by=Actor.AI, role="journal",
         binding={"table": "buchungen_report__buchungen_report", "amount_local": "betrag_eur",
@@ -212,13 +212,13 @@ EXPECTED_CONTRADICTED = {
     "t1_raw", "t3_crm_refs", "t6_negative", "t11_duplicates",
     "binding_report", "f22_us_balance", "f22_ic_symmetry",
 }
-EXPECTED_INFERRED = {"k6_orders", "k6_prospects", "t12_plan"}
+EXPECTED_PROPOSED = {"k6_orders", "k6_prospects", "t12_plan"}
 EXPECTED_UNRESOLVED = {"t4_credit_notes"}
 
 
 @pytest.fixture(scope="module")
 def run(tmp_path_factory):
-    root = init_project(tmp_path_factory.mktemp("probes") / "corpus-probes", name="corpus-probes")
+    root = init_project(tmp_path_factory.mktemp("checks") / "corpus-checks", name="corpus-checks")
     config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8"))
     config["sources"] = SOURCES
     # F20: documented M0 acceptance — unapplied cash keeps AR ≠ GL by design.
@@ -240,17 +240,17 @@ def status_of(store, ids, key):
     return store.claims[ids[key]].status
 
 
-def test_all_probes_ran(run):
+def test_all_checks_ran(run):
     _, store, ids, report = run
     assert report.skipped == []
-    assert len(report.executed) == len(store.probes)
+    assert len(report.executed) == len(store.checks)
     assert check_integrity(store) == []
 
 
 def test_t1_normalization_is_part_of_the_claim(run):
     _, store, ids, _ = run
-    assert status_of(store, ids, "t1_refs") is ClaimStatus.TESTED
-    assert status_of(store, ids, "t1_canonical") is ClaimStatus.TESTED
+    assert status_of(store, ids, "t1_refs") is ClaimStatus.TEST_SUPPORTED
+    assert status_of(store, ids, "t1_canonical") is ClaimStatus.TEST_SUPPORTED
     # Without the declared normalization the very same relationship fails.
     assert status_of(store, ids, "t1_raw") is ClaimStatus.CONTRADICTED
 
@@ -259,9 +259,9 @@ def test_k6_orphans_are_questions_not_failures(run):
     _, store, ids, _ = run
     for key in ("k6_orders", "k6_prospects"):
         claim = store.claims[ids[key]]
-        assert claim.status is ClaimStatus.INFERRED
+        assert claim.status is ClaimStatus.PROPOSED
         verdicts = [store.evidence[e].verdict for e in claim.evidence_ids]
-        assert verdicts == [ProbeVerdict.INCONCLUSIVE]
+        assert verdicts == [CheckVerdict.INCONCLUSIVE]
     questions = [q.question for q in store.questions.values()]
     assert any("de_erp__orders" in q for q in questions)
 
@@ -277,22 +277,22 @@ def test_t4_conflict_forces_unresolved(run):
     claim = store.claims[ids["t4_credit_notes"]]
     assert claim.status is ClaimStatus.UNRESOLVED
     verdicts = {store.evidence[e].verdict for e in claim.evidence_ids}
-    assert verdicts == {ProbeVerdict.PASS, ProbeVerdict.FAIL}
+    assert verdicts == {CheckVerdict.PASS, CheckVerdict.FAIL}
 
 
 def test_t6_chance_overlap_never_tests_green(run):
     _, store, ids, _ = run
     assert status_of(store, ids, "t6_negative") is ClaimStatus.CONTRADICTED
-    assert status_of(store, ids, "t6_positive") is ClaimStatus.TESTED
+    assert status_of(store, ids, "t6_positive") is ClaimStatus.TEST_SUPPORTED
 
 
 def test_t12_partial_coverage_is_a_finding(run):
     _, store, ids, _ = run
-    assert status_of(store, ids, "t12_gl") is ClaimStatus.TESTED
+    assert status_of(store, ids, "t12_gl") is ClaimStatus.TEST_SUPPORTED
     plan = store.claims[ids["t12_plan"]]
-    assert plan.status is ClaimStatus.INFERRED
+    assert plan.status is ClaimStatus.PROPOSED
     record = store.evidence[plan.evidence_ids[0]]
-    assert record.verdict is ProbeVerdict.INCONCLUSIVE
+    assert record.verdict is CheckVerdict.INCONCLUSIVE
     assert record.exception_count == 12  # the twelve 2026 months
 
 
@@ -314,19 +314,19 @@ def test_invariants_find_exactly_the_seeded_break(run):
 
 def test_f27_role_binding_decided_by_invariant(run):
     _, store, ids, _ = run
-    assert status_of(store, ids, "binding_gl") is ClaimStatus.TESTED
+    assert status_of(store, ids, "binding_gl") is ClaimStatus.TEST_SUPPORTED
     report_binding = store.claims[ids["binding_report"]]
     assert report_binding.status is ClaimStatus.CONTRADICTED
     # …with a documented reason: the rendered SQL sits on the evidence.
     record = store.evidence[report_binding.evidence_ids[0]]
     assert "buchungen_report" in record.payload["sql"]
     # The report itself stays valuable as a secondary source: it reconciles.
-    assert status_of(store, ids, "f27_reconciliation") is ClaimStatus.TESTED
+    assert status_of(store, ids, "f27_reconciliation") is ClaimStatus.TEST_SUPPORTED
 
 
 def test_f20_documented_tolerance(run):
     _, store, ids, _ = run
-    assert status_of(store, ids, "f20_subledger") is ClaimStatus.TESTED
+    assert status_of(store, ids, "f20_subledger") is ClaimStatus.TEST_SUPPORTED
 
 
 def test_false_promotion_rate_is_zero(run):
@@ -335,12 +335,12 @@ def test_false_promotion_rate_is_zero(run):
     promoted = {
         key_by_id[c.id]
         for c in store.claims.values()
-        if c.status in (ClaimStatus.TESTED, ClaimStatus.BUSINESS_CONFIRMED)
+        if c.status in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
     }
     assert promoted == EXPECTED_TESTED  # nothing extra, nothing missing
     for key, expected in [
         *[(k, ClaimStatus.CONTRADICTED) for k in EXPECTED_CONTRADICTED],
-        *[(k, ClaimStatus.INFERRED) for k in EXPECTED_INFERRED],
+        *[(k, ClaimStatus.PROPOSED) for k in EXPECTED_PROPOSED],
         *[(k, ClaimStatus.UNRESOLVED) for k in EXPECTED_UNRESOLVED],
     ]:
         assert status_of(store, ids, key) is expected, key

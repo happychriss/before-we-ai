@@ -5,7 +5,7 @@ You drive the pipeline **one stage at a time** with the scripts in
 Everything lands in `validation/data/` (git-ignored, disposable — `0-reset.sh`
 wipes it). The scripts activate the venv themselves; run them from anywhere.
 
-New to the flow or the terminology? `docs/SIMPLE-README.md` has the big
+New to the flow or the terminology? `docs/before-ai-concept.md` has the big
 picture ("The big picture — one pass from start to finish") and a small
 glossary — the walkthrough below is that flow, one stage per script.
 
@@ -23,9 +23,9 @@ deterministic and needs no API key. For live calls run
 | 2 | `2-matrix.sh` | initial mapping: table:table value-overlap matrix |
 | 3 | `3-hypotheses.sh` | V1: LLM proposes claim hypotheses |
 | 4 | `4-role-proposals.sh` | LLM proposes role-binding candidates |
-| 5 | `5-bind-probes.sh` | V2: LLM binds claims to probe templates |
-| 6 | `6-run-probes.sh` | engine: execute probes, derive statuses |
-| 7 | `7-resolve-roles.sh` | lost roles become Fachfragen |
+| 5 | `5-plan-checks.sh` | V2: LLM binds claims to check definitions |
+| 6 | `6-run-checks.sh` | engine: execute checks, derive statuses |
+| 7 | `7-resolve-roles.sh` | lost roles become Clarification questions |
 | 8 | `8-collect.sh` | gather everything into a clickable report |
 
 Every step opens with an **INPUT** block naming the files that drove it — the
@@ -61,27 +61,27 @@ Look at: top pairs by containment (`--top 30` for more); full table in
 Good: the real finance joins (accounts, document refs across de_erp / us_erp /
 buchungen_report / the Excel files) score high — and some coincidental
 overlaps are in the list too. That is by design: the matrix measures, never
-judges; filtering happens later via probes.
+judges; filtering happens later via checks.
 
 ### Step 3 — V1 hypotheses
 
 Look at: created/deduped/skipped counts, predicate mix, sample claims; then
 `llm-log.sh 1` for the verbatim prompt and answer.
 Good (offline pins): **62 created, 1 deduped, 2 skipped** with visible
-reasons; every claim `inferred`, created by `ai`, with a structured
+reasons; every claim `proposed`, created by `ai`, with a structured
 predicate. Audit the prompt: profiles + matrix only, no corpus hints.
 
 ### Step 4 — role proposals
 
 Look at: candidates per role.
 Good (offline pins): **23 candidates** over the 8 finance roles, all still
-`inferred`; the journal role has three competitors including the CSV report —
-competition is wanted, the invariant probes will decide.
+`proposed`; the journal role has three competitors including the CSV report —
+competition is wanted, the invariant checks will decide.
 
 ### Step 5 — V2 binding
 
 Look at: template mix; the three honest rejection buckets.
-Good (offline pins): **58 probes**, **18 unbindable** (model said
+Good (offline pins): **58 checks**, **18 unbindable** (model said
 `template=null`, with its reason), **8 semantic-only** (no admissible
 template exists — the semantic-equivalence class lives here), **1 skipped**
 (validation rejected a `ranges: []` binding). Nothing disappears silently:
@@ -103,16 +103,16 @@ missing intercompany leg); intercompany contradicted everywhere; audit CLEAN.
 
 Every role in the pack declares its settlement path (`decided_by:` in the
 role file, linted on load): the domain law that can elect it, or
-`fachfrage` — no arithmetic can decide what a column *means* — or `slot`.
-The rule is: **every non-slot role ends in a probe verdict or a Fachfrage,
+`clarification` — no arithmetic can decide what a column *means* — or `slot`.
+The rule is: **every non-slot role ends in a check verdict or a clarification question,
 never in nothing.**
 
-Good (offline pins): **six** German Fachfragen, one per unsettled role —
+Good (offline pins): **six** German Clarification questions, one per unsettled role —
 
-- `intercompany` — probed, every candidate lost → "welche Quelle ist führend?"
+- `intercompany` — checked, every candidate lost → "welche Quelle ist führend?"
 - `subledger_ar` — its law could never be bound to a candidate (the AR
   control account is not documented in the data) → "welches Fachwissen fehlt?"
-- `account`, `doc_ref`, `entity`, `period` — fachfrage-decided; each question
+- `account`, `doc_ref`, `entity`, `period` — clarification-decided; each question
   lists the candidates, so it is answerable in one pick.
 
 The settled roles (`journal`, `amount_local`) draft nothing.
@@ -130,16 +130,16 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   errors and pretty-printed answer); `llm-log.sh --html f.html` for a
   browsable page. Steps 3–5 also refresh that page automatically at
   `data/report/llm_calls.html` — it opens with the **domain knowledge**
-  actually in play (source list, role pack, domain-law templates), every
+  actually in play (source list, domain guide, domain-law templates), every
   call carries a comment mapping it back to its walkthrough step, and the
   page grows as you progress (steps 6–8 add nothing: they never talk to
   the model).
 - `viewer.sh` — rebuild the claim viewer HTML at any point mid-walkthrough.
   Steps 3–7 also refresh it automatically at `data/report/claims.html`
   (every step that changes the store). The page mirrors the pipeline: the
-  **funnel** on top (85 proposed → 58 bound / 19 without probe / 8
+  **funnel** on top (85 proposed → 58 bound / 19 without check / 8
   semantic-only → 58 judged → the derived statuses, every number a filter),
-  then the **Fachfragen inbox**, then the **role elections** (winner, and each
+  then the **Clarification questions inbox**, then the **role elections** (winner, and each
   loser with the domain law that felled it), then one claim at a time as a
   story: proposed → bound → judged → context.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
@@ -182,5 +182,5 @@ DuckDB client takes an exclusive lock, and ours then fails with
 - Online runs sample differently each time (~50–62 hypotheses, recall
   14–15/25); only the recorded fixtures are frozen. Claim statements are
   model-worded — identity/dedup lives in predicate+params, never wording.
-- A probe that cannot execute lands in `skipped("execution error…")`, writes
+- A check that cannot execute lands in `skipped("execution error…")`, writes
   no evidence, and does not stop the sweep.

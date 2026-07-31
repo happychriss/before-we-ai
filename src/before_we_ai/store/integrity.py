@@ -39,15 +39,15 @@ def check_integrity(store: "ProjectStore") -> list[str]:
             findings.append(
                 f"evidence {record.id}: dangling claim reference {record.claim_id}"
             )
-        if record.probe_id and record.probe_id not in store.probes:
+        if record.check_plan_id and record.check_plan_id not in store.checks:
             findings.append(
-                f"evidence {record.id}: dangling probe reference {record.probe_id}"
+                f"evidence {record.id}: dangling check reference {record.check_plan_id}"
             )
 
-    for probe in store.probes.values():
-        if probe.claim_id and probe.claim_id not in store.claims:
+    for check in store.checks.values():
+        if check.claim_id and check.claim_id not in store.claims:
             findings.append(
-                f"probe {probe.id}: dangling claim reference {probe.claim_id}"
+                f"check {check.id}: dangling claim reference {check.claim_id}"
             )
 
     for card in store.questions.values():
