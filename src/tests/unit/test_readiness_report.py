@@ -264,11 +264,11 @@ def test_role_elections_show_winner_loser_and_clarification(tmp_path):
     html = render_project(root)
 
     assert "4 · Decided — what the checks settled" in html
-    assert "Elected:" in html
+    assert "<strong>Identified.</strong> The balance law passed on" in html
     assert "felled by" in html
     assert "24 exceptions in 383 rows" in html
     assert "finance law" in html  # the domain-law tag of the invariant template
-    assert "No winner → clarification question" in html
+    assert "<strong>Open — a human has to answer it.</strong>" in html
     assert f'href="#question-{card.id}"' in html
     # the open-questions inbox is its own pipeline step, and counts
     assert "5 · Open — what only a human can answer (1)" in html
@@ -361,6 +361,128 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
     # what is not built says so, rather than being left out
     assert "M5 · documents" in html and "M6 · question → readiness" in html
     assert html.count("not built") == 2
+
+
+def test_a_question_lists_candidates_and_hides_its_ids(tmp_path):
+    """The owner's complaint, pinned: no wall of prose, and ids folded away.
+
+    Whether the list is a *choice* comes from the guide, not from the
+    question's wording — a clarification-decided role is picked; a role whose
+    law could never be applied is asking for knowledge instead.
+    """
+    root = init_project(tmp_path / "picks")
+    guide = tmp_path / "guide.yaml"
+    guide.write_text(
+        "domain: finance\n"
+        "objects:\n"
+        "  journal:\n"
+        "    decided_by: balance\n"
+        "    definition: The ledger of record.\n"
+        "    fields:\n"
+        "      doc_ref:\n"
+        "        decided_by: clarification\n"
+        "        definition: The document reference.\n"
+        "  subledger_ar:\n"
+        "    decided_by: subledger_equals_gl\n"
+        "    definition: The open receivables.\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["llm"] = {"domain_guide_file": str(guide)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    store = ProjectStore(root)
+    picks, unbound = [], []
+    for role, table, column, bucket in (
+        ("doc_ref", "de_erp__gl_postings", "document_reference", picks),
+        ("doc_ref", "buchungen_report", "buchung_id", picks),
+        ("subledger_ar", "de_erp__ar_open_items", "", unbound),
+        ("subledger_ar", "us_erp__ar_open_items", "", unbound),
+    ):
+        binding = {"table": table} | ({role: f"{table}.{column}"} if column else {})
+        claim = MappingClaim(
+            statement=f"role '{role}' is played by " + ", ".join(
+                f"{k}={v}" for k, v in sorted(binding.items())
+            ),
+            created_by=Actor.AI, role=role, binding=binding,
+        )
+        store.save_claim(claim)
+        bucket.append(claim)
+    store.save_question(ClarificationQuestion(
+        question="Which of the proposed candidates is the 'doc_ref'? The document reference.",
+        claim_ids=[c.id for c in picks],
+    ))
+    store.save_question(ClarificationQuestion(
+        question="What is missing before the 'subledger_ar' can be tested? The open receivables.",
+        claim_ids=[c.id for c in unbound],
+    ))
+
+    html = render_project(root)
+
+    # a clarification-decided role is answered by picking one of its candidates
+    assert "Pick one — 2 candidates were proposed:" in html
+    # a role whose law never ran is not a pick — it is asking for knowledge
+    assert "no law could be applied to any of them" in html
+    # the candidates are named by their binding; the claim's own sprawling
+    # statement survives only where the model's words belong (quoted and
+    # attributed) and in the hidden search index — never as a heading
+    short = "&#x27;doc_ref&#x27; is played by de_erp__gl_postings.document_reference"
+    assert f"<h3>{short}</h3>" in html
+    assert f"<div>{short}</div>" in html  # the index card in the sidebar
+    # ids and timestamps are reachable, never in the way
+    assert "<details class='tech'><summary>Technical details</summary>" in html
+    # and the YAML the page only renders is one click away
+    assert "questions/" in html and ".yaml" in html
+
+
+def test_the_page_speaks_in_three_voices(tmp_path):
+    """Derived sentences headline; the AI is quoted and attributed; the
+    human's words are verbatim. A model's prose may never headline a status."""
+    root = init_project(tmp_path / "voices")
+    store = ProjectStore(root)
+
+    claim = create_claim(
+        "Postings reference invoices",
+        Actor.AI,
+        predicate=Predicate(
+            name="references",
+            params={"left": "erp__postings.doc", "right": "erp__invoices.doc"},
+        ),
+    )
+    store.save_claim(claim)
+    check = CheckPlan(template="anti_join", claim_id=claim.id, params={})
+    store.save_check_plan(check)
+    failed = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK, claim_id=claim.id,
+        check_plan_id=check.id, verdict=CheckVerdict.FAIL,
+        population=400, exception_count=8,
+    )
+    store.add_evidence(failed)
+    said = EvidenceRecord(
+        type=EvidenceType.TESTIMONIAL, actor=Actor.HUMAN, claim_id=claim.id,
+        statement="Postings from the legacy migration never got an invoice.",
+    )
+    store.add_evidence(said)
+    claim = attach_evidence(claim, failed, [])
+    store.save_claim(attach_evidence(claim, said, [failed]))
+
+    html = render_project(root)
+
+    # 1 — the derived voice states what happened, from the numbers
+    assert "The check refuted the claim: 8 exceptions in 400 rows (2.00% of the rows)." in html
+    # 2 — the AI's own sentence is kept, attributed, and marked a proposal
+    assert "wrote it, verbatim; a proposal, not a finding" in html
+    # 3 — the human's words are verbatim and marked as theirs
+    assert "Postings from the legacy migration never got an invoice." in html
+    assert "— stated by a human, verbatim" in html
+    # what this check tries to break, in business words, from its definition
+    assert "Every entry on one side must have a counterpart on the other." in html
+    # how far the claim got — a failing check against a human's word is a
+    # conflict, and the strip says which step reached which state
+    assert "1 proposed — the AI wrote it" in html
+    assert "2 planned — bound to a check" in html
+    assert "3 judged — a check ran" in html
+    assert "4 settled — status unresolved" in html
 
 
 def test_check_card_shows_the_rendered_sql_that_was_asked(tmp_path):
@@ -469,8 +591,14 @@ def test_a_slot_field_shows_the_column_its_object_s_law_consumed(tmp_path):
 
     html = render_project(root)
 
-    assert "Answered by the balance law of" in html
-    assert "de_erp__gl_postings.amount_local_currency</code></p>" in html
+    # the confusion this narration exists to end: the field IS answered, and
+    # its candidates still read `proposed` — both said, in that order
+    assert "<strong>Answered — without anyone being asked.</strong>" in html
+    assert ("The balance law of <code>journal</code> passed while reading "
+            "<code>de_erp__gl_postings.amount_local_currency</code>") in html
+    assert "nothing can prove by arithmetic what a single column" in html
+    # and the candidate row the law actually read says so where the eye is
+    assert "<strong>The passing run consumed this column</strong>" in html
     assert "field of <code>journal</code>" in html  # nested under its object
 
 

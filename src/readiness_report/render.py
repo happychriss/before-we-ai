@@ -1,4 +1,5 @@
 import json
+import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from html import escape
@@ -10,7 +11,7 @@ import yaml
 from before_we_ai.glossary import GLOSSARY
 from before_we_ai.llm.domain_guide import load_domain_guide, settled_slots
 from before_we_ai.llm.mapping import admissible_templates
-from before_we_ai.model import ClaimStatus, EvidenceType, CheckVerdict, resolve_status
+from before_we_ai.model import Actor, ClaimStatus, EvidenceType, CheckVerdict, resolve_status
 from before_we_ai.model.objects import (
     Claim,
     DataProfile,
@@ -95,12 +96,15 @@ def write_project_view(root: str | Path, output: str | Path | None = None) -> Pa
     root_path = Path(root).resolve()
     out = Path(output).resolve() if output else default_output_path(root_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(render_project(root_path), encoding="utf-8")
+    out.write_text(render_project(root_path, out.parent), encoding="utf-8")
     return out
 
 
-def render_project(root: str | Path) -> str:
+def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
     root_path = Path(root).resolve()
+    # every entity links to the YAML it is only a rendering of; relative, so
+    # the report survives being moved or handed on with the project
+    store_rel = _relative_prefix(root_path, out_dir)
     store = ProjectStore(root_path)
     config = _project_config(root_path)
     matrix = _load_candidate_matrix(root_path)
@@ -117,7 +121,7 @@ def render_project(root: str | Path) -> str:
         ),
     )
     integrity = check_integrity(store)
-    guide_order, guide_decided_by, guide_owner = _load_guide_shape(root_path, config)
+    guide = _load_guide_shape(root_path, config)
 
     questions_by_claim = _questions_by_claim(questions)
     reverse_depends, reverse_derived = _reverse_claim_links(claims)
@@ -127,6 +131,7 @@ def render_project(root: str | Path) -> str:
     candidates_by_column = _candidates_by_column(matrix)
     profiles_by_source = _profiles_by_source(profiles)
     facts = _claim_facts(store, claims)
+    rationales = _rationales(root_path, claims, guide.owner)
 
     claim_index = "".join(
         _render_claim_index_card(facts[claim.id]) for claim in claims
@@ -139,11 +144,14 @@ def render_project(root: str | Path) -> str:
             reverse_depends=reverse_depends,
             reverse_derived=reverse_derived,
             declarations_by_key=declarations_by_key,
+            rel=store_rel,
+            rationale=rationales.get(claim.id),
         )
         for claim in claims
     ) or '<p class="empty">No claims yet.</p>'
     question_sections = "".join(
-        _render_question_section(card, store.claims) for card in questions
+        _render_question_section(card, store.claims, store_rel, guide)
+        for card in questions
     ) or '<p class="empty">No questions yet.</p>'
     source_index = "".join(_render_source_index_card(source, profiles_by_source) for source in sources)
     source_sections = "".join(
@@ -170,11 +178,11 @@ def render_project(root: str | Path) -> str:
     integrity_html = "".join(f"<li>{escape(finding)}</li>" for finding in integrity)
 
     answered_slots = _settled_slot_columns(root_path, config, store)
-    guide_fields = len(guide_owner)
+    guide_fields = len(guide.owner)
     elected, elections = _election_tally(facts, answered_slots)
     diagram = _render_process_diagram(
         declared_sources=len(config.get("sources") or []),
-        guide_objects=len(guide_order) - guide_fields,
+        guide_objects=len(guide.order) - guide_fields,
         guide_fields=guide_fields,
         domain_laws=sum(1 for spec in REGISTRY.values() if spec.domain),
         profiles=len(profiles),
@@ -451,6 +459,47 @@ def render_project(root: str | Path) -> str:
       margin: 10px 0;
     }}
     .headline {{ font-size: 15px; margin: 6px 0 12px; }}
+    /* provenance: where a thing came from, what it feeds, the file it is in */
+    .prov {{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 8px 0 4px;
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+    }}
+    .prov .yaml {{ font-family: ui-monospace, monospace; }}
+    details.tech > summary {{ font-size: 11px; }}
+    .picks {{ margin: 4px 0 0; padding-left: 18px; }}
+    .picks li {{ margin-bottom: 4px; }}
+    .picks .muted {{ font-size: 12px; }}
+    /* the derived sentence — the page's own voice, never the model's */
+    .derived {{ font-size: 15px; margin: 4px 0 8px; }}
+    .quote {{
+      border-left: 3px solid var(--line);
+      margin: 8px 0;
+      padding: 2px 0 2px 10px;
+      color: var(--muted);
+      font-style: italic;
+    }}
+    .quote cite {{ display: block; font-style: normal; font-size: 11px; }}
+    /* the AI's words: legible, attributed, and never the headline of a status */
+    .ai-said {{
+      border-left: 3px solid var(--proposed);
+      margin: 8px 0;
+      padding: 2px 0 2px 10px;
+      font-size: 13px;
+    }}
+    .ai-said cite {{ display: block; font-style: normal; font-size: 11px; color: var(--muted); }}
+    .strip {{ display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }}
+    .strip .step {{
+      font-size: 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 10px;
+      color: var(--muted);
+    }}
+    .strip .step.done {{ border-color: var(--test-supported); color: var(--text); }}
+    .strip .step.stopped {{ border-color: var(--unresolved); color: var(--text); }}
     details {{ margin-bottom: 10px; }}
     details > summary {{
       cursor: pointer;
@@ -567,8 +616,7 @@ def render_project(root: str | Path) -> str:
         <p class="muted">Every role the AI proposed candidates for. Each role declares its
         settlement path: a domain law elects the winner, or the humans decide via clarification question —
         never silence.</p>
-        {_render_role_elections(facts, questions, guide_decided_by,
-                                guide_order, guide_owner, answered_slots)}
+        {_render_role_elections(facts, questions, guide, answered_slots)}
       </section>
       <section class="panel" id="open">
         <h2>5 · Open — what only a human can answer ({len(questions)})</h2>
@@ -783,6 +831,112 @@ def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
     return f"<div class='funnel'>{proposed}{bound}{judged}{verdicts}</div>{caveat}"
 
 
+def _rationales(root: Path, claims: list[Claim],
+                owner: dict[str, str]) -> dict[str, str]:
+    """claim id → the model's reason for proposing it, best-effort.
+
+    The rationale is logged in ``cache/`` and deliberately never stored on
+    the claim: it explains a guess, and a guess is not evidence. So this is
+    a *lookup into a disposable file*, and the honest outcomes are three —
+    a rationale, an empty string (the log is gone; the page says so), or no
+    entry at all (this claim was not proposed by a logged model call).
+    """
+    log_dir = root / "cache" / "llm_log"
+    by_statement: dict[str, str] = {}
+    by_role_table: dict[tuple[str, str], str] = {}
+    files = sorted(log_dir.glob("*.json")) if log_dir.is_dir() else []
+    for path in files:
+        for item in _logged_items(path):
+            said = str(item.get("rationale", "")).strip()
+            if not said:
+                continue
+            if "statement" in item:
+                by_statement[" ".join(str(item["statement"]).split())] = said
+            binding = item.get("binding")
+            if item.get("role") and isinstance(binding, dict):
+                table = str(binding.get("table", ""))
+                if table:
+                    by_role_table[(str(item["role"]), table)] = said
+    found: dict[str, str] = {}
+    for claim in claims:
+        if claim.created_by is not Actor.AI:
+            continue
+        said = None
+        if isinstance(claim, MappingClaim):
+            table = str((claim.binding or {}).get("table", ""))
+            # a field's rationale is the one its object's proposal carried:
+            # the model argued for the table once, for all of its fields
+            said = (by_role_table.get((claim.role, table))
+                    or by_role_table.get((owner.get(claim.role, ""), table)))
+        else:
+            said = by_statement.get(" ".join(claim.statement.split()))
+        found[claim.id] = said or ""
+    return found
+
+
+def _logged_items(path: Path) -> list[dict]:
+    """The model's answer items from one logged call — tolerant by design.
+
+    A call log holds every attempt including the ones that failed to parse;
+    the last attempt that is valid JSON is the answer that counted.
+    """
+    try:
+        call = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    for attempt in reversed(call.get("attempts") or []):
+        try:
+            answer = json.loads(attempt.get("raw_text") or "")
+        except ValueError:
+            continue
+        if not isinstance(answer, dict):
+            continue
+        for value in answer.values():
+            if isinstance(value, list) and value and isinstance(value[0], dict):
+                return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def _relative_prefix(root: Path, out_dir: str | Path | None) -> str:
+    """How to reach the project store from where the page will be written.
+
+    Falls back to the default output location, which is what the CLI uses
+    when no `-o` is given. An unreachable relative path (different drive)
+    degrades to an absolute one rather than to a broken link.
+    """
+    base = Path(out_dir).resolve() if out_dir else default_output_path(root).parent
+    try:
+        rel = os.path.relpath(root, base)
+    except ValueError:
+        rel = str(root)
+    return rel.replace(os.sep, "/").rstrip("/") + "/"
+
+
+def _yaml_link(rel: str, kind: str, ident: str) -> str:
+    """The page is disposable; this is the file that is not."""
+    return (
+        f'<a class="yaml" href="{escape(rel)}{kind}/{escape(ident)}.yaml">'
+        f"{escape(kind)}/{escape(_short_id(ident))}.yaml</a>"
+    )
+
+
+def _provenance(rel: str, kind: str, ident: str, *parts: str) -> str:
+    """Where a thing came from, what it feeds, and the file it really lives in."""
+    shown = " · ".join(part for part in parts if part)
+    return (
+        f"<div class='prov'>{shown}{' · ' if shown else ''}"
+        f"{_yaml_link(rel, kind, ident)}</div>"
+    )
+
+
+def _technical(items: Iterable[tuple[str, str]]) -> str:
+    """Ids, timestamps and raw fields — reachable, never in the way."""
+    return (
+        "<details class='tech'><summary>Technical details</summary>"
+        f"{_definition_list(items)}</details>"
+    )
+
+
 def _election_tally(facts: dict[str, ClaimFacts], answered: dict[str, str]) -> tuple[int, int]:
     """(roles settled, roles with candidates). A slot answered by its object's
     passing law counts as settled even though its own claims stay proposed."""
@@ -984,33 +1138,52 @@ def _guide_path(root: Path, config: dict) -> Path | None:
     return path if path.is_absolute() else root / path
 
 
-def _load_guide_shape(root: Path, config: dict) -> tuple[list[str], dict[str, str], dict[str, str]]:
-    """(entry order, entry -> decided_by, field -> its object) from the guide.
+@dataclass
+class GuideShape:
+    """What the report needs from the domain guide, read tolerantly.
 
-    Read tolerantly from the raw YAML: the viewer shows a broken guide, it
-    does not refuse to render because of one.
+    The definitions are the only human-written business vocabulary in the
+    project — the report quotes them rather than inventing prose of its own.
     """
+
+    order: list[str] = field(default_factory=list)
+    decided_by: dict[str, str] = field(default_factory=dict)
+    owner: dict[str, str] = field(default_factory=dict)  # field -> its object
+    definition: dict[str, str] = field(default_factory=dict)
+    fills: dict[str, str] = field(default_factory=dict)  # slot field -> its slot
+
+
+def _load_guide_shape(root: Path, config: dict) -> GuideShape:
+    """The guide's shape and words — read from the raw YAML, never refused.
+
+    A broken guide is shown as it is; the report does not decline to render
+    because one input is wrong.
+    """
+    shape = GuideShape()
     path = _guide_path(root, config)
     if path is None:
-        return [], {}, {}
+        return shape
     try:
         pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except OSError:
-        return [], {}, {}
-    order: list[str] = []
-    decided_by: dict[str, str] = {}
-    owner: dict[str, str] = {}
+        return shape
     for name, spec in (pack.get("objects") or {}).items():
         if not isinstance(spec, dict):
             continue
-        order.append(name)
-        decided_by[name] = spec.get("decided_by", "")
+        shape.order.append(name)
+        shape.decided_by[name] = spec.get("decided_by", "")
+        shape.definition[name] = " ".join(str(spec.get("definition", "")).split())
         for fname, fspec in (spec.get("fields") or {}).items():
-            order.append(fname)
-            owner[fname] = name
+            shape.order.append(fname)
+            shape.owner[fname] = name
             if isinstance(fspec, dict):
-                decided_by[fname] = fspec.get("decided_by", "")
-    return order, decided_by, owner
+                shape.decided_by[fname] = fspec.get("decided_by", "")
+                shape.definition[fname] = " ".join(
+                    str(fspec.get("definition", "")).split()
+                )
+                if fspec.get("fills"):
+                    shape.fills[fname] = str(fspec["fills"])
+    return shape
 
 
 def _settled_slot_columns(root: Path, config: dict, store: ProjectStore) -> dict[str, str]:
@@ -1050,11 +1223,10 @@ def _render_domain_law_templates() -> str:
 
 def _render_role_elections(
     facts: dict[str, ClaimFacts], questions: list[ClarificationQuestion],
-    decided_by: dict[str, str], order: list[str] | None = None,
-    owner: dict[str, str] | None = None, answered: dict[str, str] | None = None,
+    guide: GuideShape, answered: dict[str, str] | None = None,
 ) -> str:
-    owner = owner or {}
     answered = answered or {}
+    owner, decided_by = guide.owner, guide.decided_by
     by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
     for fact in facts.values():
         if isinstance(fact.claim, MappingClaim):
@@ -1063,7 +1235,7 @@ def _render_role_elections(
         return '<p class="empty">No role-binding candidates yet.</p>'
     # guide order — every object followed by its own fields; anything the
     # guide does not name (a stale claim from an older guide) sorts after
-    rank_role = {name: i for i, name in enumerate(order or [])}
+    rank_role = {name: i for i, name in enumerate(guide.order)}
     ordered_roles = sorted(by_role, key=lambda r: (rank_role.get(r, len(rank_role)), r))
 
     rank = {
@@ -1078,56 +1250,120 @@ def _render_role_elections(
         candidates = by_role[role]
         candidates.sort(key=lambda f: (rank[f.derived], f.claim.id))
         winners = [f for f in candidates if f.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)]
-        rows = "".join(_render_candidate(fact, fact in winners) for fact in candidates)
+        column = answered.get(role, "")
+        rows = "".join(
+            _render_candidate(fact, fact in winners, column) for fact in candidates
+        )
         claim_ids = {fact.claim.id for fact in candidates}
         cards = [card for card in questions if claim_ids & set(card.claim_ids)]
-        if winners:
-            outcome = (
-                f"<p><strong>Elected:</strong> {_claim_link(winners[0].claim)} "
-                f"{_status_badge(winners[0].derived.value)}</p>"
-            )
-        elif role in answered:
-            # a slot needs no election of its own: the object's passing law
-            # already consumed a column for it, and that run is the answer
-            outcome = (
-                f"<p><strong>Answered by the "
-                f"{escape(decided_by.get(owner.get(role, ''), 'domain'))} law of "
-                f"<code>{escape(owner.get(role, '?'))}</code>:</strong> the passing "
-                f"check consumed <code>{escape(answered[role])}</code></p>"
-            )
-        elif cards:
-            # the drafted clarification question is the outcome, whatever kept a law from
-            # electing — checked-and-lost, unbindable, or a clarification-decided role
-            outcome = "".join(
-                f"<p><strong>No winner → clarification question:</strong> {_question_link(card)}</p>"
-                for card in cards
-            )
-        elif not any(fact.checks for fact in candidates):
-            outcome = (
-                "<p class='muted'><strong>Not decided yet:</strong> no invariant check "
-                "bound and no clarification question drafted — binding is still in flight.</p>"
-            )
-        else:
-            outcome = (
-                "<p class='muted'>No winner — every tested candidate lost, and no clarification question "
-                "is drafted yet (run role resolution).</p>"
-            )
-        path_note = _decided_by_label({"decided_by": decided_by.get(role, "")})
+        outcome = _election_outcome(
+            role, candidates, winners, cards, column,
+            owner.get(role, ""), decided_by, len(candidates),
+        )
+        path_note = _decided_by_label({"decided_by": decided_by.get(role, ""),
+                                       "fills": guide.fills.get(role, "")})
         of_object = (f" <span class='fine'>field of "
                      f"<code>{escape(owner[role])}</code></span>"
                      if role in owner else "")
+        definition = guide.definition.get(role, "")
+        said = (
+            f"<blockquote class='quote'>{escape(definition)}"
+            "<cite>— what the domain guide says this is</cite></blockquote>"
+            if definition else ""
+        )
         blocks.append(
             f"<div class='election{' guide-field' if role in owner else ''}'>"
             f"<h3><code>{escape(role)}</code>{of_object} "
             f"<span class='muted'>{len(candidates)} candidate"
             f"{'s' if len(candidates) != 1 else ''}"
             f"{' · ' + escape(path_note) if path_note else ''}</span></h3>"
-            f"{outcome}{rows}</div>"
+            f"{said}{outcome}{rows}</div>"
         )
     return "".join(blocks)
 
 
-def _render_candidate(fact: ClaimFacts, won: bool) -> str:
+def _election_outcome(
+    role: str, candidates: list[ClaimFacts], winners: list[ClaimFacts],
+    cards: list[ClarificationQuestion], column: str, owner: str,
+    decided_by: dict[str, str], total: int,
+) -> str:
+    """What became of this role, as one sentence a business reader can act on."""
+    law = decided_by.get(owner or role, "") or "domain"
+    others = total - 1
+    if winners:
+        beaten = sum(1 for f in candidates if f.derived is ClaimStatus.CONTRADICTED)
+        if not beaten:
+            felled = ""
+        elif beaten == others:
+            felled = (" and felled the other candidate" if others == 1
+                      else f" and felled all {others} of its competitors")
+        else:
+            felled = (f" and felled {beaten} of the {others} other candidate"
+                      f"{'s' if others != 1 else ''}")
+        # name the law that actually passed, not the one the guide nominated:
+        # what settled this is the run, and the run knows its own template
+        won_by = _passing_template(winners[0]) or law
+        return (
+            f"<p class='derived'><strong>Identified.</strong> The {escape(won_by)} law "
+            f"passed on {_claim_link(winners[0].claim, label=_binding_name(winners[0].claim))}"
+            f"{felled}.</p>"
+        )
+    if column:
+        # The confusion this section exists to end: the candidate claims of a
+        # slot field stay `proposed` — no check ever tested one on its own —
+        # and yet the field IS answered. Say both, in that order.
+        return (
+            f"<p class='derived'><strong>Answered — without anyone being "
+            f"asked.</strong> The {escape(law)} law of <code>{escape(owner)}</code> "
+            f"passed while reading <code>{escape(column)}</code>, and that run "
+            "is the answer.</p>"
+            "<p class='fine'>No check tests this field on its own, so its "
+            "candidates below all still read <em>proposed</em> — nothing can "
+            "prove by arithmetic what a single column <em>means</em>. What "
+            "settles it is that the law judging the whole object consumed this "
+            "column and held.</p>"
+        )
+    if cards:
+        # the drafted clarification question is the outcome, whatever kept a law from
+        # electing — checked-and-lost, unbindable, or a clarification-decided role
+        return "".join(
+            f"<p class='derived'><strong>Open — a human has to answer it.</strong> "
+            f"{_question_link(card)}</p>"
+            for card in cards
+        )
+    if not any(fact.checks for fact in candidates):
+        return (
+            "<p class='muted'><strong>Not decided yet:</strong> no invariant check "
+            "bound and no clarification question drafted — binding is still in flight.</p>"
+        )
+    return (
+        "<p class='muted'>No winner — every tested candidate lost, and no clarification question "
+        "is drafted yet (run role resolution).</p>"
+    )
+
+
+def _passing_template(fact: ClaimFacts) -> str:
+    """The template of the check that actually passed on this candidate."""
+    plans = {check.id: check for check in fact.checks}
+    for record in fact.evidence:
+        if (record.type is EvidenceType.CHECK_RESULT
+                and record.verdict is CheckVerdict.PASS
+                and not record.stale):
+            plan = plans.get(record.check_plan_id or "")
+            if plan:
+                return plan.template
+    return ""
+
+
+def _binding_name(claim: Claim) -> str:
+    """The elected candidate, named as the thing it is."""
+    binding = getattr(claim, "binding", None)
+    if isinstance(binding, dict) and binding.get("table"):
+        return str(binding["table"])
+    return _candidate_name(claim)
+
+
+def _render_candidate(fact: ClaimFacts, won: bool, consumed: str = "") -> str:
     css = "winner" if won else ("loser" if fact.derived is ClaimStatus.CONTRADICTED else "")
     reasons = "".join(
         f"<div class='fine'>felled by <code>{escape(template)}</code>"
@@ -1140,9 +1376,19 @@ def _render_candidate(fact: ClaimFacts, won: bool) -> str:
             f"<div class='fine'>never tested — {escape(fact.stage)}: "
             f"{escape(fact.no_check_reason)}</div>"
         )
+    binding = getattr(fact.claim, "binding", None)
+    if consumed and isinstance(binding, dict) and consumed in binding.values():
+        # this is the one the law actually read — say so where the eye is,
+        # next to the row that still reads `proposed`
+        css = css or "winner"
+        reasons = (
+            "<div class='fine'><strong>The passing run consumed this column</strong> "
+            "— the object's law held while reading it.</div>"
+        ) + reasons
     return (
         f"<div class='cand {css}'>"
-        f"<div>{_claim_link(fact.claim)} {_status_badge(fact.derived.value)}</div>"
+        f"<div>{_claim_link(fact.claim, label=_candidate_name(fact.claim))} "
+        f"{_status_badge(fact.derived.value)}</div>"
         f"{reasons}</div>"
     )
 
@@ -1234,7 +1480,7 @@ def _render_claim_index_card(fact: ClaimFacts) -> str:
         f'data-search="{escape(search)}">'
         f'<div><a href="#claim-{escape(claim.id)}"><strong>{escape(_short_id(claim.id))}</strong></a> '
         f'{_status_badge(fact.derived.value)}</div>'
-        f'<div>{escape(claim.statement)}</div>'
+        f'<div>{escape(_claim_title(claim))}</div>'
         f'{f"<div class=\"muted\">{escape(hint)}</div>" if hint else ""}'
         "</div>"
     )
@@ -1248,6 +1494,8 @@ def _render_claim_section(
     reverse_depends: dict[str, list[Claim]],
     reverse_derived: dict[str, list[Claim]],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
+    rel: str = "",
+    rationale: str | None = None,
 ) -> str:
     claim = fact.claim
     evidence = fact.evidence
@@ -1280,12 +1528,14 @@ def _render_claim_section(
             )
 
     evidence_html = "".join(
-        _render_evidence_card(record, claim, store.claims, declarations_by_key, store.checks)
+        _render_evidence_card(record, claim, store.claims, declarations_by_key,
+                              store.checks, rel)
         for record in evidence
     ) or '<p class="empty">No evidence attached yet.</p>'
     rendered_sql = _rendered_sql_by_check_plan(evidence)
     check_plans_html = "".join(
-        _render_check_plan_card(check, rendered_sql.get(check.id, "")) for check in checks
+        _render_check_plan_card(check, rendered_sql.get(check.id, ""), rel)
+        for check in checks
     ) or _no_check_html(fact)
     dependency_html = "".join(
         f"<li>{_claim_link(dep)} { _status_badge(dep.status.value) }</li>"
@@ -1324,19 +1574,27 @@ def _render_claim_section(
             f"from live evidence {_status_badge(resolved.value)}.</strong> The derived "
             "status is the truth; the stored one is out of date (re-run the sweep).</div>"
         )
-    proposed = _definition_list([
-        ("predicate", claim.predicate.name if claim.predicate else "—"),
-        ("params", _json_text(claim.predicate.params) if claim.predicate else "—"),
-        ("proposed by", claim.created_by.value),
-        ("funnel stage", STAGE_LABELS[fact.stage]),
-    ])
+    proposed = (
+        f"<blockquote class='ai-said'>{escape(claim.statement)}"
+        f"<cite>— as <code>{escape(claim.created_by.value)}</code> wrote it, "
+        "verbatim; a proposal, not a finding</cite></blockquote>"
+        + _definition_list([
+            ("predicate", claim.predicate.name if claim.predicate else "—"),
+            ("params", _json_text(claim.predicate.params) if claim.predicate else "—"),
+            ("proposed by", claim.created_by.value),
+            ("funnel stage", STAGE_LABELS[fact.stage]),
+        ])
+    )
 
     return (
         f'<div class="claim-detail" data-claim-detail data-claim-id="{escape(claim.id)}" '
         f'id="claim-{escape(claim.id)}">'
-        f"<h3>{escape(claim.statement)}</h3>"
+        f"<h3>{escape(_claim_title(claim))}</h3>"
         f"<p>{_status_badge(resolved.value)} "
         f"<span class='muted'>{escape(_headline(fact))}</span></p>"
+        f"{_stage_strip(fact)}"
+        f"{_rationale_block(rationale)}"
+        f"{_provenance(rel, 'claims', claim.id, f'proposed by {claim.created_by.value}', _feeds_text(fact, questions_by_claim, reverse_depends))}"
         f"{banner}"
         "<details open><summary>1 · Proposed — what the AI guessed</summary>"
         f"{proposed}{subtype}</details>"
@@ -1360,6 +1618,72 @@ def _render_claim_section(
     )
 
 
+def _stage_strip(fact: ClaimFacts) -> str:
+    """How far this claim got, and which step stopped it.
+
+    Four steps, always all four shown: a claim that never reached a step is
+    more informative than one whose missing steps are simply absent.
+    """
+    bound = bool(fact.checks)
+    settled = fact.derived is not ClaimStatus.PROPOSED
+    steps = [
+        ("1 proposed", "done", "the AI wrote it"),
+        ("2 planned", "done" if bound else "stopped",
+         "bound to a check" if bound else STAGE_LABELS[fact.stage]),
+        ("3 judged", "done" if fact.executed else "stopped",
+         "a check ran" if fact.executed else "no check ran"),
+        ("4 settled", "done" if settled else "stopped",
+         f"status {fact.derived.value}" if settled
+         else "still proposed — nothing has spoken for or against it"),
+    ]
+    return "<div class='strip'>" + "".join(
+        f"<span class='step {state}'>{escape(label)} — {escape(what)}</span>"
+        for label, state, what in steps
+    ) + "</div>"
+
+
+def _feeds_text(
+    fact: ClaimFacts,
+    questions_by_claim: dict[str, list[ClarificationQuestion]],
+    reverse_depends: dict[str, list[Claim]],
+) -> str:
+    """What rests on this claim — the reason a wrong one is expensive."""
+    cards = len(questions_by_claim.get(fact.claim.id, []))
+    dependants = len(reverse_depends.get(fact.claim.id, []))
+    parts = []
+    if cards:
+        parts.append(f"{cards} open question{'s' if cards != 1 else ''} rest"
+                     f"{'' if cards != 1 else 's'} on it")
+    if dependants:
+        parts.append(f"{dependants} claim{'s' if dependants != 1 else ''} depend"
+                     f"{'' if dependants != 1 else 's'} on it")
+    return ", ".join(parts) or "nothing rests on it yet"
+
+
+def _rationale_block(rationale: str | None) -> str:
+    """The model's reason for proposing this — read from the disposable call
+    log, never stored on the claim.
+
+    Why it may be missing is the point, not an accident: a proposal's
+    rationale is not evidence, so it is allowed to fade. What survives is
+    what the checks did with the proposal.
+    """
+    if rationale is None:
+        return ""
+    if not rationale:
+        return (
+            "<p class='fine'>The AI's reason for proposing this is not in the "
+            "call log. A rationale explains a guess, and a guess is not "
+            "evidence — so nothing stores it, and it is allowed to disappear. "
+            "What survives is what the checks did with the proposal.</p>"
+        )
+    return (
+        f"<blockquote class='ai-said'>{escape(rationale)}"
+        "<cite>— the AI's reason for proposing this, unverified; read from the "
+        "call log, never stored on the claim</cite></blockquote>"
+    )
+
+
 def _no_check_html(fact: ClaimFacts) -> str:
     """What stands where the check would have stood: why none was built."""
     if fact.stage == "unbound":
@@ -1380,7 +1704,8 @@ def _no_check_html(fact: ClaimFacts) -> str:
     )
 
 
-def _render_check_plan_card(check: CheckPlan, rendered_sql: str = "") -> str:
+def _render_check_plan_card(check: CheckPlan, rendered_sql: str = "",
+                            rel: str = "") -> str:
     details = [
         ("id", check.id),
         ("template", check.template),
@@ -1402,9 +1727,21 @@ def _render_check_plan_card(check: CheckPlan, rendered_sql: str = "") -> str:
         f'<div class="evidence-card" id="check-{escape(check.id)}">'
         f"<div><a href=\"#check-{escape(check.id)}\"><strong>{escape(_short_id(check.id))}</strong></a> "
         f"<code>{escape(check.template)}</code> {domain_badge}</div>"
-        f"{_definition_list(details)}"
+        f"<p class='derived'>{escape(_check_sentence(check, spec))}</p>"
         f"{_render_rendered_sql(rendered_sql)}"
+        f"{_provenance(rel, 'checks', check.id, 'planned by the AI, run by the engine')}"
+        f"{_technical(details)}"
         "</div>"
+    )
+
+
+def _check_sentence(check: CheckPlan, spec) -> str:
+    """What this check tries to break — the definition's own words."""
+    if spec is not None and spec.tests:
+        return " ".join(spec.tests.split())
+    return (
+        f"A test of type '{check.template}': if the data breaks it, the rows "
+        "that break it are the refutation."
     )
 
 
@@ -1472,6 +1809,7 @@ def _render_evidence_card(
     claims: dict[str, Claim],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
     checks: dict[str, CheckPlan],
+    rel: str = "",
 ) -> str:
     details = [
         ("id", record.id),
@@ -1549,25 +1887,172 @@ def _render_evidence_card(
     return (
         f'<div class="evidence-card" id="evidence-{escape(record.id)}">'
         f"<div><a href=\"#evidence-{escape(record.id)}\"><strong>{escape(_short_id(record.id))}</strong></a> {verdict_badge}</div>"
-        f"{_definition_list(details)}"
+        f"<p class='derived'>{escape(_evidence_sentence(record))}</p>"
+        f"{_evidence_voice(record)}"
         f"{check_plan_hint}"
         f"{samples}"
         f"{declaration_hint}"
+        f"{_provenance(rel, 'evidence', record.id, _evidence_author(record))}"
+        f"{_technical(details)}"
         "</div>"
     )
 
 
-def _render_question_section(card: ClarificationQuestion, claims: dict[str, Claim]) -> str:
-    claims_html = "".join(
-        f"<li>{_claim_link(claims[cid])}</li>" for cid in card.claim_ids if cid in claims
-    ) or '<li class="empty">No linked claims.</li>'
+def _evidence_sentence(record: EvidenceRecord) -> str:
+    """What this record says, derived from what it holds — never from prose."""
+    if record.type is EvidenceType.CHECK_RESULT:
+        counted = _population_text(record)
+        rate = record.exception_rate()
+        share = f" ({rate:.2%} of the rows)" if rate else ""
+        if record.verdict is CheckVerdict.PASS:
+            rows = f"{record.population:,} rows" if record.population is not None else "the rows it read"
+            return f"The check ran and found nothing to refute the claim — {rows} examined, no exceptions."
+        if record.verdict is CheckVerdict.FAIL:
+            return f"The check refuted the claim: {counted}{share}."
+        return f"The check could not decide: {counted}."
+    if record.type is EvidenceType.CONFIRMATION:
+        return "A human confirmed this claim. Human confirmation can promote a claim; that is why it is recorded with its scope."
+    if record.type is EvidenceType.TESTIMONIAL:
+        return "A human stated this, in their own words. It is recorded verbatim, as evidence — not rewritten."
+    if record.type is EvidenceType.DOCUMENT_ANCHOR:
+        return "A passage in a document was located and recorded, with the place it was found."
+    return "A recorded processing decision. It carries no verdict and promotes nothing — it exists so that nothing happens silently."
+
+
+def _evidence_voice(record: EvidenceRecord) -> str:
+    """The human's words verbatim; the machine's words attributed to it.
+
+    A statement is shown because it is legible, never because it decides:
+    the derived sentence above already said what this record does.
+    """
+    said = (record.statement or "").strip()
+    if not said and record.type is EvidenceType.DECLARATION:
+        said = str((record.payload or {}).get("reason", "")).strip()
+    if not said:
+        return ""
+    if record.actor is Actor.HUMAN:
+        return (
+            f"<blockquote class='quote'>{escape(said)}"
+            f"<cite>— stated by a human, verbatim</cite></blockquote>"
+        )
+    return (
+        f"<blockquote class='ai-said'>{escape(said)}"
+        f"<cite>— recorded by <code>{escape(record.actor.value)}</code>, "
+        "unverified: it explains, it does not decide</cite></blockquote>"
+    )
+
+
+def _evidence_author(record: EvidenceRecord) -> str:
+    who = {
+        Actor.AI: "written by the AI — structurally unable to promote a claim",
+        Actor.CHECK: "written by the engine that ran the check",
+        Actor.HUMAN: "written by a human",
+        Actor.SYSTEM: "written by the system",
+    }
+    return who.get(record.actor, f"written by {record.actor.value}")
+
+
+def _render_question_section(
+    card: ClarificationQuestion, claims: dict[str, Claim], rel: str = "",
+    guide: GuideShape | None = None,
+) -> str:
+    """A question, then the candidates as a list — never as prose.
+
+    The options used to be flattened into the question text itself; they are
+    the claims the card already links, and a list of bindings written out as
+    a sentence is the least readable form of that data.
+
+    Whether the list is a *choice* is not read off the question's wording —
+    it is read off the guide: only a role the guide sends to the humans
+    (`decided_by: clarification`) is answered by picking one. A role whose
+    law could never be applied is asking for knowledge, not for a pick.
+    """
+    options = [claims[cid] for cid in card.claim_ids if cid in claims]
+    competing = [c for c in options if isinstance(c, MappingClaim)]
+    roles = {c.role for c in competing}
+    if len(options) > 1 and len(competing) == len(options):
+        rows = "".join(
+            f"<li>{_binding_label(claim)} "
+            f"{_claim_link(claim, label='why this one?')}</li>"
+            for claim in sorted(options, key=_binding_sort_key)
+        )
+        a_choice = (
+            len(roles) == 1 and guide is not None
+            and guide.decided_by.get(next(iter(roles))) == "clarification"
+        )
+        lead = (
+            f"Pick one — {len(options)} candidates were proposed:" if a_choice
+            else f"The {len(options)} candidates that were proposed for it — "
+            "no law could be applied to any of them:"
+        )
+        picks = f"<p class='muted'>{lead}</p><ul class='picks'>{rows}</ul>"
+    elif options:
+        # not a choice: a check said something about these claims and the
+        # answer is knowledge, not a selection
+        rows = "".join(
+            f"<li>{_claim_link(claim)} {_status_badge(claim.status.value)}</li>"
+            for claim in options
+        )
+        picks = (
+            f"<p class='muted'>It is about {len(options)} claim"
+            f"{'s' if len(options) != 1 else ''}:</p>"
+            f"<ul class='picks'>{rows}</ul>"
+        )
+    else:
+        picks = (
+            "<p class='empty'>No claim is attached to this question — it asks "
+            "about something nothing in the data was proposed for.</p>"
+        )
     return (
         f'<div class="question-card" id="question-{escape(card.id)}">'
         f"<h3>{escape(card.question)}</h3>"
-        f"{_definition_list([('id', card.id), ('created_at', card.created_at.isoformat()), ('stale', str(card.stale).lower()), ('sql', card.sql or '—'), ('result_ref', card.result_ref or '—')])}"
-        f"<h4>Claims</h4><ul class='list'>{claims_html}</ul>"
+        f"{picks}"
+        f"{_provenance(rel, 'questions', card.id, 'asked of a human', 'nobody has answered it yet')}"
+        f"{_technical([('id', card.id), ('created_at', card.created_at.isoformat()), ('stale', str(card.stale).lower()), ('sql', card.sql or '—'), ('result_ref', card.result_ref or '—')])}"
         "</div>"
     )
+
+
+def _claim_title(claim: Claim) -> str:
+    """A claim named in one readable line.
+
+    A mapping claim's own statement spells out every part of its binding;
+    that is the machine's phrasing, kept verbatim where the model's words
+    belong, not used as a heading.
+    """
+    if isinstance(claim, MappingClaim):
+        return f"'{claim.role}' is played by {_candidate_name(claim)}"
+    return claim.statement
+
+
+def _candidate_name(claim: Claim) -> str:
+    """The one thing a candidate points at — a column, or else its table.
+
+    A mapping claim's statement spells its whole binding out ("role 'journal'
+    is played by account=…, amount=…, doc_ref=…"). That is the same wall of
+    text as the old question strings; the binding itself is the readable form.
+    """
+    binding = getattr(claim, "binding", None)
+    if not isinstance(binding, dict):
+        return claim.statement
+    table = str(binding.get("table", ""))
+    columns = [str(v) for k, v in sorted(binding.items())
+               if k != "table" and isinstance(v, str) and v]
+    if len(columns) == 1:
+        return columns[0] if "." in columns[0] else f"{table}.{columns[0]}".strip(".")
+    return table or claim.statement
+
+
+def _binding_label(claim: Claim) -> str:
+    """What a candidate points at, linked to where it is profiled."""
+    name = _candidate_name(claim)
+    if name == claim.statement:
+        return f"<code>{escape(name)}</code>"
+    return _column_link(name) if "." in name else _table_link(name)
+
+
+def _binding_sort_key(claim: Claim) -> str:
+    return _candidate_name(claim)
 
 
 def _render_source_index_card(source: Source, profiles: dict[str, list[DataProfile]]) -> str:
@@ -1732,10 +2217,11 @@ def _type_badge(kind: str) -> str:
     return f'<span class="badge status-proposed">{escape(kind)}</span>'
 
 
-def _claim_link(claim: Claim | None) -> str:
+def _claim_link(claim: Claim | None, label: str | None = None) -> str:
     if claim is None:
         return '<span class="empty">missing claim</span>'
-    return f'<a href="#claim-{escape(claim.id)}">{escape(_short_id(claim.id))} — {escape(claim.statement)}</a>'
+    text = label or f"{_short_id(claim.id)} — {_claim_title(claim)}"
+    return f'<a href="#claim-{escape(claim.id)}">{escape(text)}</a>'
 
 
 def _evidence_link(record: EvidenceRecord | None) -> str:
@@ -1749,7 +2235,19 @@ def _source_link(source: Source) -> str:
 
 
 def _question_link(card: ClarificationQuestion) -> str:
-    return f'<a href="#question-{escape(card.id)}">{escape(_short_id(card.id))} — {escape(card.question)}</a>'
+    """Link on the question itself, not on its id and not on its whole body."""
+    return f'<a href="#question-{escape(card.id)}">{escape(_first_sentence(card.question))}</a>'
+
+
+def _first_sentence(text: str) -> str:
+    """The ask, without the explanation that follows it.
+
+    Questions are written ask-first exactly so this is safe: what follows the
+    first '?' is the guide's definition and what the machine already tried,
+    which belongs on the question card, not in every link to it.
+    """
+    head, mark, _ = " ".join(text.split()).partition("?")
+    return f"{head}{mark}" if mark else head
 
 
 def _table_link(table: str) -> str:

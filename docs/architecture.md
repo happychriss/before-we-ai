@@ -50,7 +50,13 @@ as input, (b) transparent to the user, (c) logically validated:
 |---|---|---|---|
 | raw data | `before-ai.yaml` `sources:` (human-authored) | step-INPUT blocks; fingerprints; SYSTEM declarations | canonicalization + profiling; re-scan idempotence |
 | domain guide (data) | `llm.domain_guide_file` | INPUT block prints the file; definitions land in prompts verbatim (logged) | Pydantic `DomainGuide`, `extra="forbid"` + coherence lint (settlement path, slot fillability, a field can never declare a law) |
-| check definitions / domain laws (code) | `checks/REGISTRY` | rendered template docs in the V2 prompt (logged); executed SQL kept in evidence | unit test locks `TEMPLATE_PARAMS` ↔ REGISTRY; review like all code |
+| check definitions / domain laws (code) | `checks/REGISTRY` | rendered template docs in the V2 prompt (logged); executed SQL kept in evidence; `CheckDefinition.tests` says in business words what each one tries to break, rendered in the readiness report | unit test locks `TEMPLATE_PARAMS` ↔ REGISTRY; review like all code |
+
+Note the asymmetry in that middle column: the **model** is shown
+`TEMPLATE_PARAMS` / `TEMPLATE_NOTES` from `llm/vocabulary.py`, the **human**
+is shown `CheckDefinition.tests`. They are separate fields on purpose — the
+business sentence can be rewritten for clarity without touching a single
+prompt byte.
 
 **The product is a general machine only together with a domain pack** —
 never on its own (owner decision 2026-07-12). A domain pack = the domain
@@ -485,9 +491,50 @@ status/predicate/role filters; deep links reveal their claim:
 - **Core terms** (bottom) — rendered from `before_we_ai/glossary.py` (one
   home, no drift).
 
+**The three-voices rule (confirmed 2026-07-31).** The report is read by
+people who will act on it, so it must be business-legible — and being
+legible is exactly how a page starts laundering a guess into a finding.
+Three voices, never mixed:
+
+1. **Derived narration** — deterministic sentences composed from evidence,
+   verdicts and the guide's definitions. This is the headline voice, and the
+   only one allowed to state a status. Never an LLM at render time (the door
+   stays open; the guide's definitions already carry the business words).
+2. **The AI's words** — claim statements, refusal reasons, proposal
+   rationale. Shown, because they are legible and often the most useful
+   sentence on the page; always attributed, always subordinate to the derived
+   line above them. **The model's prose may headline a proposal, never a
+   status.**
+3. **The human's words** — testimonials and answers, verbatim. They are
+   evidence; they are not paraphrased.
+
+Two consequences worth stating. A mapping claim's own statement spells out
+its whole binding, so it is quoted under "1 · Proposed" and never used as a
+heading — headings use the derived title (`'journal' is played by
+de_erp__gl_postings`). And the **proposal rationale is read best-effort from
+`cache/llm_log/`**, matched by statement (hypotheses) or role+table (mapping
+claims, a field inheriting its object's proposal). It is deliberately not
+stored on the claim: trust maps to persistence, so derived sentences are
+permanent and a rationale is allowed to fade. When it is gone the page says
+so, without guessing why.
+
+**Questions are written ask-first** (`QUESTION_*` in `llm/domain_guide.py`):
+the ask, then the guide's definition of the thing, then what the machine
+already tried. Candidates are *not* formatted into the text — they are the
+`claim_ids` the card already carries, rendered as a list. Whether that list
+is a *choice* is read off the guide (`decided_by: clarification`), not off
+the question's wording. **Behaviour change 2026-07-31:** question dedup is
+exact-text, so with the candidate list out of the string, a changed candidate
+set no longer drafts a second card — it dedups to the same open question and
+keeps the first card's `claim_ids`. That is the more correct reading ("which
+column is the document reference?" is one question, not a new one per
+candidate shuffle), and append-only means older stores keep their old
+wording.
+
 `tests/unit/test_readiness_report.py` locks the funnel stage counts, the
 winner / loser-with-its-law / clarification-question of the role elections,
-and the process diagram (live counts, actor boundary, ghost nodes).
+the process diagram (live counts, actor boundary, ghost nodes), the question
+pick-list and folded ids, and the three voices.
 
 ## Onboarding workflow (design owner-aligned 2026-07-12, not yet built)
 

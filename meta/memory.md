@@ -22,27 +22,25 @@
   questions 7 → 6, project total 14 → 13), the walkthrough and viewer now
   *show* the consumed column. Detail: architecture.md "Guide by
   construction" + Domain inputs.
-- **IN PROGRESS: readiness-report redesign** (owner decision 2026-07-31
-  evening: report first, then an owner validation run on it, then M6). Plan:
-  `/home/ubuntu/.claude/plans/readiness-report.md`.
-  **WP-A DONE 2026-07-31** (suite 271 green): `src/claim_viewer` →
-  `src/readiness_report` (module `render.py`, `viewer.sh` → `report.sh`,
-  output `data/report/readiness.html`, stage `report`), process diagram with
-  live counts + actor boundary + M5/M6 ghost nodes, page reordered to
-  pipeline flow (process → 1 inputs → 2 measured → 3 proposed → 4 decided →
-  5 open → 6 claim detail → integrity → core terms). `_env.sh` now exports
-  `PYTHONPATH=$BW_REPO/src` so a package rename can never break the
-  walkthrough via a stale editable install. **NEXT: WP-B** (derived business
-  sentences, the amount_local narration fix, provenance strips + YAML links,
-  attributed AI rationale from `cache/llm_log/`, questions in business
-  register with the re-pins the plan lists), then WP-C.
-  The redesign's centrepiece is derived business-language
-  narration under the **three-voices rule** (derived sentences headline;
-  AI words attributed + subordinate — may headline a proposal, never a
-  status; human words verbatim), provenance strip + YAML link on every
-  entity, questions reworded to business register (no prompt bytes; test
-  re-pins listed in the plan). Owned code only — zero fixture/prompt
-  changes by construction.
+- **Readiness-report redesign — DONE 2026-07-31** (owner decision: report
+  first, then an owner validation run on it, then M6). Plan:
+  `/home/ubuntu/.claude/plans/readiness-report.md`. Suite **273 green**;
+  zero diffs under `tests/fixtures/llm/`, `llm/inputs.py`, `llm/prompts.py`,
+  `llm/vocabulary.py` ⇒ prompt bytes untouched by construction.
+  Claim viewer → **readiness report** (`src/readiness_report/render.py`,
+  `report.sh`, `data/report/readiness.html`, stage `report`); process
+  diagram with live counts, actor boundary and M5/M6 ghost nodes; page in
+  pipeline order (process → 1 inputs → 2 measured → 3 proposed → 4 decided →
+  5 open → 6 claim detail → integrity → core terms); derived business
+  narration under the **three-voices rule**; the `amount_local` story fixed
+  where it confused the owner; provenance strip + relative YAML link on
+  every entity with ids/timestamps behind "Technical details"; AI rationale
+  read best-effort from `cache/llm_log/` (100% matched on the current run);
+  questions rewritten ask-first with the guide's definition and the
+  candidates as links. Detail: architecture.md → "Readiness report".
+  **NEXT: the owner's validation run using only the report.** New knobs
+  worth knowing: `CheckDefinition.tests` (business sentence per check,
+  never in a prompt) and `_env.sh` exporting `PYTHONPATH=$BW_REPO/src`.
 - **THEN: M6** (question flow + ReadinessMap, built to the narrow demo).
   Spec: architecture.md "Question flow & readiness"; build outline: WP2 of
   `/home/ubuntu/.claude/plans/guide-hierarchy-then-m6.md` (kept, WP1 marked

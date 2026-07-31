@@ -190,12 +190,19 @@ def test_every_unsettled_role_becomes_a_clarification_not_a_silent_discard(pipel
         "subledger_ar",
     ]
     ic = by_role["intercompany"]
-    assert "no proposed binding could be bound" in ic.question  # never bound
+    # never bound: the law never got to speak, so the question asks what is
+    # missing rather than which candidate lost
+    assert "What is missing before the 'intercompany' can be tested?" in ic.question
+    assert "could be put to the ic_symmetry law at all" in ic.question
     assert len(ic.claim_ids) == 2  # both candidates attached
-    assert "what domain knowledge is missing" in by_role["subledger_ar"].question
+    assert ("What is missing before the 'subledger_ar' can be tested?"
+            in by_role["subledger_ar"].question)
     for role in ("account", "doc_ref", "entity", "period"):
         card = by_role[role]
-        assert "which binding applies" in card.question
+        assert f"Which of the proposed candidates is the '{role}'?" in card.question
+        # the guide's definition is in the question; the candidates are links
+        assert "business fact, not an arithmetic one" in card.question
+        assert "de_erp__gl_postings" not in card.question
         assert card.claim_ids  # the candidates ride along, answerable in one pick
     # resolution is idempotent
     assert resolve_mappings(pipeline["store"], pipeline["roles"]) == []

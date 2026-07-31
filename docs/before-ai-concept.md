@@ -298,8 +298,16 @@ The system therefore asks a focused business question — a **clarification
 question** [`ClarificationQuestion`, drafted automatically, stored in
 `questions/`]:
 
-> Clarification question: no check can decide the role 'period' — which
-> binding applies: table=buchungen_report | table=de_erp__gl_postings?
+> Which of the proposed candidates is the 'period'? The posting period on
+> the journal, at fiscal-period granularity. No check can settle this —
+> what the data means is a business fact, not an arithmetic one.
+
+The ask comes first, then the guide's own definition of what is being
+asked about, then what the machine already tried. The candidates are *not*
+written into the sentence: the question card links them (`claim_ids`), and
+the readiness report renders them as a list to pick from. A list of
+bindings flattened into prose is the least readable form of that data —
+and it duplicates links the card already carries.
 
 The rule completed by this step: **every business object and every
 clarification-decided field ends in a check verdict or a clarification

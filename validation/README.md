@@ -118,10 +118,18 @@ Good (offline pins): **six** clarification questions, one per unsettled entry �
 
 - `intercompany`, `subledger_ar` — law-decided objects, but in this recording
   V2 never bound their invariant to any candidate (honest `template=null`) →
-  "no proposed binding could be bound to its invariant check — what domain
-  knowledge is missing?"
+  "What is missing before the 'intercompany' can be tested? … No proposed
+  candidate could be put to the ic_symmetry law at all, so nothing about it
+  has been tested."
 - `account`, `doc_ref`, `entity`, `period` — clarification-decided journal
-  fields; each question lists the candidates, so it is answerable in one pick.
+  fields → "Which of the proposed candidates is the 'doc_ref'? … No check can
+  settle this — what the data means is a business fact, not an arithmetic
+  one."
+
+Each question is written ask-first, then the guide's own definition of the
+thing being asked about, then what the machine already tried. The candidates
+are linked, never written into the sentence; the readiness report renders
+them as a list to pick from.
 
 Nothing is drafted for the settled object (`journal`) — nor for its
 `amount_local` slot, and the step says so explicitly: the passing balance run

@@ -175,7 +175,8 @@ def test_checked_and_lost_object_drafts_the_lost_clarification(tmp_path):
     _fail_check(store, claim)
     cards = resolve_mappings(store, _guide(intercompany="ic_symmetry"))
     assert len(cards) == 1
-    assert "no proposed binding passed its invariant check" in cards[0].question
+    assert "Which source is the authoritative 'intercompany'?" in cards[0].question
+    assert "put to the ic_symmetry law, and every one of them failed it" in cards[0].question
 
 
 def test_law_that_could_never_be_bound_drafts_a_clarification(tmp_path):
@@ -186,7 +187,8 @@ def test_law_that_could_never_be_bound_drafts_a_clarification(tmp_path):
         _declare_unbindable(store, _candidate(store, "subledger_ar", table))
     cards = resolve_mappings(store, _guide(subledger_ar="subledger_equals_gl"))
     assert len(cards) == 1
-    assert "what domain knowledge is missing" in cards[0].question
+    assert "What is missing before the 'subledger_ar' can be tested?" in cards[0].question
+    assert "could be put to the subledger_equals_gl law at all" in cards[0].question
     assert len(cards[0].claim_ids) == 2
 
 
@@ -198,7 +200,13 @@ def test_pending_candidates_draft_nothing(tmp_path):
     assert resolve_mappings(store, _guide(journal="balance")) == []
 
 
-def test_clarification_field_lists_its_candidates(tmp_path):
+def test_clarification_field_asks_in_business_words_and_links_its_candidates(tmp_path):
+    """The question is a question; the candidates are links, not prose.
+
+    A list of bindings flattened into the sentence is the least readable form
+    of data we have — and it duplicates the claim_ids the card already carries.
+    What the sentence must carry instead is the guide's own definition, so it
+    is answerable by someone who does not know the guide."""
     store = ProjectStore(init_project(tmp_path / "p"))
     _candidate(store, "journal", "de_erp__gl_postings")  # still in flight
     _candidate(store, "period", "de_erp__gl_postings")
@@ -206,11 +214,14 @@ def test_clarification_field_lists_its_candidates(tmp_path):
     guide = _guide(journal=("balance", {"period": {"decided_by": "clarification"}}))
     cards = resolve_mappings(store, guide)
     assert len(cards) == 1
-    assert "which binding applies" in cards[0].question
-    # candidates listed, deterministically sorted — answerable in one pick
-    assert cards[0].question.index("buchungen_report") < cards[0].question.index(
-        "de_erp__gl_postings"
-    )
+    question = cards[0].question
+    assert "Which of the proposed candidates is the 'period'?" in question
+    assert "a business fact, not an arithmetic one" in question
+    # the guide's definition is quoted into the question
+    assert "the period" in question
+    # the candidates are linked, never flattened into the sentence
+    assert "de_erp__gl_postings" not in question
+    assert "buchungen_report" not in question
     assert len(cards[0].claim_ids) == 2
 
 
@@ -223,8 +234,8 @@ def test_entry_with_no_candidate_drafts_a_clarification_once_search_ran(tmp_path
     _candidate(store, "journal", "de_erp__gl_postings")
     cards = resolve_mappings(store, guide)
     assert [c.question for c in cards] == [
-        "Clarification question: no candidate was proposed for the role "
-        "'period' — does this role exist in this data landscape?"
+        "Does the 'period' exist in this data at all? the period. Nothing in "
+        "the scanned sources was proposed as a candidate for it."
     ]
 
 
@@ -268,7 +279,9 @@ def test_a_slot_may_ride_a_law_but_not_vanish_into_it(tmp_path):
     _candidate(store, "amount_local", "de_erp__gl_postings")
     cards = resolve_mappings(store, _guide(journal=("balance", _SLOT_AMOUNT)))
     assert len(cards) == 1
-    assert "rides the 'balance' law of 'journal' as its 'amount'" in cards[0].question
+    assert "Which column is the 'amount_local'?" in cards[0].question
+    assert ("settled as the 'amount' of the balance law of 'journal', but the "
+            "run that passed consumed no column for it") in cards[0].question
     assert cards[0].claim_ids  # the candidate rides along, answerable in one pick
 
 

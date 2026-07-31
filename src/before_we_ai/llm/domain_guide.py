@@ -73,26 +73,33 @@ DECIDED_BY_SLOT = "slot"
 PROVENANCE_HUMAN = "confirmed-by-human"
 PROVENANCE_AI = "drafted-by-ai"
 
+# The question a human is asked, in the register a business reader thinks in:
+# the ask first, then the guide's own definition of what is being asked about,
+# then what the machine already tried. The candidates are NOT written into the
+# text — the card links them (`claim_ids`), and a list of bindings flattened
+# into prose is the least readable form of data we have.
 QUESTION_LOST = (
-    "Clarification question: for the role '{role}' no proposed binding passed "
-    "its invariant check — which source is authoritative?"
+    "Which source is the authoritative '{role}'? {definition} Every proposed "
+    "candidate was put to the {law} law, and every one of them failed it."
 )
 QUESTION_UNBOUND = (
-    "Clarification question: for the role '{role}' no proposed binding could be "
-    "bound to its invariant check — what domain knowledge is missing?"
+    "What is missing before the '{role}' can be tested? {definition} No "
+    "proposed candidate could be put to the {law} law at all, so nothing "
+    "about it has been tested."
 )
 QUESTION_CHOOSE = (
-    "Clarification question: no check can decide the role '{role}' — which "
-    "binding applies: {options}?"
+    "Which of the proposed candidates is the '{role}'? {definition} No check "
+    "can settle this — what the data means is a business fact, not an "
+    "arithmetic one."
 )
 QUESTION_EMPTY = (
-    "Clarification question: no candidate was proposed for the role '{role}' — "
-    "does this role exist in this data landscape?"
+    "Does the '{role}' exist in this data at all? {definition} Nothing in the "
+    "scanned sources was proposed as a candidate for it."
 )
 QUESTION_SLOT_UNCONSUMED = (
-    "Clarification question: the field '{role}' rides the '{law}' law of "
-    "'{object}' as its '{slot}', but the passing check consumed no column for "
-    "it — which column is it?"
+    "Which column is the '{role}'? {definition} It should have been settled "
+    "as the '{slot}' of the {law} law of '{object}', but the run that passed "
+    "consumed no column for it."
 )
 
 
@@ -236,10 +243,6 @@ def load_domain_guide(path: str | Path) -> DomainGuide:
     return DomainGuide.model_validate(data)
 
 
-def _binding_text(claim: MappingClaim) -> str:
-    return ", ".join(f"{k}={v}" for k, v in sorted(claim.binding.items()))
-
-
 def _has_no_check_declaration(store: ProjectStore,
                               claim: MappingClaim) -> bool:
     return any(
@@ -309,7 +312,8 @@ def resolve_mappings(store: ProjectStore,
     for object_name, spec in guide.objects.items():
         object_settled = any(c.status in _SETTLED
                              for c in _candidates(store, object_name))
-        _draft(store, drafted, object_name, spec.decided_by, any_candidates)
+        _draft(store, drafted, object_name, spec.decided_by,
+               spec.definition, any_candidates)
         answered = settled_slots(store, guide, object_name) if object_settled else {}
         for field_name, field in spec.fields.items():
             if field.decided_by == DECIDED_BY_SLOT:
@@ -318,30 +322,44 @@ def resolve_mappings(store: ProjectStore,
                     # a settled one has its answer in the passing run
                     continue
                 text = QUESTION_SLOT_UNCONSUMED.format(
-                    role=field_name, law=spec.decided_by, object=object_name,
-                    slot=field.fills,
+                    role=field_name, definition=_sentence(field.definition),
+                    law=spec.decided_by, object=object_name, slot=field.fills,
                 )
                 _save(store, drafted, text, _candidates(store, field_name))
                 continue
-            _draft(store, drafted, field_name, field.decided_by, any_candidates)
+            _draft(store, drafted, field_name, field.decided_by,
+                   field.definition, any_candidates)
     return drafted
 
 
+def _sentence(definition: str) -> str:
+    """The guide's own definition, as one sentence inside a question.
+
+    The guide is the only human-written business vocabulary we have; a
+    question that names a role without saying what it means is answerable
+    only by someone who already knows the guide.
+    """
+    text = " ".join(definition.split())
+    if text and not text.endswith((".", "?", "!")):
+        text += "."
+    return text
+
+
 def _draft(store: ProjectStore, drafted: list, role: str, decided_by: str,
-           any_candidates: bool) -> None:
+           definition: str, any_candidates: bool) -> None:
     """The verdict-or-question rule for one law- or clarification-decided entry."""
     candidates = _candidates(store, role)
     if any(c.status in _SETTLED for c in candidates):
         return
+    said = _sentence(definition)
     if not candidates:
         # only once the search has run at all — an empty store is
         # a project that has not reached the proposal step yet
         if not any_candidates:
             return
-        text = QUESTION_EMPTY.format(role=role)
+        text = QUESTION_EMPTY.format(role=role, definition=said)
     elif decided_by == DECIDED_BY_CLARIFICATION:
-        options = " | ".join(sorted(_binding_text(c) for c in candidates))
-        text = QUESTION_CHOOSE.format(role=role, options=options)
+        text = QUESTION_CHOOSE.format(role=role, definition=said)
     else:  # a domain law decides — did it get to speak?
         checked = any(
             e.type is EvidenceType.CHECK_RESULT and not e.stale
@@ -349,9 +367,11 @@ def _draft(store: ProjectStore, drafted: list, role: str, decided_by: str,
             for e in store.evidence_for(c)
         )
         if checked:
-            text = QUESTION_LOST.format(role=role)
+            text = QUESTION_LOST.format(role=role, definition=said,
+                                        law=decided_by)
         elif all(_has_no_check_declaration(store, c) for c in candidates):
-            text = QUESTION_UNBOUND.format(role=role)
+            text = QUESTION_UNBOUND.format(role=role, definition=said,
+                                           law=decided_by)
         else:
             return  # binding still pending, not yet a question
     _save(store, drafted, text, candidates)

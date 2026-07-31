@@ -9,8 +9,9 @@ subledger_equals_gl (F20), ic_symmetry (F22).
 
 Each spec knows its SQL file, how to build the Jinja context from check
 params (``prepare``), its deterministic verdict function, its default
-tolerances (overridable ONLY via before-ai.yaml), and the clarification question it
-drafts on FAIL/INCONCLUSIVE.
+tolerances (overridable ONLY via before-ai.yaml), what it tries to break in
+business words (``tests``, rendered in the readiness report), and the
+clarification question it drafts on FAIL/INCONCLUSIVE.
 """
 
 from dataclasses import dataclass, field
@@ -53,6 +54,11 @@ class CheckDefinition:
     verdict: Callable  # (rows, columns, ctx) -> verdicts.Assessment
     tolerances: dict[str, float] = field(default_factory=dict)
     question: str | None = None  # clarification question template, formatted with the context
+    # What this check tries to break, in the words a business reader thinks
+    # in — rendered in the readiness report so a check plan is legible
+    # without reading its SQL. Never enters a prompt: the model is shown
+    # `TEMPLATE_PARAMS` / `TEMPLATE_NOTES` from `llm/vocabulary.py`, not this.
+    tests: str = ""
     # None = generic data check, works in any domain. A domain name marks a
     # domain law — these templates are part of that domain's pack, and what
     # is domain-specific must always be enumerable (the product is a general
@@ -212,69 +218,80 @@ REGISTRY: dict[str, CheckDefinition] = {
         file="anti_join.sql.j2",
         prepare=_prep_anti_join,
         verdict=verdicts.anti_join_verdict,
-        question="Clarification question: {child} has entries without a counterpart in {parent} — data cut, pending state, or an error?",
+        tests="Every entry on one side must have a counterpart on the other. It looks for the ones that do not.",
+        question="{child} has entries with no counterpart in {parent} — is that a legitimate data cut, a pending state, or an error?",
     ),
     "duplicate": CheckDefinition(
         file="duplicate.sql.j2",
         prepare=_prep_duplicate,
         verdict=verdicts.empty_expected,
-        question="Clarification question: {table} contains duplicates over ({key_list}) — which records are authoritative?",
+        tests="The named columns should identify a record once. It looks for records that appear more than once.",
+        question="{table} contains duplicates over ({key_list}) — which records are authoritative?",
     ),
     "grain": CheckDefinition(
         file="duplicate.sql.j2",
         prepare=_prep_duplicate,
         verdict=verdicts.empty_expected,
-        question="Clarification question: {table} is not unique on the assumed grain ({key_list}) — what is the true grain?",
+        tests="One row should mean one thing. It looks for the key that was assumed to identify a row failing to do so.",
+        question="{table} is not unique on the assumed grain ({key_list}) — what identifies exactly one row?",
     ),
     "coverage": CheckDefinition(
         file="coverage.sql.j2",
         prepare=_prep_coverage,
         verdict=verdicts.coverage_verdict,
-        question="Clarification question: {table} does not fully cover the expected units — data cut or gap?",
+        tests="All the units that were expected should be present. It looks for the ones that are missing.",
+        question="{table} does not cover all the units that were expected — is that a legitimate data cut, or a gap?",
     ),
     "cardinality": CheckDefinition(
         file="cardinality.sql.j2",
         prepare=_prep_cardinality,
         verdict=verdicts.cardinality_verdict,
+        tests="A link between two columns should hold for nearly every value, and point at one record. It measures how far short it falls.",
         tolerances={"min_containment": 0.95, "min_uniqueness": 0.99},
     ),
     "attribute_contradiction": CheckDefinition(
         file="attribute_contradiction.sql.j2",
         prepare=_prep_attribute_contradiction,
         verdict=verdicts.empty_expected,
-        question="Clarification question: {left} and {right} contradict each other on linked attributes — which source leads?",
+        tests="Two sources describing the same thing should agree about it. It looks for the records where they say different things.",
+        question="{left} and {right} contradict each other on linked attributes — which source leads?",
     ),
     "reconciliation": CheckDefinition(
         file="reconciliation.sql.j2",
         prepare=_prep_reconciliation,
         verdict=verdicts.empty_expected,
+        tests="Two sets of figures that describe the same thing should add up to the same total per group. It looks for the groups where they do not.",
         tolerances={"absolute": 0.01},
-        question="Clarification question: {left} and {right} do not agree per group — which cutoff or accrual is missing?",
+        question="{left} and {right} do not agree per group — which cutoff or accrual is missing?",
     ),
     "validity_join": CheckDefinition(
         file="validity_join.sql.j2",
         prepare=_prep_validity_join,
         verdict=verdicts.empty_expected,
-        question="Clarification question: {table} has overlapping validity periods — which version applies?",
+        tests="Only one version of a record should be valid at any moment. It looks for validity periods that overlap.",
+        question="{table} has overlapping validity periods — which version applies?",
     ),
     "range_join": CheckDefinition(
         file="range_join.sql.j2",
         prepare=_prep_range_join,
         verdict=verdicts.empty_expected,
-        question="Clarification question: values from {table} fall into no range or several ranges of {ranges} — how is the assignment meant?",
+        tests="Every value should fall into exactly one of the declared ranges. It looks for values that fall into none, or into several.",
+        question="values from {table} fall into no range or several ranges of {ranges} — how is the assignment meant?",
     ),
     "decode": CheckDefinition(
         file="decode.sql.j2",
         prepare=_prep_decode,
         verdict=verdicts.empty_expected,
-        question="Clarification question: positional codes in {encoded} do not decode uniquely against {decode} — is the positional logic right?",
+        tests="A code built from positions should resolve to exactly one meaning. It looks for codes that do not.",
+        question="positional codes in {encoded} do not decode uniquely against {decode} — is the positional logic right?",
     ),
     "balance": CheckDefinition(
         file="balance.sql.j2",
         prepare=_prep_balance,
         verdict=verdicts.empty_expected,
+        tests="Debits and credits must cancel out within every group of postings. It looks for groups where money appears or disappears.",
         tolerances={"absolute": 0.01},
-        question="Clarification question: {journal} does not balance per group — is an offsetting entry missing?",
+        question="{journal} does not balance per group — is an offsetting entry missing?",
         domain="finance",
         slots={"amount": "journal"},
     ),
@@ -282,8 +299,9 @@ REGISTRY: dict[str, CheckDefinition] = {
         file="subledger_equals_gl.sql.j2",
         prepare=_prep_subledger,
         verdict=verdicts.empty_expected,
+        tests="A subledger must add up to the general-ledger account it belongs to. It looks for the amounts that are in one and not the other.",
         tolerances={"absolute": 0.01},
-        question="Clarification question: subledger {subledger} deviates from the general ledger {journal} — which items are missing?",
+        question="subledger {subledger} deviates from the general ledger {journal} — which items are missing?",
         domain="finance",
         slots={"subledger_amount": "subledger"},
     ),
@@ -291,7 +309,8 @@ REGISTRY: dict[str, CheckDefinition] = {
         file="ic_symmetry.sql.j2",
         prepare=_prep_ic_symmetry,
         verdict=verdicts.empty_expected,
-        question="Clarification question: intercompany postings are not symmetric between {left} and {right} — where is the counterpart missing?",
+        tests="A posting between two entities must appear on both sides, with opposite signs. It looks for the legs that have no counterpart.",
+        question="intercompany postings are not symmetric between {left} and {right} — where is the counterpart missing?",
         domain="finance",
     ),
 }
