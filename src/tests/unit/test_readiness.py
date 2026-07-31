@@ -112,7 +112,8 @@ class TestTheVerdict:
         _passing_balance(store, _candidate(store, "journal", "de_erp__gl"))
         result = _map(store, guide, _obj())
         assert result.verdict is Readiness.READY
-        assert "Every one of the 1 things" in result.reason()
+        assert result.reason() == \
+            "The one thing this answer depends on is supported."
 
     def test_a_missing_object_blocks_because_no_number_can_be_produced(
             self, store, guide):
@@ -135,7 +136,19 @@ class TestTheVerdict:
         assert result.verdict is Readiness.BLOCKED
 
     def test_an_empty_requirement_list_is_ready_and_says_so(self, store, guide):
-        assert _map(store, guide).verdict is Readiness.READY
+        result = _map(store, guide)
+        assert result.verdict is Readiness.READY
+        assert result.reason() == \
+            "This answer was declared to depend on nothing."
+
+    def test_the_reason_agrees_with_itself_in_number(self, store, guide):
+        """One blocker is 'it', several are 'them'. The derived sentences are
+        the product's voice; a grammar slip in them reads as carelessness
+        about the verdict."""
+        one = _map(store, guide, _obj()).reason()
+        assert "'journal' is unsupported" in one and "computed from it." in one
+        many = _map(store, guide, _obj(), _field()).reason()
+        assert "are unsupported" in many and "computed from them." in many
 
 
 class TestTheVerdictNamesItsDependency:

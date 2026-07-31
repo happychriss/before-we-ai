@@ -122,23 +122,25 @@ class ReadinessMap:
         reader has to go looking for is a verdict they will take on trust.
         """
         if self.verdict is Readiness.READY:
-            return (
-                f"Every one of the {len(self.items)} things this answer "
-                "depends on is supported."
-            )
+            n = len(self.items)
+            if n == 0:
+                return "This answer was declared to depend on nothing."
+            if n == 1:
+                return "The one thing this answer depends on is supported."
+            return f"All {n} things this answer depends on are supported."
         if self.verdict is Readiness.BLOCKED:
+            one = len(self.blocking()) == 1
             missing = _list(i.ref for i in self.blocking())
             return (
                 f"The answer cannot be produced: {missing} "
-                f"{'is' if len(self.blocking()) == 1 else 'are'} unsupported, "
-                "and the figures are computed from them."
+                f"{'is' if one else 'are'} unsupported, and the figures are "
+                f"computed from {'it' if one else 'them'}."
             )
+        one = len(self.limitations()) == 1
         missing = _list(i.ref for i in self.limitations())
         return (
             f"The figures can be produced, but what they mean is not "
-            f"settled: {missing} "
-            f"{'remains' if len(self.limitations()) == 1 else 'remain'} "
-            "unsupported."
+            f"settled: {missing} {'remains' if one else 'remain'} unsupported."
         )
 
 

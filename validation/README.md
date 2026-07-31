@@ -223,6 +223,14 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   **6 readiness** (the question verbatim, the verdict, and every dependency
   with the sentence saying where it stands), then one claim at a time as a
   story: proposed → planned → judged → context.
+- `two-entities.sh` — a tiny synthetic project the frozen corpus cannot show:
+  DE and US each own a ledger and a period column, both ledgers pass the
+  balance law, and the question is asked *for Germany*. Renders its own report
+  at `data/two-entities/report.html`. What to look for: **two** journal
+  elections rather than one contest with a loser, **two** period questions
+  (before M6 the second deduplicated into the first and its candidate was
+  lost), and a readiness map that reads only DE's evidence — `journal` for
+  entity DE, `amount_local` settled by DE's own passing run with DE's column.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
 - `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
   (`data/project/cache/export.duckdb`) — this is what you point DataGrip at.
