@@ -648,6 +648,38 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
     assert f"The other {generic} templates in the catalog are generic" in html
 
 
+def test_the_law_panel_shows_this_project_s_domain_and_no_other(tmp_path):
+    """"What this project declared" must not list another domain's laws.
+
+    The guide lint refuses a law from a foreign domain, so showing one under
+    the declared inputs would be a false claim about the project's inputs.
+    """
+    root = init_project(tmp_path / "foreign")
+    guide = tmp_path / "guide.yaml"
+    guide.write_text(
+        "domain: shipbuilding\n"
+        "objects:\n"
+        "  purchase_order:\n"
+        "    decided_by: clarification\n"
+        "    definition: The committed orders placed with suppliers.\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["llm"] = {"domain_guide_file": str(guide)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    html = render_project(root)
+
+    laws = sum(1 for spec in REGISTRY.values() if spec.domain)
+    # no finance law is presented as an input of a shipbuilding project
+    for finance_law in ("balance", "subledger_equals_gl", "ic_symmetry"):
+        assert f'<code>{finance_law}</code> <span class="badge' not in html
+    # and the absence is stated, with its consequence
+    assert "No domain law is shipped for <strong>shipbuilding</strong>" in html
+    assert "nothing here can be promoted by a check" in html
+    assert f"A further {laws} domain laws in the catalog belong to other domains" in html
+
+
 def test_domain_pack_panel_is_honest_when_nothing_is_declared(tmp_path):
     root = init_project(tmp_path / "undeclared")
 

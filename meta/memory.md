@@ -41,6 +41,15 @@
   **NEXT: the owner's validation run using only the report.** New knobs
   worth knowing: `CheckDefinition.tests` (business sentence per check,
   never in a prompt) and `_env.sh` exporting `PYTHONPATH=$BW_REPO/src`.
+- **Second-domain portability proven 2026-07-31** (owner question: would a
+  shipbuilding BOM/supply-chain guide work, or would the wording break?).
+  Tested by writing that guide and rendering it: the narration needs no
+  change — it composes from the guide's definition + the law's name + the
+  verdict numbers. What a new domain costs is **laws, not prose**; a guide
+  naming a law that does not exist is rejected at load. Two leaks found and
+  fixed (glossary explained general terms with finance examples; the law
+  panel listed the whole REGISTRY), both now test-enforced. Detail:
+  architecture.md → "Portability — measured, not assumed".
 - **THEN: M6** (question flow + ReadinessMap, built to the narrow demo).
   Spec: architecture.md "Question flow & readiness"; build outline: WP2 of
   `/home/ubuntu/.claude/plans/guide-hierarchy-then-m6.md` (kept, WP1 marked

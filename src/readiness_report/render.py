@@ -1056,8 +1056,20 @@ def _render_domain_pack(root: Path, config: dict) -> str:
         "<h3>1.2 · Domain guide — the domain nouns (data, human-curated)</h3>"
         f"{_render_domain_guide_panel(root, config)}"
         "<h3>1.3 · Domain-law templates — the guardians (code, developer-shipped)</h3>"
-        f"{_render_domain_law_templates()}"
+        f"{_render_domain_law_templates(_declared_domain(root, config))}"
     )
+
+
+def _declared_domain(root: Path, config: dict) -> str:
+    """The domain this project declares, straight from its guide."""
+    path = _guide_path(root, config)
+    if path is None:
+        return ""
+    try:
+        pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except OSError:
+        return ""
+    return str(pack.get("domain", ""))
 
 
 def _render_declared_sources(config: dict) -> str:
@@ -1202,22 +1214,52 @@ def _settled_slot_columns(root: Path, config: dict, store: ProjectStore) -> dict
     return answered
 
 
-def _render_domain_law_templates() -> str:
+def _render_domain_law_templates(domain: str = "") -> str:
+    """This project's domain pack — not the whole catalog.
+
+    A law of another domain is not an input here: the guide lint refuses to
+    let this guide declare one. Listing it under "what this project
+    declared" would be a false claim about the project's inputs, so the
+    other domains are counted, not enumerated.
+    """
     tagged = [(name, spec) for name, spec in REGISTRY.items() if spec.domain]
     generic = len(REGISTRY) - len(tagged)
-    if not tagged:
-        return '<p class="empty">No domain-law templates in the registry.</p>'
+    mine = [(name, spec) for name, spec in tagged if spec.domain == domain] \
+        if domain else tagged
+    foreign = len(tagged) - len(mine)
+    if not mine:
+        note = (
+            f"<p class='empty'>No domain law is shipped for <strong>"
+            f"{escape(domain)}</strong>. Every business object in this guide "
+            "must therefore be settled by a human (<code>decided_by: "
+            "clarification</code>) — nothing here can be promoted by a "
+            "check.</p>"
+            if domain else
+            '<p class="empty">No domain-law templates in the registry.</p>'
+        )
+        return note + _generic_note(generic, foreign)
     items = "".join(
         f"<li><code>{escape(name)}</code> "
         f'<span class="badge status-business-confirmed">{escape(spec.domain)} law</span> — '
         f"<code>checks/templates/{escape(spec.file)}</code></li>"
-        for name, spec in tagged
+        for name, spec in mine
+    )
+    return f"<ul class='list'>{items}</ul>" + _generic_note(generic, foreign)
+
+
+def _generic_note(generic: int, foreign: int) -> str:
+    other = (
+        f" A further {foreign} domain law{'s' if foreign != 1 else ''} in the "
+        "catalog belong{} to other domains and cannot be used here — the "
+        "guide lint rejects a law from a foreign domain.".format(
+            "" if foreign != 1 else "s"
+        )
+        if foreign else ""
     )
     return (
-        f"<ul class='list'>{items}</ul>"
         f"<p class='fine'>The other {generic} templates in the catalog are generic data "
         "checks (reference check, duplicates, coverage …) — they carry no domain "
-        "knowledge and work in any domain.</p>"
+        f"knowledge and work in any domain.{other}</p>"
     )
 
 

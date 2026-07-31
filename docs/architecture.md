@@ -68,6 +68,37 @@ domain-specific is therefore explicit and enumerable: `CheckDefinition.domain`
 the rendered V2 template docs would change prompt bytes → joins the M5
 fixture re-record batch.
 
+### Portability — measured, not assumed (2026-07-31)
+
+Owner question: would a second domain (shipbuilding — bill of materials and
+supply chain) work, or would the wording break? Tested by writing that guide
+and rendering a report from it. Three results, worth keeping:
+
+1. **The narration is domain-neutral and needs no change.** Every derived
+   sentence is composed from three slots that belong to the domain pack: the
+   guide's **definition**, the law's **name**, and the run's **verdict
+   numbers**. "The bom_rollup law passed on `pdm__bom_positions` and felled
+   the other candidate" comes out of the same template as the finance one.
+   The only sentence carrying business meaning is the one the guide's author
+   wrote.
+2. **The cost of a new domain is laws, not prose — and it fails loudly.**
+   A guide naming a law that does not exist is rejected at load ("`bom_rollup`
+   is no check template and not 'clarification'"). A guide with only
+   `decided_by: clarification` objects loads and renders, but then nothing is
+   ever promoted and every object ends in a question: honest, and no longer
+   discovery. So onboarding a domain means writing its conservation laws as
+   SQL templates.
+3. **Two leaks found and fixed.** `glossary.py` explained general terms with
+   finance examples ("a business object … journal, subledger, intercompany"),
+   and the "1.3 Domain-law templates" panel listed the whole `REGISTRY`, so a
+   shipbuilding project displayed three finance laws among its declared
+   inputs — laws its own lint would refuse. **Two rules follow, both now
+   enforced by tests:** the canonical vocabulary carries no domain examples
+   (`tests/unit/test_glossary.py`), and the law panel shows this project's
+   domain only, counting the others
+   (`test_the_law_panel_shows_this_project_s_domain_and_no_other`). A scan of
+   a rendered shipbuilding report for finance nouns now returns nothing.
+
 ### The domain pack is the critical — and currently unverified — input
 
 Established in the owner validation walkthrough of 2026-07-31. This is the

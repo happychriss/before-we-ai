@@ -5,6 +5,14 @@ validation LLM-call log) renders THIS list, so the definitions cannot
 drift apart. The full human-facing explanation of the flow lives in
 docs/before-ai-concept.md; this is the short subset shown where it is
 read. No synonyms, ever — these are the only words.
+
+**Domain-neutral by rule.** These terms are rendered into every project's
+report, whatever its domain. No entry may use an example from one domain to
+explain a general term: a shipyard reading that a business object is "a
+journal, a subledger, an intercompany" learns the wrong thing. The concrete
+nouns of a domain live in that domain's guide, which is where the report
+quotes them from. (Enforced by
+``tests/unit/test_glossary.py::test_the_core_terms_carry_no_domain_examples``.)
 """
 
 GLOSSARY: list[tuple[str, str]] = [
@@ -21,11 +29,12 @@ GLOSSARY: list[tuple[str, str]] = [
     ("domain guide", "the curated per-domain starting vocabulary: business "
      "objects with their fields, one definition each and a declared "
      "settlement path (decided_by) — data, never code"),
-    ("business object", "what a domain law judges: a thing of the domain a "
-     "table can be (journal, subledger, intercompany)"),
-    ("field", "something a business object carries (the posting amount, the "
-     "account) — settled inside its object's law as a slot, or by a "
-     "clarification question; a field never declares a law of its own"),
+    ("business object", "what a domain law judges: a thing of the domain "
+     "that a table can be — named and defined by the domain guide, never "
+     "by this glossary"),
+    ("field", "something a business object carries — settled inside its "
+     "object's law as a slot, or by a clarification question; a field never "
+     "declares a law of its own"),
     ("role", "any guide entry — object or field — that a table/column can "
      "play; what a mapping claim binds"),
     ("data profile", "measured statistics of one column — what the model "
@@ -39,9 +48,10 @@ GLOSSARY: list[tuple[str, str]] = [
      "call; its result is stored as evidence"),
     ("evidence", "an append-only record: check result, human confirmation, "
      "verbatim testimonial, document anchor, or declaration"),
-    ("domain law", "a conservation law as code (balance, subledger=GL, "
-     "IC symmetry) — decides which candidate wins a business object, and "
-     "settles its slot fields with the columns the passing run consumed"),
+    ("domain law", "a conservation law of one domain, written as code and "
+     "shipped with that domain's pack — decides which candidate wins a "
+     "business object, and settles its slot fields with the columns the "
+     "passing run consumed"),
     ("clarification question", "a drafted question to the humans when data "
      "alone cannot decide"),
     ("readiness report", "the rendered state of knowledge — what is known, "
