@@ -61,6 +61,23 @@ class ProfileIndex:
         for p in store.profiles.values():
             self.columns[f"{p.table}.{p.column}"] = p.source_id
             self.views[p.table] = p.source_id
+        self.scopes: dict[str, Scope | None] = {
+            s.id: s.scope for s in store.sources.values()
+        }
+
+    def scope_of(self, source_ids: list[str]) -> Scope | None:
+        """The one scope these sources agree on, or None.
+
+        A binding that reaches across sources whose owners were declared
+        differently belongs to no single entity — it is landscape-wide, and
+        saying otherwise would put it in an election it does not compete in.
+        Undeclared sources are landscape-wide too, so a project that never
+        declares a scope behaves exactly as it did before scopes existed.
+        """
+        declared = {self.scopes.get(sid) for sid in source_ids}
+        if len(declared) == 1:
+            return declared.pop()
+        return None
 
     def check_ref(self, value: str) -> str | None:
         """Error string if ``value`` looks like a catalog reference but isn't one."""
@@ -201,6 +218,12 @@ def check_mapping_proposal(p: MappingProposal, role_names: list[str],
 def proposal_to_mapping_claim(p: MappingProposal, index: ProfileIndex) -> MappingClaim:
     binding = {k: v.strip() for k, v in sorted(p.binding.items())}
     rendered = ", ".join(f"{k}={v}" for k, v in binding.items())
+    source_ids = index.source_ids(list(binding.values()))
+    # The scope comes from the declared owner of the sources the binding
+    # touches — never from the model, which has not been told about scopes
+    # and must not be: which entity a table serves is a human's statement.
+    # It joins the claim key, so DE's journal and US's journal are two
+    # claims rather than one paraphrase of the other.
     return MappingClaim(
         statement=f"role '{p.role}' is played by {rendered}",
         created_by=Actor.AI,
@@ -208,7 +231,8 @@ def proposal_to_mapping_claim(p: MappingProposal, index: ProfileIndex) -> Mappin
             name=ROLE_BINDING_PREDICATE,
             params={"role": p.role, "binding": binding},
         ),
-        source_ids=index.source_ids(list(binding.values())),
+        scope=index.scope_of(source_ids),
+        source_ids=source_ids,
         role=p.role,
         binding=binding,
     )

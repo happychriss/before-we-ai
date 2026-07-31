@@ -251,16 +251,37 @@ def _has_no_check_declaration(store: ProjectStore,
     )
 
 
-def _candidates(store: ProjectStore, role: str) -> list[MappingClaim]:
+def _candidates(store: ProjectStore, role: str,
+                scope: Scope | None = None) -> list[MappingClaim]:
+    """The claims competing for a role — within one scope when given.
+
+    ``scope=None`` means every candidate, whatever its scope: that is what
+    a landscape-wide view asks for, and it is what a project with no scope
+    declarations always gets.
+    """
     return sorted(
         (c for c in store.claims.values()
-         if isinstance(c, MappingClaim) and c.role == role),
+         if isinstance(c, MappingClaim) and c.role == role
+         and (scope is None or c.scope == scope)),
         key=lambda c: c.id,
     )
 
 
-def settled_slots(store: ProjectStore, guide: DomainGuide,
-                  object_name: str) -> dict[str, str]:
+def scopes_of(store: ProjectStore, role: str) -> list[Scope | None]:
+    """The scopes a role is contested in, in a stable order.
+
+    One entry per declared owner with a candidate, plus ``None`` when
+    landscape-wide candidates exist. A project that declares nothing gets
+    exactly ``[None]`` — one election, as before.
+    """
+    seen = {c.scope for c in _candidates(store, role)}
+    explicit = sorted((s for s in seen if s is not None),
+                      key=lambda s: s.label())
+    return ([None] if None in seen else []) + explicit
+
+
+def settled_slots(store: ProjectStore, guide: DomainGuide, object_name: str,
+                  scope: Scope | None = None) -> dict[str, str]:
     """Which slot fields of an object a passing run of its law answered.
 
     ``{field name: the column the run consumed}``. The evidence is already
@@ -268,6 +289,10 @@ def settled_slots(store: ProjectStore, guide: DomainGuide,
     passed *with* ``amount=amount_local_currency``, so that column is the
     posting amount — nothing else had to be asked. Empty while the object
     itself is unsettled: what its fields are is not a question yet.
+
+    Scoped, because the answer is: DE's journal and US's journal each
+    consumed their own column, and one entity's passing run says nothing
+    about the other's.
     """
     spec = guide.objects[object_name]
     law = REGISTRY.get(spec.decided_by)
@@ -276,7 +301,7 @@ def settled_slots(store: ProjectStore, guide: DomainGuide,
     if law is None or not slot_fields:
         return {}
     answered: dict[str, str] = {}
-    for claim in _candidates(store, object_name):
+    for claim in _candidates(store, object_name, scope):
         if claim.status not in _SETTLED:
             continue
         for record in store.evidence_for(claim):
@@ -298,25 +323,36 @@ def settled_slots(store: ProjectStore, guide: DomainGuide,
 def resolve_mappings(store: ProjectStore,
                      guide: DomainGuide) -> list[ClarificationQuestion]:
     """Every object and every clarification field ends in a check verdict or
-    a clarification question.
+    a clarification question — once per scope it is contested in.
 
-    Idempotent: question text is deduped exactly, like the engine's
-    clarification questions. Entries still genuinely in flight (candidates
-    without a check result and without a V2 no-check declaration) draft
-    nothing — a question about an untried binding would be noise.
+    The election unit is role × scope. DE and US each legitimately own a
+    journal, an account column, a period column; electing one winner across
+    the landscape would force a human to discard correct mappings, and
+    would report a working ledger as contradicted because another entity's
+    ledger balances better. A role whose candidates declare no scope is
+    contested once, landscape-wide — which is every project that has not
+    said whose books its sources are.
+
+    Idempotent: cards dedup on wording *and* scope. Entries still genuinely
+    in flight (candidates without a check result and without a V2 no-check
+    declaration) draft nothing — a question about an untried binding would
+    be noise.
     """
     any_candidates = any(
         isinstance(c, MappingClaim) for c in store.claims.values()
     )
     drafted = []
     for object_name, spec in guide.objects.items():
-        object_settled = any(c.status in _SETTLED
-                             for c in _candidates(store, object_name))
-        _draft(store, drafted, object_name, spec.decided_by,
-               spec.definition, any_candidates)
-        answered = settled_slots(store, guide, object_name) if object_settled else {}
-        for field_name, field in spec.fields.items():
-            if field.decided_by == DECIDED_BY_SLOT:
+        slots = {name: f for name, f in spec.fields.items()
+                 if f.decided_by == DECIDED_BY_SLOT}
+        for scope in scopes_of(store, object_name) or [None]:
+            object_settled = any(c.status in _SETTLED
+                                 for c in _candidates(store, object_name, scope))
+            _draft(store, drafted, object_name, spec.decided_by,
+                   spec.definition, any_candidates, scope)
+            answered = (settled_slots(store, guide, object_name, scope)
+                        if object_settled else {})
+            for field_name, field in slots.items():
                 if not object_settled or field_name in answered:
                     # the object's own question carries an unsettled field;
                     # a settled one has its answer in the passing run
@@ -325,10 +361,16 @@ def resolve_mappings(store: ProjectStore,
                     role=field_name, definition=_sentence(field.definition),
                     law=spec.decided_by, object=object_name, slot=field.fills,
                 )
-                _save(store, drafted, text, _candidates(store, field_name))
+                _save(store, drafted, text,
+                      _candidates(store, field_name, scope), scope)
+        # a clarification field is contested in its own candidates' scopes,
+        # not its object's: nothing ties the two sets together
+        for field_name, field in spec.fields.items():
+            if field.decided_by == DECIDED_BY_SLOT:
                 continue
-            _draft(store, drafted, field_name, field.decided_by,
-                   field.definition, any_candidates)
+            for scope in scopes_of(store, field_name) or [None]:
+                _draft(store, drafted, field_name, field.decided_by,
+                       field.definition, any_candidates, scope)
     return drafted
 
 
@@ -346,9 +388,11 @@ def _sentence(definition: str) -> str:
 
 
 def _draft(store: ProjectStore, drafted: list, role: str, decided_by: str,
-           definition: str, any_candidates: bool) -> None:
-    """The verdict-or-question rule for one law- or clarification-decided entry."""
-    candidates = _candidates(store, role)
+           definition: str, any_candidates: bool,
+           scope: Scope | None = None) -> None:
+    """The verdict-or-question rule for one law- or clarification-decided
+    entry, within one scope."""
+    candidates = _candidates(store, role, scope)
     if any(c.status in _SETTLED for c in candidates):
         return
     said = _sentence(definition)
@@ -374,12 +418,24 @@ def _draft(store: ProjectStore, drafted: list, role: str, decided_by: str,
                                            law=decided_by)
         else:
             return  # binding still pending, not yet a question
-    _save(store, drafted, text, candidates)
+    _save(store, drafted, text, candidates, scope)
+
+
+def _scoped(text: str, scope: Scope | None) -> str:
+    """The question, told which books it is about.
+
+    Two entities each own a journal. One sentence asked of both would have
+    the reader answer for the wrong one — so the scope leads, before the
+    question, where it cannot be missed.
+    """
+    if scope is None or not scope.is_explicit():
+        return text
+    return f"For {scope.label()}: {text}"
 
 
 def _save(store: ProjectStore, drafted: list, text: str,
           candidates: list[MappingClaim], scope: Scope | None = None) -> None:
-    card = ClarificationQuestion(question=text, scope=scope,
+    card = ClarificationQuestion(question=_scoped(text, scope), scope=scope,
                                  claim_ids=[c.id for c in candidates])
     if store.find_question(card):
         return

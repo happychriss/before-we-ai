@@ -7,7 +7,7 @@ resolves. None of these models performs IO.
 
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from before_we_ai.model.enums import (
     Actor,
@@ -29,7 +29,14 @@ class Scope(BaseModel):
     The mirror-loop requires the scope to be spelled out (entity, period,
     segment) before a testimonial claim may become business-confirmed —
     "gilt für: alle Gesellschaften?" must have been answered, not assumed.
+
+    Frozen, and therefore hashable: a scope is a value, not a thing you
+    edit. Elections group candidates by it, so two claims about DE must be
+    the same key — and a scope that could be changed underneath a grouping
+    would move a claim into another entity's election.
     """
+
+    model_config = ConfigDict(frozen=True)
 
     entity: str | None = None
     period: str | None = None
@@ -84,12 +91,19 @@ class Predicate(BaseModel):
 
 
 class Source(BaseModel):
-    """A connected data source (database, file drop, document)."""
+    """A connected data source (database, file drop, document).
+
+    ``scope`` is a human declaration of whose books these are, carried over
+    from ``before-ai.yaml``. It is what lets a role be elected per entity
+    instead of once for the whole landscape — and it is declared rather
+    than inferred, because nothing in a file says which entity owns it.
+    """
 
     id: str = Field(default_factory=new_id)
     name: str
     kind: str  # e.g. "duckdb", "csv", "xlsx", "pdf", "text"
     location: str
+    scope: Scope | None = None
     fingerprint: dict[str, object] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=_now)
 

@@ -12,10 +12,14 @@ import pytest
 from before_we_ai.llm.domain_guide import (
     DomainGuide,
     resolve_mappings,
+    scopes_of,
     settled_slots,
 )
+from before_we_ai.llm.mapping import ProfileIndex, proposal_to_mapping_claim
+from before_we_ai.llm.schemas import MappingProposal
 from before_we_ai.model import Actor, EvidenceRecord, EvidenceType, CheckVerdict
-from before_we_ai.model.objects import CheckPlan, MappingClaim
+from before_we_ai.model.objects import CheckPlan, DataProfile, MappingClaim, Scope, Source
+from before_we_ai.model.semantics import claim_key
 from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.store import ProjectStore, init_project
 
@@ -38,15 +42,27 @@ def _guide(**objects) -> DomainGuide:
 _SLOT_AMOUNT = {"amount_local": {"decided_by": "slot", "fills": "amount"}}
 
 
-def _candidate(store, role, table, binding=None):
+def _candidate(store, role, table, binding=None, scope=None):
     claim = MappingClaim(
         statement=f"role '{role}' is played by {table}",
         created_by=Actor.AI,
         role=role,
+        scope=scope,
         binding=binding or {"table": table},
     )
     store.save_claim(claim)
     return claim
+
+
+def _index_over(store, views: dict) -> ProfileIndex:
+    """A profile index whose sources carry the given declared scopes."""
+    for view, scope in views.items():
+        source = Source(name=view, kind="duckdb", location=f"{view}.db",
+                        scope=scope)
+        store.save_source(source)
+        store.save_profile(DataProfile(source_id=source.id, table=view,
+                                       column="c", stats={}))
+    return ProfileIndex(store)
 
 
 def _check(store, claim, verdict, template="balance", params=None):
@@ -305,3 +321,115 @@ def test_resolution_is_idempotent(tmp_path):
     first = resolve_mappings(store, guide)
     assert len(first) == 1
     assert resolve_mappings(store, guide) == []
+
+
+# --- elections run per scope ---------------------------------------------
+#
+# A landscape is typically multi-entity: DE and US each legitimately own a
+# journal, an account column, a period column. One winner across the whole
+# project would force a human to discard correct mappings and would report
+# a working ledger as contradicted because another entity's balances
+# better. The election unit is role x scope.
+
+DE, US = Scope(entity="DE"), Scope(entity="US")
+
+_PERIOD_GUIDE = {"journal": ("balance", {"period": {"decided_by": "clarification"}})}
+
+
+def _period_cards(store) -> list:
+    """The period cards only — the journal object draws its own question."""
+    cards = resolve_mappings(store, _guide(**_PERIOD_GUIDE))
+    return [c for c in cards if "'period'" in c.question]
+
+
+def test_a_project_that_declares_no_scope_holds_one_election(tmp_path):
+    """The whole mechanism has to be invisible until someone declares
+    whose books a source is."""
+    store = ProjectStore(init_project(tmp_path / "p"))
+    de = _candidate(store, "period", "de_erp__gl_postings")
+    us = _candidate(store, "period", "us_erp__gl_postings")
+    assert scopes_of(store, "period") == [None]
+    cards = _period_cards(store)
+    assert len(cards) == 1
+    assert cards[0].scope is None
+    assert sorted(cards[0].claim_ids) == sorted([de.id, us.id])
+
+
+def test_two_entities_one_role_two_questions(tmp_path):
+    """The regression the question rewrite made possible: with the candidate
+    list out of the wording, both cards read identically. Two cards, each
+    carrying its own scope and its own candidates."""
+    store = ProjectStore(init_project(tmp_path / "p"))
+    de = _candidate(store, "period", "de_erp__gl_postings", scope=DE)
+    us = _candidate(store, "period", "us_erp__gl_postings", scope=US)
+    assert scopes_of(store, "period") == [DE, US]
+    cards = _period_cards(store)
+    assert len(cards) == 2
+    by_scope = {c.scope: c for c in cards}
+    assert by_scope[DE].claim_ids == [de.id]
+    assert by_scope[US].claim_ids == [us.id]
+
+
+def test_the_scope_leads_the_question_so_it_is_answered_for_the_right_books(tmp_path):
+    store = ProjectStore(init_project(tmp_path / "p"))
+    _candidate(store, "period", "de_erp__gl_postings", scope=DE)
+    cards = _period_cards(store)
+    assert cards[0].question.startswith("For entity DE: Which of the proposed")
+
+
+def test_one_entitys_settled_journal_leaves_the_others_open(tmp_path):
+    """DE's balance passing says nothing about US's ledger — US must still
+    be asked, and the two never dedup into one card."""
+    store = ProjectStore(init_project(tmp_path / "p"))
+    de = _candidate(store, "journal", "de_erp__gl_postings", scope=DE)
+    _check(store, de, CheckVerdict.PASS,
+           params={"journal": "de_erp__gl_postings", "amount": "amount_local"})
+    us = _candidate(store, "journal", "us_erp__gl_postings", scope=US)
+    _fail_check(store, us)
+    cards = resolve_mappings(store, _guide(journal="balance"))
+    assert [c.scope for c in cards] == [US]
+    assert cards[0].claim_ids == [us.id]
+
+
+def test_a_slot_is_settled_by_its_own_entitys_passing_run(tmp_path):
+    """settled_slots is scoped: each ledger consumed its own amount column,
+    and neither run answers for the other."""
+    store = ProjectStore(init_project(tmp_path / "p"))
+    de = _candidate(store, "journal", "de_erp__gl_postings", scope=DE)
+    _check(store, de, CheckVerdict.PASS,
+           params={"journal": "de_erp__gl_postings", "amount": "betrag"})
+    us = _candidate(store, "journal", "us_erp__gl_postings", scope=US)
+    _check(store, us, CheckVerdict.PASS,
+           params={"journal": "us_erp__gl_postings", "amount": "amount_usd"})
+    guide = _guide(journal=("balance", _SLOT_AMOUNT))
+    assert settled_slots(store, guide, "journal", DE) == {
+        "amount_local": "de_erp__gl_postings.betrag"}
+    assert settled_slots(store, guide, "journal", US) == {
+        "amount_local": "us_erp__gl_postings.amount_usd"}
+    assert resolve_mappings(store, guide) == []  # both answered, nobody asked
+
+
+def test_a_binding_spanning_differently_owned_sources_is_landscape_wide(tmp_path):
+    """Its scope is genuinely none: it belongs to no entity's election, so
+    it competes in the landscape-wide one instead of being filed under an
+    entity it only half touches."""
+    store = ProjectStore(init_project(tmp_path / "p"))
+    index = _index_over(store, {"de_erp__gl": DE, "us_erp__gl": US})
+    proposal = MappingProposal(role="journal",
+                               binding={"a": "de_erp__gl", "b": "us_erp__gl"},
+                               rationale="…")
+    assert proposal_to_mapping_claim(proposal, index).scope is None
+
+
+def test_a_binding_inside_one_declared_source_inherits_its_scope(tmp_path):
+    store = ProjectStore(init_project(tmp_path / "p"))
+    index = _index_over(store, {"de_erp__gl": DE, "us_erp__gl": US})
+    proposal = MappingProposal(role="journal", binding={"table": "de_erp__gl"},
+                               rationale="…")
+    claim = proposal_to_mapping_claim(proposal, index)
+    assert claim.scope == DE
+    # and the scope joins the claim key, so the two ledgers are two claims
+    other = proposal_to_mapping_claim(
+        MappingProposal(role="journal", binding={"table": "us_erp__gl"},
+                        rationale="…"), index)
+    assert claim_key(claim) != claim_key(other)

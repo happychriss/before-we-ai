@@ -13,6 +13,7 @@ import duckdb
 import yaml
 from pydantic import BaseModel
 
+from before_we_ai.model.objects import Scope
 from before_we_ai.sources.excel import read_workbook, sheet_to_parquet
 from before_we_ai.sources.fingerprint import file_fingerprint, table_fingerprint
 from before_we_ai.store.layout import CONFIG_FILE
@@ -28,6 +29,12 @@ class SourceSpec(BaseModel):
     name: str
     kind: str  # duckdb | csv | xlsx | pdf
     location: str
+    # Whose books these are. A declaration, never an inference: no column
+    # layout says that a file belongs to entity DE, and guessing it from the
+    # source's name would be the kind of wording-dependent magic this
+    # product exists to avoid. Omitted means landscape-wide, which is what
+    # every project had before scopes existed.
+    scope: Scope | None = None
 
     def resolve(self, root: Path) -> Path:
         path = Path(self.location)

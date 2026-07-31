@@ -63,11 +63,12 @@ def scan(root: str | Path) -> ScanResult:
             fingerprint = {"file": entry.file_fingerprint, "tables": entry.views}
             existing = sources_by_name.get(spec.name)
             source = (
-                existing.model_copy(update={"fingerprint": fingerprint})
+                existing.model_copy(update={"fingerprint": fingerprint,
+                                            "scope": spec.scope})
                 if existing
                 else Source(
-                    name=spec.name, kind=spec.kind,
-                    location=spec.location, fingerprint=fingerprint,
+                    name=spec.name, kind=spec.kind, location=spec.location,
+                    scope=spec.scope, fingerprint=fingerprint,
                 )
             )
             store.save_source(source)

@@ -9,7 +9,7 @@ from typing import Iterable
 import yaml
 
 from before_we_ai.glossary import GLOSSARY
-from before_we_ai.llm.domain_guide import load_domain_guide, settled_slots
+from before_we_ai.llm.domain_guide import load_domain_guide, scopes_of, settled_slots
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.model import Actor, ClaimStatus, EvidenceType, CheckVerdict, resolve_status
 from before_we_ai.model.objects import (
@@ -19,6 +19,7 @@ from before_we_ai.model.objects import (
     CheckPlan,
     ClarificationQuestion,
     MappingClaim,
+    Scope,
     Source,
 )
 from before_we_ai.checks.library import REGISTRY
@@ -937,23 +938,36 @@ def _technical(items: Iterable[tuple[str, str]]) -> str:
     )
 
 
-def _election_tally(facts: dict[str, ClaimFacts], answered: dict[str, str]) -> tuple[int, int]:
-    """(roles settled, roles with candidates). A slot answered by its object's
-    passing law counts as settled even though its own claims stay proposed."""
-    by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
+def _by_election(facts: dict[str, ClaimFacts]) -> dict[tuple[str, Scope | None],
+                                                       list[ClaimFacts]]:
+    """Candidates grouped by the election they are in: role within scope.
+
+    Two entities each own a journal, and neither competes with the other —
+    so the unit here is never the bare role.
+    """
+    grouped: dict[tuple[str, Scope | None], list[ClaimFacts]] = defaultdict(list)
     for fact in facts.values():
         if isinstance(fact.claim, MappingClaim):
-            by_role[fact.claim.role].append(fact)
+            grouped[(fact.claim.role, fact.claim.scope)].append(fact)
+    return grouped
+
+
+def _election_tally(facts: dict[str, ClaimFacts],
+                    answered: dict[tuple[str, Scope | None], str]) -> tuple[int, int]:
+    """(elections settled, elections held), counting role x scope. A slot
+    answered by its object's passing law counts as settled even though its
+    own claims stay proposed."""
+    grouped = _by_election(facts)
     settled = sum(
         1
-        for role, candidates in by_role.items()
-        if role in answered
+        for key, candidates in grouped.items()
+        if key in answered
         or any(
             fact.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
             for fact in candidates
         )
     )
-    return settled, len(by_role)
+    return settled, len(grouped)
 
 
 def _node(step: str, title: str, target: str, actor: str, counts: list[tuple[str, str]]) -> str:
@@ -1009,7 +1023,9 @@ def _render_process_diagram(
         '<div class="boundary"><span>no proposal may promote itself</span></div>',
         _node("4 · decided", "The checks judge", "decided", "check — may promote", [
             (str(runs), f"check run{'s' if runs != 1 else ''}"),
-            (f"{elected}/{elections}", "roles elected"),
+            # role x scope, and "settled" not "elected": a slot answered by
+            # its object's passing run counts, and nobody elected it
+            (f"{elected}/{elections}", "elections settled"),
         ]),
         _node("5 · open", "Humans decide the rest", "open", "human — may promote", [
             (str(questions), f"open question{'s' if questions != 1 else ''}"),
@@ -1198,9 +1214,14 @@ def _load_guide_shape(root: Path, config: dict) -> GuideShape:
     return shape
 
 
-def _settled_slot_columns(root: Path, config: dict, store: ProjectStore) -> dict[str, str]:
-    """field -> the column its object's passing law consumed; empty if the
-    guide does not load (the panel above already says so)."""
+def _settled_slot_columns(root: Path, config: dict,
+                          store: ProjectStore) -> dict[tuple[str, Scope | None], str]:
+    """(field, scope) -> the column that scope's passing law consumed.
+
+    Scoped, because each entity's ledger consumed its own amount column and
+    one entity's run answers nothing for another. Empty if the guide does
+    not load (the panel above already says so).
+    """
     path = _guide_path(root, config)
     if path is None:
         return {}
@@ -1208,9 +1229,11 @@ def _settled_slot_columns(root: Path, config: dict, store: ProjectStore) -> dict
         guide = load_domain_guide(path)
     except (OSError, ValueError):
         return {}
-    answered: dict[str, str] = {}
+    answered: dict[tuple[str, Scope | None], str] = {}
     for name in guide.objects:
-        answered.update(settled_slots(store, guide, name))
+        for scope in scopes_of(store, name) or [None]:
+            for field, column in settled_slots(store, guide, name, scope).items():
+                answered[(field, scope)] = column
     return answered
 
 
@@ -1265,20 +1288,21 @@ def _generic_note(generic: int, foreign: int) -> str:
 
 def _render_role_elections(
     facts: dict[str, ClaimFacts], questions: list[ClarificationQuestion],
-    guide: GuideShape, answered: dict[str, str] | None = None,
+    guide: GuideShape, answered: dict[tuple[str, Scope | None], str] | None = None,
 ) -> str:
     answered = answered or {}
     owner, decided_by = guide.owner, guide.decided_by
-    by_role: dict[str, list[ClaimFacts]] = defaultdict(list)
-    for fact in facts.values():
-        if isinstance(fact.claim, MappingClaim):
-            by_role[fact.claim.role].append(fact)
-    if not by_role:
+    grouped = _by_election(facts)
+    if not grouped:
         return '<p class="empty">No role-binding candidates yet.</p>'
     # guide order — every object followed by its own fields; anything the
-    # guide does not name (a stale claim from an older guide) sorts after
+    # guide does not name (a stale claim from an older guide) sorts after;
+    # within a role, the landscape-wide election first, then by scope label
     rank_role = {name: i for i, name in enumerate(guide.order)}
-    ordered_roles = sorted(by_role, key=lambda r: (rank_role.get(r, len(rank_role)), r))
+    ordered = sorted(grouped, key=lambda key: (
+        rank_role.get(key[0], len(rank_role)), key[0],
+        key[1].label() if key[1] else "",
+    ))
 
     rank = {
         ClaimStatus.TEST_SUPPORTED: 0,
@@ -1288,11 +1312,11 @@ def _render_role_elections(
         ClaimStatus.CONTRADICTED: 3,
     }
     blocks = []
-    for role in ordered_roles:
-        candidates = by_role[role]
+    for role, scope in ordered:
+        candidates = grouped[(role, scope)]
         candidates.sort(key=lambda f: (rank[f.derived], f.claim.id))
         winners = [f for f in candidates if f.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)]
-        column = answered.get(role, "")
+        column = answered.get((role, scope), "")
         rows = "".join(
             _render_candidate(fact, fact in winners, column) for fact in candidates
         )
@@ -1307,6 +1331,11 @@ def _render_role_elections(
         of_object = (f" <span class='fine'>field of "
                      f"<code>{escape(owner[role])}</code></span>"
                      if role in owner else "")
+        # the scope is part of the heading, not a footnote: this election
+        # decides who plays the role *for these books*, and a reader who
+        # misses that answers for the wrong entity
+        for_scope = (f" <span class='fine'>for {escape(scope.label())}</span>"
+                     if scope and scope.is_explicit() else "")
         definition = guide.definition.get(role, "")
         said = (
             f"<blockquote class='quote'>{escape(definition)}"
@@ -1315,7 +1344,7 @@ def _render_role_elections(
         )
         blocks.append(
             f"<div class='election{' guide-field' if role in owner else ''}'>"
-            f"<h3><code>{escape(role)}</code>{of_object} "
+            f"<h3><code>{escape(role)}</code>{of_object}{for_scope} "
             f"<span class='muted'>{len(candidates)} candidate"
             f"{'s' if len(candidates) != 1 else ''}"
             f"{' · ' + escape(path_note) if path_note else ''}</span></h3>"

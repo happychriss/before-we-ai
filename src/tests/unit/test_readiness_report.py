@@ -16,6 +16,7 @@ from before_we_ai.model import (
     CheckVerdict,
     ClarificationQuestion,
     MappingClaim,
+    Scope,
     Source,
     create_claim,
 )
@@ -352,7 +353,7 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
     assert "<strong>1</strong> column profiles" in html
     assert "<strong>2</strong> claims" in html
     assert "<strong>2</strong> check runs" in html
-    assert "<strong>1/2</strong> roles elected" in html
+    assert "<strong>1/2</strong> elections settled" in html
     assert "<strong>1</strong> open question" in html
     # the invariant, drawn: the AI's side of the line proposes and nothing more
     assert "no proposal may promote itself" in html
@@ -678,6 +679,43 @@ def test_the_law_panel_shows_this_project_s_domain_and_no_other(tmp_path):
     assert "No domain law is shipped for <strong>shipbuilding</strong>" in html
     assert "nothing here can be promoted by a check" in html
     assert f"A further {laws} domain laws in the catalog belong to other domains" in html
+
+
+def test_two_entities_get_two_elections_and_the_page_says_which(tmp_path):
+    """A landscape is typically multi-entity, and one election across all of
+    it would report a working ledger as contradicted because another
+    entity's balances better. The page must show one election per scope and
+    name the books each is about."""
+    root = init_project(tmp_path / "scoped")
+    store = ProjectStore(root)
+    guide = tmp_path / "guide.yaml"
+    guide.write_text(
+        "domain: finance\n"
+        "objects:\n"
+        "  journal:\n"
+        "    decided_by: balance\n"
+        "    definition: The transactional ledger of record.\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["llm"] = {"domain_guide_file": str(guide)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    for entity, table in (("DE", "de_erp__gl"), ("US", "us_erp__gl")):
+        source = Source(name=entity, kind="duckdb", location=f"/tmp/{entity}.db",
+                        scope=Scope(entity=entity))
+        store.save_source(source)
+        store.save_claim(MappingClaim(
+            statement=f"role 'journal' is played by {table}",
+            created_by=Actor.AI, role="journal", scope=Scope(entity=entity),
+            binding={"table": table}, source_ids=[source.id],
+        ))
+
+    html = render_project(root)
+
+    assert html.count("<code>journal</code>") >= 2
+    assert "for entity DE" in html and "for entity US" in html
+    assert "<strong>0/2</strong> elections settled" in html
 
 
 def test_domain_pack_panel_is_honest_when_nothing_is_declared(tmp_path):
