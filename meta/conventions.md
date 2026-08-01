@@ -20,6 +20,14 @@ about how to work.
   author promoting evidence.
 - **Growth contract:** a new normalization rule = one case in `sources/canonical.py`
   + one unit test + auto-declaration. Downstream never enumerates rules.
+- **No new domain law without its two fixtures** (decided 2026-08-01): one
+  where the law *holds* and one where it is *violated*, and for a new role a
+  wrong candidate that must lose its election. A law is only as good as the
+  case that would break it — a too-loose one passes everything, elects the
+  wrong candidate, and now produces a confident, product-branded "ready"
+  that has collected a human confirmation on the way. Cheap per law,
+  expensive to backfill: that is why it is a rule and not a task. (The three
+  existing finance laws are the backlog; `meta/memory.md` → acceptance kit.)
 - **Rule of three for the controlled vocabularies.** A new **check template**
   or a new **predicate** is added only when a concrete corpus case forces it —
   never speculatively, never "for completeness". Anything the vocabulary

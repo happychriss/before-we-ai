@@ -116,9 +116,23 @@
 
 Owner statement 2026-08-01: a small product for **one question to one
 answer**, with a GUI — ask the question, load documents, run, answer the
-open questions, see the readiness map; computing the result is a further
-milestone of its own (that one is the spec's V4 SQL generation + Assumption
-Capture, where `sql`/`result_ref` return to `AnswerRequest`).
+open questions, see the readiness map. **Computing the result is a further
+milestone of its own**, and 2026-08-01 settled what belongs in it:
+
+- the spec's **V4, SQL generation** — the contract number this repo left
+  free when the request contract was renamed off it;
+- **Assumption Capture** (`docs/spec/before-we-ai-systemarchitektur.md:59`):
+  `sqlglot` parses the generated query, checks it against the allowed
+  subset, extracts joins and claim-requiring filters, matches them against
+  the claim store and **materialises what is missing as `proposed` claims**.
+  The query becomes a source of claims — a real epistemic feature, not
+  plumbing;
+- `sql`/`result_ref` return to `AnswerRequest`, which is why deleting them
+  was scaffolding removal rather than a loss.
+
+They are one milestone, not two: Assumption Capture without SQL generation
+has nothing to parse. That also fixes when `sqlglot` gets declared — then,
+not before.
 
 Design consequences that hold *now*, without building it:
 
@@ -189,34 +203,49 @@ recording (its corpus fixture is hand-authored and marked as such).
   are unbuilt scaffolding that comes back, not dead weight. The V4 slot is
   now free: the request contract was renamed off it 2026-08-01.
 
-- **Assumption Capture is unbuilt, unlisted, and its dependency undeclared.**
-  `docs/spec/before-we-ai-systemarchitektur.md:59` (`sql` — Fragenfluss):
-  sqlglot parses the generated query, checks it against the allowed subset,
-  extracts joins and claim-requiring filters, matches them against the claim
-  store, and **materialises what is missing as `proposed` claims**. The query
-  itself becomes a source of claims — a real epistemic feature, not plumbing.
+- **Domain-guide acceptance kit — decided 2026-08-01, half done.** Part 3
+  (the coherence lint) was already shipped. Parts 1+2 are now a **standing
+  rule** in `meta/conventions.md`: no new domain law without a holds-fixture
+  and a violated-fixture, no new role without a wrong candidate that must
+  lose. Cheap per law, expensive to backfill — which is exactly why it is a
+  rule rather than a task.
 
-  It appears in no roadmap row in `README.md`, in no milestone here, and
-  `sqlglot` is not in `src/pyproject.toml`. Decide where it belongs: with V4
-  (they are the same spec paragraph) or as its own milestone.
+  **What remains is the backlog:** the three existing finance laws
+  (`balance`, `subledger_equals_gl`, `ic_symmetry`) have no such fixtures.
+  One focused session. **Not a Copilot package** — writing a *violating*
+  fixture requires knowing what breaks a conservation law, which is domain
+  judgement, not execution. Analysis: architecture.md → "The domain pack is
+  the critical … input".
 
-- **Domain-guide acceptance kit, parts 1 + 2.** Part 3 (the coherence lint)
-  is shipped. Per new law: one holds-fixture and one violated-fixture. Per
-  new role: one wrong candidate that must lose. This is the only protection
-  against a too-loose law, and it matters more under readiness framing — a
-  wrong guide now produces a confident, product-branded "ready". Analysis:
-  architecture.md → "The domain pack is the critical … input".
-- **The numeric Seeded-Recall bar.** Run-to-run noise is ±2–3 traps, so a bar
-  must sit outside it. Misses cluster in definition-style traps that need M5;
-  a bar over relationship-style traps only is worth considering.
+- **Seeded-Recall: split the metric first, set the bar after M5** (decided
+  2026-08-01). One number today mixes two populations. Relationship-style
+  traps are answerable now; definition-style traps need documents (a sign
+  convention lives in a policy, not a column), and the misses cluster there.
+  A single bar over 25 traps would therefore have to sit below the noise
+  floor (±2–3) to be passable, which makes it say nothing.
+
+  So: **count the two classes separately**, then a bar over the
+  relationship-style half is meaningful immediately and M5 cannot move it.
+  The other half gets its bar when M5 lands. The split is worth more than
+  the bar anyway — it says *which kind* of knowledge is missing, which one
+  number never could.
 - **Standalone demo dataset** — one correct journal, one attractive wrong
   export, an account master, a sign convention, a non-inferable policy;
   intended as the first user experience. Needs its own recorded V1 / role /
   V2 answers, so it rides the M5 live session.
-- **Remote branch `copilot/create-scripts-folder`** (1 unmerged commit,
-  `scripts/copy_raw_data.sh`) — merge or delete.
 - **`scripts/` at repo root** is reserved by `CLAUDE.md` (start the process,
-  readiness report, cleanup of stale processes) and does not exist yet.
+  readiness report, cleanup of stale processes) and does not exist yet —
+  **deliberately**. An empty reserved directory is a claim with nothing
+  behind it; it appears when the first operations tool does.
+
+  The one candidate was deleted with the branch `copilot/create-scripts-folder`
+  (commit `4d59382`, recoverable by that SHA): 71 lines copying generator
+  output into the corpus, with default paths from before the `src/`
+  reorganisation (`/workspace/raw-training-data`, `<root>/corpus/data` — both
+  now wrong). And the operation itself is a *re-baselining* of a deliberately
+  frozen corpus, which invalidates every pinned number and every fixture. It
+  must be rare and deliberate; rewriting it correctly then costs ten minutes,
+  merging it stale costs a file that rots further.
 - **PyMuPDF is not a declared dependency.** The spec names it and M5 needs
   it; adding it to `pyproject.toml` is M5's first line of code.
 
