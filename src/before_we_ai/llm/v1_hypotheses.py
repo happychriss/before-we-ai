@@ -22,6 +22,7 @@ from before_we_ai.llm.mapping import ProfileIndex, check_hypothesis, hypothesis_
 from before_we_ai.llm.prompts import V1_SYSTEM, with_schema
 from before_we_ai.llm.schemas import HypothesisBatch
 from before_we_ai.profile.candidates import load_matrix
+from before_we_ai.store.proposals import ProposalStore
 from before_we_ai.store.repository import ProjectStore
 
 CONTRACT = "v1_hypotheses"
@@ -47,6 +48,7 @@ def hypothesize(
 ) -> V1Report:
     root = Path(root)
     store = store or ProjectStore(root)
+    store = ProposalStore(store)
     config = LLMConfig.from_project(root)
     client = client or build_client(config)
 

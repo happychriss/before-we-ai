@@ -43,6 +43,7 @@ from before_we_ai.llm.mapping import (
 from before_we_ai.llm.prompts import REQUEST_SYSTEM, with_schema
 from before_we_ai.llm.schemas import AnswerRequestDraft
 from before_we_ai.core.objects import AnswerRequest, RequiredKnowledge
+from before_we_ai.store.proposals import ProposalStore
 from before_we_ai.store.repository import ProjectStore
 
 CONTRACT = "request"
@@ -70,6 +71,7 @@ def ask(
 ) -> RequestReport:
     root = Path(root)
     store = store or ProjectStore(root)
+    store = ProposalStore(store)
     config = LLMConfig.from_project(root)
     client = client or build_client(config)
 

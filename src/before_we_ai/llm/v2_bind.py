@@ -44,10 +44,10 @@ from before_we_ai.llm.prompts import (
 )
 from before_we_ai.llm.domain_guide import DomainGuide, load_domain_guide
 from before_we_ai.llm.schemas import BindingBatch, MappingProposalBatch
-from before_we_ai.core.enums import Actor, ClaimStatus, EvidenceType
-from before_we_ai.core.objects import Claim, EvidenceRecord, MappingClaim
-from before_we_ai.core.transitions import attach_evidence
+from before_we_ai.core.enums import ClaimStatus, EvidenceType
+from before_we_ai.core.objects import Claim, MappingClaim
 from before_we_ai.profile.candidates import load_matrix
+from before_we_ai.store.proposals import ProposalStore
 from before_we_ai.store.repository import ProjectStore
 
 CONTRACT_ROLES = "role_binding"
@@ -75,6 +75,7 @@ def propose_mappings(
 ) -> MappingProposalReport:
     root = Path(root)
     store = store or ProjectStore(root)
+    store = ProposalStore(store)
     config = LLMConfig.from_project(root)
     client = client or build_client(config)
     if roles is None:
@@ -136,7 +137,7 @@ class V2Report:
     log_refs: list[str] = field(default_factory=list)
 
 
-def _untested_claims(store: ProjectStore,
+def _untested_claims(store: ProposalStore,
                      claim_ids: list[str] | None) -> list[Claim]:
     """Every parameterised claim that no check has been planned for yet.
 
@@ -164,7 +165,7 @@ def _untested_claims(store: ProjectStore,
     return sorted(selected, key=lambda c: c.id)
 
 
-def _declare_no_check(store: ProjectStore, claim: Claim, decision: str,
+def _declare_no_check(store: ProposalStore, claim: Claim, decision: str,
                       reason: str) -> None:
     """Record in the store why this claim got no check.
 
@@ -181,17 +182,13 @@ def _declare_no_check(store: ProjectStore, claim: Claim, decision: str,
         for record in existing
     ):
         return
-    record = EvidenceRecord(
-        type=EvidenceType.DECLARATION,
-        actor=Actor.SYSTEM,
-        claim_id=claim.id,
-        payload={"decision": decision, "reason": reason},
+    store.declare(
+        claim.id,
+        {"decision": decision, "reason": reason},
     )
-    store.add_evidence(record)
-    store.save_claim(attach_evidence(claim, record, existing))
 
 
-def _existing_check_plan(store: ProjectStore, check) -> bool:
+def _existing_check_plan(store: ProposalStore, check) -> bool:
     return any(
         p.template == check.template
         and p.claim_id == check.claim_id
@@ -210,6 +207,7 @@ def plan_checks(
 ) -> V2Report:
     root = Path(root)
     store = store or ProjectStore(root)
+    store = ProposalStore(store)
     config = LLMConfig.from_project(root)
     client = client or build_client(config)
     index = ProfileIndex(store)
@@ -282,7 +280,7 @@ def plan_checks(
     return report
 
 
-def _bind_batch(root: Path, store: ProjectStore, index: ProfileIndex,
+def _bind_batch(root: Path, store: ProposalStore, index: ProfileIndex,
                 labels: dict[str, Claim], client: LLMClient,
                 *, model: str, scenario: str, system: str) -> LLMResult:
     built = build_binding_context(store, labels, render_template_docs())

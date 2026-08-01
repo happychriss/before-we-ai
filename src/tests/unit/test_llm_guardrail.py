@@ -2,25 +2,77 @@
 
 Nothing here is new enforcement — the M1 core owns the law. These tests
 prove the LLM layer rides on it: AI-born claims start proposed, AI cannot
-author promoting evidence, and the contract modules do not even contain
-the calls that write evidence."""
+author promoting evidence, and model-facing code receives only proposal
+capabilities."""
 
-import inspect
+from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
-from before_we_ai.llm import call_log, client, config, inputs, mapping, prompts
-from before_we_ai.llm import domain_guide as roles_module
-from before_we_ai.llm import schemas, stub, v1_hypotheses, v2_bind, vocabulary
+from before_we_ai import scan
+from before_we_ai.llm import (
+    ask,
+    hypothesize,
+    load_domain_guide,
+    plan_checks,
+    propose_mappings,
+)
 from before_we_ai.llm.mapping import ProfileIndex, hypothesis_to_claim
 from before_we_ai.llm.schemas import Hypothesis
 from before_we_ai.core import Actor, ClaimStatus, EvidenceType, resolve_status
 from before_we_ai.core.enums import CheckVerdict
 from before_we_ai.core.objects import DataProfile, EvidenceRecord
-from before_we_ai.store import ProjectStore, init_project
+from before_we_ai.store import ProjectStore, ProposalStore, init_project
 
 pytestmark = pytest.mark.contract
+
+CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
+DOMAIN_GUIDE_FILE = (
+    Path(__file__).resolve().parents[1] / "fixtures" / "domain_guide_finance.yaml"
+)
+
+SOURCES = [
+    {
+        "name": "de_erp",
+        "kind": "duckdb",
+        "location": str(CORPUS / "DE" / "erp.duckdb"),
+    },
+    {
+        "name": "us_erp",
+        "kind": "duckdb",
+        "location": str(CORPUS / "US" / "erp.duckdb"),
+    },
+    {
+        "name": "kunden_migration",
+        "kind": "xlsx",
+        "location": str(CORPUS / "kunden_migration.xlsx"),
+    },
+    {
+        "name": "marketing_grouping",
+        "kind": "xlsx",
+        "location": str(CORPUS / "marketing_grouping.xlsx"),
+    },
+    {
+        "name": "kontakte_aussendienst",
+        "kind": "xlsx",
+        "location": str(CORPUS / "kontakte_aussendienst.xlsx"),
+    },
+    {
+        "name": "buchungen_report",
+        "kind": "csv",
+        "location": str(CORPUS / "buchungen_report.csv"),
+    },
+    {
+        "name": "management_report",
+        "kind": "pdf",
+        "location": str(CORPUS / "management_report.pdf"),
+    },
+]
+
+DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
 
 @pytest.fixture()
@@ -41,6 +93,40 @@ def hypothesized_claim(tmp_path):
     return hypothesis_to_claim(hypothesis, ProfileIndex(store))
 
 
+@pytest.fixture(scope="module")
+def llm_stage_evidence(tmp_path_factory):
+    """Evidence added by the model-facing stages, excluding scan declarations."""
+    root = init_project(tmp_path_factory.mktemp("guardrail") / "corpus")
+    config_data = yaml.safe_load(
+        (root / "before-ai.yaml").read_text(encoding="utf-8")
+    )
+    config_data["sources"] = SOURCES
+    config_data["llm"] = {
+        "offline": True,
+        "fixtures_dir": str(FIXTURES),
+        "domain_guide_file": str(DOMAIN_GUIDE_FILE),
+    }
+    (root / "before-ai.yaml").write_text(
+        yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8"
+    )
+
+    scan(root)
+    store = ProjectStore(root)
+    evidence_before = set(store.evidence)
+    guide = load_domain_guide(DOMAIN_GUIDE_FILE)
+
+    ask(root, DEMO_QUESTION, guide=guide, store=store, scenario="corpus")
+    hypothesize(root, store=store, scenario="corpus")
+    propose_mappings(root, roles=guide, store=store, scenario="corpus")
+    plan_checks(root, store=store, scenario="corpus")
+
+    return [
+        record
+        for evidence_id, record in store.evidence.items()
+        if evidence_id not in evidence_before
+    ]
+
+
 def test_hypothesized_claims_start_and_stay_proposed(hypothesized_claim):
     assert hypothesized_claim.status is ClaimStatus.PROPOSED
     assert resolve_status(hypothesized_claim, []) is ClaimStatus.PROPOSED
@@ -58,39 +144,18 @@ def test_ai_cannot_author_promoting_evidence(hypothesized_claim):
                        claim_id=hypothesized_claim.id, statement="trust me")
 
 
-def test_llm_modules_never_write_evidence():
-    """The contract layer creates claims and checks — evidence writes do not
-    appear anywhere in its source. Checks produce evidence when the ENGINE
-    runs them; the LLM layer only files the falsification requests.
-
-    The one exception is ``v2_bind``, covered by the next test."""
-    forbidden = ("add_evidence", "attach_evidence", "mark_evidence_stale")
-    modules = [call_log, client, config, inputs, mapping, prompts,
-               roles_module, schemas, stub, v1_hypotheses, vocabulary]
-    for module in modules:
-        source = inspect.getsource(module)
-        for call in forbidden:
-            assert call not in source, f"{module.__name__} contains {call}"
-
-
-def test_v2_writes_only_declarations_and_they_cannot_promote(hypothesized_claim):
-    """V2's single evidence write: a DECLARATION saying why a claim got no
-    check (unbindable / semantic-only / skipped). It is process metadata, the
-    same class as a normalization declaration — authored by the SYSTEM, never
-    by the AI, and structurally unable to move a status. Without it the
-    model's reason would live only in the disposable call log."""
-    source = inspect.getsource(v2_bind)
-    assert "mark_evidence_stale" not in source
-    assert source.count("EvidenceRecord(") == 1  # exactly one, the declaration
-    assert "type=EvidenceType.DECLARATION" in source
-    assert "actor=Actor.SYSTEM" in source
-    for promoting in ("CHECK_RESULT", "CONFIRMATION", "TESTIMONIAL", "DOCUMENT_ANCHOR"):
-        assert promoting not in source, f"v2_bind names {promoting}"
-
-    declaration = EvidenceRecord(
-        type=EvidenceType.DECLARATION,
-        actor=Actor.SYSTEM,
-        claim_id=hypothesized_claim.id,
-        payload={"decision": "unbindable", "reason": "no pairs available"},
+def test_llm_stages_write_only_system_declarations(llm_stage_evidence):
+    assert llm_stage_evidence
+    assert all(
+        record.type is EvidenceType.DECLARATION
+        and record.actor is Actor.SYSTEM
+        for record in llm_stage_evidence
     )
-    assert resolve_status(hypothesized_claim, [declaration]) is ClaimStatus.PROPOSED
+
+
+def test_proposal_store_hides_general_evidence_writes(tmp_path):
+    store = ProjectStore(init_project(tmp_path / "facade"))
+    proposals = ProposalStore(store)
+
+    assert not hasattr(proposals, "add_evidence")
+    assert not hasattr(proposals, "mark_evidence_stale")
