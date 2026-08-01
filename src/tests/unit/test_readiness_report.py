@@ -793,9 +793,12 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
     assert "<strong>2/3</strong> dependencies supported" in html
     assert "6 · Readiness — what may be answered" in html
 
-    # the human's question, verbatim
+    # the human's question, verbatim — and the AI's restatement attributed to
+    # the AI, not folded into the human's voice for sitting on one record
     assert "Can these files reliably produce actual P&amp;L by entity and month?" in html
     assert "— the business question, as it was asked" in html
+    assert "— the AI, on what the answer must deliver" in html
+    assert html.index("as it was asked") < html.index("what the answer must deliver")
 
     # the verdict is narrowed, not blocked: the figures compute, the meaning
     # is unsettled — and it names what is unsettled

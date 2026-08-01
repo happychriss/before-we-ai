@@ -13,9 +13,11 @@ from pydantic import ValidationError
 from before_we_ai.model import (
     Actor,
     AnswerRequest,
+    Claim,
     ClarificationQuestion,
     KnowledgeItem,
     KnowledgeKind,
+    KnowledgeLink,
     RequiredKnowledge,
     Scope,
     create_claim,
@@ -40,12 +42,30 @@ class TestAnswerRequest:
     def test_it_records_the_question_as_the_human_asked_it(self):
         request = _request(scope=Scope(entity="DE", period="2024"))
         assert request.question.endswith("by entity and month?")
-        assert request.created_by is Actor.HUMAN
         assert request.scope.label() == "entity DE, period 2024"
 
     def test_a_request_without_a_scope_is_landscape_wide(self):
         assert _request().scope.is_explicit() is False
         assert _request().scope.label() == ""
+
+    def test_authorship_is_fixed_by_the_shape_so_no_field_records_it(self):
+        """A field whose value never varies carries no information.
+
+        `created_by` was on both objects and would have read `human` on
+        every AnswerRequest ever written — while being *wrong* about two of
+        the three content fields, since `requested_output` and `scope` are
+        V4's, not the asker's. Nothing set it and nothing read it. The same
+        defect class as the redundant `Hypothesis.kind` (M5 kickoff).
+
+        The contrast is the point: `Claim.created_by` and
+        `KnowledgeLink.linked_by` genuinely vary, and the code branches on
+        them — those earn their place.
+        """
+        for obj in (_request(), RequiredKnowledge(request_id="r")):
+            assert not hasattr(obj, "created_by")
+        assert Claim(statement="x", created_by=Actor.AI).created_by is Actor.AI
+        assert KnowledgeLink(claim_id="c", linked_by=Actor.AI).linked_by \
+            is Actor.AI
 
     def test_it_carries_the_answer_half_the_question_card_used_to_hold(self):
         """sql/result_ref moved off ClarificationQuestion — the card asks, the
@@ -70,7 +90,6 @@ class TestRequiredKnowledge:
         ]
         required = RequiredKnowledge(request_id="req", items=items)
         assert {i.scope.entity for i in required.items} == {"DE"}
-        assert required.created_by is Actor.AI  # a draft; the human prunes it
 
     def test_a_field_must_name_its_object_and_only_a_field_may(self):
         with pytest.raises(ValidationError, match="must name the object"):

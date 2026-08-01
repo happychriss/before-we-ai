@@ -1411,8 +1411,11 @@ def _render_readiness_map(result, rel: str) -> str:
         # the human's words, verbatim: this is the question that was asked
         f"<blockquote class='quote'>{escape(result.request.question)}"
         "<cite>— the business question, as it was asked</cite></blockquote>"
-        f"<p class='fine'>Requested output: "
-        f"{escape(result.request.requested_output)}</p>{scope_line}"
+        # and the AI's restatement of it, attributed — not folded into the
+        # human's voice just because it sits on the same record
+        f"<blockquote class='ai-said'>{escape(result.request.requested_output)}"
+        "<cite>— the AI, on what the answer must deliver</cite></blockquote>"
+        f"{scope_line}"
         f"<p class='derived verdict'><strong>{escape(headline)}</strong> "
         f"{escape(result.reason())}</p>"
         f"<p class='muted'>{escape(explanation)}</p>"

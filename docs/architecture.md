@@ -36,7 +36,7 @@ and `tested` → `test-supported`, actor/evidence `probe`/`probe_result` →
 - Repo root: `/workspace` — https://github.com/happychriss/before-we-ai
   (`pyproject.toml` lives in `src/`)
 - Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
-  `/workspace/src`; run `python -m pytest -q` there (373 tests green after M6,
+  `/workspace/src`; run `python -m pytest -q` there (374 tests green after M6,
   incl. readiness_report; CI runs fully offline from recorded fixtures)
 - Authoritative German spec: `docs/spec/`
 
@@ -687,6 +687,15 @@ ontology. Visible in the walkthrough: the P&L question does not require
   question* and is kept verbatim; this is its software representation. It
   absorbed the vestigial `sql`/`result_ref` answer-half that
   `ClarificationQuestion` used to carry. Stored in `answers/`.
+  **No `created_by`**, and neither has `RequiredKnowledge`: authorship here
+  is fixed by the shape — `question` is the human's, `requested_output` and
+  `scope` are V4's — so the field would have read `human` on every record
+  while being wrong about two of the three. A field whose value never varies
+  carries no information (same defect class as the redundant
+  `Hypothesis.kind`, M5 kickoff). `Claim.created_by` and
+  `KnowledgeLink.linked_by` are the contrast: they vary, and code branches
+  on them. The report attributes accordingly — the question as a human
+  quote, the requested output as the AI's.
 - **`RequiredKnowledge`** — `KnowledgeItem`s (`object` / `field` / `rule`),
   each carrying the request's scope, each with a `why` a human can prune on.
   Drafted by V4, persisted because the pruning is a human decision, not

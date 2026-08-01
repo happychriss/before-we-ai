@@ -298,15 +298,22 @@ class AnswerRequest(BaseModel):
     pre-M6 question card: the query that would produce the requested output
     and a disposable ``cache/`` path to its result. Neither is truth — the
     ReadinessMap decides whether the answer may be given at all.
+
+    **Authorship is fixed by the shape, so no field records it.**
+    ``question`` is the human's, verbatim; ``requested_output`` and
+    ``scope`` are V4's structuring of it. A ``created_by`` here would be
+    ``human`` on every record ever written — and it would be *wrong* about
+    two of the three fields, which is worse than absent. Contrast
+    ``Claim.created_by`` and ``KnowledgeLink.linked_by``: those genuinely
+    vary, and the code branches on them.
     """
 
     id: str = Field(default_factory=new_id)
     question: str  # verbatim, as the human asked it
-    requested_output: str  # what the answer must deliver
+    requested_output: str  # V4's one-line statement of what the answer delivers
     scope: Scope = Field(default_factory=Scope)
     sql: str | None = None
     result_ref: str | None = None
-    created_by: Actor = Actor.HUMAN
     created_at: datetime = Field(default_factory=_now)
 
 
@@ -384,10 +391,14 @@ class RequiredKnowledge(BaseModel):
     the human, as everywhere: the model proposes. It is persisted because
     that pruning is a human decision, not something re-derivable from the
     request.
+
+    Drafted by V4 always, so — as on ``AnswerRequest`` — that is a fact
+    about the shape and not a field. What does vary, and therefore is a
+    field, is who linked each rule to the claim answering it
+    (``KnowledgeLink.linked_by``).
     """
 
     id: str = Field(default_factory=new_id)
     request_id: str
     items: list[KnowledgeItem] = Field(default_factory=list)
-    created_by: Actor = Actor.AI
     created_at: datetime = Field(default_factory=_now)

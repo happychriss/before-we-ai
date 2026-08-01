@@ -135,7 +135,6 @@ class TestMapping:
         )
         request = draft_to_request(QUESTION, draft)
         assert request.question == QUESTION
-        assert request.created_by is Actor.HUMAN  # the human asked; V4 typed it up
         assert request.scope.entity == "DE"
         item = item_to_knowledge(draft.required_knowledge[0], request.scope)
         assert item.scope == request.scope
