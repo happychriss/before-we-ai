@@ -2,7 +2,7 @@
 
 You drive the pipeline **one stage at a time** with the scripts in
 `validation/scripts/` and inspect what each stage produced before moving on.
-Everything lands in `validation/data/` (git-ignored, disposable — `0-reset.sh`
+Everything lands in `validation/data/` (git-ignored, disposable — `reset.sh`
 wipes it). The scripts activate the venv themselves; run them from anywhere.
 
 New to the flow or the terminology? `docs/before-ai-concept.md` walks the whole
@@ -12,23 +12,33 @@ flow, one stage per script.
 Default mode is **offline**: recorded real answers (Opus 4.8 / Sonnet 5) are
 replayed through the full validation path, so every run is deterministic and
 needs no API key.
-For live calls run `1-scan.sh --online` and `export ANTHROPIC_API_KEY=...`
+For live calls run `0-request.sh --online` and `export ANTHROPIC_API_KEY=...`
 first — expect different numbers (the model samples).
 
-## The steps
+## The stages
 
-| # | script | pipeline stage |
-|---|--------|----------------|
-| 0 | `0-reset.sh` | wipe `validation/data/` |
-| 1 | `1-scan.sh` | load: ingest all 7 sources, build catalog + data profiles |
-| 2 | `2-matrix.sh` | link candidates: table:table value-overlap matrix |
-| 3 | `3-hypotheses.sh` | V1: LLM proposes claim hypotheses |
-| 4 | `4-role-proposals.sh` | LLM proposes mapping claims (role candidates) |
-| 5 | `5-plan-checks.sh` | V2: LLM binds claims to check definitions |
-| 6 | `6-run-checks.sh` | engine: execute checks, derive statuses |
-| 7 | `7-resolve-roles.sh` | unsettled roles become clarification questions |
-| 8 | `8-ask.sh` | V4: a business question → what must be known → the ReadinessMap |
-| 9 | `9-collect.sh` | gather everything into a clickable report |
+**One spine.** A stage is a change in what is known, with one actor
+responsible. The script number *is* the report section number — run `3b`, read
+section 3. Where a stage needs several runs (so you can inspect one model call
+at a time) it gets letters, not new numbers.
+
+| § | stage | who | script |
+|---|-------|-----|--------|
+| **0** | **Request** — the question, and what it requires | human asks · AI structures | `0-request.sh` |
+| 1 | **Inputs** — what a human declared | human | `1-inputs.sh` |
+| 2 | **Measured** — what the data says about itself | nobody: deterministic | `2a-measure-scan.sh` · `2b-measure-matrix.sh` |
+| 3 | **Proposed** — what the AI guessed | AI, proposals only | `3a-propose-hypotheses.sh` · `3b-propose-mappings.sh` · `3c-propose-plans.sh` |
+| 4 | **Tested** — what the checks settled | check, may promote | `4-test.sh` |
+| 5 | **Clarification** — what only a human can answer | human, may promote | `5-clarify.sh` |
+| **6** | **Readiness** — what may be answered | derived, never stored | `6-readiness.sh` |
+
+Stages 0 and 6 are the **frame**; 1–5 are the middle. The question opens the
+frame because it bounds the work, and the verdict closes it.
+
+Tools, not stages, so they carry no number: `reset.sh` (wipe
+`validation/data/`), `collect.sh` (gather everything into a clickable index),
+`report.sh`, `llm-log.sh`, `db.sh`, `db-export.sh`, `recall.sh`,
+`two-entities.sh`.
 
 Every step opens with an **INPUT** block naming the files that drove it — the
 source list, the domain guide, the profiles, the check-definition catalog, the
@@ -36,12 +46,51 @@ prompts. An output you cannot trace back to its input is an assertion, not
 evidence; for LLM steps the exact bytes sent are in the call log with their
 sha256 (`llm-log.sh <#>`).
 
-Rerunning steps 3 and 4 is safe (claim-key dedup catches everything), and
-step 7 is idempotent. Step 5 refuses to run twice: the offline replay answers
-are keyed to the first run's claim labels, so a re-bind would misapply them —
-run `0-reset.sh` and walk through again instead.
+Rerunning `3a` and `3b` is safe (claim-key dedup catches everything), and `5`
+is idempotent. `3c` refuses to run twice: the offline replay answers are keyed
+to the first run's claim labels, so a re-bind would misapply them — run
+`reset.sh` and walk through again instead.
 
-### Step 1 — load
+### Stage 0 — the request
+
+The frame opens. A human asks a business question; the request contract turns
+it into an `AnswerRequest` (what output is wanted, over which scope) and a
+draft of the **required knowledge** — the objects, fields and rules the answer
+depends on. This stage also creates the project, because the question comes
+before anything is measured.
+
+The contract reads the question and the domain vocabulary — *definitions only,
+no profiles*. Whether the data can serve the question is the rest of the
+pipeline's job; answering it here would be the model deciding.
+
+Good (offline pins): **9** required-knowledge items, 0 skipped — the journal,
+four of its fields, the intercompany object, and three business rules the
+vocabulary does not contain (which accounts are P&L, the sign convention, the
+month cut-off).
+
+Look at what is **not** on the list: `subledger_ar`. Open receivables do not
+enter a profit and loss, so this question does not require them. That absence
+is the question bounding discovery, made visible — and it is the whole reason
+the frame exists.
+
+### Stage 1 — the declared inputs
+
+Everything domain-specific enters through three declared inputs, and this
+stage shows all three before any data is touched: the **source list** (a human
+writes it — the product never discovers files), the **domain guide**, and the
+**domain laws** shipped for that domain.
+
+It is the only stage that can fail before measurement: the guide's coherence
+lint runs at load, so a guide that contradicts itself — a field declaring a
+law, a slot its object's law does not have — is caught here rather than
+surfacing later as a strange question.
+
+Good (offline pins): 7 sources; 3 business objects and 5 fields, lint passed;
+3 domain laws of 13 templates, the other 10 generic. The step also names the
+corpus files *not* listed, so their absence is a visible decision rather than
+an oversight.
+
+### Stage 2a — scan
 
 Look at: the **source list** (7 sources — this is what drives everything
 downstream), the views with row counts, the normalization declarations.
@@ -57,7 +106,7 @@ files by itself. For the walkthrough the corpus harness fills it in
 policy traps (F14/F15/F19/F25) and are invisible here — PDFs are only
 fingerprinted, the document pipeline is M5.
 
-### Step 2 — link candidates (the matrix)
+### Stage 2b — the candidate matrix
 
 Look at: top pairs by containment (`--top 30` for more); full table in
 `data/project/profiles/candidate_matrix.md`.
@@ -66,7 +115,7 @@ buchungen_report / the Excel files) score high — and some coincidental
 overlaps are in the list too. That is by design: the matrix measures, never
 judges; filtering happens later via checks.
 
-### Step 3 — V1 hypotheses
+### Stage 3a — hypotheses
 
 Look at: created/deduped/skipped counts, predicate mix, sample claims; then
 `llm-log.sh 1` for the verbatim prompt and answer.
@@ -74,7 +123,7 @@ Good (offline pins): **52 created, 0 deduped, 3 skipped** with visible
 reasons; every claim `proposed`, created by `ai`, with a structured
 predicate. Audit the prompt: profiles + matrix only, no corpus hints.
 
-### Step 4 — mapping claims (role candidates)
+### Stage 3b — mapping candidates
 
 Look at: candidates per role — objects first, their fields indented beneath.
 Good (offline pins): **22 candidates** over the 8 finance guide entries (3
@@ -82,7 +131,7 @@ business objects + 5 journal fields), all still `proposed`; the journal object
 has three competitors including the CSV report export — competition is wanted,
 the invariant checks will decide.
 
-### Step 5 — V2 check planning
+### Stage 3c — check plans
 
 Look at: template mix; the three honest rejection buckets.
 Good (offline pins): **42 check plans**, **19 unbindable** (model answered
@@ -95,7 +144,7 @@ reason, so the readiness report shows *why* it was never tested — read them, t
 are the sharpest evidence of what the domain pack is still missing (several
 say, in effect: "the rule is in a document I cannot see" → M5).
 
-### Step 6 — engine sweep
+### Stage 4 — test
 
 Look at: executed/skipped, verdict mix, role verdicts, the false-promotion
 audit line.
@@ -106,7 +155,7 @@ journal role: `de_erp__gl_postings` **test-supported**, `buchungen_report`
 audit **CLEAN**. Resulting AI-claim statuses: 35 test-supported, 32 proposed,
 7 contradicted.
 
-### Step 7 — role resolution
+### Stage 5 — clarification
 
 Every entry in the domain guide declares its settlement path (`decided_by:`,
 linted on load). A **business object** is elected by a domain law or by
@@ -141,37 +190,21 @@ balances per document AND per period, so a passing law never identifies the
 grouping column.
 
 The project now holds **13** open questions in total: these 6 plus 7 drafted
-by the engine in step 6 where a check failed or was inconclusive.
+by the engine in stage 4 where a check failed or was inconclusive.
 
-### Step 8 — the question, and the verdict
+### Stage 6 — the verdict
 
-The two ends of the machine, in one step. Steps 1–7 are the middle: they scan
-a landscape and test what can be tested. This step puts the frame around
-them — the business question that bounds the work, and the verdict that work
-earns.
+The frame closes. **No model is involved:** the ReadinessMap is derived from
+the claims and evidence stages 2–5 produced, and is never stored — re-render
+the report and it recomputes.
 
-In a driven run the question comes **first**: it defines what must be known,
-and nothing else has to be. The walkthrough asks it here because you have just
-watched the middle happen and can see what the question does to it.
+Good (offline pins): **blocked**, naming `journal.entity`, `journal.period`,
+`journal.account` and `intercompany`. The honest verdict on this landscape:
+the ledger of record is identified and its amount column is settled, but
+nothing yet says which column carries the entity or the period — and a P&L
+*by entity and month* is computed from exactly those.
 
-V4 reads the question and the domain vocabulary — definitions only, no
-profiles. Whether the data can serve the request is the rest of the pipeline's
-job; answering it here would be the model deciding. Good (offline pins): **9**
-required-knowledge items, 0 skipped — the journal, four of its fields, the
-intercompany object, and three business rules the vocabulary does not contain
-(which accounts are P&L, the sign convention, the month cut-off). Note what is
-*not* on the list: `subledger_ar`. Open receivables do not enter a profit and
-loss, so this question does not require them — that is the question bounding
-discovery, visible.
-
-Then the ReadinessMap, derived with no model involved from the claims and
-evidence steps 1–7 produced. Good (offline pins): **blocked**, naming
-`journal.entity`, `journal.period`, `journal.account` and `intercompany`. The
-honest verdict: the ledger of record is identified and its amount column is
-settled, but nothing yet says which column carries the entity or the period —
-and a P&L *by entity and month* is computed from exactly those.
-
-Two things to check in the output, because they are the guarantees:
+Two things to check, because they are the guarantees:
 
 - **The verdict names its dependency.** A verdict without its reason is the
   one thing this product may not ship.
@@ -180,14 +213,14 @@ Two things to check in the output, because they are the guarantees:
   balance law of `journal` passed while reading
   `de_erp__gl_postings.amount_local_currency` — its own candidate claims are
   still `proposed`, and the sentence says so. *Satisfied* and *promoted* are
-  deliberately different things (owner decision); an item reading
-  only "satisfied" would hide the difference.
+  deliberately different things (owner decision); an item reading only
+  "satisfied" would hide the difference.
 
 Answer the four open mapping questions and the verdict narrows rather than
 clearing: `ready_with_limitations`, with the three business rules named as the
 limitations they are. That is the third outcome — permit, narrow, or block.
 
-### Step 9 — collect
+### collect
 
 Builds `validation/data/report/index.html` linking the readiness report, the
 LLM-call browser, the candidate matrix, and (if `recall.sh` ran) the
@@ -198,14 +231,14 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
 - `llm-log.sh` — list all LLM calls; `llm-log.sh 2` shows one call fully
   formatted (system prompt, user input, every attempt with its validation
   errors and pretty-printed answer); `llm-log.sh --html f.html` for a
-  browsable page. Steps 3–5 and 8 also refresh that page automatically at
+  browsable page. Stages 0 and 3 also refresh that page automatically at
   `data/report/llm_calls.html` — it opens with the **domain knowledge**
   actually in play (source list, domain guide, domain-law check definitions),
   every call carries a comment mapping it back to its walkthrough step, and
-  the page grows as you progress (steps 6, 7 and 9 add nothing: they never
-  talk to the model).
+  the page grows as you progress (stages 1, 2, 4, 5 and 6 add nothing: they
+  never talk to the model).
 - `report.sh` — rebuild the readiness report HTML at any point mid-walkthrough.
-  Steps 3–8 also refresh it automatically at `data/report/readiness.html`
+  Stages 0 and 3 also refresh it automatically at `data/report/readiness.html`
   (every step that changes the store). The page *is* this walkthrough,
   rendered from the store, in the same order: a **process diagram** on top
   carrying this project's live numbers (each one a link into the section that

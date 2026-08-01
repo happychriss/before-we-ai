@@ -13,7 +13,7 @@
 - **Standing measures:** False-Promotion **0** (non-negotiable at every
   commit) · Seeded-Recall **14–15/25** · prompt-leakage scan CLEAN.
 - **Walkthrough pins** (offline; `validation/README.md` carries them per
-  step): 52 hypotheses / 0 deduped / 3 skipped · 22 candidates · 42 plans /
+  stage): 52 hypotheses / 0 deduped / 3 skipped · 22 candidates · 42 plans /
   19 unbindable / 6 semantic-only / 7 skipped · 42 executed, 35 pass / 7 fail ·
   6 role questions, 13 open in total · 9 required-knowledge items · verdict
   **blocked**, naming `journal.entity`, `journal.period`, `journal.account`,
@@ -85,6 +85,17 @@ recording (its corpus fixture is hand-authored and marked as such).
 
 ## Open decisions (owner)
 
+- **Rename the request contract off the spec's V4 slot.** The spec's V4 is
+  **SQL generation**; the request contract (business question →
+  `AnswerRequest` + `RequiredKnowledge`) took the name and the number.
+  `llm/v4_request.py`, `CONTRACT = "v4_request"`, the fixture filename and the
+  model-tier key should become `request`. Mechanical; no prompt bytes move.
+- **Assumption Capture is unbuilt and untracked.** The spec's `sql` module:
+  sqlglot parses the generated query, checks it against the allowed subset,
+  extracts joins and claim-requiring filters, matches them against the claim
+  store, and **materialises what is missing as `proposed` claims** — the query
+  itself becomes a source of claims. It appears in no roadmap row, and
+  `sqlglot` is not a declared dependency. Decide where it belongs.
 - **Domain-guide acceptance kit, parts 1 + 2.** Part 3 (the coherence lint)
   is shipped. Per new law: one holds-fixture and one violated-fixture. Per
   new role: one wrong candidate that must lose. This is the only protection

@@ -605,11 +605,12 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
       <p class="muted">{escape(str(root_path))}</p>
       <div class="section-links">
         <a href="#process">Process</a>
+        <a href="#request">0 Request</a>
         <a href="#inputs">1 Inputs</a>
         <a href="#measured">2 Measured</a>
         <a href="#proposed">3 Proposed</a>
-        <a href="#decided">4 Decided</a>
-        <a href="#open">5 Open</a>
+        <a href="#decided">4 Tested</a>
+        <a href="#open">5 Clarification</a>
         <a href="#readiness">6 Readiness</a>
         <a href="#claims">Claim detail</a>
         <a href="#integrity">Integrity</a>
@@ -642,6 +643,13 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         {diagram}
         <p class="muted">{escape(READING_GUIDE)}</p>
       </section>
+      <section class="panel" id="request">
+        <h2>0 · Request — the question, and what it requires</h2>
+        <p class="muted">The frame opens here. The question bounds the work: it
+        defines what must be known, and nothing else has to be. Section 6 closes
+        the frame with the verdict those dependencies earn.</p>
+        {_render_request(readiness_maps, store_rel)}
+      </section>
       <section class="panel" id="inputs">
         <h2>1 · Inputs — what a human declared</h2>
         {_render_domain_pack(root_path, config)}
@@ -664,14 +672,14 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         {_render_funnel(facts)}
       </section>
       <section class="panel" id="decided">
-        <h2>4 · Decided — what the checks settled</h2>
+        <h2>4 · Tested — what the checks settled</h2>
         <p class="muted">Every role the AI proposed candidates for. Each role declares its
         settlement path: a domain law elects the winner, or the humans decide via clarification question —
         never silence.</p>
         {_render_role_elections(facts, questions, guide, answered_slots)}
       </section>
       <section class="panel" id="open">
-        <h2>5 · Open — what only a human can answer ({len(still_open)})</h2>
+        <h2>5 · Clarification — what only a human can answer ({len(still_open)})</h2>
         <p class="muted">What the checks could not settle. This is the human's to-do list.
         A question leaves it the moment a claim it rests on settles — derived from the
         same evidence the readiness map reads, so the two can never disagree.</p>
@@ -680,10 +688,10 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
       </section>
       <section class="panel" id="readiness">
         <h2>6 · Readiness — what may be answered</h2>
-        <p class="muted">The question bounds the work: it defines what must be
-        known, and nothing else has to be. Each dependency below is traced to
-        its claim and evidence. Derived on every render, never stored — a
-        verdict that has drifted from its evidence is worse than none.</p>
+        <p class="muted">The frame closes. Every dependency listed in section 0
+        is traced to its claim and evidence, and the verdict is what they add up
+        to. Derived on every render, never stored — a verdict that has drifted
+        from its evidence is worse than none.</p>
         {_render_readiness(readiness_maps, store_rel)}
       </section>
       <section class="panel" id="claims">
@@ -1084,13 +1092,13 @@ def _render_process_diagram(
             (str(claims), f"claim{'s' if claims != 1 else ''}"),
         ]),
         '<div class="boundary"><span>no proposal may promote itself</span></div>',
-        _node("4 · decided", "The checks judge", "decided", "check — may promote", [
+        _node("4 · tested", "The checks judge", "decided", "check — may promote", [
             (str(runs), f"check run{'s' if runs != 1 else ''}"),
             # role x scope, and "settled" not "elected": a slot answered by
             # its object's passing run counts, and nobody elected it
             (f"{elected}/{elections}", "elections settled"),
         ]),
-        _node("5 · open", "Humans decide the rest", "open", "human — may promote", [
+        _node("5 · clarification", "Humans decide the rest", "open", "human — may promote", [
             (str(questions), f"open question{'s' if questions != 1 else ''}"),
         ]),
         _node("6 · readiness", "What may be answered", "readiness",
@@ -1404,14 +1412,57 @@ def _readiness_counts(maps: list) -> list[tuple[str, str]]:
     ]
 
 
+_NOTHING_ASKED = (
+    '<p class="empty">No business question has been asked of this project '
+    "yet. Until one is, this report describes a landscape rather than an "
+    "answer — and whether a landscape is generally sound is a question "
+    "nobody asked.</p>"
+)
+
+
+def _render_request(maps: list, rel: str) -> str:
+    """Stage 0 — what was asked, and what the answer therefore depends on.
+
+    Separate from the verdict on purpose: this is the frame opening. A
+    reader should see what the question is and what it requires *before*
+    the pipeline, and the verdict only after.
+    """
+    if not maps:
+        return _NOTHING_ASKED
+    return "".join(_render_request_card(result, rel) for result in maps)
+
+
+def _render_request_card(result, rel: str) -> str:
+    scope = result.request.scope
+    items = "".join(
+        f"<li><code>{escape(i.ref)}</code> "
+        f"<span class='muted'>{escape(i.item.kind.value)}</span>"
+        + (f"<blockquote class='ai-said'>{escape(i.item.why)}"
+           "<cite>— the AI, on why the answer depends on this</cite>"
+           "</blockquote>" if i.item.why else "")
+        + "</li>"
+        for i in result.items
+    )
+    return (
+        f"<div class='ready-map' id='request-{escape(result.request.id)}'>"
+        f"<blockquote class='quote'>{escape(result.request.question)}"
+        "<cite>— the business question, as it was asked</cite></blockquote>"
+        f"<blockquote class='ai-said'>{escape(result.request.requested_output)}"
+        "<cite>— the AI, on what the answer must deliver</cite></blockquote>"
+        + (f"<p class='fine'>Asked for {escape(scope.label())}.</p>"
+           if scope.is_explicit() else
+           "<p class='fine'>No scope named, so the whole landscape.</p>")
+        + f"<h4 class='fine'>What this answer depends on "
+          f"({len(result.items)}) — and nothing else has to be known</h4>"
+        f"<ul class='picks'>{items}</ul>"
+        f"{_provenance(rel, 'answers', result.request.id, 'asked by a human', 'structured by the request contract')}"
+        "</div>"
+    )
+
+
 def _render_readiness(maps: list, rel: str) -> str:
     if not maps:
-        return (
-            '<p class="empty">No business question has been asked of this '
-            "project yet. Until one is, this report describes a landscape "
-            "rather than an answer — and whether a landscape is generally "
-            "sound is a question nobody asked.</p>"
-        )
+        return _NOTHING_ASKED
     return "".join(_render_readiness_map(result, rel) for result in maps)
 
 
@@ -1436,14 +1487,8 @@ def _render_readiness_map(result, rel: str) -> str:
     return (
         f"<div class='ready-map ready-{result.verdict.value}' "
         f"id='readiness-{escape(result.request.id)}'>"
-        # the human's words, verbatim: this is the question that was asked
-        f"<blockquote class='quote'>{escape(result.request.question)}"
-        "<cite>— the business question, as it was asked</cite></blockquote>"
-        # and the AI's restatement of it, attributed — not folded into the
-        # human's voice just because it sits on the same record
-        f"<blockquote class='ai-said'>{escape(result.request.requested_output)}"
-        "<cite>— the AI, on what the answer must deliver</cite></blockquote>"
-        f"{scope_line}"
+        f"<p class='fine'><a href='#request-{escape(result.request.id)}'>"
+        f"{escape(result.request.question)}</a></p>{scope_line}"
         f"<p class='derived verdict'><strong>{escape(headline)}</strong> "
         f"{escape(result.reason())}</p>"
         f"<p class='muted'>{escape(explanation)}</p>"
@@ -1464,11 +1509,6 @@ def _render_readiness_item(item, rel: str) -> str:
     # a satisfied dependency, and it must not read like a gap either
     mark = ("waived" if item.item.waived
             else "supported" if item.satisfied else "missing")
-    why = (
-        f"<blockquote class='ai-said'>{escape(item.item.why)}"
-        "<cite>— the AI, on why the answer depends on this</cite></blockquote>"
-        if item.item.why else ""
-    )
     links = " ".join(
         f"<a href='#claim-{escape(cid)}'>{escape(cid[-6:])}</a>"
         for cid in item.claim_ids
@@ -1488,7 +1528,7 @@ def _render_readiness_item(item, rel: str) -> str:
         f"<h5><code>{escape(item.ref)}</code> "
         f"<span class='muted'>{escape(item.item.kind.value)}</span></h5>"
         f"<p class='derived'>{escape(item.because)}</p>"
-        f"{why}{linked}"
+        f"{linked}"
         + (f"<p class='fine'>Claims: {links}</p>" if links and not linked else "")
         + "</div>"
     )

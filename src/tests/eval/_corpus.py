@@ -30,8 +30,14 @@ SOURCES = [
 ]
 
 
-def build_corpus_project(root: Path, *, offline: bool) -> Path:
-    """Init + scan a fresh project over the frozen corpus."""
+def build_corpus_project(root: Path, *, offline: bool,
+                         scan_now: bool = True) -> Path:
+    """Declare a fresh project over the frozen corpus, and scan it.
+
+    ``scan_now=False`` stops after the declarations — the walkthrough needs
+    that split, because its stage 0 (the request) and stage 1 (the declared
+    inputs) both come before anything is measured.
+    """
     init_project(root, name="seeded-recall")
     config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8"))
     config["sources"] = SOURCES
@@ -41,5 +47,6 @@ def build_corpus_project(root: Path, *, offline: bool) -> Path:
     config["llm"] = llm_block
     (root / "before-ai.yaml").write_text(yaml.safe_dump(config, sort_keys=False),
                                          encoding="utf-8")
-    scan(root)
+    if scan_now:
+        scan(root)
     return root

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/_env.sh"
-python "$BW_REPO/validation/scripts/_steps.py" ask "$@"
+python "$BW_REPO/validation/scripts/_steps.py" readiness "$@"

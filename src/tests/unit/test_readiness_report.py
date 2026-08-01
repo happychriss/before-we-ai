@@ -270,7 +270,7 @@ def test_role_elections_show_winner_loser_and_clarification(tmp_path):
 
     html = render_project(root)
 
-    assert "4 · Decided — what the checks settled" in html
+    assert "4 · Tested — what the checks settled" in html
     assert "<strong>Identified.</strong> The balance law passed on" in html
     assert "felled by" in html
     assert "24 exceptions in 383 rows" in html
@@ -278,7 +278,7 @@ def test_role_elections_show_winner_loser_and_clarification(tmp_path):
     assert "<strong>Open — a human has to answer it.</strong>" in html
     assert f'href="#question-{card.id}"' in html
     # the open-questions inbox is its own pipeline step, and counts
-    assert "5 · Open — what only a human can answer (1)" in html
+    assert "5 · Clarification — what only a human can answer (1)" in html
 
 
 def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
@@ -791,6 +791,7 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
     # the ghost is gone; the stage is real and carries live numbers
     assert "M6 · question → readiness" not in html
     assert "<strong>2/3</strong> dependencies supported" in html
+    assert "0 · Request — the question, and what it requires" in html
     assert "6 · Readiness — what may be answered" in html
 
     # the human's question, verbatim — and the AI's restatement attributed to
@@ -813,8 +814,10 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
 
     # three voices: the AI's why is attributed and never the headline
     assert "— the AI, on why the answer depends on this" in html
-    assert html.index("Satisfied because its own claim") < \
-        html.index("the figures are summed from it")
+    # section 0 states the dependency and the AI's reason for it; section 6
+    # states what became of it. The derived line is never below the AI's.
+    assert html.index("the figures are summed from it") < \
+        html.index("Satisfied because its own claim")
 
 
 def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
@@ -873,7 +876,7 @@ def test_an_answered_question_leaves_the_open_list(tmp_path):
         question="Which of the proposed candidates is the 'account'?",
         claim_ids=[open_still.id]))
 
-    assert "5 · Open — what only a human can answer (2)" in render_project(root)
+    assert "5 · Clarification — what only a human can answer (2)" in render_project(root)
 
     # the human answers one of them
     record = EvidenceRecord(type=EvidenceType.CONFIRMATION, actor=Actor.HUMAN,
@@ -883,7 +886,7 @@ def test_an_answered_question_leaves_the_open_list(tmp_path):
 
     html = render_project(root)
 
-    assert "5 · Open — what only a human can answer (1)" in html
+    assert "5 · Clarification — what only a human can answer (1)" in html
     assert "Answered questions (1)" in html
     assert "<strong>Answered.</strong> Settled by 1 claim" in html
     # kept, not dropped: what settled it is part of the record

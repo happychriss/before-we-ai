@@ -35,6 +35,7 @@ from _corpus import DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
 def _corpus_file() -> str:
     return _corpus.__file__
 
+from before_we_ai import scan  # noqa: E402
 from before_we_ai.engine import run_ready  # noqa: E402
 from before_we_ai.llm import (  # noqa: E402
     ask,
@@ -45,6 +46,7 @@ from before_we_ai.llm import (  # noqa: E402
     resolve_mappings,
 )
 from before_we_ai.llm.domain_guide import settled_slots  # noqa: E402
+from before_we_ai.checks.library import REGISTRY  # noqa: E402
 from before_we_ai.model import Actor  # noqa: E402
 from before_we_ai.model.objects import MappingClaim  # noqa: E402
 from before_we_ai.profile.candidates import load_matrix  # noqa: E402
@@ -73,7 +75,7 @@ LLM_INPUT_NOTE = (
 
 def need_project() -> ProjectStore:
     if not PROJECT.is_dir():
-        sys.exit("no walkthrough project yet — run 1-scan.sh first")
+        sys.exit("no walkthrough project yet — run 0-request.sh first")
     return ProjectStore(PROJECT)
 
 
@@ -114,43 +116,15 @@ def _offline() -> bool:
 
 
 def stage_scan(args) -> None:
-    if PROJECT.exists():
-        sys.exit(f"{PROJECT} already exists — run 0-reset.sh for a clean start")
-    mode = "ONLINE — steps 3-5 will make real model calls (needs " \
-        "ANTHROPIC_API_KEY)" if args.online else \
-        "OFFLINE — steps 3-5 will replay the recorded real answers"
-    print(f"building walkthrough project: {PROJECT}\n"
-          f"scan itself is deterministic and never calls an LLM; this run "
-          f"writes the\nLLM config for the later steps into before-ai.yaml: "
-          f"{mode}")
-
-    from _corpus import SOURCES  # the list that drives everything below
+    """Stage 2a — the data describes itself. No model involved."""
+    need_project()
     inputs(
-        f"source list ({len(SOURCES)} sources), declared in "
-        f"{Path(_corpus_file()).relative_to(REPO)}",
-        "  (the product never discovers files: init_project writes "
-        "`sources: []` and a\n   human fills it in — here the corpus harness "
-        "does that for you)",
-        "",
-        *[f"  {s['name']:22s} {s['kind']:7s} "
-          f"{Path(s['location']).relative_to(REPO)}" for s in SOURCES],
+        f"the sources declared in stage 1: "
+        f"{(PROJECT / 'before-ai.yaml').relative_to(REPO)}",
+        "NO LLM: ingestion, canonicalization and profiling are deterministic",
     )
-    unlisted = sorted(
-        p.name for p in (REPO / "src" / "corpus" / "data").iterdir()
-        if p.is_file() and p.suffix in {".pdf", ".csv", ".xlsx"}
-        and not any(Path(s["location"]).name == p.name for s in SOURCES))
-    if unlisted:
-        print(f"\n  NOT listed (present in the corpus, invisible to this run): "
-              f"{', '.join(unlisted)}")
-        print("  PDFs carry the policy traps; the document pipeline is M5 — a "
-              "pdf source is\n  fingerprinted only (sources/attach.py), so it "
-              "yields no views and no evidence.")
-
-    build_corpus_project(PROJECT, offline=not args.online)
+    scan(PROJECT)
     store = ProjectStore(PROJECT)
-    print(f"\n  resolved config written to: "
-          f"{(PROJECT / 'before-ai.yaml').relative_to(REPO)} "
-          f"(canonical `sources:` for this project)")
 
     section("views in the catalog (cache/analysis.duckdb)")
     con = open_catalog(PROJECT)
@@ -176,13 +150,13 @@ def stage_scan(args) -> None:
     print(f"  {len(store.claims)}  (scan must create ZERO claims — "
           "false promotion impossible by construction)")
     print(f"\nfull detail: {PROJECT}/evidence/  ·  profiles: {PROJECT}/profiles/")
-    print("next: 2-matrix.sh")
+    print("next: 2b-measure-matrix.sh")
 
 
 def stage_matrix(args) -> None:
     need_project()
     inputs(
-        "the catalog views built by step 1 (cache/analysis.duckdb) — the scan "
+        "the catalog views built by 2a (cache/analysis.duckdb) — the scan "
         "already\n  computed this matrix; nothing new is read here",
         f"column profiles: {(PROJECT / 'profiles').relative_to(REPO)}/",
         f"matrix as data: {(PROJECT / 'profiles' / 'candidate_matrix.json').relative_to(REPO)}",
@@ -203,7 +177,7 @@ def stage_matrix(args) -> None:
               f"{c['containment']:>6} {c['jaccard']:>6}")
     print(f"\nfull table: {PROJECT}/profiles/candidate_matrix.md "
           f"(+ .json, per-column profiles alongside)")
-    print("next: 3-hypotheses.sh")
+    print("next: 3a-propose-hypotheses.sh")
 
 
 def _print_call_report(report, store: ProjectStore) -> None:
@@ -244,10 +218,10 @@ def stage_hypotheses(args) -> None:
     print(f"\nfull detail: {PROJECT}/claims/")
     refresh_llm_html()
     refresh_report_html()
-    print("next: 4-role-proposals.sh")
+    print("next: 3b-propose-mappings.sh")
 
 
-def stage_role_proposals(args) -> None:
+def stage_mappings(args) -> None:
     store = need_project()
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     inputs(
@@ -279,10 +253,10 @@ def stage_role_proposals(args) -> None:
             print(f"      [{c.status.value}] {clip(', '.join(c.binding.values()), 75)}")
     refresh_llm_html()
     refresh_report_html()
-    print("next: 5-plan-checks.sh")
+    print("next: 3c-propose-plans.sh")
 
 
-def stage_bind(args) -> None:
+def stage_plans(args) -> None:
     store = need_project()
     if store.checks:
         # Offline fixture answers are keyed to the FIRST run's claim labels;
@@ -294,8 +268,8 @@ def stage_bind(args) -> None:
     n_roles = sum(isinstance(c, MappingClaim) for c in unbound)
     inputs(
         f"the {len(unbound)} AI claims already in the store: "
-        f"{len(unbound) - n_roles} hypotheses from step 3\n  "
-        f"+ {n_roles} role-binding candidates from step 4 "
+        f"{len(unbound) - n_roles} hypotheses from 3a\n  "
+        f"+ {n_roles} mapping candidates from 3b "
         f"(labelled c1..cN — ULIDs never enter\n  a prompt, so the input stays "
         f"byte-stable)",
         "the check definition catalog: checks/library.py REGISTRY, rendered by "
@@ -342,13 +316,13 @@ def stage_bind(args) -> None:
     print(f"\nfull detail: {PROJECT}/checks/")
     refresh_llm_html()
     refresh_report_html()
-    print("next: 6-run-checks.sh")
+    print("next: 4-test.sh")
 
 
-def stage_run(args) -> None:
+def stage_test(args) -> None:
     store = need_project()
     inputs(
-        f"the {len(store.checks)} checks from step 5: "
+        f"the {len(store.checks)} checks from 3c: "
         f"{(PROJECT / 'checks').relative_to(REPO)}/ (template + params, as YAML)",
         "their SQL: checks/templates/*.sql.j2 — rendered per check, the "
         "rendered SQL is\n  kept on the evidence record",
@@ -394,15 +368,15 @@ def stage_run(args) -> None:
           f"{PROJECT}/cache/check_runs/")
     print()
     refresh_report_html()
-    print("next: 7-resolve-roles.sh")
+    print("next: 5-clarify.sh")
 
 
-def stage_resolve(args) -> None:
+def stage_clarify(args) -> None:
     store = need_project()
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     inputs(
-        f"the same role definitions as step 4: {DOMAIN_GUIDE_FILE.relative_to(REPO)}",
-        "the derived statuses of the role claims after step 6 — a role with "
+        f"the same role definitions as 3b: {DOMAIN_GUIDE_FILE.relative_to(REPO)}",
+        "the derived statuses of the role claims after stage 4 — a role with "
         "candidates but\n  none reaching `test-supported` has lost, and becomes a "
         "question instead of a silent discard",
         "NO LLM: this is pure bookkeeping over statuses",
@@ -433,38 +407,40 @@ def stage_resolve(args) -> None:
     print(f"\nfull detail: {PROJECT}/questions/")
     print()
     refresh_report_html()
-    print("next: 8-ask.sh")
+    print("next: 6-readiness.sh")
 
 
-def stage_ask(args) -> None:
-    """The frame around everything steps 1-8 did: the question, and the verdict.
+def stage_request(args) -> None:
+    """Stage 0 — the question, and what it requires.
 
-    In a driven run the question comes *first* — it bounds discovery, and
-    what it does not depend on nobody has to know. The walkthrough puts it
-    here because steps 1-8 are the middle of the machine, and this step is
-    both ends of it at once.
+    The frame opens here. In a driven run this is genuinely first: the
+    question bounds discovery, so what it does not depend on nobody has to
+    know. Stage 6 closes the frame with the verdict.
     """
-    store = need_project()
+    if PROJECT.exists():
+        sys.exit(f"{PROJECT} already exists — run reset.sh for a clean start")
+    mode = ("ONLINE — model stages will make real calls (needs "
+            "ANTHROPIC_API_KEY)" if args.online else
+            "OFFLINE — model stages will replay the recorded real answers")
+    print(f"creating walkthrough project: {PROJECT}\n  {mode}")
+    build_corpus_project(PROJECT, offline=not args.online, scan_now=False)
+    store = ProjectStore(PROJECT)
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     inputs(
         f"the business question, as a human asked it: {DEMO_QUESTION!r}",
-        f"the same domain vocabulary as step 4: "
-        f"{DOMAIN_GUIDE_FILE.relative_to(REPO)}\n  (definitions only — V4 "
-        "sees no profiles: whether the data can serve the request is the "
-        "rest\n  of the pipeline's job, and answering it here would be the "
-        "model deciding)",
+        f"the domain vocabulary: {DOMAIN_GUIDE_FILE.relative_to(REPO)}\n"
+        "  (definitions only — the request contract sees no profiles: whether "
+        "the data can\n  serve the question is the rest of the pipeline's job, "
+        "and answering it here\n  would be the model deciding)",
         "system prompt: llm/prompts.py:V4_SYSTEM + the output schema",
         f"answers: {'recorded fixtures in src/tests/fixtures/llm/' if _offline() else 'live model calls'}",
-        "for the verdict — NO LLM: the ReadinessMap is derived from the "
-        "claims and\n  evidence steps 1-8 produced, and is never stored",
         LLM_INPUT_NOTE,
     )
     report = ask(PROJECT, DEMO_QUESTION, guide=roles, store=store,
                  scenario=SCENARIO)
-    section("V4 — the question, and what it requires")
+    section("the request — one business question, structured")
     if report.failure:
-        print(f"  CALL FAILED after retry: {report.failure}")
-        print("  nothing was created")
+        print(f"  CALL FAILED after retry: {report.failure}\n  nothing was created")
         return
     print(f"  required: {len(report.required.items)}   "
           f"skipped: {len(report.skipped)}   retries: {report.retries}   "
@@ -475,13 +451,90 @@ def stage_ask(args) -> None:
     print(f"  requested output: {report.request.requested_output}")
     scope = report.request.scope
     print(f"  scope: {scope.label() or 'the whole landscape (the question named none)'}")
+
     section(f"required knowledge ({len(report.required.items)} items) — and "
             "nothing else has to be known")
     for item in report.required.items:
         print(f"  {item.kind.value:7s} {item.ref():24s} {clip(item.why, 60)}")
+    print(f"\nfull detail: {PROJECT}/answers/  (and section 0 of the report)")
+    refresh_llm_html()
+    refresh_report_html()
+    print("next: 1-inputs.sh")
 
-    store = ProjectStore(PROJECT)  # reload: the verdict reads what is on disk
-    result = evaluate_request(store, roles, report.request.id)
+
+def stage_inputs(args) -> None:
+    """Stage 1 — what a human declared, and whether it holds together.
+
+    The only stage that can fail before any data is touched: the domain
+    guide's coherence lint runs at load, so a guide that contradicts itself
+    is caught here rather than surfacing as a strange question later.
+    """
+    need_project()
+    from _corpus import SOURCES
+    inputs(
+        f"source list ({len(SOURCES)} sources), declared in "
+        f"{Path(_corpus_file()).relative_to(REPO)} and written to "
+        f"{(PROJECT / 'before-ai.yaml').relative_to(REPO)}",
+        f"domain guide: {DOMAIN_GUIDE_FILE.relative_to(REPO)}",
+        "domain laws: checks/REGISTRY entries tagged with a domain",
+        "NO LLM, NO DATA: this stage only reads and validates declarations",
+    )
+    section(f"sources declared by a human ({len(SOURCES)})")
+    for s in SOURCES:
+        print(f"  {s['name']:22s} {s['kind']:7s} "
+              f"{Path(s['location']).relative_to(REPO)}")
+    print("\n  The product never discovers files: init_project writes "
+          "`sources: []`\n  and a human fills it in.")
+    unlisted = sorted(
+        f.name for f in (REPO / "src" / "corpus" / "data").iterdir()
+        if f.is_file() and f.suffix in {".pdf", ".csv", ".xlsx"}
+        and not any(Path(s["location"]).name == f.name for s in SOURCES))
+    if unlisted:
+        print(f"\n  NOT listed, so invisible to this run: {', '.join(unlisted)}")
+        print("  The PDFs carry policy traps; a pdf source is fingerprinted "
+              "only until the\n  document pipeline exists, so it yields no "
+              "views and no evidence.")
+
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)   # the coherence lint runs here
+    fields = len(roles.names) - len(roles.objects)
+    section(f"domain guide — {len(roles.objects)} business objects, "
+            f"{fields} fields (lint passed)")
+    for name, spec in roles.objects.items():
+        print(f"  {name:16s} decided_by {spec.decided_by}")
+        for fname, field in spec.fields.items():
+            path = field.decided_by + (f" -> {field.fills}" if field.fills else "")
+            print(f"    {fname:14s} {path}")
+
+    laws = {n: s for n, s in REGISTRY.items() if s.domain}
+    section(f"domain laws shipped for this domain ({len(laws)} of "
+            f"{len(REGISTRY)} templates)")
+    for name, spec in sorted(laws.items()):
+        print(f"  {name:22s} [{spec.domain}] {clip(spec.tests, 60)}")
+    print("\n  The other templates are generic data checks — they carry no "
+          "domain knowledge.")
+    print("\nnext: 2a-measure-scan.sh")
+
+
+def stage_readiness(args) -> None:
+    """Stage 6 — the verdict. The frame closes.
+
+    NO LLM: the ReadinessMap is derived from the claims and evidence stages
+    2-5 produced, and is never stored.
+    """
+    store = need_project()
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)
+    request = next(iter(sorted(store.requests.values(),
+                               key=lambda r: r.created_at)), None)
+    if request is None:
+        sys.exit("no request in this project — run 0-request.sh first")
+    inputs(
+        f"the request from stage 0: {PROJECT.name}/answers/",
+        "the claims, evidence and statuses stages 2-5 produced",
+        f"the domain guide, for slot settlement: "
+        f"{DOMAIN_GUIDE_FILE.relative_to(REPO)}",
+        "NO LLM, and nothing is written: the map is derived on every read",
+    )
+    result = evaluate_request(store, roles, request.id)
     section(f"the ReadinessMap — {result.verdict.value.replace('_', ' ')}")
     print(f"  {result.reason()}\n")
     for item in result.items:
@@ -491,10 +544,9 @@ def stage_ask(args) -> None:
           "claim's status,\n  or by the derivation a passing law supplies for "
           "a slot field whose own\n  claims are still proposed. Those are "
           "deliberately different things.")
-    print(f"\nfull detail: {PROJECT}/answers/  (and section 6 of the report)")
-    refresh_llm_html()
+    print(f"\nfull detail: section 6 of the report")
     refresh_report_html()
-    print("next: 9-collect.sh")
+    print("next: collect.sh")
 
 
 def stage_collect(args) -> None:
@@ -551,8 +603,8 @@ def stage_report(args) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=[
-        "scan", "matrix", "hypotheses", "role-proposals", "bind", "run",
-        "resolve", "ask", "collect", "report"])
+        "request", "inputs", "scan", "matrix", "hypotheses", "mappings",
+        "plans", "test", "clarify", "readiness", "collect", "report"])
     parser.add_argument("--online", action="store_true",
                         help="scan only: configure real model calls "
                              "(needs ANTHROPIC_API_KEY for stages 3-5)")
@@ -560,14 +612,16 @@ def main() -> None:
                         help="how many rows to show in list sections")
     args = parser.parse_args()
     {
+        "request": stage_request,
+        "inputs": stage_inputs,
         "scan": stage_scan,
         "matrix": stage_matrix,
         "hypotheses": stage_hypotheses,
-        "role-proposals": stage_role_proposals,
-        "bind": stage_bind,
-        "run": stage_run,
-        "resolve": stage_resolve,
-        "ask": stage_ask,
+        "mappings": stage_mappings,
+        "plans": stage_plans,
+        "test": stage_test,
+        "clarify": stage_clarify,
+        "readiness": stage_readiness,
         "collect": stage_collect,
         "report": stage_report,
     }[args.stage](args)

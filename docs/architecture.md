@@ -63,6 +63,40 @@ The organisation accepts the remaining risk.
 So the question is never "is this trusted?" but *trusted to do which task,
 within which scope, on which evidence, with which consequence if wrong?*
 
+## The stage spine
+
+One spine, referenced by everything else: a **stage** is a change in what is
+known, with one actor responsible. The readiness report's section number, the
+walkthrough script number, and this document all use it.
+
+| § | stage | actor | produces |
+|---|-------|-------|----------|
+| 0 | Request | human asks, AI structures | `AnswerRequest`, `RequiredKnowledge` |
+| 1 | Inputs | human | sources, domain guide, domain laws |
+| 2 | Measured | nobody — deterministic | data profiles, candidate matrix |
+| 3 | Proposed | AI, proposals only | claims, mapping candidates, check plans |
+| 4 | Tested | check, may promote | evidence, statuses, elections |
+| 5 | Clarification | human, may promote | clarification questions |
+| 6 | Readiness | derived, never stored | ReadinessMap, verdict |
+
+Stages **0 and 6 are the frame**; 1–5 are the middle, which runs bottom-up.
+The question opens the frame because it bounds the work; the verdict closes
+it. A stage may need several runs to be inspectable one model call at a time
+— those get letters (`3a`, `3b`, `3c`), never new numbers.
+
+**LLM contracts are not a second numbering.** There are five of them in the
+spec's four V-slots, so the contract's *name* is the handle and the V-number
+is a spec alias:
+
+| contract | § | spec | status |
+|----------|---|------|--------|
+| request | 0 | — | built (module `v4_request`, **misnamed** — the spec's V4 is SQL generation) |
+| hypotheses | 3 | V1 | built |
+| mappings | 3 | — (Rollenbindung) | built |
+| plans | 3 | V2 | built |
+| documents | 3 | V3 | not built |
+| queries | — | V4 (SQL generation) | not built |
+
 ## Vocabulary
 
 `before_we_ai/glossary.py` is the one home of the canonical terms, as data —
@@ -550,9 +584,11 @@ understanding surface.
 - Static HTML, no runtime dependency beyond a browser. No graph libraries,
   no chart libraries, no multi-file output.
 
-**What it renders** — the page *is* the pipeline, in pipeline order, each
-section headed by the step that produced it; master–detail with search +
-status/predicate/role filters; deep links reveal their claim:
+**What it renders** — the page *is* the pipeline, section for stage, each
+headed by the stage that produced it. The **script number is the section
+number**, so a validator who ran `3b` knows to read section 3
+(`validation/README.md`). Master–detail with search + status/predicate/role
+filters; deep links reveal their claim:
 
 - **The process diagram** (top) — the whole machine on one line, carrying this
   project's live counts, every count a link into the section that produced it:
@@ -562,6 +598,10 @@ status/predicate/role filters; deep links reveal their claim:
   structural False-Promotion invariant, made visible), and a **ghost node**
   for M5 (documents), dashed and labelled "not built", so what is missing is
   stated rather than omitted.
+- **0 · Request** — the frame opening: the business question verbatim, the
+  requested output attributed to the model, the scope, and the
+  required-knowledge list with each item's `why`. What the answer depends on,
+  before anything has been measured.
 - **1 · Inputs** — the three declared domain inputs, live from the project:
   sources, the domain guide (domain, count, names, definitions, settlement
   paths), and the domain-law check definitions (naming the generic remainder
@@ -573,21 +613,21 @@ status/predicate/role filters; deep links reveal their claim:
   filter. The buckets are read from the `DECLARATION` records V2 writes ("A
   refusal is a result"), so they match the step-5 report exactly, and each
   claim shows the model's verbatim reason where its check would have been.
-- **4 · Decided** — the elections, one per **role × scope** (the entity named
+- **4 · Tested** — the elections, one per **role × scope** (the entity named
   in the heading): the candidates, the elected winner, each loser with the
   domain law that felled it; a role whose candidates were never bound to an
   invariant says so; a slot field shows the column its object's passing law
   consumed; a role that lost every candidate ends in its clarification
   question.
-- **5 · Open** — the clarification-questions inbox with the claims each
+- **5 · Clarification** — the clarification-questions inbox with the claims each
   question rests on: the human's to-do list. A card leaves it the moment a
   claim it rests on settles (`semantics.is_answered`, derived from the same
   evidence the readiness map reads, so the two cannot disagree). Answered
   cards are kept, shown with what settled them.
-- **6 · Readiness** — per asked question: the business question verbatim, the
-  derived verdict with the dependencies it names, and every required item with
-  the sentence saying where it stands, grouped into "what the figures are
-  computed from" and "what the figures mean". See "Question flow & readiness".
+- **6 · Readiness** — the frame closing: the derived verdict with the
+  dependencies it names, and every required item with the sentence saying
+  where it stands, grouped into "what the figures are computed from" and "what
+  the figures mean". See "Question flow & readiness".
 - **7 · Claim detail as a story**: statement, one derived-status badge (a loud
   banner only when the stored status diverges), then collapsible
   *1 proposed → 2 planned → 3 judged → 4 context*; ids and timestamps in
@@ -899,8 +939,9 @@ test asks one role in two scopes and demands two cards.
 
 The readiness report's process diagram carries readiness as its sixth
 stage, with live counts ("2/9 dependencies
-supported · blocked") and linking into **section 6 · Readiness**.
-Two rules bind that panel:
+supported · blocked") and linking into **section 6 · Readiness**; the question
+and its dependencies open the page as **section 0 · Request**. Two rules bind
+both panels:
 
 - **The three voices** (see "Readiness report"). The business question
   appears verbatim — it is the human's. The verdict and every item's status

@@ -29,7 +29,7 @@ DEFAULT_PROJECT = Path(__file__).resolve().parents[1] / "data" / "project"
 def guide_for(contract: str, scenario: str) -> str:
     if contract == "v4_request":
         return (
-            "Walkthrough step 8 (V4) — the top of the machine. Input: one "
+            "Walkthrough stage 0 (the request contract) — the top of the machine. Input: one "
             "business question + the domain vocabulary (definitions only, no "
             "profiles: whether the data can serve the request is the rest of "
             "the pipeline's job). Output: the requested output in one line, "
@@ -39,7 +39,7 @@ def guide_for(contract: str, scenario: str) -> str:
             "here is a claim and nothing here is verified.")
     if contract == "v1_hypotheses":
         return (
-            "Walkthrough step 3 (V1) — the model's first job. Input: column "
+            "Walkthrough stage 3a (V1) — the model's first job. Input: column "
             "profiles + candidate matrix (measured statistics, never raw rows). "
             "Output: hypotheses — proposed rules about THIS data ('the document "
             "number in the report references the general ledger'). Every "
@@ -47,7 +47,7 @@ def guide_for(contract: str, scenario: str) -> str:
             "nothing here is verified yet.")
     if contract == "role_binding":
         return (
-            "Walkthrough step 4 — the search for the domain's business "
+            "Walkthrough stage 3b — the search for the domain's business "
             "objects and fields. Input: the domain-guide definitions "
             "(human-written domain nouns, objects and their fields flattened "
             "into one list) + profiles. Output: mapping claims ('this table "
@@ -56,14 +56,14 @@ def guide_for(contract: str, scenario: str) -> str:
             "the election, not the model.")
     if contract == "v2_bind" and "roles" in scenario:
         return (
-            "Walkthrough step 5 (V2), role batch — filling in the free "
+            "Walkthrough stage 3c (V2), role batch — filling in the free "
             "variables of the domain laws. Each role-binding candidate gets a "
             "binding to its domain-law template (balance / subledger=GL / "
             "IC symmetry): which view, which columns. The model picks "
             "parameters from a closed catalog; it never writes SQL.")
     if contract == "v2_bind":
         return (
-            "Walkthrough step 5 (V2), ordinary batch — a binding for each "
+            "Walkthrough stage 3c (V2), ordinary batch — a binding for each "
             "remaining claim: the fitting generic check definition + parameters "
             "from the closed catalog. 'template: null' answers are honest 'not "
             "testable with the current toolbox' — reported, never hidden.")
@@ -71,9 +71,9 @@ def guide_for(contract: str, scenario: str) -> str:
 
 
 GROWTH_NOTE = (
-    "This log grows as the walkthrough progresses: steps 3, 4, 5 and 8 talk "
-    "to the model (one entry per call; retries and repairs live inside their "
-    "entry as extra attempts). Steps 1–2, 6–7 and 9 are deterministic and add "
+    "This log grows as the walkthrough progresses: stages 0 and 3 talk to the "
+    "model (one entry per call; retries and repairs live inside their entry "
+    "as extra attempts). Stages 1, 2, 4, 5 and 6 are deterministic and add "
     "nothing here — measuring, judging and deciding readiness never involve "
     "the model.")
 
