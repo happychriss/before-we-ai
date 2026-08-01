@@ -17,10 +17,10 @@ from before_we_ai.llm.domain_guide import (
 )
 from before_we_ai.llm.mapping import ProfileIndex, proposal_to_mapping_claim
 from before_we_ai.llm.schemas import MappingProposal
-from before_we_ai.model import Actor, EvidenceRecord, EvidenceType, CheckVerdict
-from before_we_ai.model.objects import CheckPlan, DataProfile, MappingClaim, Scope, Source
-from before_we_ai.model.semantics import claim_key
-from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.core import Actor, EvidenceRecord, EvidenceType, CheckVerdict
+from before_we_ai.core.objects import CheckPlan, DataProfile, MappingClaim, Scope, Source
+from before_we_ai.core.semantics import claim_key
+from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.store import ProjectStore, init_project
 
 

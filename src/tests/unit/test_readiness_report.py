@@ -6,7 +6,7 @@ import json
 
 import yaml
 
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     AnswerRequest,
     ClaimStatus,
@@ -25,8 +25,8 @@ from before_we_ai.model import (
     Source,
     create_claim,
 )
-from before_we_ai.model.transitions import attach_evidence
-from before_we_ai.model.objects import DataProfile
+from before_we_ai.core.transitions import attach_evidence
+from before_we_ai.core.objects import DataProfile
 from html import escape
 
 from before_we_ai.checks.library import REGISTRY

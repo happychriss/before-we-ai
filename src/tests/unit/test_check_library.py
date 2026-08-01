@@ -3,8 +3,8 @@
 import duckdb
 import pytest
 
-from before_we_ai.model.enums import CheckVerdict
-from before_we_ai.model.objects import CheckPlan
+from before_we_ai.core.enums import CheckVerdict
+from before_we_ai.core.objects import CheckPlan
 from before_we_ai.checks import REGISTRY
 from before_we_ai.checks.verdicts import (
     anti_join_verdict,

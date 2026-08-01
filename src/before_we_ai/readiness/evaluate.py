@@ -27,8 +27,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 from before_we_ai.llm.domain_guide import DomainGuide, settled_slots
-from before_we_ai.model.enums import Actor, ClaimStatus, KnowledgeKind
-from before_we_ai.model.objects import (
+from before_we_ai.core.enums import Actor, ClaimStatus, KnowledgeKind
+from before_we_ai.core.objects import (
     AnswerRequest,
     Claim,
     KnowledgeItem,

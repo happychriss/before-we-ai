@@ -9,7 +9,7 @@ producing the claims it applies to.
 """
 
 from before_we_ai.llm.v2_bind import _untested_claims
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     ClaimStatus,
     Predicate,

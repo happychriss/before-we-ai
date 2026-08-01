@@ -11,7 +11,7 @@ is check/human work (M3+), and nothing in this artifact carries a status.
 import json
 from pathlib import Path
 
-from before_we_ai.model.objects import DataProfile
+from before_we_ai.core.objects import DataProfile
 from before_we_ai.sources.canonical import canonical_sql_expr
 
 MAX_CANDIDATE_PAIRS = 50_000

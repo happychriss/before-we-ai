@@ -7,8 +7,8 @@ bindings hold). Resolution is a plain topological sort.
 
 from collections.abc import Iterable
 
-from before_we_ai.model.enums import ClaimStatus
-from before_we_ai.model.objects import Claim
+from before_we_ai.core.enums import ClaimStatus
+from before_we_ai.core.objects import Claim
 
 _CHECK_READY = (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
 

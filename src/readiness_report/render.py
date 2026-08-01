@@ -11,7 +11,7 @@ import yaml
 from before_we_ai.glossary import GLOSSARY
 from before_we_ai.llm.domain_guide import load_domain_guide, scopes_of, settled_slots
 from before_we_ai.llm.mapping import admissible_templates
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     ClaimStatus,
     EvidenceType,
@@ -20,7 +20,7 @@ from before_we_ai.model import (
     resolve_status,
     settling_claims,
 )
-from before_we_ai.model.objects import (
+from before_we_ai.core.objects import (
     Claim,
     DataProfile,
     EvidenceRecord,

@@ -11,8 +11,8 @@ import hashlib
 import json
 from collections.abc import Iterable, Mapping
 
-from before_we_ai.model.enums import ClaimStatus
-from before_we_ai.model.objects import Claim, ClarificationQuestion
+from before_we_ai.core.enums import ClaimStatus
+from before_we_ai.core.objects import Claim, ClarificationQuestion
 
 _PROVEN = (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
 

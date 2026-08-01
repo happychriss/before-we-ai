@@ -9,7 +9,7 @@ but structurally never FAIL.
 
 from dataclasses import dataclass, field
 
-from before_we_ai.model.enums import CheckVerdict
+from before_we_ai.core.enums import CheckVerdict
 
 
 @dataclass

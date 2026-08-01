@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from before_we_ai.model import Actor, EvidenceRecord, EvidenceType, CheckVerdict
+from before_we_ai.core import Actor, EvidenceRecord, EvidenceType, CheckVerdict
 
 
 def test_check_result_requires_verdict():

@@ -24,7 +24,7 @@ from before_we_ai.llm.mapping import (
 from before_we_ai.llm.prompts import V4_SYSTEM
 from before_we_ai.llm.schemas import AnswerRequestDraft, KnowledgeItemProposal
 from before_we_ai.llm.v4_request import ask
-from before_we_ai.model import Actor, KnowledgeKind, Scope
+from before_we_ai.core import Actor, KnowledgeKind, Scope
 from before_we_ai.store import ProjectStore, init_project
 
 QUESTION = "Can these files reliably produce actual P&L by entity and month?"

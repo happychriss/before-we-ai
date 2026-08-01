@@ -13,7 +13,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel
 
-from before_we_ai.model.objects import (
+from before_we_ai.core.objects import (
     AnswerRequest,
     Claim,
     DataProfile,
@@ -25,7 +25,7 @@ from before_we_ai.model.objects import (
     RequiredKnowledge,
     Source,
 )
-from before_we_ai.model.semantics import claim_key
+from before_we_ai.core.semantics import claim_key
 from before_we_ai.store.layout import CONFIG_FILE, init_project
 
 _CLAIM_TYPES = {

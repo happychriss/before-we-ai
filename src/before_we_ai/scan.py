@@ -17,8 +17,8 @@ from pathlib import Path
 
 import duckdb
 
-from before_we_ai.model.enums import Actor, EvidenceType
-from before_we_ai.model.objects import EvidenceRecord, Source
+from before_we_ai.core.enums import Actor, EvidenceType
+from before_we_ai.core.objects import EvidenceRecord, Source
 from before_we_ai.profile.candidates import build_matrix, write_matrix
 from before_we_ai.profile.columns import profile_view
 from before_we_ai.sources.attach import build_catalog, load_specs

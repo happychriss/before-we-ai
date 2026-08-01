@@ -17,8 +17,8 @@ from dataclasses import dataclass, field
 
 import duckdb
 
-from before_we_ai.model.objects import EvidenceRecord
-from before_we_ai.model.scheduler import ready_for_check, topological_order
+from before_we_ai.core.objects import EvidenceRecord
+from before_we_ai.core.scheduler import ready_for_check, topological_order
 from before_we_ai.store.repository import ProjectStore
 
 from before_we_ai.engine.runner import run_check

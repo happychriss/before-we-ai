@@ -12,9 +12,9 @@ from before_we_ai.llm.mapping import (
 )
 from before_we_ai.llm.schemas import Hypothesis, CheckPlanProposal, MappingProposal
 from before_we_ai.llm.vocabulary import ROLE_BINDING_PREDICATE
-from before_we_ai.model import Actor, ClaimStatus
-from before_we_ai.model.objects import DataProfile, ConceptClaim, MappingClaim
-from before_we_ai.model.semantics import claim_key
+from before_we_ai.core import Actor, ClaimStatus
+from before_we_ai.core.objects import DataProfile, ConceptClaim, MappingClaim
+from before_we_ai.core.semantics import claim_key
 from before_we_ai.store import ProjectStore, init_project
 
 

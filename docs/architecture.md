@@ -312,9 +312,9 @@ instead of merely detected.
    readiness framing, because a wrong guide then produces a confident,
    product-branded "ready".
 
-## Epistemic core (`model/`, `store/`)
+## Epistemic core (`core/`, `store/`)
 
-- `model/` is pure and IO-free; `store/` is a YAML repo with append-only evidence,
+- `core/` is pure and IO-free; `store/` is a YAML repo with append-only evidence,
   integrity check, optional git checkpoint.
 - **Status is derived, never set**: `resolve_status(claim, evidence)` recomputes
   from non-stale evidence, order-independent. Conflict (check fail + anything
@@ -816,7 +816,7 @@ ontology. Visible in the walkthrough: the P&L question does not require
   the same discipline as `resolve_status`: a stored verdict could drift away
   from the evidence beneath it, and a drifted verdict is worse than none.
 
-`readiness/` is deliberately its own package, not part of `model/`. The
+`readiness/` is deliberately its own package, not part of `core/`. The
 epistemic core decides what may be **believed** from evidence; readiness
 decides what may be **claimed** from those beliefs. Keeping the two
 vocabularies apart is the handover principle spelled as a module boundary,

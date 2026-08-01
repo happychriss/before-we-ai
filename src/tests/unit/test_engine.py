@@ -4,7 +4,7 @@ import duckdb
 import pytest
 
 from before_we_ai.engine import run_check, run_ready
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     ClaimStatus,
     EvidenceRecord,
@@ -55,7 +55,7 @@ def test_run_ready_gates_on_dependencies(store, con):
     ok = EvidenceRecord(type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK,
                         verdict=CheckVerdict.PASS, claim_id=base.id)
     store.add_evidence(ok)
-    from before_we_ai.model.transitions import attach_evidence
+    from before_we_ai.core.transitions import attach_evidence
     store.save_claim(attach_evidence(base, ok, []))
     report = run_ready(store, con)
     assert len(report.executed) == 1

@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     ClaimStatus,
     DataProfile,

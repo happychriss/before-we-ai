@@ -29,7 +29,7 @@ from before_we_ai.llm.mapping import (
 )
 from before_we_ai.llm.prompts import V4_SYSTEM, with_schema
 from before_we_ai.llm.schemas import AnswerRequestDraft
-from before_we_ai.model.objects import AnswerRequest, RequiredKnowledge
+from before_we_ai.core.objects import AnswerRequest, RequiredKnowledge
 from before_we_ai.store.repository import ProjectStore
 
 CONTRACT = "v4_request"

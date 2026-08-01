@@ -13,7 +13,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from before_we_ai.model.ids import new_id
+from before_we_ai.core.ids import new_id
 
 
 class CallLogger:

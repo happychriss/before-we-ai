@@ -2,8 +2,8 @@
 
 import pytest
 
-from before_we_ai.model import Actor, ClaimStatus, CycleError, create_claim
-from before_we_ai.model.scheduler import ready_for_check, topological_order
+from before_we_ai.core import Actor, ClaimStatus, CycleError, create_claim
+from before_we_ai.core.scheduler import ready_for_check, topological_order
 
 
 def claim(statement, depends_on=(), status=ClaimStatus.PROPOSED):

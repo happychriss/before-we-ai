@@ -7,8 +7,8 @@ still run. Visibility instead of a crash; never a judgment."""
 import duckdb
 
 from before_we_ai.engine import run_ready
-from before_we_ai.model import Actor, ClaimStatus, create_claim
-from before_we_ai.model.objects import Predicate, CheckPlan
+from before_we_ai.core import Actor, ClaimStatus, create_claim
+from before_we_ai.core.objects import Predicate, CheckPlan
 from before_we_ai.store import ProjectStore, init_project
 
 

@@ -21,7 +21,7 @@ from pydantic import BaseModel
 
 from before_we_ai.llm.domain_guide import DomainGuide
 from before_we_ai.llm.vocabulary import INVARIANT_TEMPLATES, PREDICATES
-from before_we_ai.model.objects import Claim, DataProfile, MappingClaim
+from before_we_ai.core.objects import Claim, DataProfile, MappingClaim
 from before_we_ai.store.repository import ProjectStore
 
 

@@ -39,8 +39,8 @@ from before_we_ai.llm import (
     propose_mappings,
     resolve_mappings,
 )
-from before_we_ai.model import Actor, ClaimStatus
-from before_we_ai.model.objects import Claim, ConceptClaim, MappingClaim
+from before_we_ai.core import Actor, ClaimStatus
+from before_we_ai.core.objects import Claim, ConceptClaim, MappingClaim
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore
 

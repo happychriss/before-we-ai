@@ -27,7 +27,7 @@ import pytest
 import yaml
 
 from before_we_ai import scan
-from before_we_ai.model import EvidenceType
+from before_we_ai.core import EvidenceType
 from before_we_ai.sources import build_catalog, file_fingerprint
 from before_we_ai.scan import load_specs
 from before_we_ai.store import ProjectStore, check_integrity, init_project

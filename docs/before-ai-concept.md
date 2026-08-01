@@ -428,7 +428,7 @@ Every run is measured against it:
 | **data profile** | statistics of one column — the only thing the AI ever sees of the data | `DataProfile`, `profiles/` |
 | **link candidate** | measured value overlap between columns; chance echoes deliberately included | `profiles/candidate_matrix.json` |
 | **hypothesis** | one proposed rule, the AI's raw output; accepted ones become claims | `Hypothesis` (`llm/schemas.py`) |
-| **claim** | a rule about the data, with author, evidence, and status | `Claim` (`model/`) |
+| **claim** | a rule about the data, with author, evidence, and status | `Claim` (`core/`) |
 | **mapping claim** | a claim that concrete views/columns play a domain role | `MappingClaim` |
 | **status** | proposed / test-supported / contradicted / unresolved / business-confirmed — always derived from evidence | `ClaimStatus`, `resolve_status` |
 | **domain guide** | one domain's business objects and their fields, with definitions and settlement paths — curated data, never code | `DomainGuide` YAML (`llm.domain_guide_file`) |

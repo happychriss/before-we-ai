@@ -47,8 +47,8 @@ from before_we_ai.llm import (  # noqa: E402
 )
 from before_we_ai.llm.domain_guide import settled_slots  # noqa: E402
 from before_we_ai.checks.library import REGISTRY  # noqa: E402
-from before_we_ai.model import Actor  # noqa: E402
-from before_we_ai.model.objects import MappingClaim  # noqa: E402
+from before_we_ai.core import Actor  # noqa: E402
+from before_we_ai.core.objects import MappingClaim  # noqa: E402
 from before_we_ai.profile.candidates import load_matrix  # noqa: E402
 from before_we_ai.readiness import evaluate_request  # noqa: E402
 from before_we_ai.sources import open_catalog  # noqa: E402

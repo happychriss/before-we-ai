@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from before_we_ai.model import (
+from before_we_ai.core import (
     MAX_EXCEPTION_SAMPLES,
     Actor,
     ClaimStatus,

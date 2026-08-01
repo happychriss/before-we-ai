@@ -33,8 +33,8 @@ from before_we_ai.llm.vocabulary import (
     check_template_params,
     normalize_template_params,
 )
-from before_we_ai.model.enums import Actor, KnowledgeKind
-from before_we_ai.model.objects import (
+from before_we_ai.core.enums import Actor, KnowledgeKind
+from before_we_ai.core.objects import (
     AnswerRequest,
     Claim,
     ConceptClaim,
@@ -45,7 +45,7 @@ from before_we_ai.model.objects import (
     Scope,
     Validity,
 )
-from before_we_ai.model.transitions import create_claim
+from before_we_ai.core.transitions import create_claim
 from before_we_ai.store.repository import ProjectStore
 
 if TYPE_CHECKING:  # domain_guide imports nothing from here; keep it that way

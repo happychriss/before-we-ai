@@ -28,7 +28,7 @@ llm = [
 [tool.setuptools]
 packages = [
     "before_we_ai",
-    "before_we_ai.model",
+    "before_we_ai.core",
     "before_we_ai.store",
     "before_we_ai.sources",
     "before_we_ai.profile",

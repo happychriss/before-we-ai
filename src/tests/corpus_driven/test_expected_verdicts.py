@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     ClaimStatus,
     EvidenceRecord,
@@ -24,7 +24,7 @@ from before_we_ai.model import (
     Scope,
     create_claim,
 )
-from before_we_ai.model.transitions import attach_evidence, resolve_status
+from before_we_ai.core.transitions import attach_evidence, resolve_status
 
 GROUND_TRUTH = Path(__file__).resolve().parents[2] / "corpus" / "data" / "expected_verdicts.yaml"
 

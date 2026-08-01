@@ -13,7 +13,7 @@ import pytest
 from pydantic import ValidationError
 
 from before_we_ai.llm.domain_guide import DomainGuide
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     AnswerRequest,
     ClaimStatus,
@@ -30,8 +30,8 @@ from before_we_ai.model import (
     Scope,
     create_claim,
 )
-from before_we_ai.model.objects import CheckPlan
-from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.core.objects import CheckPlan
+from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.readiness import (
     Ground,
     Readiness,

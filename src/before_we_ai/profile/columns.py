@@ -6,7 +6,7 @@ and a text column holding the same values profile alike.
 
 import re
 
-from before_we_ai.model.objects import DataProfile
+from before_we_ai.core.objects import DataProfile
 from before_we_ai.sources.canonical import canonical_sql_expr
 
 TOP_K = 10

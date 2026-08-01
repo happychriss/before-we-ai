@@ -57,8 +57,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from before_we_ai.model.enums import ClaimStatus, CheckVerdict, EvidenceType
-from before_we_ai.model.objects import ClarificationQuestion, MappingClaim, Scope
+from before_we_ai.core.enums import ClaimStatus, CheckVerdict, EvidenceType
+from before_we_ai.core.objects import ClarificationQuestion, MappingClaim, Scope
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.store.repository import ProjectStore
 

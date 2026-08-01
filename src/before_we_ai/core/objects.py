@@ -9,14 +9,14 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from before_we_ai.model.enums import (
+from before_we_ai.core.enums import (
     Actor,
     ClaimStatus,
     EvidenceType,
     CheckVerdict,
     KnowledgeKind,
 )
-from before_we_ai.model.ids import new_id
+from before_we_ai.core.ids import new_id
 
 
 def _now() -> datetime:

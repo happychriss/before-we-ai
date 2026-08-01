@@ -15,9 +15,9 @@ from before_we_ai.llm import domain_guide as roles_module
 from before_we_ai.llm import schemas, stub, v1_hypotheses, v2_bind, vocabulary
 from before_we_ai.llm.mapping import ProfileIndex, hypothesis_to_claim
 from before_we_ai.llm.schemas import Hypothesis
-from before_we_ai.model import Actor, ClaimStatus, EvidenceType, resolve_status
-from before_we_ai.model.enums import CheckVerdict
-from before_we_ai.model.objects import DataProfile, EvidenceRecord
+from before_we_ai.core import Actor, ClaimStatus, EvidenceType, resolve_status
+from before_we_ai.core.enums import CheckVerdict
+from before_we_ai.core.objects import DataProfile, EvidenceRecord
 from before_we_ai.store import ProjectStore, init_project
 
 

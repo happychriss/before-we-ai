@@ -1,18 +1,26 @@
-"""The epistemic core: pure models, state machine, promotion rules.
+"""The epistemic core: the objects, the state machine, the promotion rules.
 
 No IO, no filesystem, no network. Everything here is unit-testable in
 isolation; persistence lives in ``before_we_ai.store``.
+
+Named ``core`` and not ``model`` on purpose. Throughout this codebase "the
+model" means the LLM, and the central safety argument is about what the
+model may and may not do — ``Actor.AI`` cannot author promoting evidence.
+Importing that very constraint from a package called ``model`` invited the
+wrong reading, and pydantic's ``model_validate`` / ``model_dump`` /
+``model_config`` sit on the same prefix. The prose has always called this
+the epistemic core; the package now agrees with it.
 """
 
-from before_we_ai.model.enums import (
+from before_we_ai.core.enums import (
     Actor,
     ClaimStatus,
     EvidenceType,
     CheckVerdict,
     KnowledgeKind,
 )
-from before_we_ai.model.ids import new_id
-from before_we_ai.model.objects import (
+from before_we_ai.core.ids import new_id
+from before_we_ai.core.objects import (
     MAX_EXCEPTION_SAMPLES,
     AnswerRequest,
     Claim,
@@ -30,15 +38,15 @@ from before_we_ai.model.objects import (
     Source,
     Validity,
 )
-from before_we_ai.model.scheduler import CycleError, ready_for_check, topological_order
-from before_we_ai.model.semantics import (
+from before_we_ai.core.scheduler import CycleError, ready_for_check, topological_order
+from before_we_ai.core.semantics import (
     claim_key,
     gap_load,
     is_answered,
     questions_resting_on,
     settling_claims,
 )
-from before_we_ai.model.transitions import (
+from before_we_ai.core.transitions import (
     PromotionError,
     create_claim,
     escalate_exception,

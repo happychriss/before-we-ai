@@ -12,7 +12,7 @@ import random
 
 import pytest
 
-from before_we_ai.model import (
+from before_we_ai.core import (
     MAX_EXCEPTION_SAMPLES,
     Actor,
     ClaimStatus,
@@ -27,7 +27,7 @@ from before_we_ai.model import (
     escalate_exception,
     gap_load,
 )
-from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.store import ProjectStore
 
 N_ROWS = 100_000

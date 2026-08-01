@@ -12,11 +12,11 @@ only DE's evidence.
 import shutil, subprocess, sys, yaml
 from pathlib import Path
 
-from before_we_ai.model import (Actor, AnswerRequest, CheckPlan, CheckVerdict,
+from before_we_ai.core import (Actor, AnswerRequest, CheckPlan, CheckVerdict,
                                 EvidenceRecord, EvidenceType, KnowledgeItem,
                                 KnowledgeKind, MappingClaim, RequiredKnowledge,
                                 Scope, Source)
-from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.store import ProjectStore, init_project
 
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/two-entities")

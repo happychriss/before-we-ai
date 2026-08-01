@@ -10,7 +10,7 @@ reason the scope had to become a field at all.
 import pytest
 from pydantic import ValidationError
 
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     AnswerRequest,
     Claim,

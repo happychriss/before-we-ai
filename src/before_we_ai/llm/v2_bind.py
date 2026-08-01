@@ -44,9 +44,9 @@ from before_we_ai.llm.prompts import (
 )
 from before_we_ai.llm.domain_guide import DomainGuide, load_domain_guide
 from before_we_ai.llm.schemas import BindingBatch, MappingProposalBatch
-from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType
-from before_we_ai.model.objects import Claim, EvidenceRecord, MappingClaim
-from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.core.enums import Actor, ClaimStatus, EvidenceType
+from before_we_ai.core.objects import Claim, EvidenceRecord, MappingClaim
+from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.profile.candidates import load_matrix
 from before_we_ai.store.repository import ProjectStore
 

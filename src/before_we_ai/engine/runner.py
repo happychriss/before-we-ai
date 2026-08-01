@@ -12,10 +12,10 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, PackageLoader
 
-from before_we_ai.model.enums import Actor, EvidenceType
-from before_we_ai.model.ids import new_id
-from before_we_ai.model.objects import MAX_EXCEPTION_SAMPLES, EvidenceRecord, CheckPlan, ClarificationQuestion
-from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.core.enums import Actor, EvidenceType
+from before_we_ai.core.ids import new_id
+from before_we_ai.core.objects import MAX_EXCEPTION_SAMPLES, EvidenceRecord, CheckPlan, ClarificationQuestion
+from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.sources.fingerprint import table_fingerprint
 from before_we_ai.store.layout import CONFIG_FILE

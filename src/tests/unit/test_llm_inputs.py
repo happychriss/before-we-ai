@@ -5,8 +5,8 @@ import pytest
 
 from before_we_ai.llm import inputs, prompts
 from before_we_ai.llm.domain_guide import DomainGuide
-from before_we_ai.model import Actor, Predicate, create_claim
-from before_we_ai.model.objects import DataProfile
+from before_we_ai.core import Actor, Predicate, create_claim
+from before_we_ai.core.objects import DataProfile
 from before_we_ai.store import ProjectStore, init_project
 
 

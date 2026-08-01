@@ -33,7 +33,7 @@ from before_we_ai.llm.inputs import (
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.llm.prompts import render_template_docs
 from before_we_ai.llm.v2_bind import _untested_claims
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     ClaimStatus,
     EvidenceRecord,
@@ -41,8 +41,8 @@ from before_we_ai.model import (
     KnowledgeKind,
     Scope,
 )
-from before_we_ai.model.objects import MappingClaim
-from before_we_ai.model.transitions import attach_evidence
+from before_we_ai.core.objects import MappingClaim
+from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.profile.candidates import load_matrix
 from before_we_ai.readiness import Ground, Readiness, evaluate_request
 from before_we_ai.sources import open_catalog

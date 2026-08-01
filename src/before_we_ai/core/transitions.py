@@ -15,8 +15,8 @@ Status is always *derived* from the evidence list via ``resolve_status``;
 the stored status field is a cached rendering of that derivation.
 """
 
-from before_we_ai.model.enums import Actor, ClaimStatus, EvidenceType, CheckVerdict
-from before_we_ai.model.objects import (
+from before_we_ai.core.enums import Actor, ClaimStatus, EvidenceType, CheckVerdict
+from before_we_ai.core.objects import (
     Claim,
     EvidenceRecord,
     Predicate,

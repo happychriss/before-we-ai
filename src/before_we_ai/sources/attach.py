@@ -13,7 +13,7 @@ import duckdb
 import yaml
 from pydantic import BaseModel
 
-from before_we_ai.model.objects import Scope
+from before_we_ai.core.objects import Scope
 from before_we_ai.sources.excel import read_workbook, sheet_to_parquet
 from before_we_ai.sources.fingerprint import file_fingerprint, table_fingerprint
 from before_we_ai.store.layout import CONFIG_FILE

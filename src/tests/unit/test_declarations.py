@@ -1,13 +1,13 @@
 """Declarations observe, never promote — the ingestion layer's epistemic limit."""
 
-from before_we_ai.model import (
+from before_we_ai.core import (
     Actor,
     ClaimStatus,
     EvidenceRecord,
     EvidenceType,
     create_claim,
 )
-from before_we_ai.model.transitions import attach_evidence, resolve_status
+from before_we_ai.core.transitions import attach_evidence, resolve_status
 
 
 def declaration():
