@@ -37,10 +37,30 @@
    then follow the `next:` line each stage prints. Every stage rebuilds
    `validation/data/report/index.html` — leave a tab open on it.
    `validation/README.md` says what to look for and the numbers to expect.
-2. **M5 — documents & V3.** PDF pipeline, position anchors, DuckDB FTS,
+2. **The refactor work order — external agent (Copilot), before M5.**
+   `meta/refactor-workorder.md`: five packages (test lanes · counts out of
+   durable docs · corpus construction out of tests/ · capability boundary
+   replacing the source-inspection guardrail · report view-model extraction
+   in three phases), each one PR under hard gates — suite green without
+   deleting tests, fixtures byte-identical, wording moved never reworded,
+   stop-and-report on any pinned-test conflict. Owner reviews each PR with
+   `/code-review ultra <PR#>` and re-runs the walkthrough. **Must finish
+   before M5 starts** so M5 builds its document sections into the view
+   model, not into the old 2,800-line renderer. Recommendation A
+   (application layer) is explicitly out of scope — see the GUI milestone
+   below. Source paper: `docs/draft-thoughts/`.
+
+3. **M5 — documents & V3.** PDF pipeline, position anchors, DuckDB FTS,
    multi-anchor reconciliation, `tell` + mirror loop. Acceptance: T8
    negatives and a real PDF — every PDF it needs is in the frozen corpus
    (`src/corpus/data/`, including `noise/`).
+
+   **M5 also builds the missing answer operation.** The *law* exists and is
+   tested (a scoped CONFIRMATION makes a claim business-confirmed,
+   `core/transitions.py`), but no product code constructs CONFIRMATION or
+   TESTIMONIAL evidence — only tests do. `answer_question(store, card,
+   answer, by=human)` is the mirror-loop machinery M5 needs anyway, and it
+   is the core interaction of the GUI milestone below.
 
    Its target is concrete: the three unsupported **rule** items in the
    ReadinessMap (`which accounts are profit and loss`, `sign convention for
@@ -53,7 +73,7 @@
    documents: `decodes` account ranges, the AR control account, and
    opening-balances coverage. Read them in the readiness report.
 
-3. **Confirm the answer-type slice against real output.** Built
+4. **Confirm the answer-type slice against real output.** Built
    2026-08-01 (`docs/architecture.md` → "Answer types"); the walkthrough now
    classifies, shows the guide fingerprint and per-item provenance, and
    demonstrates the confirmation lifting the cap. What has *not* happened
@@ -66,6 +86,37 @@
      True, but it means `ready` is now rare by construction.
    - **Only a confirmation lapses** when the guide moves, not waivers or
      links. A waiver is about one item; a confirmation is about the list.
+
+5. **Two small report fixes** (found 2026-08-01 while answering "where does
+   the guide live in the process?"):
+   - Section 0 does not show the guide's `answer_types:` — so the reader
+     sees *that* the question was treated as `profit_and_loss_by_dimension`
+     but nowhere what that type declares or what else was on offer, which is
+     exactly what judging the classification needs.
+   - Section 0's subsections still read `1.1 / 1.2 / 1.3` — pre-spine
+     numbering inside a section called 0.
+
+## Declared goal — the GUI milestone (after M5; not scheduled)
+
+Owner statement 2026-08-01: a small product for **one question to one
+answer**, with a GUI — ask the question, load documents, run, answer the
+open questions, see the readiness map; computing the result is a further
+milestone of its own (that one is the spec's V4 SQL generation + Assumption
+Capture, where `sql`/`result_ref` return to `AnswerRequest`).
+
+Design consequences that hold *now*, without building it:
+
+- The GUI is a **loop** (ask → run → see questions → answer → re-run), not
+  the walkthrough's linear batch. That is why recommendation A stays
+  deferred: an application layer shaped today would be shaped like the
+  walkthrough and thrown away.
+- Its work-queue primitive half-exists (`gap_load` ranks unproven claims by
+  the questions resting on them).
+- Its core interaction is the answer operation M5 builds (Next, item 3).
+- What it consumes is the report **view model** the refactor extracts —
+  HTML report and GUI become two renderings of one projection.
+- "Answered — what must now rerun / what is now stale?" is M7, and the GUI
+  turns M7 from nice-to-have into required.
 
 ### M5 kickoff batch
 
@@ -104,6 +155,15 @@ recording (its corpus fixture is hand-authored and marked as such).
    is a real error and should keep failing.)
 
 ## Open decisions (owner)
+
+- **The finance guide lives in `src/tests/fixtures/` — the wrong home.**
+  It is the domain pack, the product artifact the architecture calls "the
+  critical input", and the report prints that path prominently, telling the
+  reader it is test infrastructure. Decide the real home before a second
+  domain copies the mistake: `src/before_we_ai/domains/` (shipped,
+  importable) or a top-level `domains/` (data, never code — matches the
+  guide's own rule). Mechanical move either way; the fingerprint does not
+  change, the printed path does.
 
 - **`sql`/`result_ref` return with the spec's V4.** They were deleted from
   `AnswerRequest` on the stated grounds that "no milestone produces SQL".
