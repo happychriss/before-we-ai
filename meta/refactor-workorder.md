@@ -89,7 +89,19 @@ validation depends on test-internal code, which is the wrong direction.
 **Accept:** no `sys.path` insertion of `src/tests/...` left in
 `validation/scripts/`; suite green; walkthrough output unchanged.
 
-## WP4 — capability boundary instead of source inspection (recommendation D)
+## WP4 — capability boundary instead of source inspection (rec. D) · DONE 2026-08-01
+
+Built by the external agent (`7c190b2`) plus a review follow-up
+(`9cdacb3`). `ProposalStore` name-mangles the wrapped store and hands back
+`MappingProxyType` views, so neither the write capability nor the read
+dictionaries are reachable by an obvious refactor — both stricter than this
+order asked. `__attach` is the private seam M5's `anchor()` extends.
+
+The follow-up added the invariant next to the allow-list: the behavior test
+pinned *today's* set (only SYSTEM declarations), which is the right shape but
+goes red the moment V3 writes anchors, leaving the next reader nothing to say
+whether widening is allowed. `test_llm_stages_author_nothing_that_could_promote`
+is the assertion that survives the widening and may never be relaxed.
 
 `tests/unit/test_llm_guardrail.py` greps module source and counts
 `EvidenceRecord(` constructors. Too brittle (an extraction breaks it) and too
