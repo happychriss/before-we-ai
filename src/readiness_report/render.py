@@ -1,243 +1,103 @@
-import json
 import os
-from collections import defaultdict
-from dataclasses import dataclass, field
 from html import escape
 from pathlib import Path
 from typing import Iterable
 
-import yaml
+from readiness_report import projection
 
-from before_we_ai.glossary import GLOSSARY
-from before_we_ai.llm.domain_guide import (
-    DomainGuide,
-    load_domain_guide,
-    scopes_of,
-    settled_slots,
-)
-from before_we_ai.llm.mapping import admissible_templates
-from before_we_ai.core import (
-    Actor,
-    ClaimStatus,
-    EvidenceType,
-    CheckVerdict,
-    Provenance,
-    is_answered,
-    resolve_status,
-    settling_claims,
-)
-from before_we_ai.core.objects import (
-    Claim,
-    DataProfile,
-    EvidenceRecord,
-    CheckPlan,
-    ClarificationQuestion,
-    MappingClaim,
-    Scope,
-    Source,
-)
-from before_we_ai.checks.library import REGISTRY
-from before_we_ai.stages import BOUNDARY_BEFORE, BOUNDARY_TEXT, STAGES
-from before_we_ai.readiness import Readiness, evaluate_request, guide_label
-from before_we_ai.store import ProjectStore, check_integrity
-from before_we_ai.store.layout import CONFIG_FILE
 
 STATUS_COLORS = {
-    ClaimStatus.PROPOSED.value: "status-proposed",
-    ClaimStatus.TEST_SUPPORTED.value: "status-test-supported",
-    ClaimStatus.CONTRADICTED.value: "status-contradicted",
-    ClaimStatus.UNRESOLVED.value: "status-unresolved",
-    ClaimStatus.BUSINESS_CONFIRMED.value: "status-business-confirmed",
+    "proposed": "status-proposed",
+    "test-supported": "status-test-supported",
+    "contradicted": "status-contradicted",
+    "unresolved": "status-unresolved",
+    "business-confirmed": "status-business-confirmed",
 }
 
 VERDICT_COLORS = {
-    CheckVerdict.PASS.value: "verdict-pass",
-    CheckVerdict.FAIL.value: "verdict-fail",
-    CheckVerdict.INCONCLUSIVE.value: "verdict-inconclusive",
+    "pass": "verdict-pass",
+    "fail": "verdict-fail",
+    "inconclusive": "verdict-inconclusive",
 }
-
-
-STAGE_LABELS = {
-    "bound": "bound to a check",
-    "unbindable": "unbindable — the model gave a reason",
-    "semantic_only": "semantic-only — no check definition can test it",
-    "skipped": "skipped — validation rejected the binding",
-    "unbound": "no check, no recorded reason",
-}
-
-
-
-
-READING_GUIDE = (
-    "This page is the pipeline itself, rendered from the project store: humans "
-    "declare the inputs, measurement describes the data, the AI proposes, the "
-    "checks decide, and whatever the data cannot settle becomes a question for a "
-    "human. Read it top down, or jump in from the diagram — every number there is "
-    "a link into the section that produced it. Then pick one claim on the left and "
-    "read its story: 1 proposed → 2 bound → 3 judged → 4 context. Nothing here is "
-    "hand-set: every status is derived from the evidence shown next to it, and the "
-    "AI cannot author evidence that promotes a claim."
-)
-
-DOMAIN_PACK_INTRO = (
-    "Everything domain-specific enters through three declared inputs "
-    "(docs/architecture.md 'Domain inputs'); the model additionally sees only "
-    "measured statistics, never raw rows. The product is a general machine only "
-    "together with a domain pack — so what is domain-specific must be declared, "
-    "transparent, and logically validated."
-)
-
-
-@dataclass
-class ClaimFacts:
-    """Everything the viewer knows about one claim, computed once."""
-
-    claim: Claim
-    evidence: list[EvidenceRecord] = field(default_factory=list)
-    checks: list[CheckPlan] = field(default_factory=list)
-    derived: ClaimStatus = ClaimStatus.PROPOSED
-    stage: str = "unbound"  # a key of STAGE_LABELS
-    executed: bool = False
-    no_check_reason: str = ""  # verbatim, from the DECLARATION V2 wrote
-
-    @property
-    def diverges(self) -> bool:
-        return self.claim.status is not self.derived
 
 
 def default_output_path(root: Path) -> Path:
     return root.resolve().parent / f"{root.name}-readiness-report.html"
 
 
-def write_project_view(root: str | Path, output: str | Path | None = None) -> Path:
+def write_project_view(
+    root: str | Path, output: str | Path | None = None
+) -> Path:
     root_path = Path(root).resolve()
-    out = Path(output).resolve() if output else default_output_path(root_path)
+    out = (
+        Path(output).resolve()
+        if output
+        else default_output_path(root_path)
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(render_project(root_path, out.parent), encoding="utf-8")
+    out.write_text(
+        render_project(root_path, out.parent), encoding="utf-8"
+    )
     return out
 
 
-def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
+def render_project(
+    root: str | Path, out_dir: str | Path | None = None
+) -> str:
     root_path = Path(root).resolve()
-    # every entity links to the YAML it is only a rendering of; relative, so
-    # the report survives being moved or handed on with the project
     store_rel = _relative_prefix(root_path, out_dir)
-    store = ProjectStore(root_path)
-    config = _project_config(root_path)
-    matrix = _load_candidate_matrix(root_path)
-    claims = sorted(store.claims.values(), key=lambda claim: (claim.created_at, claim.id))
-    questions = sorted(store.questions.values(), key=lambda card: (card.created_at, card.id))
-    sources = sorted(store.sources.values(), key=lambda source: (source.name.lower(), source.id))
-    profiles = sorted(
-        store.profiles.values(),
-        key=lambda profile: (
-            _source_name(store.sources.get(profile.source_id)),
-            profile.table,
-            profile.column,
-            profile.id,
-        ),
-    )
-    integrity = check_integrity(store)
-    guide = _load_guide_shape(root_path, config)
-
-    questions_by_claim = _questions_by_claim(questions)
-    reverse_depends, reverse_derived = _reverse_claim_links(claims)
-    declarations_by_key = _declarations_by_key(store.evidence.values())
-    claims_by_source = _claims_by_source(claims)
-    role_bindings = _role_bindings_by_column(claims)
-    candidates_by_column = _candidates_by_column(matrix)
-    profiles_by_source = _profiles_by_source(profiles)
-    facts = _claim_facts(store, claims)
-    rationales = _rationales(root_path, claims, guide.owner)
+    view = projection.load_view_model(root_path)
 
     claim_index = "".join(
-        _render_claim_index_card(facts[claim.id]) for claim in claims
+        _render_claim_index_card(claim.index)
+        for claim in view.claims
     ) or '<p class="empty">No claims yet.</p>'
     claim_sections = "".join(
-        _render_claim_section(
-            facts[claim.id],
-            store=store,
-            questions_by_claim=questions_by_claim,
-            reverse_depends=reverse_depends,
-            reverse_derived=reverse_derived,
-            declarations_by_key=declarations_by_key,
-            rel=store_rel,
-            rationale=rationales.get(claim.id),
-        )
-        for claim in claims
+        _render_claim_section(claim, store_rel)
+        for claim in view.claims
     ) or '<p class="empty">No claims yet.</p>'
-    # Answered is derived, not flagged: a card whose bill of materials
-    # contains a settled claim has been answered, and the same evidence the
-    # ReadinessMap reads says so. Storing an "answered" flag would let this
-    # list and the map disagree about one store — which is exactly what
-    # happened before this split existed.
-    still_open = [c for c in questions if not is_answered(c, store.claims)]
-    answered = [c for c in questions if is_answered(c, store.claims)]
     question_sections = "".join(
-        _render_question_section(card, store.claims, store_rel, guide)
-        for card in still_open
+        _render_question_section(card, store_rel)
+        for card in view.open_questions
     ) or '<p class="empty">No open questions.</p>'
     answered_sections = (
         "<details><summary>Answered questions "
-        f"({len(answered)}) — kept, because what settled them is part of "
-        "the record</summary>"
-        + "".join(_render_answered_question(card, store.claims, store_rel)
-                  for card in answered)
+        f"({len(view.answered_questions)}) — kept, because what settled "
+        "them is part of the record</summary>"
+        + "".join(
+            _render_answered_question(card, store_rel)
+            for card in view.answered_questions
+        )
         + "</details>"
-    ) if answered else ""
-    source_index = "".join(_render_source_index_card(source, profiles_by_source) for source in sources)
+        if view.answered_questions
+        else ""
+    )
+    source_index = "".join(
+        _render_source_index_card(source)
+        for source in view.measurement.sources
+    )
     source_sections = "".join(
-        _render_source_section(
-            source,
-            profiles_by_source.get(source.id, []),
-            claims_by_source.get(source.id, []),
-            declarations_by_key,
-            role_bindings,
-            candidates_by_column,
-        )
-        for source in sources
+        _render_source_section(source)
+        for source in view.measurement.sources
     ) or '<p class="empty">No sources yet.</p>'
-    orphan_columns = [
-        profile for profile in profiles if profile.source_id not in store.sources
-    ]
-    if orphan_columns:
+    if view.measurement.orphan_tables:
         source_sections += _render_orphan_profiles(
-            orphan_columns, declarations_by_key, role_bindings, candidates_by_column
+            view.measurement.orphan_tables
         )
-
-    candidate_count = len(matrix.get("candidates", []))
-    warning_html = "".join(f"<li>{escape(warning)}</li>" for warning in matrix.get("warnings", []))
-    integrity_html = "".join(f"<li>{escape(finding)}</li>" for finding in integrity)
-
-    answered_slots = _settled_slot_columns(root_path, config, store)
-    guide_fields = len(guide.owner)
-    elected, elections = _election_tally(facts, answered_slots)
-    readiness_guide, readiness_maps = _readiness_maps(store, root_path, config)
-    diagram = _render_process_diagram(_stage_counts(
-        readiness=_readiness_counts(readiness_maps),
-        required=sum(len(m.items) for m in readiness_maps),
-        declared_sources=len(config.get("sources") or []),
-        guide_objects=len(guide.order) - guide_fields,
-        guide_fields=guide_fields,
-        domain_laws=sum(1 for spec in REGISTRY.values() if spec.domain),
-        profiles=len(profiles),
-        candidates=candidate_count,
-        claims=len(claims),
-        runs=sum(
-            1 for record in store.evidence.values()
-            if record.type is EvidenceType.CHECK_RESULT
-        ),
-        elected=elected,
-        elections=elections,
-        questions=len(questions),
-    ))
+    integrity_html = "".join(
+        f"<li>{escape(finding)}</li>"
+        for finding in view.integrity
+    )
+    diagram = _render_process_diagram(
+        view.stages, view.copy.process_ghost
+    )
 
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Readiness report — {escape(root_path.name)}</title>
+  <title>Readiness report — {escape(view.project_name)}</title>
   <style>
     :root {{
       color-scheme: light dark;
@@ -610,7 +470,7 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
   <div class="layout">
     <aside class="sidebar">
       <h1>Readiness report</h1>
-      <p class="muted">{escape(str(root_path))}</p>
+      <p class="muted">{escape(view.project_path)}</p>
       <div class="section-links">
         <a href="#process">Process</a>
         <a href="#inputs">0 Inputs</a>
@@ -625,20 +485,20 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         <a href="#terms">Core terms</a>
       </div>
       <div class="panel">
-        <h2 id="claims-index">Claims ({len(claims)})</h2>
+        <h2 id="claims-index">Claims ({len(view.claims)})</h2>
         <div class="toolbar">
           <input id="claim-search" type="search" placeholder="Search statement or predicate">
           <select id="status-filter">
             <option value="">All statuses (derived)</option>
-            {_status_options()}
+            {_render_options(view.status_options)}
           </select>
           <select id="predicate-filter">
             <option value="">All predicates</option>
-            {_predicate_options(claims)}
+            {_render_options(view.predicate_options)}
           </select>
           <select id="role-filter">
             <option value="">All roles</option>
-            {_role_options(claims)}
+            {_render_options(view.role_options)}
           </select>
         </div>
         <p id="filter-note" class="muted"></p>
@@ -649,27 +509,22 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
       <section class="panel" id="process">
         <h2>How this project got from data to knowledge</h2>
         {diagram}
-        <p class="muted">{escape(READING_GUIDE)}</p>
+        <p class="muted">{escape(view.copy.reading_guide)}</p>
       </section>
       <section class="panel" id="inputs">
         <h2>0 · Inputs — what a human declared</h2>
-        {_render_domain_pack(root_path, config)}
+        {_render_domain_pack(view.domain_pack)}
       </section>
       <section class="panel" id="request">
         <h2>1 · Request — the question, and what it requires</h2>
-        <p class="muted">The frame opens here. The question bounds the work: it
-        defines what must be known, and nothing else has to be. Section 6 closes
-        the frame with the verdict those dependencies earn. It comes after the
-        declared inputs because it is decomposed against the domain guide —
-        a vocabulary someone had to choose first.</p>
-        {_render_request(readiness_maps, store_rel, readiness_guide)}
+        <p class="muted">{view.copy.request_intro}</p>
+        {_render_requests(view.requests, store_rel, view.copy.no_request)}
       </section>
       <section class="panel" id="measured">
-        <h2>2 · Measured — what the data says about itself ({len(sources)} sources)</h2>
-        <p class="muted">No model has seen anything yet. These are counted facts:
-        every column profiled, every value overlap between tables measured.</p>
-        <p class="muted">{escape(_project_line(store, sources, profiles, candidate_count))}</p>
-        {_render_matrix_summary(matrix, warning_html)}
+        <h2>2 · Measured — what the data says about itself ({view.measurement.source_count} sources)</h2>
+        <p class="muted">{view.copy.measured_intro}</p>
+        <p class="muted">{escape(view.measurement.project_line)}</p>
+        {_render_matrix_summary(view.measurement.matrix)}
         {source_index or '<p class="empty">No sources yet.</p>'}
         <details><summary>All profiled tables and columns</summary>
         {source_sections}
@@ -677,32 +532,24 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
       </section>
       <section class="panel" id="proposed">
         <h2>3 · Proposed — what the AI guessed, and how far each guess got</h2>
-        <p class="muted">Everything the model writes enters as <em>proposed</em> and
-        nothing it writes can change that. Click any number to filter the claim list.</p>
-        {_render_funnel(facts)}
+        <p class="muted">{_render_rich(view.copy.proposed_intro)}</p>
+        {_render_funnel(view.funnel)}
       </section>
       <section class="panel" id="tested">
         <h2>4 · Tested — what the checks settled</h2>
-        <p class="muted">Every role the AI proposed candidates for. Each role declares its
-        settlement path: a domain law elects the winner, or the humans decide via clarification question —
-        never silence.</p>
-        {_render_role_elections(facts, questions, guide, answered_slots)}
+        <p class="muted">{view.copy.tested_intro}</p>
+        {_render_role_elections(view.elections)}
       </section>
       <section class="panel" id="clarification">
-        <h2>5 · Clarification — what only a human can answer ({len(still_open)})</h2>
-        <p class="muted">What the checks could not settle. This is the human's to-do list.
-        A question leaves it the moment a claim it rests on settles — derived from the
-        same evidence the readiness map reads, so the two can never disagree.</p>
+        <h2>5 · Clarification — what only a human can answer ({len(view.open_questions)})</h2>
+        <p class="muted">{view.copy.clarification_intro}</p>
         {question_sections}
         {answered_sections}
       </section>
       <section class="panel" id="readiness">
         <h2>6 · Readiness — what may be answered</h2>
-        <p class="muted">The frame closes. Every dependency listed in section 0
-        is traced to its claim and evidence, and the verdict is what they add up
-        to. Derived on every render, never stored — a verdict that has drifted
-        from its evidence is worse than none.</p>
-        {_render_readiness(readiness_maps, store_rel)}
+        <p class="muted">{view.copy.readiness_intro}</p>
+        {_render_readiness(view.readiness, store_rel, view.copy.no_request)}
       </section>
       <section class="panel" id="claims">
         <h2>7 · Claim detail — one claim, its whole story</h2>
@@ -711,11 +558,11 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
       </section>
       <section class="panel" id="integrity">
         <h2>Integrity</h2>
-        {"<p>No integrity findings.</p>" if not integrity else f"<ul class='list'>{integrity_html}</ul>"}
+        {"<p>No integrity findings.</p>" if not view.integrity else f"<ul class='list'>{integrity_html}</ul>"}
       </section>
       <section class="panel" id="terms">
         <h2>Core terms</h2>
-        {_render_core_terms()}
+        {_render_core_terms(view.glossary)}
       </section>
     </main>
   </div>
@@ -809,183 +656,20 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
 """
 
 
-def _claim_facts(store: ProjectStore, claims: list[Claim]) -> dict[str, ClaimFacts]:
-    """One pass over the store: evidence, checks, derived status, funnel stage."""
-    facts: dict[str, ClaimFacts] = {}
-    for claim in claims:
-        evidence = store.evidence_for(claim)
-        # Persisted checks: bound directly (claim_id) or — for invariant checks,
-        # which are bound to roles, not to one claim — reachable only through the
-        # check_plan_id on this claim's evidence records.
-        evidence_check_plan_ids = {record.check_plan_id for record in evidence if record.check_plan_id}
-        checks = sorted(
-            (
-                check
-                for check in store.checks.values()
-                if check.claim_id == claim.id or check.id in evidence_check_plan_ids
-            ),
-            key=lambda check: (check.created_at, check.id),
-        )
-        # V2 declares why a claim got no check (unbindable / semantic_only /
-        # skipped) — the model's own words, persisted, not left in the cache.
-        decision, reason = _no_check_decision(evidence)
-        if checks:
-            stage = "bound"
-        elif decision:
-            stage = decision
-        elif not admissible_templates(claim):
-            stage = "semantic_only"
-        else:
-            stage = "unbound"
-        facts[claim.id] = ClaimFacts(
-            claim=claim,
-            evidence=evidence,
-            checks=checks,
-            derived=resolve_status(claim, evidence),
-            stage=stage,
-            executed=any(
-                record.type is EvidenceType.CHECK_RESULT for record in evidence
-            ),
-            no_check_reason=reason,
-        )
-    return facts
-
-
-def _no_check_decision(evidence: list[EvidenceRecord]) -> tuple[str, str]:
-    for record in evidence:
-        if record.type is not EvidenceType.DECLARATION:
-            continue
-        decision = str(record.payload.get("decision", ""))
-        if decision in STAGE_LABELS:
-            return decision, str(record.payload.get("reason", ""))
-    return "", ""
-
-
-def _chip(count: int, label: str, stage: str, *, status: str | None = None) -> str:
-    status_attr = f' data-status="{escape(status)}"' if status else ""
-    return (
-        f'<button type="button" class="chip" data-stage-chip="{escape(stage)}"{status_attr}>'
-        f"<strong>{count}</strong><span class='label'>{escape(label)}</span></button>"
-    )
-
-
-def _render_funnel(facts: dict[str, ClaimFacts]) -> str:
-    if not facts:
-        return '<p class="empty">No claims yet.</p>'
-    values = list(facts.values())
-    stages = {name: sum(1 for f in values if f.stage == name) for name in STAGE_LABELS}
-    executed = sum(1 for f in values if f.executed)
-    by_status = defaultdict(int)
-    for f in values:
-        by_status[f.derived.value] += 1
-
-    proposed = (
-        "<div class='funnel-stage'><span class='step'>proposed</span>"
-        + _chip(len(values), "claims (all proposed when created)", "")
-        + "</div>"
-    )
-    bound = (
-        "<div class='funnel-stage'><span class='step'>bound</span>"
-        + "".join(
-            _chip(stages[name], STAGE_LABELS[name], name)
-            for name in STAGE_LABELS
-            if stages[name]
-        )
-        + "</div>"
-    )
-    judged = (
-        "<div class='funnel-stage'><span class='step'>judged</span>"
-        + _chip(executed, "claims a check actually ran against", "executed")
-        + "</div>"
-    )
-    verdicts = "<div class='funnel-stage'><span class='step'>status</span>" + "".join(
-        _chip(by_status[status.value], status.value, f"status:{status.value}",
-              status=status.value)
-        for status in ClaimStatus
-        if by_status[status.value]
-    ) + "</div>"
-    caveat = (
-        "<p class='fine'>A claim without a check is not a claim that failed — it is a claim "
-        "nobody tested, and it stays <em>proposed</em>. Every one of them carries the reason "
-        "it got no check; open the claim to read it in the model's own words.</p>"
-    )
-    return f"<div class='funnel'>{proposed}{bound}{judged}{verdicts}</div>{caveat}"
-
-
-def _rationales(root: Path, claims: list[Claim],
-                owner: dict[str, str]) -> dict[str, str]:
-    """claim id → the model's reason for proposing it, best-effort.
-
-    The rationale is logged in ``cache/`` and deliberately never stored on
-    the claim: it explains a guess, and a guess is not evidence. So this is
-    a *lookup into a disposable file*, and the honest outcomes are three —
-    a rationale, an empty string (the log is gone; the page says so), or no
-    entry at all (this claim was not proposed by a logged model call).
-    """
-    log_dir = root / "cache" / "llm_log"
-    by_statement: dict[str, str] = {}
-    by_role_table: dict[tuple[str, str], str] = {}
-    files = sorted(log_dir.glob("*.json")) if log_dir.is_dir() else []
-    for path in files:
-        for item in _logged_items(path):
-            said = str(item.get("rationale", "")).strip()
-            if not said:
-                continue
-            if "statement" in item:
-                by_statement[" ".join(str(item["statement"]).split())] = said
-            binding = item.get("binding")
-            if item.get("role") and isinstance(binding, dict):
-                table = str(binding.get("table", ""))
-                if table:
-                    by_role_table[(str(item["role"]), table)] = said
-    found: dict[str, str] = {}
-    for claim in claims:
-        if claim.created_by is not Actor.AI:
-            continue
-        said = None
-        if isinstance(claim, MappingClaim):
-            table = str((claim.binding or {}).get("table", ""))
-            # a field's rationale is the one its object's proposal carried:
-            # the model argued for the table once, for all of its fields
-            said = (by_role_table.get((claim.role, table))
-                    or by_role_table.get((owner.get(claim.role, ""), table)))
-        else:
-            said = by_statement.get(" ".join(claim.statement.split()))
-        found[claim.id] = said or ""
-    return found
-
-
-def _logged_items(path: Path) -> list[dict]:
-    """The model's answer items from one logged call — tolerant by design.
-
-    A call log holds every attempt including the ones that failed to parse;
-    the last attempt that is valid JSON is the answer that counted.
-    """
-    try:
-        call = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return []
-    for attempt in reversed(call.get("attempts") or []):
-        try:
-            answer = json.loads(attempt.get("raw_text") or "")
-        except ValueError:
-            continue
-        if not isinstance(answer, dict):
-            continue
-        for value in answer.values():
-            if isinstance(value, list) and value and isinstance(value[0], dict):
-                return [item for item in value if isinstance(item, dict)]
-    return []
-
-
-def _relative_prefix(root: Path, out_dir: str | Path | None) -> str:
+def _relative_prefix(
+    root: Path, out_dir: str | Path | None
+) -> str:
     """How to reach the project store from where the page will be written.
 
-    Falls back to the default output location, which is what the CLI uses
-    when no `-o` is given. An unreachable relative path (different drive)
-    degrades to an absolute one rather than to a broken link.
+        Falls back to the default output location, which is what the CLI uses
+        when no `-o` is given. An unreachable relative path (different drive)
+        degrades to an absolute one rather than to a broken link.
     """
-    base = Path(out_dir).resolve() if out_dir else default_output_path(root).parent
+    base = (
+        Path(out_dir).resolve()
+        if out_dir
+        else default_output_path(root).parent
+    )
     try:
         rel = os.path.relpath(root, base)
     except ValueError:
@@ -993,20 +677,93 @@ def _relative_prefix(root: Path, out_dir: str | Path | None) -> str:
     return rel.replace(os.sep, "/").rstrip("/") + "/"
 
 
-def _yaml_link(rel: str, kind: str, ident: str) -> str:
-    """The page is disposable; this is the file that is not."""
+def _render_part(part: projection.TextPartView) -> str:
+    if part.style == "status":
+        rendered = _status_badge(part.text)
+    else:
+        rendered = escape(
+            part.text, quote=part.escape_quotes
+        )
+        if part.style == "strong":
+            rendered = f"<strong>{rendered}</strong>"
+        elif part.style == "em":
+            rendered = f"<em>{rendered}</em>"
+        elif part.style == "code":
+            rendered = f"<code>{rendered}</code>"
+        elif part.style == "muted":
+            rendered = f"<span class='muted'>{rendered}</span>"
+    if part.reference is not None:
+        rendered = (
+            f'<a href="#{escape(part.reference.kind)}-'
+            f'{escape(part.reference.id)}">{rendered}</a>'
+        )
+    return rendered
+
+
+def _render_rich(text: projection.RichTextView) -> str:
+    return "".join(_render_part(part) for part in text.parts)
+
+
+def _render_quote(quote: projection.QuoteView) -> str:
     return (
-        f'<a class="yaml" href="{escape(rel)}{kind}/{escape(ident)}.yaml">'
-        f"{escape(kind)}/{escape(_short_id(ident))}.yaml</a>"
+        f"<blockquote class='{escape(quote.css)}'>"
+        f"{escape(quote.text)}<cite>{_render_rich(quote.cite)}"
+        "</cite></blockquote>"
     )
 
 
-def _provenance(rel: str, kind: str, ident: str, *parts: str) -> str:
+def _render_link(link: projection.LinkView) -> str:
+    reference = link.reference
+    return (
+        f'<a href="#{escape(reference.kind)}-{escape(reference.id)}">'
+        f"{escape(link.label)}</a>"
+    )
+
+
+def _render_link_single(link: projection.LinkView) -> str:
+    reference = link.reference
+    return (
+        f"<a href='#{escape(reference.kind)}-"
+        f"{escape(reference.id)}'>{escape(link.label)}</a>"
+    )
+
+
+def _table_link(table: str) -> str:
+    return (
+        f'<a href="#table-{escape(table)}">'
+        f"<code>{escape(table)}</code></a>"
+    )
+
+
+def _column_link(column: str) -> str:
+    return (
+        f'<a href="#column-{escape(column)}">'
+        f"<code>{escape(column)}</code></a>"
+    )
+
+
+def _yaml_link(
+    rel: str, reference: projection.ReferenceView
+) -> str:
+    """The page is disposable; this is the file that is not."""
+    return (
+        f'<a class="yaml" href="{escape(rel)}'
+        f'{escape(reference.kind)}/{escape(reference.id)}.yaml">'
+        f"{escape(reference.kind)}/"
+        f"{escape('…' + reference.id[-6:])}.yaml</a>"
+    )
+
+
+def _provenance(
+    rel: str, provenance: projection.ProvenanceView
+) -> str:
     """Where a thing came from, what it feeds, and the file it really lives in."""
-    shown = " · ".join(part for part in parts if part)
+    shown = " · ".join(
+        note for note in provenance.notes if note
+    )
     return (
         f"<div class='prov'>{shown}{' · ' if shown else ''}"
-        f"{_yaml_link(rel, kind, ident)}</div>"
+        f"{_yaml_link(rel, provenance.reference)}</div>"
     )
 
 
@@ -1018,1807 +775,945 @@ def _technical(items: Iterable[tuple[str, str]]) -> str:
     )
 
 
-def _by_election(facts: dict[str, ClaimFacts]) -> dict[tuple[str, Scope | None],
-                                                       list[ClaimFacts]]:
-    """Candidates grouped by the election they are in: role within scope.
-
-    Two entities each own a journal, and neither competes with the other —
-    so the unit here is never the bare role.
-    """
-    grouped: dict[tuple[str, Scope | None], list[ClaimFacts]] = defaultdict(list)
-    for fact in facts.values():
-        if isinstance(fact.claim, MappingClaim):
-            grouped[(fact.claim.role, fact.claim.scope)].append(fact)
-    return grouped
-
-
-def _election_tally(facts: dict[str, ClaimFacts],
-                    answered: dict[tuple[str, Scope | None], str]) -> tuple[int, int]:
-    """(elections settled, elections held), counting role x scope. A slot
-    answered by its object's passing law counts as settled even though its
-    own claims stay proposed."""
-    grouped = _by_election(facts)
-    settled = sum(
-        1
-        for key, candidates in grouped.items()
-        if key in answered
-        or any(
-            fact.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
-            for fact in candidates
-        )
-    )
-    return settled, len(grouped)
-
-
-def _node(stage, counts: list[tuple[str, str]]) -> str:
-    """One stage of the process diagram: what it is, who authors it, its live counts."""
-    lines = "".join(
-        f'<a class="node-count" href="#{escape(stage.name)}">'
-        f"<strong>{escape(number)}</strong> {escape(label)}</a>"
-        for number, label in counts
-    )
-    step, title, target, actor = (stage.label, stage.title, stage.name,
-                                  stage.actor)
-    return (
-        f'<div class="node"><div class="node-step">{escape(step)}</div>'
-        f'<div class="node-title"><a href="#{escape(target)}">{escape(title)}</a></div>'
-        f'<div class="node-counts">{lines}</div>'
-        f'<div class="node-actor">{escape(actor)}</div></div>'
+def _render_options(values: Iterable[str]) -> str:
+    return "".join(
+        f'<option value="{escape(value)}">{escape(value)}</option>'
+        for value in values
     )
 
 
-def _stage_counts(*, readiness, required, declared_sources, guide_objects,
-                  guide_fields, domain_laws, profiles, candidates, claims,
-                  runs, elected, elections, questions
-                  ) -> dict[str, list[tuple[str, str]]]:
-    """This project's live numbers, per stage of the spine."""
-    def plural(n: int, word: str) -> str:
-        return f"{word}{'s' if n != 1 else ''}"
-
-    return {
-        "request": ([(str(required), "things it depends on")] if required
-                    else [("—", "no question asked")]),
-        "inputs": [
-            (str(declared_sources), plural(declared_sources, "source")),
-            (f"{guide_objects}+{guide_fields}", "objects + fields"),
-            (str(domain_laws), plural(domain_laws, "domain law")),
-        ],
-        "measured": [(str(profiles), "column profiles"),
-                     (str(candidates), "candidate overlaps")],
-        "proposed": [(str(claims), plural(claims, "claim"))],
-        "tested": [
-            (str(runs), plural(runs, "check run")),
-            # role x scope, and "settled" not "elected": a slot answered by
-            # its object's passing run counts, and nobody elected it
-            (f"{elected}/{elections}", "elections settled"),
-        ],
-        "clarification": [(str(questions), plural(questions, "open question"))],
-        "readiness": readiness,
-    }
-
-
-def _render_process_diagram(counts: dict[str, list[tuple[str, str]]]) -> str:
+def _render_process_diagram(
+    stages: tuple[projection.StageView, ...],
+    ghost: projection.RichTextView,
+) -> str:
     """The whole machine on one line, with this project's numbers in it.
 
-    Stages, their order, their actors and the boundary all come from
-    ``before_we_ai.stages`` — the diagram renders the spine, it does not
-    restate it. ``counts`` supplies this project's live numbers per stage
-    name; a stage with none still draws, because a stage that has produced
-    nothing yet is information.
+        Stages, their order, their actors and the boundary all come from
+        ``before_we_ai.stages`` — the diagram renders the spine, it does not
+        restate it. ``counts`` supplies this project's live numbers per stage
+        name; a stage with none still draws, because a stage that has produced
+        nothing yet is information.
     """
     arrow = '<div class="arrow" aria-hidden="true">→</div>'
     parts = []
-    for stage in STAGES:
-        if stage.name == BOUNDARY_BEFORE:
-            parts.append(f'<div class="boundary"><span>'
-                         f'{escape(BOUNDARY_TEXT)}</span></div>')
-        parts.append(_node(stage, counts.get(stage.name, [])))
+    for stage in stages:
+        if stage.boundary_before:
+            parts.append(
+                f'<div class="boundary"><span>'
+                f'{escape(stage.boundary_before)}</span></div>'
+            )
+        counts = "".join(
+            f'<a class="node-count" href="#{escape(stage.name)}">'
+            f"<strong>{escape(number)}</strong> "
+            f"{escape(label)}</a>"
+            for number, label in stage.counts
+        )
+        parts.append(
+            f'<div class="node"><div class="node-step">'
+            f"{escape(stage.label)}</div>"
+            f'<div class="node-title"><a href="#{escape(stage.name)}">'
+            f"{escape(stage.title)}</a></div>"
+            f'<div class="node-counts">{counts}</div>'
+            f'<div class="node-actor">{escape(stage.actor)}</div></div>'
+        )
     flow = arrow.join(parts)
     ghosts = (
-        '<div class="ghosts">'
-        '<div class="ghost"><strong>M5 · documents</strong> — not built. '
-        "Policies, manuals and contracts become a fourth input, anchored back to "
-        "the passage they came from.</div>"
-        "</div>"
+        '<div class="ghosts"><div class="ghost">'
+        f"{_render_rich(ghost)}</div></div>"
     )
     return f'<div class="flow">{flow}</div>{ghosts}'
 
 
-def _render_core_terms() -> str:
-    terms = "".join(
-        f"<dt>{escape(term)}</dt><dd>{escape(text)}</dd>" for term, text in GLOSSARY
-    )
+def _render_domain_pack(view: projection.DomainPackView) -> str:
     return (
-        "<details><summary>Core terms — the words this page uses, and no synonyms</summary>"
-        f"<dl>{terms}</dl>"
-        "<p class='fine'>Full glossary: docs/before-ai-concept.md.</p></details>"
+        f"<p class='muted'>{escape(view.intro)}</p>"
+        "<h3>1.1 · Raw data — the source list "
+        "(human-authored)</h3>"
+        f"{_render_declared_sources(view.sources)}"
+        "<h3>1.2 · Domain guide — the domain nouns "
+        "(data, human-curated)</h3>"
+        f"{_render_domain_guide_panel(view.guide)}"
+        "<h3>1.3 · Domain-law templates — the guardians "
+        "(code, developer-shipped)</h3>"
+        f"{_render_domain_law_templates(view.laws)}"
     )
 
 
-def _project_config(root: Path) -> dict:
-    """The declared inputs, read straight from before-ai.yaml (read-only)."""
-    path = root / CONFIG_FILE
-    if not path.is_file():
-        return {}
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-
-
-def _render_domain_pack(root: Path, config: dict) -> str:
-    return (
-        f"<p class='muted'>{escape(DOMAIN_PACK_INTRO)}</p>"
-        "<h3>1.1 · Raw data — the source list (human-authored)</h3>"
-        f"{_render_declared_sources(config)}"
-        "<h3>1.2 · Domain guide — the domain nouns (data, human-curated)</h3>"
-        f"{_render_domain_guide_panel(root, config)}"
-        "<h3>1.3 · Domain-law templates — the guardians (code, developer-shipped)</h3>"
-        f"{_render_domain_law_templates(_declared_domain(root, config))}"
-    )
-
-
-def _declared_domain(root: Path, config: dict) -> str:
-    """The domain this project declares, straight from its guide."""
-    path = _guide_path(root, config)
-    if path is None:
-        return ""
-    try:
-        pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except OSError:
-        return ""
-    return str(pack.get("domain", ""))
-
-
-def _render_declared_sources(config: dict) -> str:
-    sources = config.get("sources") or []
+def _render_declared_sources(
+    sources: tuple[projection.DeclaredSourceView, ...],
+) -> str:
     if not sources:
-        return '<p class="empty">No sources declared in before-ai.yaml.</p>'
+        return (
+            '<p class="empty">No sources declared in '
+            "before-ai.yaml.</p>"
+        )
     items = "".join(
-        f"<li><code>{escape(str(source.get('name', '?')))}</code> "
-        f"({escape(str(source.get('kind', '?')))}) — "
-        f"{escape(str(source.get('location', '?')))}</li>"
+        f"<li><code>{escape(source.name)}</code> "
+        f"({escape(source.kind)}) — {escape(source.location)}</li>"
         for source in sources
     )
     return f"<ul class='list'>{items}</ul>"
 
 
-def _render_domain_guide_panel(root: Path, config: dict) -> str:
-    path = _guide_path(root, config)
-    if path is None:
-        return '<p class="empty">No domain guide declared (llm.domain_guide_file).</p>'
-    try:
-        pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except OSError:
+def _render_guide_entry(
+    entry: projection.GuideEntryView,
+) -> str:
+    return (
+        f"<details><summary><code>{escape(entry.name)}</code> "
+        f"<span class='fine'>{escape(entry.decision)}</span>"
+        f"</summary><p>{escape(entry.definition)}</p></details>"
+    )
+
+
+def _render_domain_guide_panel(
+    guide: projection.DomainGuidePanelView,
+) -> str:
+    if guide.state == "missing":
         return (
-            f'<p class="empty">Domain guide declared but unreadable: '
-            f"<code>{escape(str(path))}</code></p>"
+            '<p class="empty">No domain guide declared '
+            "(llm.domain_guide_file).</p>"
         )
-    objects = pack.get("objects") or {}
-    n_fields = sum(len((spec.get("fields") or {})) for spec in objects.values()
-                   if isinstance(spec, dict))
+    if guide.state == "unreadable":
+        return (
+            '<p class="empty">Domain guide declared but unreadable: '
+            f"<code>{escape(guide.path)}</code></p>"
+        )
     items = "".join(
-        _render_guide_entry(name, spec)
-        + "".join(f"<div class='guide-field'>{_render_guide_entry(fname, fspec)}</div>"
-                  for fname, fspec in ((spec.get("fields") or {}).items()
-                                       if isinstance(spec, dict) else ()))
-        for name, spec in objects.items()
+        _render_guide_entry(entry)
+        + "".join(
+            "<div class='guide-field'>"
+            f"{_render_guide_entry(field)}</div>"
+            for field in entry.fields
+        )
+        for entry in guide.entries
     )
     return (
-        f"<p>domain <strong>{escape(str(pack.get('domain', '?')))}</strong>, "
-        f"{len(objects)} business objects with {n_fields} "
-        f"field{'s' if n_fields != 1 else ''} — human-written "
-        "definitions, no system names; each declares its settlement path (how it "
-        "can ever stop being a guess), and a field can never declare a law<br>"
-        f"<code>{escape(str(path))}</code></p>{items}"
+        f"<p>domain <strong>{escape(guide.domain)}</strong>, "
+        f"{guide.object_count} business objects with "
+        f"{guide.field_count} field"
+        f"{'s' if guide.field_count != 1 else ''} — human-written "
+        "definitions, no system names; each declares its settlement "
+        "path (how it can ever stop being a guess), and a field can "
+        "never declare a law<br>"
+        f"<code>{escape(guide.path)}</code></p>{items}"
     )
 
 
-def _render_guide_entry(name: str, spec) -> str:
-    return (
-        f"<details><summary><code>{escape(name)}</code> "
-        f"<span class='fine'>{escape(_decided_by_label(spec))}</span></summary>"
-        f"<p>{escape(str(_role_definition(spec)).strip())}</p></details>"
-    )
-
-
-def _role_definition(spec) -> str:
-    if isinstance(spec, dict):
-        return str(spec.get("definition", ""))
-    return str(spec)
-
-
-def _decided_by_label(spec) -> str:
-    decided_by = spec.get("decided_by", "") if isinstance(spec, dict) else ""
-    if not decided_by:
-        return ""
-    if decided_by == "clarification":
-        return "decided by humans (clarification question)"
-    if decided_by == "slot":
-        fills = spec.get("fills") or "?"
-        return f"slot — elected as the '{fills}' of its object's law"
-    return f"elected by the {decided_by} law"
-
-
-def _guide_path(root: Path, config: dict) -> Path | None:
-    declared = (config.get("llm") or {}).get("domain_guide_file")
-    if not declared:
-        return None
-    path = Path(declared)
-    return path if path.is_absolute() else root / path
-
-
-@dataclass
-class GuideShape:
-    """What the report needs from the domain guide, read tolerantly.
-
-    The definitions are the only human-written business vocabulary in the
-    project — the report quotes them rather than inventing prose of its own.
-    """
-
-    order: list[str] = field(default_factory=list)
-    decided_by: dict[str, str] = field(default_factory=dict)
-    owner: dict[str, str] = field(default_factory=dict)  # field -> its object
-    definition: dict[str, str] = field(default_factory=dict)
-    fills: dict[str, str] = field(default_factory=dict)  # slot field -> its slot
-
-
-def _load_guide_shape(root: Path, config: dict) -> GuideShape:
-    """The guide's shape and words — read from the raw YAML, never refused.
-
-    A broken guide is shown as it is; the report does not decline to render
-    because one input is wrong.
-    """
-    shape = GuideShape()
-    path = _guide_path(root, config)
-    if path is None:
-        return shape
-    try:
-        pack = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except OSError:
-        return shape
-    for name, spec in (pack.get("objects") or {}).items():
-        if not isinstance(spec, dict):
-            continue
-        shape.order.append(name)
-        shape.decided_by[name] = spec.get("decided_by", "")
-        shape.definition[name] = " ".join(str(spec.get("definition", "")).split())
-        for fname, fspec in (spec.get("fields") or {}).items():
-            shape.order.append(fname)
-            shape.owner[fname] = name
-            if isinstance(fspec, dict):
-                shape.decided_by[fname] = fspec.get("decided_by", "")
-                shape.definition[fname] = " ".join(
-                    str(fspec.get("definition", "")).split()
-                )
-                if fspec.get("fills"):
-                    shape.fills[fname] = str(fspec["fills"])
-    return shape
-
-
-def _settled_slot_columns(root: Path, config: dict,
-                          store: ProjectStore) -> dict[tuple[str, Scope | None], str]:
-    """(field, scope) -> the column that scope's passing law consumed.
-
-    Scoped, because each entity's ledger consumed its own amount column and
-    one entity's run answers nothing for another. Empty if the guide does
-    not load (the panel above already says so).
-    """
-    path = _guide_path(root, config)
-    if path is None:
-        return {}
-    try:
-        guide = load_domain_guide(path)
-    except (OSError, ValueError):
-        return {}
-    answered: dict[tuple[str, Scope | None], str] = {}
-    for name in guide.objects:
-        for scope in scopes_of(store, name) or [None]:
-            for field, column in settled_slots(store, guide, name, scope).items():
-                answered[(field, scope)] = column
-    return answered
-
-
-def _render_domain_law_templates(domain: str = "") -> str:
+def _render_domain_law_templates(
+    laws: projection.DomainLawsView,
+) -> str:
     """This project's domain pack — not the whole catalog.
 
-    A law of another domain is not an input here: the guide lint refuses to
-    let this guide declare one. Listing it under "what this project
-    declared" would be a false claim about the project's inputs, so the
-    other domains are counted, not enumerated.
+        A law of another domain is not an input here: the guide lint refuses to
+        let this guide declare one. Listing it under "what this project
+        declared" would be a false claim about the project's inputs, so the
+        other domains are counted, not enumerated.
     """
-    tagged = [(name, spec) for name, spec in REGISTRY.items() if spec.domain]
-    generic = len(REGISTRY) - len(tagged)
-    mine = [(name, spec) for name, spec in tagged if spec.domain == domain] \
-        if domain else tagged
-    foreign = len(tagged) - len(mine)
-    if not mine:
-        note = (
-            f"<p class='empty'>No domain law is shipped for <strong>"
-            f"{escape(domain)}</strong>. Every business object in this guide "
-            "must therefore be settled by a human (<code>decided_by: "
-            "clarification</code>) — nothing here can be promoted by a "
-            "check.</p>"
-            if domain else
-            '<p class="empty">No domain-law templates in the registry.</p>'
+    if laws.laws:
+        body = "<ul class='list'>" + "".join(
+            f"<li><code>{escape(law.name)}</code> "
+            '<span class="badge status-business-confirmed">'
+            f"{escape(law.domain)} law</span> — "
+            f"<code>checks/templates/{escape(law.file)}</code></li>"
+            for law in laws.laws
+        ) + "</ul>"
+    elif laws.domain:
+        body = (
+            "<p class='empty'>"
+            f"{_render_rich(laws.empty_message)}</p>"
         )
-        return note + _generic_note(generic, foreign)
+    else:
+        body = (
+            '<p class="empty">'
+            f"{_render_rich(laws.empty_message)}</p>"
+        )
+    return body + f"<p class='fine'>{escape(laws.note)}</p>"
+
+
+def _render_requests(
+    requests: tuple[projection.RequestView, ...],
+    rel: str,
+    no_request: str,
+) -> str:
+    if not requests:
+        return f'<p class="empty">{escape(no_request)}</p>'
+    return "".join(
+        _render_request_card(request, rel)
+        for request in requests
+    )
+
+
+def _render_request_card(
+    request: projection.RequestView, rel: str
+) -> str:
     items = "".join(
-        f"<li><code>{escape(name)}</code> "
-        f'<span class="badge status-business-confirmed">{escape(spec.domain)} law</span> — '
-        f"<code>checks/templates/{escape(spec.file)}</code></li>"
-        for name, spec in mine
-    )
-    return f"<ul class='list'>{items}</ul>" + _generic_note(generic, foreign)
-
-
-def _generic_note(generic: int, foreign: int) -> str:
-    other = (
-        f" A further {foreign} domain law{'s' if foreign != 1 else ''} in the "
-        "catalog belong{} to other domains and cannot be used here — the "
-        "guide lint rejects a law from a foreign domain.".format(
-            "" if foreign != 1 else "s"
+        f"<li class='{'waived' if item.waived else ''}'>"
+        f"<code>{escape(item.ref)}</code> "
+        f"<span class='muted'>{escape(item.kind)} · "
+        f"{escape(item.provenance)}</span>"
+        + (
+            f"<p class='fine'>Waived: "
+            f"{escape(item.waived_because)}</p>"
+            if item.waived
+            else ""
         )
-        if foreign else ""
-    )
-    return (
-        f"<p class='fine'>The other {generic} templates in the catalog are generic data "
-        "checks (reference check, duplicates, coverage …) — they carry no domain "
-        f"knowledge and work in any domain.{other}</p>"
-    )
-
-
-_VERDICT_HEADLINE = {
-    Readiness.READY: (
-        "Ready.",
-        "Every dependency of this answer is supported by evidence.",
-    ),
-    Readiness.READY_WITH_LIMITATIONS: (
-        "Ready, with limitations.",
-        "The figures can be produced. What they mean is not fully settled — "
-        "the unsupported items below are the qualifications that belong with "
-        "any answer given from this data.",
-    ),
-    Readiness.BLOCKED: (
-        "Blocked.",
-        "The figures cannot be produced from this data yet. Each unsupported "
-        "item below is something the answer is computed from.",
-    ),
-}
-
-
-def _readiness_maps(store: ProjectStore, root: Path,
-                    config: dict) -> tuple[DomainGuide | None, list]:
-    """Every asked question, judged, and the guide they were judged against.
-
-    Derived on this render, never read from a file — a stored verdict could
-    drift away from the evidence beneath it, and a drifted verdict is worse
-    than none. The guide comes back with them because the report names which
-    one a dependency list was expanded from.
-    """
-    path = _guide_path(root, config)
-    if path is None or not store.requests:
-        return None, []
-    try:
-        guide = load_domain_guide(path)
-    except (OSError, ValueError):
-        return None, []
-    maps = []
-    for request in sorted(store.requests.values(), key=lambda r: r.created_at):
-        result = evaluate_request(store, guide, request.id)
-        if result is not None:
-            maps.append(result)
-    return guide, maps
-
-
-def _readiness_counts(maps: list) -> list[tuple[str, str]]:
-    """The diagram's live numbers for stage 6."""
-    if not maps:
-        return [("—", "no question asked")]
-    supported = sum(1 for m in maps for i in m.items if i.satisfied)
-    total = sum(len(m.items) for m in maps)
-    worst = next((m.verdict for m in maps if m.verdict is Readiness.BLOCKED),
-                 None) or next(
-        (m.verdict for m in maps if m.verdict is Readiness.READY_WITH_LIMITATIONS),
-        Readiness.READY)
-    return [
-        (f"{supported}/{total}", "dependencies supported"),
-        (worst.value.replace("_", " "), "verdict"),
-    ]
-
-
-_NOTHING_ASKED = (
-    '<p class="empty">No business question has been asked of this project '
-    "yet. Until one is, this report describes a landscape rather than an "
-    "answer — and whether a landscape is generally sound is a question "
-    "nobody asked.</p>"
-)
-
-
-def _render_request(maps: list, rel: str, guide: DomainGuide) -> str:
-    """Stage 0 — what was asked, and what the answer therefore depends on.
-
-    Separate from the verdict on purpose: this is the frame opening. A
-    reader should see what the question is and what it requires *before*
-    the pipeline, and the verdict only after.
-    """
-    if not maps:
-        return _NOTHING_ASKED
-    return "".join(_render_request_card(result, rel, guide) for result in maps)
-
-
-# Where each item on the list came from. The reader needs this before they
-# can judge the list: only a reviewed answer type was ever read as a whole.
-_PROVENANCE_LABEL = {
-    Provenance.CONTRACT: "from the answer type",
-    Provenance.PROPOSED: "drafted for this question",
-    Provenance.ADDED: "added by a human",
-}
-
-# Whose sentence the item's `why` is. The three-voices rule turns on this:
-# a `why` expanded from the guide was written by whoever reviewed the guide,
-# and attributing it to the AI would put a human's words in the model's
-# mouth — the mirror image of the mistake the rule exists to prevent.
-_WHY_CITE = {
-    Provenance.CONTRACT: "— the domain guide, on why an answer of this kind "
-                         "depends on it",
-    Provenance.PROPOSED: "— the AI, on why the answer depends on this",
-    Provenance.ADDED: "— the human who added it",
-}
-
-
-def _render_treated_as(result, guide: DomainGuide) -> str:
-    """The classification, in the derived voice — the line the cap asks about.
-
-    It headlines the request card because it is the single claim everything
-    below it rests on: name the wrong family and the whole list is wrong,
-    quietly. The AI's own words for the question stay quoted underneath,
-    subordinate to this, as the three-voices rule requires.
-    """
-    if result.answer_type is None:
-        return (
-            "<p class='derived'><strong>Treated as: no declared answer "
-            "type.</strong> The list below was drafted for this question "
-            "alone — nobody has reviewed it as a whole.</p>"
+        + (
+            f"<blockquote class='ai-said'>{escape(item.why)}"
+            f"<cite>{escape(item.why_cite)}</cite></blockquote>"
+            if item.why
+            else ""
         )
-    state = ("confirmed by a human" if result.confirmed
-             else "confirmed against an earlier guide" if result.review.lapsed
-             else "not confirmed by anyone yet")
-    return (
-        f"<p class='derived'><strong>Treated as: "
-        f"{escape(result.answer_type)}</strong> "
-        f"<span class='muted'>(guide {escape(guide_label(guide))})</span> — "
-        f"{escape(state)}.</p>"
-    )
-
-
-def _render_request_card(result, rel: str, guide: DomainGuide) -> str:
-    scope = result.request.scope
-    items = "".join(
-        f"<li class='{'waived' if i.item.waived else ''}'>"
-        f"<code>{escape(i.ref)}</code> "
-        f"<span class='muted'>{escape(i.item.kind.value)} · "
-        f"{escape(_PROVENANCE_LABEL[i.item.provenance])}</span>"
-        + (f"<p class='fine'>Waived: {escape(i.item.waived_because)}</p>"
-           if i.item.waived else "")
-        + (f"<blockquote class='ai-said'>{escape(i.item.why)}"
-           f"<cite>{escape(_WHY_CITE[i.item.provenance])}</cite>"
-           "</blockquote>" if i.item.why else "")
         + "</li>"
-        for i in result.items
+        for item in request.items
     )
     return (
-        f"<div class='ready-map' id='request-{escape(result.request.id)}'>"
-        f"<blockquote class='quote'>{escape(result.request.question)}"
-        "<cite>— the business question, as it was asked</cite></blockquote>"
-        f"{_render_treated_as(result, guide)}"
-        f"<blockquote class='ai-said'>{escape(result.request.requested_output)}"
-        "<cite>— the AI, on what the answer must deliver</cite></blockquote>"
-        + (f"<p class='fine'>Asked for {escape(scope.label())}.</p>"
-           if scope.is_explicit() else
-           "<p class='fine'>No scope named, so the whole landscape.</p>")
-        + f"<h4 class='fine'>What this answer depends on "
-          f"({len(result.items)}) — and nothing else has to be known</h4>"
+        f"<div class='ready-map' id='request-{escape(request.id)}'>"
+        f"<blockquote class='quote'>{escape(request.question)}"
+        "<cite>— the business question, as it was asked</cite>"
+        "</blockquote>"
+        f"<p class='derived'>{_render_rich(request.treated_as)}</p>"
+        f"<blockquote class='ai-said'>"
+        f"{escape(request.requested_output)}"
+        "<cite>— the AI, on what the answer must deliver</cite>"
+        "</blockquote>"
+        f"<p class='fine'>{escape(request.scope_line)}</p>"
+        f"<h4 class='fine'>{escape(request.dependency_heading)}</h4>"
         f"<ul class='picks'>{items}</ul>"
-        f"{_provenance(rel, 'answers', result.request.id, 'asked by a human', 'expanded on this render')}"
-        "</div>"
+        f"{_provenance(rel, request.provenance)}</div>"
     )
 
 
-def _render_readiness(maps: list, rel: str) -> str:
+def _render_readiness(
+    maps: tuple[projection.ReadinessView, ...],
+    rel: str,
+    no_request: str,
+) -> str:
     if not maps:
-        return _NOTHING_ASKED
-    return "".join(_render_readiness_map(result, rel) for result in maps)
-
-
-def _render_readiness_map(result, rel: str) -> str:
-    headline, explanation = _VERDICT_HEADLINE[result.verdict]
-    scope = result.request.scope
-    scope_line = (
-        f"<p class='fine'>Asked for {escape(scope.label())}.</p>"
-        if scope.is_explicit() else ""
+        return f'<p class="empty">{escape(no_request)}</p>'
+    return "".join(
+        _render_readiness_map(result, rel) for result in maps
     )
-    groups = [
-        ("What the figures are computed from",
-         [i for i in result.items if i.structural]),
-        ("What the figures mean",
-         [i for i in result.items if not i.structural]),
-    ]
+
+
+def _render_readiness_map(
+    result: projection.ReadinessView, rel: str
+) -> str:
+    scope_line = (
+        f"<p class='fine'>{escape(result.scope_line)}</p>"
+        if result.scope_line
+        else ""
+    )
     body = "".join(
-        f"<h4 class='fine'>{escape(title)}</h4>"
-        + "".join(_render_readiness_item(item, rel) for item in items)
-        for title, items in groups if items
+        f"<h4 class='fine'>{escape(group.title)}</h4>"
+        + "".join(
+            _render_readiness_item(item)
+            for item in group.items
+        )
+        for group in result.groups
     )
     return (
-        f"<div class='ready-map ready-{result.verdict.value}' "
-        f"id='readiness-{escape(result.request.id)}'>"
-        f"<p class='fine'><a href='#request-{escape(result.request.id)}'>"
-        f"{escape(result.request.question)}</a></p>{scope_line}"
-        f"<p class='derived verdict'><strong>{escape(headline)}</strong> "
-        f"{escape(result.reason())}</p>"
-        f"<p class='muted'>{escape(explanation)}</p>"
-        f"{body}"
-        f"{_provenance(rel, 'answers', result.request.id, 'derived on this render', 'never stored')}"
-    ) + "</div>"
+        f"<div class='ready-map ready-{escape(result.verdict)}' "
+        f"id='readiness-{escape(result.id)}'>"
+        f"<p class='fine'><a href='#request-{escape(result.id)}'>"
+        f"{escape(result.question)}</a></p>{scope_line}"
+        f"<p class='derived verdict'><strong>"
+        f"{escape(result.headline)}</strong> "
+        f"{escape(result.reason)}</p>"
+        f"<p class='muted'>{escape(result.explanation)}</p>"
+        f"{body}{_provenance(rel, result.provenance)}</div>"
+    )
 
 
-def _render_readiness_item(item, rel: str) -> str:
+def _render_readiness_item(
+    item: projection.ReadinessItemView,
+) -> str:
     """One dependency: the derived sentence first, the AI's reason under it.
 
-    The three-voices rule at its sharpest. The status sentence is derived
-    and is the headline; the ``why`` the model wrote when it listed this
-    dependency is legible, attributed, and subordinate — it explains why the
-    item is on the list, never what became of it.
+        The three-voices rule at its sharpest. The status sentence is derived
+        and is the headline; the ``why`` the model wrote when it listed this
+        dependency is legible, attributed, and subordinate — it explains why the
+        item is on the list, never what became of it.
     """
-    # a waiver is a human's judgement, not evidence — it must not read like
-    # a satisfied dependency, and it must not read like a gap either
-    mark = ("waived" if item.item.waived
-            else "supported" if item.satisfied else "missing")
     links = " ".join(
-        f"<a href='#claim-{escape(cid)}'>{escape(cid[-6:])}</a>"
-        for cid in item.claim_ids
+        _render_link_single(claim) for claim in item.claims
     )
-    # A rule is only ever satisfied by an explicit link, so who made that
-    # link is part of the audit trail: a wrong link points a verdict at an
-    # unrelated claim, and the reader must see whose mistake that was.
     linked = "".join(
-        f"<p class='fine'>Linked by the {escape(link.linked_by.value)}"
-        f"{' — ' + escape(link.note) if link.note else ''} "
-        f"→ <a href='#claim-{escape(link.claim_id)}'>"
-        f"{escape(link.claim_id[-6:])}</a></p>"
-        for link in item.item.satisfied_by
+        f"<p class='fine'>{_render_rich(link.sentence)}</p>"
+        for link in item.links
     )
     return (
-        f"<div class='ready-item {mark}'>"
+        f"<div class='ready-item {escape(item.mark)}'>"
         f"<h5><code>{escape(item.ref)}</code> "
-        f"<span class='muted'>{escape(item.item.kind.value)}</span></h5>"
+        f"<span class='muted'>{escape(item.kind)}</span></h5>"
         f"<p class='derived'>{escape(item.because)}</p>"
         f"{linked}"
-        + (f"<p class='fine'>Claims: {links}</p>" if links and not linked else "")
+        + (
+            f"<p class='fine'>Claims: {links}</p>"
+            if links and not linked
+            else ""
+        )
         + "</div>"
     )
 
 
+def _render_funnel(view: projection.FunnelView) -> str:
+    if not view.stages:
+        return f'<p class="empty">{escape(view.empty)}</p>'
+    stages = "".join(
+        "<div class='funnel-stage'>"
+        f"<span class='step'>{escape(stage.label)}</span>"
+        + "".join(_render_chip(chip) for chip in stage.chips)
+        + "</div>"
+        for stage in view.stages
+    )
+    return (
+        f"<div class='funnel'>{stages}</div>"
+        f"<p class='fine'>{_render_rich(view.caveat)}</p>"
+    )
+
+
+def _render_chip(chip: projection.FunnelChipView) -> str:
+    status = (
+        f' data-status="{escape(chip.status)}"'
+        if chip.status
+        else ""
+    )
+    return (
+        f'<button type="button" class="chip" '
+        f'data-stage-chip="{escape(chip.stage)}"{status}>'
+        f"<strong>{chip.count}</strong>"
+        f"<span class='label'>{escape(chip.label)}</span></button>"
+    )
+
+
 def _render_role_elections(
-    facts: dict[str, ClaimFacts], questions: list[ClarificationQuestion],
-    guide: GuideShape, answered: dict[tuple[str, Scope | None], str] | None = None,
+    elections: tuple[projection.ElectionView, ...],
 ) -> str:
-    answered = answered or {}
-    owner, decided_by = guide.owner, guide.decided_by
-    grouped = _by_election(facts)
-    if not grouped:
-        return '<p class="empty">No role-binding candidates yet.</p>'
-    # guide order — every object followed by its own fields; anything the
-    # guide does not name (a stale claim from an older guide) sorts after;
-    # within a role, the landscape-wide election first, then by scope label
-    rank_role = {name: i for i, name in enumerate(guide.order)}
-    ordered = sorted(grouped, key=lambda key: (
-        rank_role.get(key[0], len(rank_role)), key[0],
-        key[1].label() if key[1] else "",
-    ))
-
-    rank = {
-        ClaimStatus.TEST_SUPPORTED: 0,
-        ClaimStatus.BUSINESS_CONFIRMED: 0,
-        ClaimStatus.UNRESOLVED: 1,
-        ClaimStatus.PROPOSED: 2,
-        ClaimStatus.CONTRADICTED: 3,
-    }
-    blocks = []
-    for role, scope in ordered:
-        candidates = grouped[(role, scope)]
-        candidates.sort(key=lambda f: (rank[f.derived], f.claim.id))
-        winners = [f for f in candidates if f.derived in (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)]
-        column = answered.get((role, scope), "")
-        rows = "".join(
-            _render_candidate(fact, fact in winners, column) for fact in candidates
-        )
-        claim_ids = {fact.claim.id for fact in candidates}
-        cards = [card for card in questions if claim_ids & set(card.claim_ids)]
-        outcome = _election_outcome(
-            role, candidates, winners, cards, column,
-            owner.get(role, ""), decided_by, len(candidates),
-        )
-        path_note = _decided_by_label({"decided_by": decided_by.get(role, ""),
-                                       "fills": guide.fills.get(role, "")})
-        of_object = (f" <span class='fine'>field of "
-                     f"<code>{escape(owner[role])}</code></span>"
-                     if role in owner else "")
-        # the scope is part of the heading, not a footnote: this election
-        # decides who plays the role *for these books*, and a reader who
-        # misses that answers for the wrong entity
-        for_scope = (f" <span class='fine'>for {escape(scope.label())}</span>"
-                     if scope and scope.is_explicit() else "")
-        definition = guide.definition.get(role, "")
-        said = (
-            f"<blockquote class='quote'>{escape(definition)}"
-            "<cite>— what the domain guide says this is</cite></blockquote>"
-            if definition else ""
-        )
-        blocks.append(
-            f"<div class='election{' guide-field' if role in owner else ''}'>"
-            f"<h3><code>{escape(role)}</code>{of_object}{for_scope} "
-            f"<span class='muted'>{len(candidates)} candidate"
-            f"{'s' if len(candidates) != 1 else ''}"
-            f"{' · ' + escape(path_note) if path_note else ''}</span></h3>"
-            f"{said}{outcome}{rows}</div>"
-        )
-    return "".join(blocks)
-
-
-def _election_outcome(
-    role: str, candidates: list[ClaimFacts], winners: list[ClaimFacts],
-    cards: list[ClarificationQuestion], column: str, owner: str,
-    decided_by: dict[str, str], total: int,
-) -> str:
-    """What became of this role, as one sentence a business reader can act on."""
-    law = decided_by.get(owner or role, "") or "domain"
-    others = total - 1
-    if winners:
-        beaten = sum(1 for f in candidates if f.derived is ClaimStatus.CONTRADICTED)
-        if not beaten:
-            felled = ""
-        elif beaten == others:
-            felled = (" and felled the other candidate" if others == 1
-                      else f" and felled all {others} of its competitors")
-        else:
-            felled = (f" and felled {beaten} of the {others} other candidate"
-                      f"{'s' if others != 1 else ''}")
-        # name the law that actually passed, not the one the guide nominated:
-        # what settled this is the run, and the run knows its own template
-        won_by = _passing_template(winners[0]) or law
+    if not elections:
         return (
-            f"<p class='derived'><strong>Identified.</strong> The {escape(won_by)} law "
-            f"passed on {_claim_link(winners[0].claim, label=_binding_name(winners[0].claim))}"
-            f"{felled}.</p>"
+            '<p class="empty">No role-binding candidates yet.</p>'
         )
-    if column:
-        # The confusion this section exists to end: the candidate claims of a
-        # slot field stay `proposed` — no check ever tested one on its own —
-        # and yet the field IS answered. Say both, in that order.
-        return (
-            f"<p class='derived'><strong>Answered — without anyone being "
-            f"asked.</strong> The {escape(law)} law of <code>{escape(owner)}</code> "
-            f"passed while reading <code>{escape(column)}</code>, and that run "
-            "is the answer.</p>"
-            "<p class='fine'>No check tests this field on its own, so its "
-            "candidates below all still read <em>proposed</em> — nothing can "
-            "prove by arithmetic what a single column <em>means</em>. What "
-            "settles it is that the law judging the whole object consumed this "
-            "column and held.</p>"
-        )
-    if cards:
-        # the drafted clarification question is the outcome, whatever kept a law from
-        # electing — checked-and-lost, unbindable, or a clarification-decided role
-        return "".join(
-            f"<p class='derived'><strong>Open — a human has to answer it.</strong> "
-            f"{_question_link(card)}</p>"
-            for card in cards
-        )
-    if not any(fact.checks for fact in candidates):
-        return (
-            "<p class='muted'><strong>Not decided yet:</strong> no invariant check "
-            "bound and no clarification question drafted — binding is still in flight.</p>"
-        )
-    return (
-        "<p class='muted'>No winner — every tested candidate lost, and no clarification question "
-        "is drafted yet (run role resolution).</p>"
+    return "".join(
+        _render_election(election) for election in elections
     )
 
 
-def _passing_template(fact: ClaimFacts) -> str:
-    """The template of the check that actually passed on this candidate."""
-    plans = {check.id: check for check in fact.checks}
-    for record in fact.evidence:
-        if (record.type is EvidenceType.CHECK_RESULT
-                and record.verdict is CheckVerdict.PASS
-                and not record.stale):
-            plan = plans.get(record.check_plan_id or "")
-            if plan:
-                return plan.template
-    return ""
+def _render_election(election: projection.ElectionView) -> str:
+    of_object = (
+        " <span class='fine'>field of "
+        f"<code>{escape(election.owner)}</code></span>"
+        if election.owner
+        else ""
+    )
+    for_scope = (
+        f" <span class='fine'>for "
+        f"{escape(election.scope)}</span>"
+        if election.scope
+        else ""
+    )
+    said = (
+        f"<blockquote class='quote'>{escape(election.definition)}"
+        "<cite>— what the domain guide says this is</cite>"
+        "</blockquote>"
+        if election.definition
+        else ""
+    )
+    outcome = "".join(
+        f"<p class='{escape(css)}'>{_render_rich(text)}</p>"
+        for css, text in election.outcome.paragraphs
+    )
+    rows = "".join(
+        _render_candidate(candidate)
+        for candidate in election.candidates
+    )
+    return (
+        f"<div class='election"
+        f"{' guide-field' if election.field else ''}'>"
+        f"<h3><code>{escape(election.role)}</code>{of_object}"
+        f"{for_scope} <span class='muted'>"
+        f"{election.candidate_count} candidate"
+        f"{'s' if election.candidate_count != 1 else ''}"
+        f"{' · ' + escape(election.path_note) if election.path_note else ''}"
+        f"</span></h3>{said}{outcome}{rows}</div>"
+    )
 
 
-def _binding_name(claim: Claim) -> str:
-    """The elected candidate, named as the thing it is."""
-    binding = getattr(claim, "binding", None)
-    if isinstance(binding, dict) and binding.get("table"):
-        return str(binding["table"])
-    return _candidate_name(claim)
-
-
-def _render_candidate(fact: ClaimFacts, won: bool, consumed: str = "") -> str:
-    css = "winner" if won else ("loser" if fact.derived is ClaimStatus.CONTRADICTED else "")
+def _render_candidate(
+    candidate: projection.ElectionCandidateView,
+) -> str:
     reasons = "".join(
-        f"<div class='fine'>felled by <code>{escape(template)}</code>"
-        + (f" <span class='muted'>({escape(domain)} law)</span>" if domain else "")
-        + f" — {detail}</div>"
-        for template, domain, detail in _defeats(fact)
+        f"<div class='fine'>{_render_rich(reason)}</div>"
+        for reason in candidate.reasons
     )
-    if not fact.checks and fact.no_check_reason:
-        reasons += (
-            f"<div class='fine'>never tested — {escape(fact.stage)}: "
-            f"{escape(fact.no_check_reason)}</div>"
-        )
-    binding = getattr(fact.claim, "binding", None)
-    if consumed and isinstance(binding, dict) and consumed in binding.values():
-        # this is the one the law actually read — say so where the eye is,
-        # next to the row that still reads `proposed`
-        css = css or "winner"
-        reasons = (
-            "<div class='fine'><strong>The passing run consumed this column</strong> "
-            "— the object's law held while reading it.</div>"
-        ) + reasons
     return (
-        f"<div class='cand {css}'>"
-        f"<div>{_claim_link(fact.claim, label=_candidate_name(fact.claim))} "
-        f"{_status_badge(fact.derived.value)}</div>"
+        f"<div class='cand {escape(candidate.css)}'>"
+        f"<div>{_render_link(candidate.link)} "
+        f"{_status_badge(candidate.status)}</div>"
         f"{reasons}</div>"
     )
 
 
-def _defeats(fact: ClaimFacts) -> list[tuple[str, str, str]]:
-    """(template, domain, human detail) for every failing check on this claim."""
-    checks = {check.id: check for check in fact.checks}
-    out = []
-    for record in fact.evidence:
-        if record.type is not EvidenceType.CHECK_RESULT or record.verdict is not CheckVerdict.FAIL:
-            continue
-        check = checks.get(record.check_plan_id or "")
-        template = check.template if check else "unknown template"
-        spec = REGISTRY.get(template)
-        detail = _population_text(record)
-        out.append((template, (spec.domain if spec else None) or "", detail))
-    return out
+def _render_question_section(
+    card: projection.QuestionView, rel: str
+) -> str:
+    """A question, then the candidates as a list — never as prose.
 
+        The options used to be flattened into the question text itself; they are
+        the claims the card already links, and a list of bindings written out as
+        a sentence is the least readable form of that data.
 
-def _population_text(record: EvidenceRecord) -> str:
-    if record.exception_count is None or record.population is None:
-        return "check failed"
+        Whether the list is a *choice* is not read off the question's wording —
+        it is read off the guide: only a role the guide sends to the humans
+        (`decided_by: clarification`) is answered by picking one. A role whose
+        law could never be applied is asking for knowledge, not for a pick.
+    """
+    if card.mode == "bindings":
+        rows = "".join(
+            f"<li>{_render_binding(option)} "
+            f"{_render_link(option.link)}</li>"
+            for option in card.options
+        )
+        picks = (
+            f"<p class='muted'>{escape(card.lead)}</p>"
+            f"<ul class='picks'>{rows}</ul>"
+        )
+    elif card.mode == "claims":
+        rows = "".join(
+            f"<li>{_render_link(option.link)} "
+            f"{_status_badge(option.status)}</li>"
+            for option in card.options
+        )
+        picks = (
+            f"<p class='muted'>{escape(card.lead)}</p>"
+            f"<ul class='picks'>{rows}</ul>"
+        )
+    else:
+        picks = f"<p class='empty'>{escape(card.lead)}</p>"
     return (
-        f"{record.exception_count:,} exception"
-        f"{'s' if record.exception_count != 1 else ''} in {record.population:,} rows"
+        f'<div class="question-card" id="question-{escape(card.id)}">'
+        f"<h3>{escape(card.question)}</h3>{picks}"
+        f"{_provenance(rel, card.provenance)}"
+        f"{_technical(card.details)}</div>"
     )
 
 
-def _project_line(
-    store: ProjectStore, sources: list[Source], profiles: list[DataProfile], candidates: int
+def _render_binding(
+    option: projection.QuestionOptionView,
+) -> str:
+    if option.binding_kind == "column":
+        return _column_link(option.binding)
+    if option.binding_kind == "table":
+        return _table_link(option.binding)
+    return f"<code>{escape(option.binding)}</code>"
+
+
+def _render_answered_question(
+    card: projection.AnsweredQuestionView, rel: str
+) -> str:
+    """An answered card, with what settled it.
+
+        Kept rather than dropped, for the same reason a waiver is kept: the
+        question that had to be asked, and the answer that closed it, are part
+        of how this landscape came to be understood.
+    """
+    answers = "".join(
+        f"<li>{_render_link(item.link)} "
+        f"<span class='muted'>{escape(item.status)}</span></li>"
+        for item in card.settled
+    )
+    return (
+        f'<div class="question-card answered" '
+        f'id="question-{escape(card.id)}">'
+        f"<h3>{escape(card.question)}</h3>"
+        f"<p class='derived'><strong>"
+        f"{escape(card.summary.split('. ', 1)[0] + '.')}</strong> "
+        f"{escape(card.summary.split('. ', 1)[1])}</p>"
+        f"<ul class='picks'>{answers}</ul>"
+        f"{_provenance(rel, card.provenance)}</div>"
+    )
+
+
+def _render_matrix_summary(view: projection.MatrixView) -> str:
+    if not view.found:
+        return '<p class="muted">No candidate matrix found.</p>'
+    warnings = "".join(
+        f"<li>{escape(warning)}</li>" for warning in view.warnings
+    )
+    warning_html = (
+        f"<ul class='list'>{warnings}</ul>" if warnings else ""
+    )
+    return f"<p>{escape(view.summary)}</p>{warning_html}"
+
+
+def _render_source_index_card(
+    source: projection.SourceView,
 ) -> str:
     return (
-        f"{len(sources)} sources · {len(profiles)} column profiles · {candidates} candidate "
-        f"overlaps · {len(store.checks)} checks · {len(store.evidence)} evidence records."
+        f'<div class="claim-card"><a href="#source-{escape(source.id)}">'
+        f"<strong>{escape(source.name)}</strong></a>"
+        f"<div class='muted'>{escape(source.kind)} · "
+        f"{source.profile_count} columns profiled</div></div>"
     )
 
 
-def _status_options() -> str:
-    return "".join(
-        f'<option value="{status.value}">{status.value}</option>'
-        for status in ClaimStatus
-    )
-
-
-def _predicate_options(claims: list[Claim]) -> str:
-    names = sorted({claim.predicate.name for claim in claims if claim.predicate})
-    return "".join(f'<option value="{escape(n)}">{escape(n)}</option>' for n in names)
-
-
-def _role_options(claims: list[Claim]) -> str:
-    roles = sorted(
-        {claim.role for claim in claims if isinstance(claim, MappingClaim)}
-    )
-    return "".join(f'<option value="{escape(r)}">{escape(r)}</option>' for r in roles)
-
-
-
-
-def _render_matrix_summary(matrix: dict, warning_html: str) -> str:
-    if not matrix:
-        return '<p class="muted">No candidate matrix found.</p>'
-    summary = (
-        f"{len(matrix.get('candidates', []))} candidate overlaps, "
-        f"{matrix.get('pairs_examined', 0)} pairs examined, "
-        f"threshold {matrix.get('threshold', 'n/a')}."
-    )
-    warnings = (
-        f"<ul class='list'>{warning_html}</ul>" if warning_html else ""
-    )
-    return f"<p>{escape(summary)}</p>{warnings}"
-
-
-def _render_claim_index_card(fact: ClaimFacts) -> str:
-    claim = fact.claim
-    predicate = claim.predicate.name if claim.predicate else ""
-    role = claim.role if isinstance(claim, MappingClaim) else ""
-    search = " ".join(
-        filter(None, [claim.statement, fact.derived.value, predicate, role])
-    ).lower()
-    hint = " · ".join(filter(None, [
-        f"predicate: {predicate}" if predicate else "",
-        f"role: {role}" if role else "",
-        STAGE_LABELS[fact.stage] if fact.stage != "bound" else "",
-    ]))
+def _render_source_section(
+    source: projection.SourceView,
+) -> str:
+    claims = "".join(
+        f"<li>{_render_link(item.link)} "
+        f"{_status_badge(item.status)}</li>"
+        for item in source.claims
+    ) or '<li class="empty">No claims attach this source directly.</li>'
+    tables = "".join(
+        _render_table_section(table) for table in source.tables
+    ) or '<p class="empty">No profiled tables for this source.</p>'
     return (
-        f'<div class="claim-card" data-claim-card data-status="{escape(fact.derived.value)}" '
-        f'data-stage="{escape(fact.stage)}" data-executed="{"yes" if fact.executed else "no"}" '
-        f'data-predicate="{escape(predicate)}" data-role="{escape(role)}" '
-        f'data-search="{escape(search)}">'
-        f'<div><a href="#claim-{escape(claim.id)}"><strong>{escape(_short_id(claim.id))}</strong></a> '
-        f'{_status_badge(fact.derived.value)}</div>'
-        f'<div>{escape(_claim_title(claim))}</div>'
-        f'{f"<div class=\"muted\">{escape(hint)}</div>" if hint else ""}'
-        "</div>"
+        f'<div class="mini-card" id="source-{escape(source.id)}">'
+        f"<h3>{escape(source.name)}</h3>"
+        f"{_definition_list(source.details)}"
+        f"<h4>Claims touching this source</h4>"
+        f"<ul class='list'>{claims}</ul>{tables}</div>"
+    )
+
+
+def _render_orphan_profiles(
+    tables: tuple[projection.TableView, ...],
+) -> str:
+    body = "".join(_render_table_section(table) for table in tables)
+    return (
+        "<div class='mini-card'><h3>Profiles with missing "
+        f"sources</h3>{body}</div>"
+    )
+
+
+def _render_table_section(table: projection.TableView) -> str:
+    declarations = "".join(
+        f"<li>{_render_link(item.link)} — "
+        f"{escape(item.payload)}</li>"
+        for item in table.declarations
+    ) or '<li class="empty">No table-level declarations.</li>'
+    columns = "".join(
+        _render_column_card(column) for column in table.columns
+    )
+    return (
+        f'<div class="mini-card" id="table-{escape(table.name)}">'
+        f"<h4>{_table_link(table.name)}</h4>"
+        f"<ul class='list'>{declarations}</ul>{columns}</div>"
+    )
+
+
+def _render_column_card(column: projection.ColumnView) -> str:
+    declarations = "".join(
+        f"<li>{_render_link(item.link)} — "
+        f"{escape(item.payload)}</li>"
+        for item in column.declarations
+    ) or '<li class="empty">No column-level declarations.</li>'
+    roles = "".join(
+        f"<li>{_render_link(item.link)} "
+        f"{_status_badge(item.status)}</li>"
+        for item in column.role_bindings
+    ) or '<li class="empty">No role bindings target this column.</li>'
+    candidates = "".join(
+        f"<li>{_column_link(item.other)} "
+        f"<span class='muted'>containment "
+        f"{escape(item.containment)}, overlap "
+        f"{escape(item.overlap)}</span></li>"
+        for item in column.candidates
+    ) or '<li class="empty">No candidate overlaps.</li>'
+    return (
+        f'<div class="column-card" id="column-{escape(column.key)}">'
+        f"<h5>{_column_link(column.key)}</h5>"
+        f"{_definition_list(column.details)}"
+        f"<h6>Declarations</h6><ul class='list'>"
+        f"{declarations}</ul>"
+        f"<h6>Candidate overlaps</h6><ul class='list'>"
+        f"{candidates}</ul>"
+        f"<h6>Role-binding claims</h6><ul class='list'>"
+        f"{roles}</ul></div>"
+    )
+
+
+def _render_claim_index_card(
+    view: projection.ClaimIndexView,
+) -> str:
+    return (
+        f'<div class="claim-card" data-claim-card '
+        f'data-status="{escape(view.derived_status)}" '
+        f'data-stage="{escape(view.stage)}" '
+        f'data-executed="{"yes" if view.executed else "no"}" '
+        f'data-predicate="{escape(view.predicate)}" '
+        f'data-role="{escape(view.role)}" '
+        f'data-search="{escape(view.search)}">'
+        f'<div><a href="#claim-{escape(view.id)}"><strong>'
+        f"{escape(view.short_id)}</strong></a> "
+        f"{_status_badge(view.derived_status)}</div>"
+        f"<div>{escape(view.title)}</div>"
+        + (
+            f'<div class="muted">{escape(view.hint)}</div>'
+            if view.hint
+            else ""
+        )
+        + "</div>"
     )
 
 
 def _render_claim_section(
-    fact: ClaimFacts,
-    *,
-    store: ProjectStore,
-    questions_by_claim: dict[str, list[ClarificationQuestion]],
-    reverse_depends: dict[str, list[Claim]],
-    reverse_derived: dict[str, list[Claim]],
-    declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
-    rel: str = "",
-    rationale: str | None = None,
+    claim: projection.ClaimView, rel: str
 ) -> str:
-    claim = fact.claim
-    evidence = fact.evidence
-    resolved = fact.derived
-    checks = fact.checks
-    sources = [store.sources[sid] for sid in claim.source_ids if sid in store.sources]
-    fingerprints = _source_fingerprint_names(evidence)
-    source_links = [f"<li>{_source_link(source)}</li>" for source in sources]
-    for name in fingerprints:
-        matched = next((source for source in store.sources.values() if source.name == name), None)
-        if matched and matched.id not in claim.source_ids:
-            source_links.append(
-                f"<li>{_source_link(matched)} <span class='muted'>(via evidence fingerprint)</span></li>"
-            )
-        elif not matched:
-            source_links.append(f"<li><code>{escape(name)}</code> <span class='muted'>(fingerprint only)</span></li>")
-
-    binding_links = ""
-    if hasattr(claim, "binding") and isinstance(getattr(claim, "binding"), dict):
-        table = claim.binding.get("table")
-        column = claim.binding.get("column")
-        if table and column:
-            key = f"{table}.{column}"
-            binding_links = (
-                f"<p><strong>Bound column:</strong> {_column_link(key)}</p>"
-            )
-        elif table:
-            binding_links = (
-                f"<p><strong>Bound table:</strong> {_table_link(table)}</p>"
-            )
-
-    evidence_html = "".join(
-        _render_evidence_card(record, claim, store.claims, declarations_by_key,
-                              store.checks, rel)
-        for record in evidence
+    evidence = "".join(
+        _render_evidence_card(item, rel) for item in claim.evidence
     ) or '<p class="empty">No evidence attached yet.</p>'
-    rendered_sql = _rendered_sql_by_check_plan(evidence)
-    check_plans_html = "".join(
-        _render_check_plan_card(check, rendered_sql.get(check.id, ""), rel)
-        for check in checks
-    ) or _no_check_html(fact)
-    dependency_html = "".join(
-        f"<li>{_claim_link(dep)} { _status_badge(dep.status.value) }</li>"
-        for dep in (store.claims[dep_id] for dep_id in claim.depends_on if dep_id in store.claims)
-    ) or '<li class="empty">No prerequisites.</li>'
-    reverse_depends_html = "".join(
-        f"<li>{_claim_link(other)} { _status_badge(other.status.value) }</li>"
-        for other in reverse_depends.get(claim.id, [])
-    ) or '<li class="empty">Nothing depends on this claim.</li>'
-    reverse_derived_html = "".join(
-        f"<li>{_claim_link(other)} { _status_badge(other.status.value) }</li>"
-        for other in reverse_derived.get(claim.id, [])
-    ) or '<li class="empty">No escalated child claims.</li>'
-    questions_html = "".join(
-        f"<li>{_question_link(card)}</li>" for card in questions_by_claim.get(claim.id, [])
+    checks = "".join(
+        _render_check_plan_card(check, rel) for check in claim.checks
+    )
+    if not checks:
+        checks = _render_no_check(claim.no_check)
+    dependencies = _render_link_status_list(
+        claim.dependencies, "No prerequisites."
+    )
+    reverse_dependencies = _render_link_status_list(
+        claim.reverse_dependencies,
+        "Nothing depends on this claim.",
+    )
+    derived_children = _render_link_status_list(
+        claim.derived_children, "No escalated child claims."
+    )
+    questions = "".join(
+        f"<li>{_render_link(link)}</li>"
+        for link in claim.questions
     ) or '<li class="empty">No questions rest on this claim.</li>'
-    subtype = _render_subtype_fields(claim)
-    assumptions = _render_list(claim.open_assumptions, empty="No open assumptions.")
-    source_html = f"<ul class='list'>{''.join(source_links)}</ul>" if source_links else '<p class="empty">No sources attached.</p>'
-    lineage = ""
-    if claim.derived_from or claim.derived_from_evidence:
-        parent = store.claims.get(claim.derived_from or "")
-        parent_evidence = store.evidence.get(claim.derived_from_evidence or "")
-        lineage = (
-            "<div class='mini-card'><h4>Escalation provenance</h4>"
-            f"<p><strong>Parent claim:</strong> {(_claim_link(parent) if parent else '<span class=\"empty\">missing</span>')}</p>"
-            f"<p><strong>Parent evidence:</strong> {(_evidence_link(parent_evidence) if parent_evidence else '<span class=\"empty\">missing</span>')}</p>"
-            "</div>"
-        )
-
-    banner = ""
-    if fact.diverges:
-        banner = (
-            f"<div class='banner'><strong>Stored status "
-            f"{_status_badge(claim.status.value)} differs from the status derived "
-            f"from live evidence {_status_badge(resolved.value)}.</strong> The derived "
-            "status is the truth; the stored one is out of date (re-run the sweep).</div>"
-        )
-    proposed = (
-        f"<blockquote class='ai-said'>{escape(claim.statement)}"
-        f"<cite>— as <code>{escape(claim.created_by.value)}</code> wrote it, "
-        "verbatim; a proposal, not a finding</cite></blockquote>"
-        + _definition_list([
-            ("predicate", claim.predicate.name if claim.predicate else "—"),
-            ("params", _json_text(claim.predicate.params) if claim.predicate else "—"),
-            ("proposed by", claim.created_by.value),
-            ("funnel stage", STAGE_LABELS[fact.stage]),
-        ])
+    sources = "".join(
+        _render_claim_source(item) for item in claim.sources
     )
-
+    source_html = (
+        f"<ul class='list'>{sources}</ul>"
+        if sources
+        else '<p class="empty">No sources attached.</p>'
+    )
+    binding = ""
+    if claim.bound_column:
+        binding = (
+            "<p><strong>Bound column:</strong> "
+            f"{_column_link(claim.bound_column)}</p>"
+        )
+    elif claim.bound_table:
+        binding = (
+            "<p><strong>Bound table:</strong> "
+            f"{_table_link(claim.bound_table)}</p>"
+        )
+    lineage = _render_lineage(claim.lineage)
+    banner = (
+        "<div class='banner'><strong>"
+        f"{_render_rich(claim.divergence)}</strong></div>"
+        if claim.divergence
+        else ""
+    )
+    subtype = (
+        _definition_list(claim.subtype_details)
+        if claim.subtype_details is not None
+        else '<p class="empty">Plain claim.</p>'
+    )
     return (
-        f'<div class="claim-detail" data-claim-detail data-claim-id="{escape(claim.id)}" '
-        f'id="claim-{escape(claim.id)}">'
-        f"<h3>{escape(_claim_title(claim))}</h3>"
-        f"<p>{_status_badge(resolved.value)} "
-        f"<span class='muted'>{escape(_headline(fact))}</span></p>"
-        f"{_stage_strip(fact)}"
-        f"{_rationale_block(rationale)}"
-        f"{_provenance(rel, 'claims', claim.id, f'proposed by {claim.created_by.value}', _feeds_text(fact, questions_by_claim, reverse_depends))}"
-        f"{banner}"
-        "<details open><summary>1 · Proposed — what the AI guessed</summary>"
-        f"{proposed}{subtype}</details>"
-        f"<details open><summary>2 · Bound — the checks that were meant to falsify it</summary>"
-        f"{check_plans_html}</details>"
-        f"<details open><summary>3 · Judged — what the data answered</summary>"
-        f"{evidence_html}</details>"
-        "<details><summary>4 · Context — sources, lineage, questions</summary>"
-        "<div class='grid'>"
-        f"<div class='mini-card'><h4>Sources</h4>{source_html}{binding_links}</div>"
-        f"<div class='mini-card'><h4>Questions resting on it</h4><ul class='list'>{questions_html}</ul></div>"
-        f"<div class='mini-card'><h4>Open assumptions</h4>{assumptions}</div>"
-        f"<div class='mini-card'><h4>Depends on</h4><ul class='list'>{dependency_html}</ul></div>"
-        f"<div class='mini-card'><h4>What depends on me</h4><ul class='list'>{reverse_depends_html}</ul></div>"
-        f"<div class='mini-card'><h4>Escalated from me</h4><ul class='list'>{reverse_derived_html}</ul></div>"
+        f'<div class="claim-detail" data-claim-detail '
+        f'data-claim-id="{escape(claim.index.id)}" '
+        f'id="claim-{escape(claim.index.id)}">'
+        f"<h3>{escape(claim.index.title)}</h3>"
+        f"<p>{_status_badge(claim.index.derived_status)} "
+        f"<span class='muted'>{escape(claim.headline)}</span></p>"
+        f"{_render_stage_strip(claim.stage_steps)}"
+        f"{_render_rationale(claim.rationale)}"
+        f"{_provenance(rel, claim.provenance)}{banner}"
+        "<details open><summary>1 · Proposed — what the AI "
+        "guessed</summary>"
+        f"{_render_quote(claim.proposal)}"
+        f"{_definition_list(claim.proposed_details)}"
+        f"{subtype}</details>"
+        "<details open><summary>2 · Bound — the checks that "
+        "were meant to falsify it</summary>"
+        f"{checks}</details>"
+        "<details open><summary>3 · Judged — what the data "
+        f"answered</summary>{evidence}</details>"
+        "<details><summary>4 · Context — sources, lineage, "
+        "questions</summary><div class='grid'>"
+        f"<div class='mini-card'><h4>Sources</h4>{source_html}"
+        f"{binding}</div>"
+        "<div class='mini-card'><h4>Questions resting on it</h4>"
+        f"<ul class='list'>{questions}</ul></div>"
+        "<div class='mini-card'><h4>Open assumptions</h4>"
+        f"{_render_list(claim.assumptions, empty='No open assumptions.')}"
         "</div>"
-        f"{lineage}</details>"
-        "<details><summary>Fine print — ids, timestamps, raw fields</summary>"
-        f"{_definition_list(_claim_fields(claim))}</details>"
+        "<div class='mini-card'><h4>Depends on</h4>"
+        f"<ul class='list'>{dependencies}</ul></div>"
+        "<div class='mini-card'><h4>What depends on me</h4>"
+        f"<ul class='list'>{reverse_dependencies}</ul></div>"
+        "<div class='mini-card'><h4>Escalated from me</h4>"
+        f"<ul class='list'>{derived_children}</ul></div>"
+        f"</div>{lineage}</details>"
+        "<details><summary>Fine print — ids, timestamps, raw "
+        f"fields</summary>{_definition_list(claim.details)}</details>"
         "</div>"
     )
 
 
-def _stage_strip(fact: ClaimFacts) -> str:
-    """How far this claim got, and which step stopped it.
-
-    Four steps, always all four shown: a claim that never reached a step is
-    more informative than one whose missing steps are simply absent.
-    """
-    bound = bool(fact.checks)
-    settled = fact.derived is not ClaimStatus.PROPOSED
-    steps = [
-        ("1 proposed", "done", "the AI wrote it"),
-        ("2 planned", "done" if bound else "stopped",
-         "bound to a check" if bound else STAGE_LABELS[fact.stage]),
-        ("3 judged", "done" if fact.executed else "stopped",
-         "a check ran" if fact.executed else "no check ran"),
-        ("4 settled", "done" if settled else "stopped",
-         f"status {fact.derived.value}" if settled
-         else "still proposed — nothing has spoken for or against it"),
-    ]
+def _render_stage_strip(
+    steps: tuple[projection.StageStepView, ...],
+) -> str:
     return "<div class='strip'>" + "".join(
-        f"<span class='step {state}'>{escape(label)} — {escape(what)}</span>"
-        for label, state, what in steps
+        f"<span class='step {escape(step.state)}'>"
+        f"{escape(step.label)} — {escape(step.explanation)}</span>"
+        for step in steps
     ) + "</div>"
 
 
-def _feeds_text(
-    fact: ClaimFacts,
-    questions_by_claim: dict[str, list[ClarificationQuestion]],
-    reverse_depends: dict[str, list[Claim]],
+def _render_rationale(
+    rationale: projection.QuoteView | str | None,
 ) -> str:
-    """What rests on this claim — the reason a wrong one is expensive."""
-    cards = len(questions_by_claim.get(fact.claim.id, []))
-    dependants = len(reverse_depends.get(fact.claim.id, []))
-    parts = []
-    if cards:
-        parts.append(f"{cards} open question{'s' if cards != 1 else ''} rest"
-                     f"{'' if cards != 1 else 's'} on it")
-    if dependants:
-        parts.append(f"{dependants} claim{'s' if dependants != 1 else ''} depend"
-                     f"{'' if dependants != 1 else 's'} on it")
-    return ", ".join(parts) or "nothing rests on it yet"
-
-
-def _rationale_block(rationale: str | None) -> str:
-    """The model's reason for proposing this — read from the disposable call
-    log, never stored on the claim.
-
-    Why it may be missing is the point, not an accident: a proposal's
-    rationale is not evidence, so it is allowed to fade. What survives is
-    what the checks did with the proposal.
-    """
     if rationale is None:
         return ""
-    if not rationale:
-        return (
-            "<p class='fine'>The AI's reason for proposing this is not in the "
-            "call log. A rationale explains a guess, and a guess is not "
-            "evidence — so nothing stores it, and it is allowed to disappear. "
-            "What survives is what the checks did with the proposal.</p>"
-        )
+    if isinstance(rationale, str):
+        return f"<p class='fine'>{escape(rationale)}</p>"
+    return _render_quote(rationale)
+
+
+def _render_no_check(
+    view: projection.NoCheckView | None,
+) -> str:
+    if view is None:
+        return ""
+    if not view.stage:
+        return f'<p class="empty">{_render_rich(view.explanation)}</p>'
     return (
-        f"<blockquote class='ai-said'>{escape(rationale)}"
-        "<cite>— the AI's reason for proposing this, unverified; read from the "
-        "call log, never stored on the claim</cite></blockquote>"
+        f"<div class='banner'><strong>Not bound — "
+        f"{escape(view.stage)}.</strong> "
+        f"{_render_rich(view.explanation)}"
+        f"<blockquote class='fine'>{escape(view.reason)}"
+        "</blockquote></div>"
     )
 
 
-def _no_check_html(fact: ClaimFacts) -> str:
-    """What stands where the check would have stood: why none was built."""
-    if fact.stage == "unbound":
-        return (
-            '<p class="empty">No check, and no recorded reason — V2 has not run on this '
-            "claim yet.</p>"
-        )
-    who = {
-        "unbindable": "The model declined to bind this claim",
-        "semantic_only": "No check definition can test this claim",
-        "skipped": "Validation rejected the model's binding",
-    }[fact.stage]
-    reason = escape(fact.no_check_reason) if fact.no_check_reason else "no reason recorded"
-    return (
-        f"<div class='banner'><strong>Not bound — {escape(fact.stage)}.</strong> {who}, "
-        f"so nothing ever tested it and it stays <em>proposed</em>."
-        f"<blockquote class='fine'>{reason}</blockquote></div>"
+def _render_check_plan_card(
+    check: projection.CheckView, rel: str
+) -> str:
+    domain_badge = (
+        '<span class="badge status-business-confirmed">'
+        f"{escape(check.domain)} law</span>"
+        if check.domain
+        else ""
     )
-
-
-def _render_check_plan_card(check: CheckPlan, rendered_sql: str = "",
-                            rel: str = "") -> str:
-    details = [
-        ("id", check.id),
-        ("template", check.template),
-        ("created_at", check.created_at.isoformat()),
-        ("params", _json_text(check.params)),
-    ]
-    if check.roles:
-        details.insert(2, ("roles", ", ".join(check.roles)))
-    spec = REGISTRY.get(check.template)
-    domain_badge = ""
-    if spec is not None:
-        if spec.domain:
-            domain_badge = (
-                f'<span class="badge status-business-confirmed">{escape(spec.domain)} law</span>'
-            )
-        if spec.tolerances:
-            details.append(("default tolerances", _json_text(spec.tolerances)))
     return (
         f'<div class="evidence-card" id="check-{escape(check.id)}">'
-        f"<div><a href=\"#check-{escape(check.id)}\"><strong>{escape(_short_id(check.id))}</strong></a> "
+        f'<div><a href="#check-{escape(check.id)}"><strong>'
+        f"{escape(check.short_id)}</strong></a> "
         f"<code>{escape(check.template)}</code> {domain_badge}</div>"
-        f"<p class='derived'>{escape(_check_sentence(check, spec))}</p>"
-        f"{_render_rendered_sql(rendered_sql)}"
-        f"{_provenance(rel, 'checks', check.id, 'planned by the AI, run by the engine')}"
-        f"{_technical(details)}"
-        "</div>"
-    )
-
-
-def _check_sentence(check: CheckPlan, spec) -> str:
-    """What this check tries to break — the definition's own words."""
-    if spec is not None and spec.tests:
-        return " ".join(spec.tests.split())
-    return (
-        f"A test of type '{check.template}': if the data breaks it, the rows "
-        "that break it are the refutation."
+        f"<p class='derived'>{escape(check.sentence)}</p>"
+        f"{_render_rendered_sql(check.rendered_sql)}"
+        f"{_provenance(rel, check.provenance)}"
+        f"{_technical(check.details)}</div>"
     )
 
 
 def _render_rendered_sql(sql: str) -> str:
     """The exact question that was asked of the data — the SQL the engine ran.
 
-    The rendered SQL is not on the CheckPlan; the runner puts it on the payload of the
-    check-result evidence it writes (`payload['sql']`). Until a check has run there
-    is nothing to show — a check is a question that was asked, not one that could be.
+        The rendered SQL is not on the CheckPlan; the runner puts it on the payload of the
+        check-result evidence it writes (`payload['sql']`). Until a check has run there
+        is nothing to show — a check is a question that was asked, not one that could be.
     """
     if not sql:
         return (
-            "<p class='fine'>No rendered SQL yet — this check has not been run, so no "
-            "question has actually been put to the data.</p>"
+            "<p class='fine'>No rendered SQL yet — this check has "
+            "not been run, so no question has actually been put to "
+            "the data.</p>"
         )
     open_attr = " open" if sql.count("\n") < 12 else ""
     return (
-        f"<details class='sql'{open_attr}><summary>Rendered SQL — the question that was "
-        f"asked of the data</summary><pre><code>{escape(sql)}</code></pre></details>"
+        f"<details class='sql'{open_attr}><summary>Rendered SQL — "
+        "the question that was asked of the data</summary>"
+        f"<pre><code>{escape(sql)}</code></pre></details>"
     )
-
-
-def _rendered_sql_by_check_plan(evidence: list[EvidenceRecord]) -> dict[str, str]:
-    """check id → the rendered SQL its result recorded (latest run wins)."""
-    out: dict[str, str] = {}
-    for record in evidence:
-        if record.type is not EvidenceType.CHECK_RESULT or not record.check_plan_id:
-            continue
-        sql = str(record.payload.get("sql", "")) if record.payload else ""
-        if sql:
-            out[record.check_plan_id] = sql
-    return out
-
-
-def _claim_fields(claim: Claim) -> list[tuple[str, str]]:
-    return [
-        ("id", claim.id),
-        ("created_by", claim.created_by.value),
-        ("created_at", claim.created_at.isoformat()),
-        ("status", claim.status.value),
-        ("predicate", _json_text(claim.predicate.model_dump(mode="json")) if claim.predicate else "—"),
-        ("scope", _json_text(claim.scope.model_dump(mode="json")) if claim.scope else "—"),
-        ("validity", _json_text(claim.validity.model_dump(mode="json")) if claim.validity else "—"),
-    ]
-
-
-def _render_subtype_fields(claim: Claim) -> str:
-    items = []
-    if hasattr(claim, "term"):
-        items.append(("term", getattr(claim, "term")))
-    if hasattr(claim, "definition"):
-        items.append(("definition", getattr(claim, "definition")))
-    if hasattr(claim, "role"):
-        items.append(("role", getattr(claim, "role")))
-    if hasattr(claim, "binding"):
-        items.append(("binding", _json_text(getattr(claim, "binding"))))
-    if not items:
-        return '<p class="empty">Plain claim.</p>'
-    return _definition_list(items)
 
 
 def _render_evidence_card(
-    record: EvidenceRecord,
-    claim: Claim,
-    claims: dict[str, Claim],
-    declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
-    checks: dict[str, CheckPlan],
-    rel: str = "",
+    record: projection.EvidenceView, rel: str
 ) -> str:
-    details = [
-        ("id", record.id),
-        ("type", record.type.value),
-        ("actor", record.actor.value),
-        ("created_at", record.created_at.isoformat()),
-        ("stale", str(record.stale).lower()),
-    ]
-    if record.claim_id:
-        linked = claims.get(record.claim_id)
-        details.append(("claim", linked.statement if linked else record.claim_id))
-    if record.type is EvidenceType.CHECK_RESULT:
-        details.extend([
-            ("verdict", record.verdict.value if record.verdict else "—"),
-            ("population", str(record.population) if record.population is not None else "—"),
-            ("exception_count", str(record.exception_count) if record.exception_count is not None else "—"),
-            (
-                "exception_rate",
-                f"{record.exception_rate():.2%}" if record.exception_rate() is not None else "—",
-            ),
-            ("result_ref", record.result_ref or "—"),
-        ])
-    if record.type is EvidenceType.CONFIRMATION:
-        details.append(("mirror_loop_scope", "explicit" if record.scope and record.scope.is_explicit() else "not explicit"))
-    if record.scope:
-        details.append(("scope", _json_text(record.scope.model_dump(mode="json"))))
-    if record.statement:
-        details.append(("statement", record.statement))
-    if record.source_fingerprints:
-        details.append(("source_fingerprints", _json_text(record.source_fingerprints)))
-    if record.payload:
-        details.append(("payload", _json_text(record.payload)))
-    samples = ""
-    if record.exception_samples:
-        rows = "".join(
-            "<tr>" + "".join(f"<td>{escape(_stringify(value))}</td>" for value in sample.values()) + "</tr>"
-            for sample in record.exception_samples
+    badge = (
+        _verdict_badge(record.badge_value)
+        if record.badge_kind == "verdict"
+        else _type_badge(record.badge_value)
+    )
+    check = ""
+    if record.check_link:
+        check = (
+            "<p><strong>Produced by check:</strong> "
+            f"<a href='#check-{escape(record.check_link.reference.id)}'>"
+            f"<code>{escape(record.check_template)}</code> "
+            f"{escape('…' + record.check_link.reference.id[-6:])}"
+            "</a></p>"
         )
-        head = "".join(f"<th>{escape(key)}</th>" for key in record.exception_samples[0].keys())
+    samples = ""
+    if record.sample_headers:
+        head = "".join(
+            f"<th>{escape(value)}</th>"
+            for value in record.sample_headers
+        )
+        rows = "".join(
+            "<tr>"
+            + "".join(
+                f"<td>{escape(value)}</td>" for value in row
+            )
+            + "</tr>"
+            for row in record.sample_rows
+        )
         samples = (
             "<div><strong>Exception samples</strong>"
-            f"<table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>"
+            f"<table><thead><tr>{head}</tr></thead>"
+            f"<tbody>{rows}</tbody></table></div>"
         )
-    check_plan_hint = ""
-    if record.check_plan_id:
-        check = checks.get(record.check_plan_id)
-        if check:
-            check_plan_hint = (
-                f"<p><strong>Produced by check:</strong> "
-                f"<a href='#check-{escape(check.id)}'><code>{escape(check.template)}</code> "
-                f"{escape(_short_id(check.id))}</a></p>"
+    declaration = ""
+    if record.touched_table:
+        declaration = (
+            "<p><strong>Touches:</strong> "
+            f"{_table_link(record.touched_table)}"
+            + (
+                " / "
+                f"{_column_link(record.touched_table + '.' + record.touched_column)}"
+                if record.touched_column
+                and record.touched_column != "*"
+                else ""
             )
-        else:
-            details.append(("check_plan_id", f"{record.check_plan_id} (not persisted)"))
-    declaration_hint = ""
-    if record.type is EvidenceType.DECLARATION:
-        source = str(record.payload.get("source", ""))
-        table = str(record.payload.get("table", ""))
-        column = str(record.payload.get("column", ""))
-        key = (source, table, column)
-        if table:
-            declaration_hint = (
-                f"<p><strong>Touches:</strong> {_table_link(table)}"
-                + (f" / {_column_link(f'{table}.{column}')}" if column and column != "*" else "")
-                + "</p>"
-            )
-        siblings = declarations_by_key.get(key, [])
-        if len(siblings) > 1:
-            declaration_hint += (
-                f"<p class='muted'>{len(siblings)} declaration records exist for this same source/table/column.</p>"
-            )
-    verdict_badge = (
-        _verdict_badge(record.verdict.value) if record.verdict else _type_badge(record.type.value)
-    )
-    return (
-        f'<div class="evidence-card" id="evidence-{escape(record.id)}">'
-        f"<div><a href=\"#evidence-{escape(record.id)}\"><strong>{escape(_short_id(record.id))}</strong></a> {verdict_badge}</div>"
-        f"<p class='derived'>{escape(_evidence_sentence(record))}</p>"
-        f"{_evidence_voice(record)}"
-        f"{check_plan_hint}"
-        f"{samples}"
-        f"{declaration_hint}"
-        f"{_provenance(rel, 'evidence', record.id, _evidence_author(record))}"
-        f"{_technical(details)}"
-        "</div>"
-    )
-
-
-def _evidence_sentence(record: EvidenceRecord) -> str:
-    """What this record says, derived from what it holds — never from prose."""
-    if record.type is EvidenceType.CHECK_RESULT:
-        counted = _population_text(record)
-        rate = record.exception_rate()
-        share = f" ({rate:.2%} of the rows)" if rate else ""
-        if record.verdict is CheckVerdict.PASS:
-            rows = f"{record.population:,} rows" if record.population is not None else "the rows it read"
-            return f"The check ran and found nothing to refute the claim — {rows} examined, no exceptions."
-        if record.verdict is CheckVerdict.FAIL:
-            return f"The check refuted the claim: {counted}{share}."
-        return f"The check could not decide: {counted}."
-    if record.type is EvidenceType.CONFIRMATION:
-        return "A human confirmed this claim. Human confirmation can promote a claim; that is why it is recorded with its scope."
-    if record.type is EvidenceType.TESTIMONIAL:
-        return "A human stated this, in their own words. It is recorded verbatim, as evidence — not rewritten."
-    if record.type is EvidenceType.DOCUMENT_ANCHOR:
-        return "A passage in a document was located and recorded, with the place it was found."
-    return "A recorded processing decision. It carries no verdict and promotes nothing — it exists so that nothing happens silently."
-
-
-def _evidence_voice(record: EvidenceRecord) -> str:
-    """The human's words verbatim; the machine's words attributed to it.
-
-    A statement is shown because it is legible, never because it decides:
-    the derived sentence above already said what this record does.
-    """
-    said = (record.statement or "").strip()
-    if not said and record.type is EvidenceType.DECLARATION:
-        said = str((record.payload or {}).get("reason", "")).strip()
-    if not said:
-        return ""
-    if record.actor is Actor.HUMAN:
-        return (
-            f"<blockquote class='quote'>{escape(said)}"
-            f"<cite>— stated by a human, verbatim</cite></blockquote>"
+            + "</p>"
+        )
+    if record.sibling_declarations:
+        declaration += (
+            f"<p class='muted'>{record.sibling_declarations} "
+            "declaration records exist for this same "
+            "source/table/column.</p>"
         )
     return (
-        f"<blockquote class='ai-said'>{escape(said)}"
-        f"<cite>— recorded by <code>{escape(record.actor.value)}</code>, "
-        "unverified: it explains, it does not decide</cite></blockquote>"
+        f'<div class="evidence-card" '
+        f'id="evidence-{escape(record.id)}">'
+        f'<div><a href="#evidence-{escape(record.id)}"><strong>'
+        f"{escape(record.short_id)}</strong></a> {badge}</div>"
+        f"<p class='derived'>{escape(record.sentence)}</p>"
+        f"{_render_quote(record.voice) if record.voice else ''}"
+        f"{check}{samples}{declaration}"
+        f"{_provenance(rel, record.provenance)}"
+        f"{_technical(record.details)}</div>"
     )
 
 
-def _evidence_author(record: EvidenceRecord) -> str:
-    who = {
-        Actor.AI: "written by the AI — structurally unable to promote a claim",
-        Actor.CHECK: "written by the engine that ran the check",
-        Actor.HUMAN: "written by a human",
-        Actor.SYSTEM: "written by the system",
-    }
-    return who.get(record.actor, f"written by {record.actor.value}")
-
-
-def _render_answered_question(card: ClarificationQuestion,
-                              claims: dict[str, Claim], rel: str) -> str:
-    """An answered card, with what settled it.
-
-    Kept rather than dropped, for the same reason a waiver is kept: the
-    question that had to be asked, and the answer that closed it, are part
-    of how this landscape came to be understood.
-    """
-    settled = settling_claims(card, claims)
-    answers = "".join(
-        f"<li>{_claim_link(claim, label=_claim_title(claim))} "
-        f"<span class='muted'>{escape(claim.status.value)}</span></li>"
-        for claim in settled
-    )
-    return (
-        f'<div class="question-card answered" id="question-{escape(card.id)}">'
-        f"<h3>{escape(card.question)}</h3>"
-        f"<p class='derived'><strong>Answered.</strong> Settled by "
-        f"{len(settled)} claim{'s' if len(settled) != 1 else ''}:</p>"
-        f"<ul class='picks'>{answers}</ul>"
-        f"{_provenance(rel, 'questions', card.id, 'no longer open')}"
-        "</div>"
-    )
-
-
-def _render_question_section(
-    card: ClarificationQuestion, claims: dict[str, Claim], rel: str = "",
-    guide: GuideShape | None = None,
+def _render_claim_source(
+    item: projection.LinkStatusView,
 ) -> str:
-    """A question, then the candidates as a list — never as prose.
-
-    The options used to be flattened into the question text itself; they are
-    the claims the card already links, and a list of bindings written out as
-    a sentence is the least readable form of that data.
-
-    Whether the list is a *choice* is not read off the question's wording —
-    it is read off the guide: only a role the guide sends to the humans
-    (`decided_by: clarification`) is answered by picking one. A role whose
-    law could never be applied is asking for knowledge, not for a pick.
-    """
-    options = [claims[cid] for cid in card.claim_ids if cid in claims]
-    competing = [c for c in options if isinstance(c, MappingClaim)]
-    roles = {c.role for c in competing}
-    if len(options) > 1 and len(competing) == len(options):
-        rows = "".join(
-            f"<li>{_binding_label(claim)} "
-            f"{_claim_link(claim, label='why this one?')}</li>"
-            for claim in sorted(options, key=_binding_sort_key)
-        )
-        a_choice = (
-            len(roles) == 1 and guide is not None
-            and guide.decided_by.get(next(iter(roles))) == "clarification"
-        )
-        lead = (
-            f"Pick one — {len(options)} candidates were proposed:" if a_choice
-            else f"The {len(options)} candidates that were proposed for it — "
-            "no law could be applied to any of them:"
-        )
-        picks = f"<p class='muted'>{lead}</p><ul class='picks'>{rows}</ul>"
-    elif options:
-        # not a choice: a check said something about these claims and the
-        # answer is knowledge, not a selection
-        rows = "".join(
-            f"<li>{_claim_link(claim)} {_status_badge(claim.status.value)}</li>"
-            for claim in options
-        )
-        picks = (
-            f"<p class='muted'>It is about {len(options)} claim"
-            f"{'s' if len(options) != 1 else ''}:</p>"
-            f"<ul class='picks'>{rows}</ul>"
-        )
+    if item.link.reference.kind:
+        link = _render_link(item.link)
     else:
-        picks = (
-            "<p class='empty'>No claim is attached to this question — it asks "
-            "about something nothing in the data was proposed for.</p>"
-        )
+        link = f"<code>{escape(item.link.label)}</code>"
+    note = (
+        f" <span class='muted'>({escape(item.note)})</span>"
+        if item.note
+        else ""
+    )
+    return f"<li>{link}{note}</li>"
+
+
+def _render_link_status_list(
+    items: tuple[projection.LinkStatusView, ...],
+    empty: str,
+) -> str:
+    return "".join(
+        f"<li>{_render_link(item.link)} "
+        f"{_status_badge(item.status)}</li>"
+        for item in items
+    ) or f'<li class="empty">{escape(empty)}</li>'
+
+
+def _render_lineage(
+    lineage: projection.LineageView | None,
+) -> str:
+    if lineage is None:
+        return ""
+    parent = (
+        _render_link(lineage.parent)
+        if lineage.parent
+        else '<span class="empty">missing</span>'
+    )
+    evidence = (
+        _render_link(lineage.evidence)
+        if lineage.evidence
+        else '<span class="empty">missing</span>'
+    )
     return (
-        f'<div class="question-card" id="question-{escape(card.id)}">'
-        f"<h3>{escape(card.question)}</h3>"
-        f"{picks}"
-        f"{_provenance(rel, 'questions', card.id, 'asked of a human', 'nobody has answered it yet')}"
-        f"{_technical([('id', card.id), ('created_at', card.created_at.isoformat()), ('stale', str(card.stale).lower()), ('scope', card.scope.label() if card.scope and card.scope.is_explicit() else 'whole landscape')])}"
+        "<div class='mini-card'><h4>Escalation provenance</h4>"
+        f"<p><strong>Parent claim:</strong> {parent}</p>"
+        f"<p><strong>Parent evidence:</strong> {evidence}</p>"
         "</div>"
     )
 
 
-def _claim_title(claim: Claim) -> str:
-    """A claim named in one readable line.
-
-    A mapping claim's own statement spells out every part of its binding;
-    that is the machine's phrasing, kept verbatim where the model's words
-    belong, not used as a heading.
-    """
-    if isinstance(claim, MappingClaim):
-        return f"'{claim.role}' is played by {_candidate_name(claim)}"
-    return claim.statement
-
-
-def _candidate_name(claim: Claim) -> str:
-    """The one thing a candidate points at — a column, or else its table.
-
-    A mapping claim's statement spells its whole binding out ("role 'journal'
-    is played by account=…, amount=…, doc_ref=…"). That is the same wall of
-    text as the old question strings; the binding itself is the readable form.
-    """
-    binding = getattr(claim, "binding", None)
-    if not isinstance(binding, dict):
-        return claim.statement
-    table = str(binding.get("table", ""))
-    columns = [str(v) for k, v in sorted(binding.items())
-               if k != "table" and isinstance(v, str) and v]
-    if len(columns) == 1:
-        return columns[0] if "." in columns[0] else f"{table}.{columns[0]}".strip(".")
-    return table or claim.statement
-
-
-def _binding_label(claim: Claim) -> str:
-    """What a candidate points at, linked to where it is profiled."""
-    name = _candidate_name(claim)
-    if name == claim.statement:
-        return f"<code>{escape(name)}</code>"
-    return _column_link(name) if "." in name else _table_link(name)
-
-
-def _binding_sort_key(claim: Claim) -> str:
-    return _candidate_name(claim)
-
-
-def _render_source_index_card(source: Source, profiles: dict[str, list[DataProfile]]) -> str:
-    count = len(profiles.get(source.id, []))
-    return (
-        f'<div class="claim-card"><a href="#source-{escape(source.id)}"><strong>{escape(source.name)}</strong></a>'
-        f"<div class='muted'>{escape(source.kind)} · {count} columns profiled</div></div>"
-    )
-
-
-def _render_source_section(
-    source: Source,
-    profiles: list[DataProfile],
-    claims: list[Claim],
-    declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
-    role_bindings: dict[str, list[Claim]],
-    candidates_by_column: dict[str, list[dict]],
+def _render_list(
+    values: Iterable[object], *, empty: str
 ) -> str:
-    claims_html = "".join(
-        f"<li>{_claim_link(claim)} { _status_badge(claim.status.value) }</li>" for claim in claims
-    ) or '<li class="empty">No claims attach this source directly.</li>'
-    tables: dict[str, list[DataProfile]] = defaultdict(list)
-    for profile in profiles:
-        tables[profile.table].append(profile)
-    table_html = "".join(
-        _render_table_section(
-            source.name,
-            table,
-            columns,
-            declarations_by_key,
-            role_bindings,
-            candidates_by_column,
-        )
-        for table, columns in sorted(tables.items())
-    ) or '<p class="empty">No profiled tables for this source.</p>'
-    return (
-        f'<div class="mini-card" id="source-{escape(source.id)}">'
-        f"<h3>{escape(source.name)}</h3>"
-        f"{_definition_list([('id', source.id), ('kind', source.kind), ('location', source.location), ('fingerprint', _json_text(source.fingerprint))])}"
-        f"<h4>Claims touching this source</h4><ul class='list'>{claims_html}</ul>"
-        f"{table_html}"
-        "</div>"
-    )
-
-
-def _render_orphan_profiles(
-    profiles: list[DataProfile],
-    declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
-    role_bindings: dict[str, list[Claim]],
-    candidates_by_column: dict[str, list[dict]],
-) -> str:
-    tables: dict[str, list[DataProfile]] = defaultdict(list)
-    for profile in profiles:
-        tables[profile.table].append(profile)
-    body = "".join(
-        _render_table_section(
-            "missing-source",
-            table,
-            columns,
-            declarations_by_key,
-            role_bindings,
-            candidates_by_column,
-        )
-        for table, columns in sorted(tables.items())
-    )
-    return f"<div class='mini-card'><h3>Profiles with missing sources</h3>{body}</div>"
-
-
-def _render_table_section(
-    source_name: str,
-    table: str,
-    columns: list[DataProfile],
-    declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
-    role_bindings: dict[str, list[Claim]],
-    candidates_by_column: dict[str, list[dict]],
-) -> str:
-    table_declarations = declarations_by_key.get((source_name, table, "*"), [])
-    declarations_html = "".join(
-        f"<li>{_evidence_link(record)} — {escape(_json_text(record.payload))}</li>"
-        for record in table_declarations
-    ) or '<li class="empty">No table-level declarations.</li>'
-    columns_html = "".join(
-        _render_column_card(
-            source_name,
-            column,
-            declarations_by_key,
-            role_bindings,
-            candidates_by_column,
-        )
-        for column in columns
-    )
-    return (
-        f'<div class="mini-card" id="table-{escape(table)}">'
-        f"<h4>{_table_link(table)}</h4>"
-        f"<ul class='list'>{declarations_html}</ul>"
-        f"{columns_html}"
-        "</div>"
-    )
-
-
-def _render_column_card(
-    source_name: str,
-    profile: DataProfile,
-    declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
-    role_bindings: dict[str, list[Claim]],
-    candidates_by_column: dict[str, list[dict]],
-) -> str:
-    key = f"{profile.table}.{profile.column}"
-    declarations = declarations_by_key.get((source_name, profile.table, profile.column), [])
-    declaration_html = "".join(
-        f"<li>{_evidence_link(record)} — {escape(_json_text(record.payload))}</li>"
-        for record in declarations
-    ) or '<li class="empty">No column-level declarations.</li>'
-    role_html = "".join(
-        f"<li>{_claim_link(claim)} { _status_badge(claim.status.value) }</li>"
-        for claim in role_bindings.get(key, [])
-    ) or '<li class="empty">No role bindings target this column.</li>'
-    candidate_html = "".join(
-        f"<li>{_column_link(other['other'])} "
-        f"<span class='muted'>containment {escape(str(other['containment']))}, overlap {escape(str(other['overlap']))}</span></li>"
-        for other in candidates_by_column.get(key, [])
-    ) or '<li class="empty">No candidate overlaps.</li>'
-    return (
-        f'<div class="column-card" id="column-{escape(key)}">'
-        f"<h5>{_column_link(key)}</h5>"
-        f"{_definition_list([('profile_id', profile.id), ('stats', _json_text(profile.stats))])}"
-        f"<h6>Declarations</h6><ul class='list'>{declaration_html}</ul>"
-        f"<h6>Candidate overlaps</h6><ul class='list'>{candidate_html}</ul>"
-        f"<h6>Role-binding claims</h6><ul class='list'>{role_html}</ul>"
-        "</div>"
-    )
-
-
-def _render_list(values: Iterable[object], *, empty: str) -> str:
     items = list(values)
     if not items:
         return f'<p class="empty">{escape(empty)}</p>'
-    return "<ul class='list'>" + "".join(f"<li>{escape(_stringify(v))}</li>" for v in items) + "</ul>"
+    return "<ul class='list'>" + "".join(
+        f"<li>{escape(str(value))}</li>" for value in items
+    ) + "</ul>"
 
 
-def _definition_list(items: Iterable[tuple[str, str]]) -> str:
+def _definition_list(
+    items: Iterable[tuple[str, str]],
+) -> str:
     rows = []
     for key, value in items:
         rendered = (
             f"<pre>{escape(value)}</pre>"
-            if "\n" in value or value.startswith("{") or value.startswith("[")
+            if "\n" in value
+            or value.startswith("{")
+            or value.startswith("[")
             else escape(value)
         )
-        rows.append(f"<dt>{escape(key)}</dt><dd>{rendered}</dd>")
+        rows.append(
+            f"<dt>{escape(key)}</dt><dd>{rendered}</dd>"
+        )
     return "<dl>" + "".join(rows) + "</dl>"
 
 
 def _status_badge(status: str) -> str:
-    return f'<span class="badge {STATUS_COLORS.get(status, "status-proposed")}">{escape(status)}</span>'
+    return (
+        f'<span class="badge '
+        f'{STATUS_COLORS.get(status, "status-proposed")}">'
+        f"{escape(status)}</span>"
+    )
 
 
 def _verdict_badge(verdict: str) -> str:
-    return f'<span class="badge {VERDICT_COLORS.get(verdict, "verdict-inconclusive")}">{escape(verdict)}</span>'
+    return (
+        f'<span class="badge '
+        f'{VERDICT_COLORS.get(verdict, "verdict-inconclusive")}">'
+        f"{escape(verdict)}</span>"
+    )
 
 
 def _type_badge(kind: str) -> str:
-    return f'<span class="badge status-proposed">{escape(kind)}</span>'
-
-
-def _claim_link(claim: Claim | None, label: str | None = None) -> str:
-    if claim is None:
-        return '<span class="empty">missing claim</span>'
-    text = label or f"{_short_id(claim.id)} — {_claim_title(claim)}"
-    return f'<a href="#claim-{escape(claim.id)}">{escape(text)}</a>'
-
-
-def _evidence_link(record: EvidenceRecord | None) -> str:
-    if record is None:
-        return '<span class="empty">missing evidence</span>'
-    return f'<a href="#evidence-{escape(record.id)}">{escape(_short_id(record.id))} — {escape(record.type.value)}</a>'
-
-
-def _source_link(source: Source) -> str:
-    return f'<a href="#source-{escape(source.id)}">{escape(source.name)}</a>'
-
-
-def _question_link(card: ClarificationQuestion) -> str:
-    """Link on the question itself, not on its id and not on its whole body."""
-    return f'<a href="#question-{escape(card.id)}">{escape(_first_sentence(card.question))}</a>'
-
-
-def _first_sentence(text: str) -> str:
-    """The ask, without the explanation that follows it.
-
-    Questions are written ask-first exactly so this is safe: what follows the
-    first '?' is the guide's definition and what the machine already tried,
-    which belongs on the question card, not in every link to it.
-    """
-    head, mark, _ = " ".join(text.split()).partition("?")
-    return f"{head}{mark}" if mark else head
-
-
-def _table_link(table: str) -> str:
-    return f'<a href="#table-{escape(table)}"><code>{escape(table)}</code></a>'
-
-
-def _column_link(column: str) -> str:
-    return f'<a href="#column-{escape(column)}"><code>{escape(column)}</code></a>'
-
-
-def _headline(fact: ClaimFacts) -> str:
-    """The one line a validator should be able to stop reading after."""
-    if fact.derived is ClaimStatus.PROPOSED and fact.stage != "bound":
-        return f"Never tested — {STAGE_LABELS[fact.stage]}."
-    return _status_rationale(fact.claim, fact.evidence)
-
-
-def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
-    live = [record for record in evidence if not record.stale]
-    check_pass = sum(
-        1 for record in live
-        if record.type is EvidenceType.CHECK_RESULT and record.verdict is CheckVerdict.PASS
+    return (
+        f'<span class="badge status-proposed">'
+        f"{escape(kind)}</span>"
     )
-    check_fail = sum(
-        1 for record in live
-        if record.type is EvidenceType.CHECK_RESULT and record.verdict is CheckVerdict.FAIL
+
+
+def _render_core_terms(
+    glossary: tuple[tuple[str, str], ...],
+) -> str:
+    terms = "".join(
+        f"<dt>{escape(term)}</dt><dd>{escape(text)}</dd>"
+        for term, text in glossary
     )
-    confirmation = sum(1 for record in live if record.type is EvidenceType.CONFIRMATION)
-    testimonial = sum(1 for record in live if record.type is EvidenceType.TESTIMONIAL)
-    parts = []
-    if check_pass:
-        parts.append(f"{check_pass} passing check result{'s' if check_pass != 1 else ''}")
-    if check_fail:
-        parts.append(f"{check_fail} failing check result{'s' if check_fail != 1 else ''}")
-    if confirmation:
-        parts.append(f"{confirmation} confirmation{'s' if confirmation != 1 else ''}")
-    if testimonial:
-        parts.append(f"{testimonial} testimonial{'s' if testimonial != 1 else ''}")
-    trail = ", ".join(parts) if parts else "no live status-bearing evidence"
-    if claim.status is ClaimStatus.UNRESOLVED:
-        why = "Conflict is present: at least one failing check coexists with supporting evidence."
-    elif claim.status is ClaimStatus.CONTRADICTED:
-        why = "At least one failing check is present and no competing supporting evidence remains live."
-    elif claim.status is ClaimStatus.BUSINESS_CONFIRMED:
-        why = "At least one admissible human confirmation is live and no failing check overrides it."
-    elif claim.status is ClaimStatus.TEST_SUPPORTED:
-        why = "At least one passing check is live and no failing check overrides it."
-    else:
-        why = "Nothing stronger than proposed evidence is live yet."
-    return f"{why} Live trail: {trail}."
-
-
-def _short_id(value: str) -> str:
-    # ULIDs are timestamp-first: a whole V1 batch is created in the same
-    # millisecond and shares its leading characters. Only the tail identifies.
-    return f"…{value[-6:]}"
-
-
-def _json_text(value: object) -> str:
-    return json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
-
-
-def _stringify(value: object) -> str:
-    if isinstance(value, (dict, list)):
-        return _json_text(value)
-    return str(value)
-
-
-def _load_candidate_matrix(root: Path) -> dict:
-    path = root / "profiles" / "candidate_matrix.json"
-    if not path.is_file():
-        return {}
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _questions_by_claim(questions: list[ClarificationQuestion]) -> dict[str, list[ClarificationQuestion]]:
-    out: dict[str, list[ClarificationQuestion]] = defaultdict(list)
-    for card in questions:
-        for claim_id in card.claim_ids:
-            out[claim_id].append(card)
-    return out
-
-
-def _reverse_claim_links(claims: list[Claim]) -> tuple[dict[str, list[Claim]], dict[str, list[Claim]]]:
-    reverse_depends: dict[str, list[Claim]] = defaultdict(list)
-    reverse_derived: dict[str, list[Claim]] = defaultdict(list)
-    for claim in claims:
-        for dep in claim.depends_on:
-            reverse_depends[dep].append(claim)
-        if claim.derived_from:
-            reverse_derived[claim.derived_from].append(claim)
-    return reverse_depends, reverse_derived
-
-
-def _declarations_by_key(records: Iterable[EvidenceRecord]) -> dict[tuple[str, str, str], list[EvidenceRecord]]:
-    out: dict[tuple[str, str, str], list[EvidenceRecord]] = defaultdict(list)
-    for record in records:
-        if record.type is not EvidenceType.DECLARATION:
-            continue
-        payload = record.payload or {}
-        key = (
-            str(payload.get("source", "")),
-            str(payload.get("table", "")),
-            str(payload.get("column", "")),
-        )
-        out[key].append(record)
-    return out
-
-
-def _claims_by_source(claims: list[Claim]) -> dict[str, list[Claim]]:
-    out: dict[str, list[Claim]] = defaultdict(list)
-    for claim in claims:
-        for source_id in claim.source_ids:
-            out[source_id].append(claim)
-    return out
-
-
-def _role_bindings_by_column(claims: list[Claim]) -> dict[str, list[Claim]]:
-    out: dict[str, list[Claim]] = defaultdict(list)
-    for claim in claims:
-        binding = getattr(claim, "binding", None)
-        if not isinstance(binding, dict):
-            continue
-        table = binding.get("table")
-        column = binding.get("column")
-        if table and column:
-            out[f"{table}.{column}"].append(claim)
-    return out
-
-
-def _candidates_by_column(matrix: dict) -> dict[str, list[dict]]:
-    out: dict[str, list[dict]] = defaultdict(list)
-    for candidate in matrix.get("candidates", []):
-        left = str(candidate.get("left", ""))
-        right = str(candidate.get("right", ""))
-        if not left or not right:
-            continue
-        left_data = {
-            "other": right,
-            "containment": candidate.get("containment"),
-            "overlap": candidate.get("overlap"),
-        }
-        right_data = {
-            "other": left,
-            "containment": candidate.get("containment"),
-            "overlap": candidate.get("overlap"),
-        }
-        out[left].append(left_data)
-        out[right].append(right_data)
-    for items in out.values():
-        items.sort(key=lambda item: (-float(item["containment"]), -int(item["overlap"]), item["other"]))
-    return out
-
-
-def _profiles_by_source(profiles: list[DataProfile]) -> dict[str, list[DataProfile]]:
-    out: dict[str, list[DataProfile]] = defaultdict(list)
-    for profile in profiles:
-        out[profile.source_id].append(profile)
-    return out
-
-
-def _source_fingerprint_names(records: list[EvidenceRecord]) -> list[str]:
-    names = sorted({name for record in records for name in record.source_fingerprints})
-    return names
-
-
-def _source_name(source: Source | None) -> str:
-    return source.name.lower() if source else ""
+    return (
+        "<details><summary>Core terms — the words this page "
+        "uses, and no synonyms</summary>"
+        f"<dl>{terms}</dl>"
+        "<p class='fine'>Full glossary: "
+        "docs/before-ai-concept.md.</p></details>"
+    )
