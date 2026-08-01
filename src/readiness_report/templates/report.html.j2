@@ -1,0 +1,355 @@
+{%- macro status_badge(status) -%}
+<span class="badge {{ status_colors.get(status, 'status-proposed') }}">{{ status }}</span>
+{%- endmacro -%}
+
+{%- macro verdict_badge(verdict) -%}
+<span class="badge {{ verdict_colors.get(verdict, 'verdict-inconclusive') }}">{{ verdict }}</span>
+{%- endmacro -%}
+
+{%- macro type_badge(kind) -%}
+<span class="badge status-proposed">{{ kind }}</span>
+{%- endmacro -%}
+
+{%- macro rich(value) -%}
+{%- for part in value.parts -%}
+{%- if part.reference %}<a href="#{{ part.reference.kind }}-{{ part.reference.id }}">{% endif -%}
+{%- if part.style == 'status' -%}
+{{ status_badge(part.text) }}
+{%- elif part.style == 'strong' -%}<strong>{{ part.text }}</strong>
+{%- elif part.style == 'em' -%}<em>{{ part.text }}</em>
+{%- elif part.style == 'code' -%}<code>{{ part.text }}</code>
+{%- elif part.style == 'muted' -%}<span class='muted'>{{ part.text }}</span>
+{%- else -%}{{ part.text }}
+{%- endif -%}
+{%- if part.reference %}</a>{% endif -%}
+{%- endfor -%}
+{%- endmacro -%}
+
+{%- macro quote(value) -%}
+<blockquote class='{{ value.css }}'>{{ value.text }}<cite>{{ rich(value.cite) }}</cite></blockquote>
+{%- endmacro -%}
+
+{%- macro link(value, single=false) -%}
+<a href="#{{ value.reference.kind }}-{{ value.reference.id }}">{{ value.label }}</a>
+{%- endmacro -%}
+
+{%- macro table_link(table) -%}
+<a href="#table-{{ table }}"><code>{{ table }}</code></a>
+{%- endmacro -%}
+
+{%- macro column_link(column) -%}
+<a href="#column-{{ column }}"><code>{{ column }}</code></a>
+{%- endmacro -%}
+
+{%- macro yaml_link(reference) -%}
+<a class="yaml" href="{{ store_rel }}{{ reference.kind }}/{{ reference.id }}.yaml">{{ reference.kind }}/…{{ reference.id[-6:] }}.yaml</a>
+{%- endmacro -%}
+
+{%- macro provenance(value) -%}
+{%- set shown = value.notes | select | join(' · ') -%}
+<div class='prov'>{{ shown }}{% if shown %} · {% endif %}{{ yaml_link(value.reference) }}</div>
+{%- endmacro -%}
+
+{%- macro definition_list(items) -%}
+<dl>{%- for key, value in items -%}<dt>{{ key }}</dt><dd>{% if '\n' in value or value.startswith('{') or value.startswith('[') %}<pre>{{ value }}</pre>{% else %}{{ value }}{% endif %}</dd>{%- endfor -%}</dl>
+{%- endmacro -%}
+
+{%- macro technical(items) -%}
+<details class='tech'><summary>Technical details</summary>{{ definition_list(items) }}</details>
+{%- endmacro -%}
+
+{%- macro options(values) -%}
+{%- for value in values -%}<option value="{{ value }}">{{ value }}</option>{%- endfor -%}
+{%- endmacro -%}
+
+{%- macro process_diagram(stages, ghost) -%}
+{%- set flow = namespace(first=true) -%}
+<div class="flow">{%- for stage in stages -%}
+{%- if stage.boundary_before -%}
+{%- if not flow.first %}<div class="arrow" aria-hidden="true">→</div>{% endif -%}
+<div class="boundary"><span>{{ stage.boundary_before }}</span></div>
+{%- set flow.first = false -%}
+{%- endif -%}
+{%- if not flow.first %}<div class="arrow" aria-hidden="true">→</div>{% endif -%}
+<div class="node"><div class="node-step">{{ stage.label }}</div><div class="node-title"><a href="#{{ stage.name }}">{{ stage.title }}</a></div><div class="node-counts">{%- for number, label in stage.counts -%}<a class="node-count" href="#{{ stage.name }}"><strong>{{ number }}</strong> {{ label }}</a>{%- endfor -%}</div><div class="node-actor">{{ stage.actor }}</div></div>
+{%- set flow.first = false -%}
+{%- endfor -%}</div><div class="ghosts"><div class="ghost">{{ rich(ghost) }}</div></div>
+{%- endmacro -%}
+
+{%- macro declared_sources(sources) -%}
+{%- if not sources -%}
+<p class="empty">No sources declared in before-ai.yaml.</p>
+{%- else -%}
+<ul class='list'>{%- for source in sources -%}<li><code>{{ source.name }}</code> ({{ source.kind }}) — {{ source.location }}</li>{%- endfor -%}</ul>
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro guide_entry(entry) -%}
+<details><summary><code>{{ entry.name }}</code> <span class='fine'>{{ entry.decision }}</span></summary><p>{{ entry.definition }}</p></details>
+{%- endmacro -%}
+
+{%- macro domain_guide_panel(guide) -%}
+{%- if guide.state == 'missing' -%}
+<p class="empty">No domain guide declared (llm.domain_guide_file).</p>
+{%- elif guide.state == 'unreadable' -%}
+<p class="empty">Domain guide declared but unreadable: <code>{{ guide.path }}</code></p>
+{%- else -%}
+<p>domain <strong>{{ guide.domain }}</strong>, {{ guide.object_count }} business objects with {{ guide.field_count }} field{% if guide.field_count != 1 %}s{% endif %} — human-written definitions, no system names; each declares its settlement path (how it can ever stop being a guess), and a field can never declare a law<br><code>{{ guide.path }}</code></p>
+{%- for entry in guide.entries -%}{{ guide_entry(entry) }}{%- for field in entry.fields -%}<div class='guide-field'>{{ guide_entry(field) }}</div>{%- endfor -%}{%- endfor -%}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro domain_laws(laws) -%}
+{%- if laws.laws -%}
+<ul class='list'>{%- for law in laws.laws -%}<li><code>{{ law.name }}</code> <span class="badge status-business-confirmed">{{ law.domain }} law</span> — <code>checks/templates/{{ law.file }}</code></li>{%- endfor -%}</ul>
+{%- else -%}
+<p class="empty">{{ rich(laws.empty_message) }}</p>
+{%- endif -%}<p class='fine'>{{ laws.note }}</p>
+{%- endmacro -%}
+
+{%- macro domain_pack(value) -%}
+<p class='muted'>{{ value.intro }}</p><h3>1.1 · Raw data — the source list (human-authored)</h3>{{ declared_sources(value.sources) }}<h3>1.2 · Domain guide — the domain nouns (data, human-curated)</h3>{{ domain_guide_panel(value.guide) }}<h3>1.3 · Domain-law templates — the guardians (code, developer-shipped)</h3>{{ domain_laws(value.laws) }}
+{%- endmacro -%}
+
+{%- macro request_card(request) -%}
+<div class='ready-map' id='request-{{ request.id }}'><blockquote class='quote'>{{ request.question }}<cite>— the business question, as it was asked</cite></blockquote><p class='derived'>{{ rich(request.treated_as) }}</p><blockquote class='ai-said'>{{ request.requested_output }}<cite>— the AI, on what the answer must deliver</cite></blockquote><p class='fine'>{{ request.scope_line }}</p><h4 class='fine'>{{ request.dependency_heading }}</h4><ul class='picks'>
+{%- for item in request.items -%}<li class='{% if item.waived %}waived{% endif %}'><code>{{ item.ref }}</code> <span class='muted'>{{ item.kind }} · {{ item.provenance }}</span>{% if item.waived %}<p class='fine'>Waived: {{ item.waived_because }}</p>{% endif %}{% if item.why %}<blockquote class='ai-said'>{{ item.why }}<cite>{{ item.why_cite }}</cite></blockquote>{% endif %}</li>{%- endfor -%}
+</ul>{{ provenance(request.provenance) }}</div>
+{%- endmacro -%}
+
+{%- macro requests(values, no_request) -%}
+{%- if values -%}{%- for request in values -%}{{ request_card(request) }}{%- endfor -%}{%- else -%}<p class="empty">{{ no_request }}</p>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro readiness_item(item) -%}
+<div class='ready-item {{ item.mark }}'><h5><code>{{ item.ref }}</code> <span class='muted'>{{ item.kind }}</span></h5><p class='derived'>{{ item.because }}</p>{%- for linked in item.links -%}<p class='fine'>{{ rich(linked.sentence) }}</p>{%- endfor -%}{%- if item.claims and not item.links -%}<p class='fine'>Claims: {% for claim in item.claims %}{{ link(claim) }}{% if not loop.last %} {% endif %}{% endfor %}</p>{%- endif -%}</div>
+{%- endmacro -%}
+
+{%- macro readiness_map(result) -%}
+<div class='ready-map ready-{{ result.verdict }}' id='readiness-{{ result.id }}'><p class='fine'><a href='#request-{{ result.id }}'>{{ result.question }}</a></p>{% if result.scope_line %}<p class='fine'>{{ result.scope_line }}</p>{% endif %}<p class='derived verdict'><strong>{{ result.headline }}</strong> {{ result.reason }}</p><p class='muted'>{{ result.explanation }}</p>{%- for group in result.groups -%}<h4 class='fine'>{{ group.title }}</h4>{%- for item in group.items -%}{{ readiness_item(item) }}{%- endfor -%}{%- endfor -%}{{ provenance(result.provenance) }}</div>
+{%- endmacro -%}
+
+{%- macro readiness(values, no_request) -%}
+{%- if values -%}{%- for result in values -%}{{ readiness_map(result) }}{%- endfor -%}{%- else -%}<p class="empty">{{ no_request }}</p>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro chip(value) -%}
+<button type="button" class="chip" data-stage-chip="{{ value.stage }}"{% if value.status %} data-status="{{ value.status }}"{% endif %}><strong>{{ value.count }}</strong><span class='label'>{{ value.label }}</span></button>
+{%- endmacro -%}
+
+{%- macro funnel(value) -%}
+{%- if not value.stages -%}<p class="empty">{{ value.empty }}</p>{%- else -%}<div class='funnel'>{%- for stage in value.stages -%}<div class='funnel-stage'><span class='step'>{{ stage.label }}</span>{%- for value in stage.chips -%}{{ chip(value) }}{%- endfor -%}</div>{%- endfor -%}</div><p class='fine'>{{ rich(value.caveat) }}</p>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro candidate(value) -%}
+<div class='cand {{ value.css }}'><div>{{ link(value.link) }} {{ status_badge(value.status) }}</div>{%- for reason in value.reasons -%}<div class='fine'>{{ rich(reason) }}</div>{%- endfor -%}</div>
+{%- endmacro -%}
+
+{%- macro election(value) -%}
+<div class='election{% if value.field %} guide-field{% endif %}'><h3><code>{{ value.role }}</code>{% if value.owner %} <span class='fine'>field of <code>{{ value.owner }}</code></span>{% endif %}{% if value.scope %} <span class='fine'>for {{ value.scope }}</span>{% endif %} <span class='muted'>{{ value.candidate_count }} candidate{% if value.candidate_count != 1 %}s{% endif %}{% if value.path_note %} · {{ value.path_note }}{% endif %}</span></h3>{% if value.definition %}<blockquote class='quote'>{{ value.definition }}<cite>— what the domain guide says this is</cite></blockquote>{% endif %}{%- for css, text in value.outcome.paragraphs -%}<p class='{{ css }}'>{{ rich(text) }}</p>{%- endfor -%}{%- for item in value.candidates -%}{{ candidate(item) }}{%- endfor -%}</div>
+{%- endmacro -%}
+
+{%- macro elections(values) -%}
+{%- if values -%}{%- for value in values -%}{{ election(value) }}{%- endfor -%}{%- else -%}<p class="empty">No role-binding candidates yet.</p>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro binding(option) -%}
+{%- if option.binding_kind == 'column' -%}{{ column_link(option.binding) }}{%- elif option.binding_kind == 'table' -%}{{ table_link(option.binding) }}{%- else -%}<code>{{ option.binding }}</code>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro question(card) -%}
+<div class="question-card" id="question-{{ card.id }}"><h3>{{ card.question }}</h3>{% if card.mode == 'bindings' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ binding(option) }} {{ link(option.link) }}</li>{%- endfor -%}</ul>{% elif card.mode == 'claims' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ link(option.link) }} {{ status_badge(option.status) }}</li>{%- endfor -%}</ul>{% else %}<p class='empty'>{{ card.lead }}</p>{% endif %}{{ provenance(card.provenance) }}{{ technical(card.details) }}</div>
+{%- endmacro -%}
+
+{%- macro answered_question(card) -%}
+{%- set summary = card.summary.split('. ', 1) -%}<div class="question-card answered" id="question-{{ card.id }}"><h3>{{ card.question }}</h3><p class='derived'><strong>{{ summary[0] }}.</strong> {{ summary[1] }}</p><ul class='picks'>{%- for item in card.settled -%}<li>{{ link(item.link) }} <span class='muted'>{{ item.status }}</span></li>{%- endfor -%}</ul>{{ provenance(card.provenance) }}</div>
+{%- endmacro -%}
+
+{%- macro matrix_summary(value) -%}
+{%- if not value.found -%}<p class="muted">No candidate matrix found.</p>{%- else -%}<p>{{ value.summary }}</p>{% if value.warnings %}<ul class='list'>{%- for warning in value.warnings -%}<li>{{ warning }}</li>{%- endfor -%}</ul>{% endif %}{%- endif -%}
+{%- endmacro -%}
+
+{%- macro source_index(source) -%}
+<div class="claim-card"><a href="#source-{{ source.id }}"><strong>{{ source.name }}</strong></a><div class='muted'>{{ source.kind }} · {{ source.profile_count }} columns profiled</div></div>
+{%- endmacro -%}
+
+{%- macro table_section(table) -%}
+<div class="mini-card" id="table-{{ table.name }}"><h4>{{ table_link(table.name) }}</h4><ul class='list'>{%- if table.declarations -%}{%- for item in table.declarations -%}<li>{{ link(item.link) }} — {{ item.payload }}</li>{%- endfor -%}{%- else -%}<li class="empty">No table-level declarations.</li>{%- endif -%}</ul>{%- for column in table.columns -%}{{ column_card(column) }}{%- endfor -%}</div>
+{%- endmacro -%}
+
+{%- macro column_card(column) -%}
+<div class="column-card" id="column-{{ column.key }}"><h5>{{ column_link(column.key) }}</h5>{{ definition_list(column.details) }}<h6>Declarations</h6><ul class='list'>{%- if column.declarations -%}{%- for item in column.declarations -%}<li>{{ link(item.link) }} — {{ item.payload }}</li>{%- endfor -%}{%- else -%}<li class="empty">No column-level declarations.</li>{%- endif -%}</ul><h6>Candidate overlaps</h6><ul class='list'>{%- if column.candidates -%}{%- for item in column.candidates -%}<li>{{ column_link(item.other) }} <span class='muted'>containment {{ item.containment }}, overlap {{ item.overlap }}</span></li>{%- endfor -%}{%- else -%}<li class="empty">No candidate overlaps.</li>{%- endif -%}</ul><h6>Role-binding claims</h6><ul class='list'>{%- if column.role_bindings -%}{%- for item in column.role_bindings -%}<li>{{ link(item.link) }} {{ status_badge(item.status) }}</li>{%- endfor -%}{%- else -%}<li class="empty">No role bindings target this column.</li>{%- endif -%}</ul></div>
+{%- endmacro -%}
+
+{%- macro source_section(source) -%}
+<div class="mini-card" id="source-{{ source.id }}"><h3>{{ source.name }}</h3>{{ definition_list(source.details) }}<h4>Claims touching this source</h4><ul class='list'>{%- if source.claims -%}{%- for item in source.claims -%}<li>{{ link(item.link) }} {{ status_badge(item.status) }}</li>{%- endfor -%}{%- else -%}<li class="empty">No claims attach this source directly.</li>{%- endif -%}</ul>{%- if source.tables -%}{%- for table in source.tables -%}{{ table_section(table) }}{%- endfor -%}{%- else -%}<p class="empty">No profiled tables for this source.</p>{%- endif -%}</div>
+{%- endmacro -%}
+
+{%- macro orphan_profiles(tables) -%}
+<div class='mini-card'><h3>Profiles with missing sources</h3>{%- for table in tables -%}{{ table_section(table) }}{%- endfor -%}</div>
+{%- endmacro -%}
+
+{%- macro claim_index(value) -%}
+<div class="claim-card" data-claim-card data-status="{{ value.derived_status }}" data-stage="{{ value.stage }}" data-executed="{% if value.executed %}yes{% else %}no{% endif %}" data-predicate="{{ value.predicate }}" data-role="{{ value.role }}" data-search="{{ value.search }}"><div><a href="#claim-{{ value.id }}"><strong>{{ value.short_id }}</strong></a> {{ status_badge(value.derived_status) }}</div><div>{{ value.title }}</div>{% if value.hint %}<div class="muted">{{ value.hint }}</div>{% endif %}</div>
+{%- endmacro -%}
+
+{%- macro stage_strip(steps) -%}
+<div class='strip'>{%- for step in steps -%}<span class='step {{ step.state }}'>{{ step.label }} — {{ step.explanation }}</span>{%- endfor -%}</div>
+{%- endmacro -%}
+
+{%- macro rationale(value) -%}
+{%- if value is string -%}<p class='fine'>{{ value }}</p>{%- elif value -%}{{ quote(value) }}{%- endif -%}
+{%- endmacro -%}
+
+{%- macro no_check(value) -%}
+{%- if value -%}{%- if not value.stage -%}<p class="empty">{{ rich(value.explanation) }}</p>{%- else -%}<div class='banner'><strong>Not bound — {{ value.stage }}.</strong> {{ rich(value.explanation) }}<blockquote class='fine'>{{ value.reason }}</blockquote></div>{%- endif -%}{%- endif -%}
+{%- endmacro -%}
+
+{%- macro rendered_sql(sql) -%}
+{%- if not sql -%}<p class='fine'>No rendered SQL yet — this check has not been run, so no question has actually been put to the data.</p>{%- else -%}<details class='sql'{% if sql.count('\n') < 12 %} open{% endif %}><summary>Rendered SQL — the question that was asked of the data</summary><pre><code>{{ sql }}</code></pre></details>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro check_card(check) -%}
+<div class="evidence-card" id="check-{{ check.id }}"><div><a href="#check-{{ check.id }}"><strong>{{ check.short_id }}</strong></a> <code>{{ check.template }}</code> {% if check.domain %}<span class="badge status-business-confirmed">{{ check.domain }} law</span>{% endif %}</div><p class='derived'>{{ check.sentence }}</p>{{ rendered_sql(check.rendered_sql) }}{{ provenance(check.provenance) }}{{ technical(check.details) }}</div>
+{%- endmacro -%}
+
+{%- macro evidence_card(record) -%}
+<div class="evidence-card" id="evidence-{{ record.id }}"><div><a href="#evidence-{{ record.id }}"><strong>{{ record.short_id }}</strong></a> {% if record.badge_kind == 'verdict' %}{{ verdict_badge(record.badge_value) }}{% else %}{{ type_badge(record.badge_value) }}{% endif %}</div><p class='derived'>{{ record.sentence }}</p>{% if record.voice %}{{ quote(record.voice) }}{% endif %}{% if record.check_link %}<p><strong>Produced by check:</strong> <a href='#check-{{ record.check_link.reference.id }}'><code>{{ record.check_template }}</code> …{{ record.check_link.reference.id[-6:] }}</a></p>{% endif %}{% if record.sample_headers %}<div><strong>Exception samples</strong><table><thead><tr>{%- for value in record.sample_headers -%}<th>{{ value }}</th>{%- endfor -%}</tr></thead><tbody>{%- for row in record.sample_rows -%}<tr>{%- for value in row -%}<td>{{ value }}</td>{%- endfor -%}</tr>{%- endfor -%}</tbody></table></div>{% endif %}{% if record.touched_table %}<p><strong>Touches:</strong> {{ table_link(record.touched_table) }}{% if record.touched_column and record.touched_column != '*' %} / {{ column_link(record.touched_table + '.' + record.touched_column) }}{% endif %}</p>{% endif %}{% if record.sibling_declarations %}<p class='muted'>{{ record.sibling_declarations }} declaration records exist for this same source/table/column.</p>{% endif %}{{ provenance(record.provenance) }}{{ technical(record.details) }}</div>
+{%- endmacro -%}
+
+{%- macro claim_source(item) -%}
+<li>{% if item.link.reference.kind %}{{ link(item.link) }}{% else %}<code>{{ item.link.label }}</code>{% endif %}{% if item.note %} <span class='muted'>({{ item.note }})</span>{% endif %}</li>
+{%- endmacro -%}
+
+{%- macro link_status_list(items, empty) -%}
+{%- if items -%}{%- for item in items -%}<li>{{ link(item.link) }} {{ status_badge(item.status) }}</li>{%- endfor -%}{%- else -%}<li class="empty">{{ empty }}</li>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro lineage(value) -%}
+{%- if value -%}<div class='mini-card'><h4>Escalation provenance</h4><p><strong>Parent claim:</strong> {% if value.parent %}{{ link(value.parent) }}{% else %}<span class="empty">missing</span>{% endif %}</p><p><strong>Parent evidence:</strong> {% if value.evidence %}{{ link(value.evidence) }}{% else %}<span class="empty">missing</span>{% endif %}</p></div>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro list_values(values, empty) -%}
+{%- if values -%}<ul class='list'>{%- for value in values -%}<li>{{ value }}</li>{%- endfor -%}</ul>{%- else -%}<p class="empty">{{ empty }}</p>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro claim_section(claim) -%}
+<div class="claim-detail" data-claim-detail data-claim-id="{{ claim.index.id }}" id="claim-{{ claim.index.id }}"><h3>{{ claim.index.title }}</h3><p>{{ status_badge(claim.index.derived_status) }} <span class='muted'>{{ claim.headline }}</span></p>{{ stage_strip(claim.stage_steps) }}{{ rationale(claim.rationale) }}{{ provenance(claim.provenance) }}{% if claim.divergence %}<div class='banner'><strong>{{ rich(claim.divergence) }}</strong></div>{% endif %}<details open><summary>1 · Proposed — what the AI guessed</summary>{{ quote(claim.proposal) }}{{ definition_list(claim.proposed_details) }}{% if claim.subtype_details is not none %}{{ definition_list(claim.subtype_details) }}{% else %}<p class="empty">Plain claim.</p>{% endif %}</details><details open><summary>2 · Bound — the checks that were meant to falsify it</summary>{% if claim.checks %}{%- for check in claim.checks -%}{{ check_card(check) }}{%- endfor -%}{% else %}{{ no_check(claim.no_check) }}{% endif %}</details><details open><summary>3 · Judged — what the data answered</summary>{% if claim.evidence %}{%- for record in claim.evidence -%}{{ evidence_card(record) }}{%- endfor -%}{% else %}<p class="empty">No evidence attached yet.</p>{% endif %}</details><details><summary>4 · Context — sources, lineage, questions</summary><div class='grid'><div class='mini-card'><h4>Sources</h4>{% if claim.sources %}<ul class='list'>{%- for source in claim.sources -%}{{ claim_source(source) }}{%- endfor -%}</ul>{% else %}<p class="empty">No sources attached.</p>{% endif %}{% if claim.bound_column %}<p><strong>Bound column:</strong> {{ column_link(claim.bound_column) }}</p>{% elif claim.bound_table %}<p><strong>Bound table:</strong> {{ table_link(claim.bound_table) }}</p>{% endif %}</div><div class='mini-card'><h4>Questions resting on it</h4><ul class='list'>{%- if claim.questions -%}{%- for value in claim.questions -%}<li>{{ link(value) }}</li>{%- endfor -%}{%- else -%}<li class="empty">No questions rest on this claim.</li>{%- endif -%}</ul></div><div class='mini-card'><h4>Open assumptions</h4>{{ list_values(claim.assumptions, 'No open assumptions.') }}</div><div class='mini-card'><h4>Depends on</h4><ul class='list'>{{ link_status_list(claim.dependencies, 'No prerequisites.') }}</ul></div><div class='mini-card'><h4>What depends on me</h4><ul class='list'>{{ link_status_list(claim.reverse_dependencies, 'Nothing depends on this claim.') }}</ul></div><div class='mini-card'><h4>Escalated from me</h4><ul class='list'>{{ link_status_list(claim.derived_children, 'No escalated child claims.') }}</ul></div></div>{{ lineage(claim.lineage) }}</details><details><summary>Fine print — ids, timestamps, raw fields</summary>{{ definition_list(claim.details) }}</details></div>
+{%- endmacro -%}
+
+{%- macro core_terms(glossary) -%}
+<details><summary>Core terms — the words this page uses, and no synonyms</summary><dl>{%- for term, text in glossary -%}<dt>{{ term }}</dt><dd>{{ text }}</dd>{%- endfor -%}</dl><p class='fine'>Full glossary: docs/before-ai-concept.md.</p></details>
+{%- endmacro -%}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Readiness report — {{ view.project_name }}</title>
+  <style>
+{{ css | safe }}  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>Readiness report</h1>
+      <p class="muted">{{ view.project_path }}</p>
+      <div class="section-links">
+        <a href="#process">Process</a>
+        <a href="#inputs">0 Inputs</a>
+        <a href="#request">1 Request</a>
+        <a href="#measured">2 Measured</a>
+        <a href="#proposed">3 Proposed</a>
+        <a href="#tested">4 Tested</a>
+        <a href="#clarification">5 Clarification</a>
+        <a href="#readiness">6 Readiness</a>
+        <a href="#claims">Claim detail</a>
+        <a href="#integrity">Integrity</a>
+        <a href="#terms">Core terms</a>
+      </div>
+      <div class="panel">
+        <h2 id="claims-index">Claims ({{ view.claims | length }})</h2>
+        <div class="toolbar">
+          <input id="claim-search" type="search" placeholder="Search statement or predicate">
+          <select id="status-filter">
+            <option value="">All statuses (derived)</option>
+            {{ options(view.status_options) }}
+          </select>
+          <select id="predicate-filter">
+            <option value="">All predicates</option>
+            {{ options(view.predicate_options) }}
+          </select>
+          <select id="role-filter">
+            <option value="">All roles</option>
+            {{ options(view.role_options) }}
+          </select>
+        </div>
+        <p id="filter-note" class="muted"></p>
+        <div id="claim-list">{% if view.claims %}{% for claim in view.claims %}{{ claim_index(claim.index) }}{% endfor %}{% else %}<p class="empty">No claims yet.</p>{% endif %}</div>
+      </div>
+    </aside>
+    <main class="content">
+      <section class="panel" id="process">
+        <h2>How this project got from data to knowledge</h2>
+        {{ process_diagram(view.stages, view.copy.process_ghost) }}
+        <p class="muted">{{ view.copy.reading_guide }}</p>
+      </section>
+      <section class="panel" id="inputs">
+        <h2>0 · Inputs — what a human declared</h2>
+        {{ domain_pack(view.domain_pack) }}
+      </section>
+      <section class="panel" id="request">
+        <h2>1 · Request — the question, and what it requires</h2>
+        <p class="muted">{{ view.copy.request_intro }}</p>
+        {{ requests(view.requests, view.copy.no_request) }}
+      </section>
+      <section class="panel" id="measured">
+        <h2>2 · Measured — what the data says about itself ({{ view.measurement.source_count }} sources)</h2>
+        <p class="muted">{{ view.copy.measured_intro }}</p>
+        <p class="muted">{{ view.measurement.project_line }}</p>
+        {{ matrix_summary(view.measurement.matrix) }}
+        {% if view.measurement.sources %}{% for source in view.measurement.sources %}{{ source_index(source) }}{% endfor %}{% else %}<p class="empty">No sources yet.</p>{% endif %}
+        <details><summary>All profiled tables and columns</summary>
+        {% if view.measurement.sources %}{% for source in view.measurement.sources %}{{ source_section(source) }}{% endfor %}{% else %}<p class="empty">No sources yet.</p>{% endif %}{% if view.measurement.orphan_tables %}{{ orphan_profiles(view.measurement.orphan_tables) }}{% endif %}
+        </details>
+      </section>
+      <section class="panel" id="proposed">
+        <h2>3 · Proposed — what the AI guessed, and how far each guess got</h2>
+        <p class="muted">{{ rich(view.copy.proposed_intro) }}</p>
+        {{ funnel(view.funnel) }}
+      </section>
+      <section class="panel" id="tested">
+        <h2>4 · Tested — what the checks settled</h2>
+        <p class="muted">{{ view.copy.tested_intro }}</p>
+        {{ elections(view.elections) }}
+      </section>
+      <section class="panel" id="clarification">
+        <h2>5 · Clarification — what only a human can answer ({{ view.open_questions | length }})</h2>
+        <p class="muted">{{ view.copy.clarification_intro }}</p>
+        {% if view.open_questions %}{% for card in view.open_questions %}{{ question(card) }}{% endfor %}{% else %}<p class="empty">No open questions.</p>{% endif %}
+        {% if view.answered_questions %}<details><summary>Answered questions ({{ view.answered_questions | length }}) — kept, because what settled them is part of the record</summary>{% for card in view.answered_questions %}{{ answered_question(card) }}{% endfor %}</details>{% endif %}
+      </section>
+      <section class="panel" id="readiness">
+        <h2>6 · Readiness — what may be answered</h2>
+        <p class="muted">{{ view.copy.readiness_intro }}</p>
+        {{ readiness(view.readiness, view.copy.no_request) }}
+      </section>
+      <section class="panel" id="claims">
+        <h2>7 · Claim detail — one claim, its whole story</h2>
+        <p id="claim-empty" class="muted">Pick a claim on the left.</p>
+        {% if view.claims %}{% for claim in view.claims %}{{ claim_section(claim) }}{% endfor %}{% else %}<p class="empty">No claims yet.</p>{% endif %}
+      </section>
+      <section class="panel" id="integrity">
+        <h2>Integrity</h2>
+        {% if view.integrity %}<ul class='list'>{% for finding in view.integrity %}<li>{{ finding }}</li>{% endfor %}</ul>{% else %}<p>No integrity findings.</p>{% endif %}
+      </section>
+      <section class="panel" id="terms">
+        <h2>Core terms</h2>
+        {{ core_terms(view.glossary) }}
+      </section>
+    </main>
+  </div>
+  <script>
+{{ js | safe }}  </script>
+</body>
+</html>

@@ -41,6 +41,11 @@ packages = [
 
 [tool.setuptools.package-data]
 "before_we_ai.checks" = ["templates/*.sql.j2"]
+"readiness_report" = [
+    "templates/*.html.j2",
+    "static/*.css",
+    "static/*.js",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
