@@ -96,6 +96,15 @@
 {%- else -%}
 <p>domain <strong>{{ guide.domain }}</strong>, {{ guide.object_count }} business objects with {{ guide.field_count }} field{% if guide.field_count != 1 %}s{% endif %} — human-written definitions, no system names; each declares its settlement path (how it can ever stop being a guess), and a field can never declare a law<br><code>{{ guide.path }}</code></p>
 {%- for entry in guide.entries -%}{{ guide_entry(entry) }}{%- for field in entry.fields -%}<div class='guide-field'>{{ guide_entry(field) }}</div>{%- endfor -%}{%- endfor -%}
+{%- if guide.answer_types -%}
+<h4 class='fine'>Answer types ({{ guide.answer_types | length }}) — what an answer of each family depends on</h4>
+<p class='muted'>A question is classified to one of these, and the engine expands its list. Section 1 says which one this question was treated as; these are what it had to choose from, and what the chosen one claims.</p>
+{%- for answer_type in guide.answer_types -%}
+<div class='mini-card'><h5><code>{{ answer_type.name }}</code></h5><p>{{ answer_type.definition }}</p><ul class='list'>{%- for requirement in answer_type.requires -%}<li><code>{{ requirement }}</code></li>{%- endfor -%}</ul></div>
+{%- endfor -%}
+{%- else -%}
+<p class='fine'>This guide declares no answer types, so every question asked of it gets a dependency list the model drafted for that question alone — visible in section 1, and capped in section 6.</p>
+{%- endif -%}
 {%- endif -%}
 {%- endmacro -%}
 
@@ -108,7 +117,7 @@
 {%- endmacro -%}
 
 {%- macro domain_pack(value) -%}
-<p class='muted'>{{ value.intro }}</p><h3>1.1 · Raw data — the source list (human-authored)</h3>{{ declared_sources(value.sources) }}<h3>1.2 · Domain guide — the domain nouns (data, human-curated)</h3>{{ domain_guide_panel(value.guide) }}<h3>1.3 · Domain-law templates — the guardians (code, developer-shipped)</h3>{{ domain_laws(value.laws) }}
+<p class='muted'>{{ value.intro }}</p><h3>0.1 · Raw data — the source list (human-authored)</h3>{{ declared_sources(value.sources) }}<h3>0.2 · Domain guide — the domain nouns (data, human-curated)</h3>{{ domain_guide_panel(value.guide) }}<h3>0.3 · Domain-law templates — the guardians (code, developer-shipped)</h3>{{ domain_laws(value.laws) }}
 {%- endmacro -%}
 
 {%- macro request_card(request) -%}

@@ -729,7 +729,14 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
         "        definition: The signed posting amount.\n"
         "  subledger_ar:\n"
         "    decided_by: subledger_equals_gl\n"
-        "    definition: The accounts-receivable open items.\n",
+        "    definition: The accounts-receivable open items.\n"
+        "answer_types:\n"
+        "  profit_and_loss_by_dimension:\n"
+        "    definition: The result of a period, by a dimension.\n"
+        "    requires:\n"
+        "      - object: journal\n"
+        "      - field: journal.amount_local\n"
+        "      - rule: sign convention for income and expense\n",
         encoding="utf-8",
     )
     config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
@@ -753,6 +760,17 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
         "slot — elected as the 'amount' of its object's law"
     )
     assert pack.guide.path == str(domain_guide_file)
+    # The answer types belong in the declared inputs: section 1 says which
+    # one the question was treated as, and a reader can only judge that
+    # against what was on offer and what the chosen one claims.
+    (answer_type,) = pack.guide.answer_types
+    assert answer_type.name == "profit_and_loss_by_dimension"
+    assert answer_type.definition == "The result of a period, by a dimension."
+    assert answer_type.requires == (
+        "object: journal",
+        "field: journal.amount_local",
+        "rule: sign convention for income and expense",
+    )
     assert {law.name for law in pack.laws.laws} == {
         "balance", "subledger_equals_gl", "ic_symmetry"
     }
@@ -1156,6 +1174,17 @@ def test_html_renders_every_report_section(tmp_path):
         "process", "inputs", "request", "measured", "proposed", "tested",
         "clarification", "readiness", "claims", "integrity", "terms",
     } <= document.ids
+
+
+def test_html_numbers_its_subsections_after_the_stage_they_sit_in(tmp_path):
+    """They read 1.1 / 1.2 / 1.3 inside a section called 0 — left over from
+    the numbering the stage spine replaced. Two surfaces disagreeing about
+    one thing is the defect the spine exists to prevent."""
+    html = render_project(init_project(tmp_path / "numbering"))
+
+    for n, title in enumerate(("Raw data", "Domain guide", "Domain-law"), start=1):
+        assert f"0.{n} · {title}" in html
+        assert f"1.{n} · {title}" not in html
 
 
 def test_html_internal_anchors_resolve(tmp_path):

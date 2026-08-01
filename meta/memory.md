@@ -103,14 +103,12 @@
    - **Only a confirmation lapses** when the guide moves, not waivers or
      links. A waiver is about one item; a confirmation is about the list.
 
-5. **Two small report fixes** (found 2026-08-01 while answering "where does
-   the guide live in the process?"):
-   - Section 0 does not show the guide's `answer_types:` — so the reader
-     sees *that* the question was treated as `profit_and_loss_by_dimension`
-     but nowhere what that type declares or what else was on offer, which is
-     exactly what judging the classification needs.
-   - Section 0's subsections still read `1.1 / 1.2 / 1.3` — pre-spine
-     numbering inside a section called 0.
+5. **Confirm the two report fixes while reading** (done 2026-08-01, worth a
+   look because both were found by reading and not by testing): section 0
+   now lists the guide's answer types with what each one requires — a
+   reader cannot judge the classification in section 1 without seeing what
+   was on offer — and its subsections read `0.1 / 0.2 / 0.3` instead of the
+   pre-spine `1.1 / 1.2 / 1.3`.
 
 ## Declared goal — the GUI milestone (after M5; not scheduled)
 

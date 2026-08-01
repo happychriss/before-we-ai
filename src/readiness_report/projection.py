@@ -144,6 +144,18 @@ class GuideEntryView:
 
 
 @dataclass(frozen=True)
+class AnswerTypeView:
+    """One declared answer type, and what it says an answer of its family
+    depends on. Section 0 shows these because a reader cannot judge the
+    classification in section 1 without seeing what was on offer and what
+    the chosen type actually claims."""
+
+    name: str
+    definition: str
+    requires: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class DomainGuidePanelView:
     state: str
     path: str = ""
@@ -151,6 +163,7 @@ class DomainGuidePanelView:
     object_count: int = 0
     field_count: int = 0
     entries: tuple[GuideEntryView, ...] = ()
+    answer_types: tuple[AnswerTypeView, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -937,6 +950,34 @@ def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
     return f"{why} Live trail: {trail}."
 
 
+def _answer_type_views(declared) -> tuple[AnswerTypeView, ...]:
+    """The guide's answer types, in the order it declares them.
+
+    Read from the raw YAML like the rest of this panel, not from a loaded
+    `DomainGuide`: section 0 must still describe a guide that fails the
+    coherence lint, and that is exactly when a reader most needs to see it.
+    """
+    if not isinstance(declared, dict):
+        return ()
+    views = []
+    for name, spec in declared.items():
+        spec = spec if isinstance(spec, dict) else {}
+        requires = []
+        for item in spec.get("requires") or ():
+            if not isinstance(item, dict):
+                continue
+            for kind in ("object", "field", "rule"):
+                if item.get(kind) is not None:
+                    requires.append(f"{kind}: {item[kind]}")
+                    break
+        views.append(AnswerTypeView(
+            name=str(name),
+            definition=str(spec.get("definition", "")).strip(),
+            requires=tuple(requires),
+        ))
+    return tuple(views)
+
+
 def _decided_by_label(spec) -> str:
     decided_by = spec.get("decided_by", "") if isinstance(spec, dict) else ""
     if not decided_by:
@@ -1017,6 +1058,7 @@ def _build_domain_pack(root: Path, config: dict) -> DomainPackView:
                 object_count=len(objects),
                 field_count=field_count,
                 entries=tuple(entries),
+                answer_types=_answer_type_views(pack.get("answer_types") or {}),
             )
     tagged = [(name, spec) for name, spec in REGISTRY.items() if spec.domain]
     generic = len(REGISTRY) - len(tagged)
