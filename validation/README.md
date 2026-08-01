@@ -80,27 +80,42 @@ an oversight.
 ### Stage 1 — the request
 
 The frame opens. A human asks a business question; the request contract turns
-it into an `AnswerRequest` (what output is wanted, over which scope) and a
-draft of the **required knowledge** — the objects, fields and rules the answer
-depends on.
+it into an `AnswerRequest` — what output is wanted, over which scope, and
+**which family of questions this one belongs to**.
 
-It comes *after* the declared inputs for a hard reason: the contract is
-decomposed against the domain guide, and you cannot decompose a question
-against a vocabulary nobody has chosen yet.
+That last part is the load-bearing one. The model does *not* write the list of
+what the answer depends on. It names an **answer type** the domain guide
+declares, and the engine expands that type's reviewed dependency list. The
+reason is the failure mode a written list has: over-listing is visible and
+waivable, but **under-listing is silent** — a dependency the model never
+mentioned appears nowhere, so nobody can test, waive or ask about it, and the
+verdict comes out too generous with nothing anywhere to show why.
 
-The contract reads the question and the domain vocabulary — *definitions only,
-no profiles*. Whether the data can serve the question is the rest of the
-pipeline's job; answering it here would be the model deciding.
+It comes *after* the declared inputs for a hard reason: the classification is
+made against the domain guide, and you cannot classify a question against a
+vocabulary nobody has chosen yet.
 
-Good (offline pins): **9** required-knowledge items, 0 skipped — the journal,
+The contract reads the question, the domain vocabulary and the answer types —
+*definitions only, no profiles*. Whether the data can serve the question is the
+rest of the pipeline's job; answering it here would be the model deciding.
+
+Good (offline pins): treated as **`profit_and_loss_by_dimension`**, **0** delta
+items drafted, 0 skipped — the question is fully covered by the type, so the
+contract stores no list of its own. The expansion is **9** items: the journal,
 four of its fields, the intercompany object, and three business rules the
 vocabulary does not contain (which accounts are P&L, the sign convention, the
-month cut-off).
+month cut-off). Every one reads `[contract]`.
 
-Look at what is **not** on the list: `subledger_ar`. Open receivables do not
-enter a profit and loss, so this question does not require them. That absence
-is the question bounding discovery, made visible — and it is the whole reason
-the frame exists.
+Three things to look at:
+
+- **The guide fingerprint** next to the classification (`guide 0ac5f94b7b63`).
+  Every human decision about this list records it, so a confirmation given
+  against one version of the guide cannot go on vouching for another.
+- **What is not on the list**: `subledger_ar`. Open receivables do not enter a
+  profit and loss, so this question does not require them. That absence is the
+  question bounding discovery, made visible — the whole reason the frame
+  exists.
+- **Nobody has confirmed the classification yet.** Stage 6 will say so.
 
 ### Stage 2a — scan
 
@@ -216,7 +231,7 @@ the ledger of record is identified and its amount column is settled, but
 nothing yet says which column carries the entity or the period — and a P&L
 *by entity and month* is computed from exactly those.
 
-Two things to check, because they are the guarantees:
+Three things to check, because they are the guarantees:
 
 - **The verdict names its dependency.** A verdict without its reason is the
   one thing this product may not ship.
@@ -227,10 +242,27 @@ Two things to check, because they are the guarantees:
   still `proposed`, and the sentence says so. *Satisfied* and *promoted* are
   deliberately different things (owner decision); an item reading only
   "satisfied" would hide the difference.
+- **The verdict also judges the list.** The reason ends with a second
+  sentence: the list was expanded from `profit_and_loss_by_dimension`, and
+  nobody has confirmed that the question depends on nothing more. Whether the
+  dependencies hold and whether anyone has read the list of them are different
+  questions, and only the second protects against a list that was short to
+  begin with.
+
+The stage then confirms the classification in front of you and re-evaluates, so
+you can see what the confirmation buys. Here the verdict does not move — it is
+blocked on missing dependencies and a confirmation supplies none of them. On a
+landscape where everything held, this is exactly the step between
+`ready_with_limitations` and `ready`.
 
 Answer the four open mapping questions and the verdict narrows rather than
 clearing: `ready_with_limitations`, with the three business rules named as the
 limitations they are. That is the third outcome — permit, narrow, or block.
+
+**Try this.** Edit `src/tests/fixtures/domain_guide_finance.yaml`, add a fourth
+rule to the answer type, and re-run `./scripts/report.sh`. The new dependency
+is on the list and named in the verdict, the confirmation you just gave has
+lapsed, and nothing in `data/project/` changed — the list was never stored.
 
 ## Tools
 
@@ -246,20 +278,22 @@ limitations they are. That is the third outcome — permit, narrow, or block.
 - `report.sh` — rebuild every artifact on demand. You rarely need it: each
   stage does the same rebuild when it finishes. The readiness page *is* this
   walkthrough,
-  rendered from the store, in the same order: a **process diagram** on top
-  carrying this project's live numbers (each one a link into the section that
-  produced it, with the actor boundary drawn where the AI's proposals stop and
-  promotion begins, and M5 shown as a not-built ghost), then
-  **1 inputs** (the three declared domain inputs), **2 measured** (sources,
-  column profiles, candidate overlaps), **3 proposed** (the funnel: 74 proposed
-  → 42 planned / 19 unbindable / 6 semantic-only / 7 skipped → 42 judged → the
-  derived statuses, every number a filter), **4 decided** (the role elections —
-  each object with its fields nested beneath it: the winner, each loser with
-  the domain law that felled it, and for a slot field the column its object's
-  passing law consumed), **5 open** (the clarification-questions inbox),
-  **6 readiness** (the question verbatim, the verdict, and every dependency
-  with the sentence saying where it stands), then one claim at a time as a
-  story: proposed → planned → judged → context.
+  rendered from the store, in the same order and under the same stage numbers:
+  a **process diagram** on top carrying this project's live numbers (each one a
+  link into the section that produced it, with the actor boundary drawn where
+  the AI's proposals stop and promotion begins), then
+  **0 inputs** (the three declared domain inputs), **1 request** (the question
+  verbatim, the classification with its guide fingerprint, and every dependency
+  with where it came from), **2 measured** (sources, column profiles, candidate
+  overlaps), **3 proposed** (the funnel: 74 proposed → 42 planned / 19
+  unbindable / 6 semantic-only / 7 skipped → 42 judged → the derived statuses,
+  every number a filter), **4 tested** (the role elections — each object with
+  its fields nested beneath it: the winner, each loser with the domain law that
+  felled it, and for a slot field the column its object's passing law
+  consumed), **5 clarification** (the open questions, answered ones folded
+  away), **6 readiness** (the verdict and every dependency with the sentence
+  saying where it stands), then one claim at a time as a story: proposed →
+  planned → judged → context.
 - `two-entities.sh` — a tiny synthetic project the frozen corpus cannot show:
   DE and US each own a ledger and a period column, both ledgers pass the
   balance law, and the question is asked *for Germany*. Renders its own report

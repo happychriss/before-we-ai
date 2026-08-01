@@ -39,6 +39,7 @@ from before_we_ai.core import (
     EvidenceRecord,
     EvidenceType,
     KnowledgeKind,
+    Provenance,
     Scope,
 )
 from before_we_ai.core.objects import MappingClaim
@@ -111,7 +112,11 @@ def test_contracts_ran_clean_offline(pipeline):
     v4, v1 = pipeline["v4"], pipeline["v1"]
     proposals, v2 = pipeline["proposals"], pipeline["v2"]
     assert v4.failure is None and v4.skipped == []
-    assert len(v4.required.items) == 9
+    # the demo question is covered by a declared answer type, so the contract
+    # classifies and stores no list of its own: the nine dependencies are
+    # expanded from the guide on every read
+    assert v4.request.answer_type == "profit_and_loss_by_dimension"
+    assert v4.required is None
     assert v1.failure is None
     assert len(v1.claims_created) == 52
     assert v1.claims_deduped == 0
@@ -338,7 +343,8 @@ def test_demo_4_the_clarifications_are_focused_and_scoped_to_the_question(pipeli
 
 def test_demo_5_the_readiness_map_covers_every_required_item(pipeline):
     result = _readiness(pipeline)
-    assert len(result.items) == len(pipeline["v4"].required.items) == 9
+    assert len(result.items) == 9
+    assert all(i.item.provenance is Provenance.CONTRACT for i in result.items)
     # nothing is silent: every item carries a derived sentence saying where
     # it stands, satisfied or not
     assert all(i.because for i in result.items)

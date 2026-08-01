@@ -13,8 +13,7 @@ import shutil, subprocess, sys, yaml
 from pathlib import Path
 
 from before_we_ai.core import (Actor, AnswerRequest, CheckPlan, CheckVerdict,
-                                EvidenceRecord, EvidenceType, KnowledgeItem,
-                                KnowledgeKind, MappingClaim, RequiredKnowledge,
+                                EvidenceRecord, EvidenceType, MappingClaim,
                                 Scope, Source)
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.store import ProjectStore, init_project
@@ -40,6 +39,17 @@ objects:
       period:
         decided_by: clarification
         definition: The posting period, at fiscal-period granularity.
+answer_types:
+  profit_and_loss_by_dimension:
+    definition: >-
+      The result of a period, broken out by a dimension the postings carry.
+    requires:
+      - object: journal
+        why: the figures are summed from the ledger of record
+      - field: journal.amount_local
+        why: it is the number that gets summed
+      - field: journal.period
+        why: the answer is broken out by month
 """, encoding="utf-8")
 config = yaml.safe_load((root / "before-ai.yaml").read_text())
 config["llm"] = {"domain_guide_file": str(guide)}
@@ -73,19 +83,16 @@ for entity, table, amount in (("DE", "de_erp__gl_postings", "betrag"),
     passing_balance(candidate("journal", table, scope, src.id), amount)
     candidate("period", f"{table}", scope, src.id)
 
+# Classified, not listed: the three dependencies below are expanded from the
+# answer type, each wearing the request's scope — which is the point here.
+# A scoped question elects per scope, so the same three items read DE's
+# evidence and only DE's.
 request = AnswerRequest(
     question="Can these files reliably produce actual P&L for Germany by month?",
     requested_output="P&L for the German entity, per month",
+    answer_type="profit_and_loss_by_dimension",
     scope=Scope(entity="DE"))
 store.save_request(request)
-store.save_required_knowledge(RequiredKnowledge(request_id=request.id, items=[
-    KnowledgeItem(kind=KnowledgeKind.OBJECT, name="journal", scope=request.scope,
-                  why="the figures are summed from the ledger of record"),
-    KnowledgeItem(kind=KnowledgeKind.FIELD, name="amount_local", of_object="journal",
-                  scope=request.scope, why="it is the number that gets summed"),
-    KnowledgeItem(kind=KnowledgeKind.FIELD, name="period", of_object="journal",
-                  scope=request.scope, why="the answer is broken out by month"),
-]))
 
 from before_we_ai.llm import load_domain_guide, resolve_mappings
 cards = resolve_mappings(ProjectStore(root), load_domain_guide(guide))

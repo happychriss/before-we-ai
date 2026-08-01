@@ -50,7 +50,12 @@ from before_we_ai.checks.library import REGISTRY  # noqa: E402
 from before_we_ai.core import Actor  # noqa: E402
 from before_we_ai.core.objects import MappingClaim  # noqa: E402
 from before_we_ai.profile.candidates import load_matrix  # noqa: E402
-from before_we_ai.readiness import evaluate_request  # noqa: E402
+from before_we_ai.readiness import (  # noqa: E402
+    assemble,
+    confirm_classification,
+    evaluate_request,
+    guide_label,
+)
 from before_we_ai.sources import open_catalog  # noqa: E402
 from before_we_ai.store import ProjectStore  # noqa: E402
 
@@ -461,11 +466,12 @@ def stage_request(args) -> None:
     )
     report = ask(PROJECT, DEMO_QUESTION, guide=roles, store=store,
                  scenario=SCENARIO)
-    section("the request — one business question, structured")
+    section("the request — one business question, classified")
     if report.failure:
         print(f"  CALL FAILED after retry: {report.failure}\n  nothing was created")
         return
-    print(f"  required: {len(report.required.items)}   "
+    drafted = len(report.required.items) if report.required else 0
+    print(f"  delta drafted: {drafted}   "
           f"skipped: {len(report.skipped)}   retries: {report.retries}   "
           f"usage: {report.usage or 'n/a (stub)'}")
     for name, reason in report.skipped:
@@ -474,12 +480,21 @@ def stage_request(args) -> None:
     print(f"  requested output: {report.request.requested_output}")
     scope = report.request.scope
     print(f"  scope: {scope.label() or 'the whole landscape (the question named none)'}")
+    print(f"  treated as: {report.request.answer_type or 'no declared answer type'}"
+          f"   (guide {guide_label(roles)})")
 
-    section(f"required knowledge ({len(report.required.items)} items) — and "
+    built = assemble(store, roles, report.request)
+    section(f"what this answer depends on ({len(built.items)} items) — and "
             "nothing else has to be known")
-    for item in report.required.items:
-        print(f"  {item.kind.value:7s} {item.ref():24s} {clip(item.why, 60)}")
-    print(f"\nfull detail: {PROJECT}/answers/  (and section 0 of the report)")
+    for item in built.items:
+        print(f"  {item.kind.value:7s} {item.ref():24s} "
+              f"[{item.provenance.value}] {clip(item.why, 46)}")
+    print("\n  The model named the FAMILY, not the list. The list was expanded "
+          "from the\n  answer type in the guide — so nothing here rests on what "
+          "the model happened\n  to remember, and nothing it forgot is missing "
+          "from it. Nobody has confirmed\n  the classification yet, which is "
+          "why stage 6 will cap the verdict.")
+    print(f"\nfull detail: {PROJECT}/answers/  (and section 1 of the report)")
     collect("2a-measure-scan.sh")
 
 
@@ -576,7 +591,25 @@ def stage_readiness(args) -> None:
           "claim's status,\n  or by the derivation a passing law supplies for "
           "a slot field whose own\n  claims are still proposed. Those are "
           "deliberately different things.")
-    print(f"\nfull detail: section 6 of the report")
+
+    section("and the list itself — the second question the verdict answers")
+    print("  Whether the dependencies hold is one question. Whether anyone has "
+          "read the\n  LIST of them is another, and only the second protects "
+          "against a list that was\n  short to begin with. So an unconfirmed "
+          "list can never read 'ready':\n")
+    print(f"  before: {result.verdict.value}   confirmed: {result.confirmed}")
+    confirm_classification(store, roles, request.id)
+    confirmed = evaluate_request(store, roles, request.id)
+    print(f"  after a human confirms the classification: "
+          f"{confirmed.verdict.value}   confirmed: {confirmed.confirmed}")
+    print(f"\n  {confirmed.reason()}")
+    print("\n  Here the verdict does not move: it is blocked on missing "
+          "dependencies, and\n  confirming the list does not supply them. On a "
+          "landscape where everything\n  held, this is the step between "
+          "'with limitations' and 'ready'. Edit the\n  guide's answer type and "
+          "the confirmation lapses — it vouched for a list\n  that no longer "
+          "exists.")
+    print(f"\nfull detail: sections 1 and 6 of the report")
     collect()
     print("\nthe walkthrough is complete — every artifact is in the index above")
 

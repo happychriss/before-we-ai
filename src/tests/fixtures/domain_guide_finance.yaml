@@ -65,3 +65,58 @@ objects:
     definition: >-
       Paired intercompany postings between two entities that must mirror each
       other per period.
+
+# Answer types: per family of business question, what an answer to it depends
+# on. Reviewed once and reused, so the model classifies rather than invents —
+# what it cannot forget it cannot silently omit. The engine expands `requires`
+# deterministically; a reference that does not resolve refuses to load.
+#
+# Variants are separate types, never a condition inside one: the choice
+# between them is then part of the classification, which is visible on the
+# page and confirmed by a human.
+answer_types:
+  profit_and_loss_by_dimension:
+    definition: >-
+      The result of a period — income less expense — broken out by one or more
+      dimensions the postings carry, such as legal entity, month or segment.
+    requires:
+      - object: journal
+        why: >-
+          Actuals are summed from the transactional ledger of record. If the
+          wrong table plays this part, every figure is wrong while looking
+          plausible.
+      - field: journal.amount_local
+        why: >-
+          This is the number that gets summed. Reading the wrong amount column
+          silently produces a result in the wrong currency or the wrong sign.
+      - field: journal.entity
+        why: >-
+          Each posting has to be attributable to one legal entity for the
+          break-out to mean anything.
+      - field: journal.period
+        why: >-
+          Without a trustworthy period column, postings land in the wrong
+          month.
+      - field: journal.account
+        why: >-
+          A result contains only profit-and-loss accounts. Without the account
+          on each posting, balance-sheet movements cannot be excluded.
+      - rule: which accounts are profit and loss
+        why: >-
+          Nothing in the column layout says which accounts belong in a result
+          rather than a balance sheet. Guessing this inflates or deflates every
+          line.
+      - rule: sign convention for income and expense
+        why: >-
+          Whether income is stored negative or positive decides whether the
+          same magnitude reads as a profit or a loss. The data cannot reveal
+          the intent.
+      - rule: month cut-off for late postings
+        why: >-
+          A posting entered after period end may belong to the closed period or
+          the open one. The rule is a policy, not a property of the rows.
+      - object: intercompany
+        why: >-
+          Per-entity actuals include intercompany traffic; whether the
+          requested figures are gross or net of it changes each entity's
+          result.
