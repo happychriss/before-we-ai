@@ -66,6 +66,18 @@
    answer, by=human)` is the mirror-loop machinery M5 needs anyway, and it
    is the core interaction of the GUI milestone below.
 
+   **And it must fix `_status_rationale`** (found 2026-08-01 pre-flighting
+   WP5). That function restates the promotion law in prose inside the
+   renderer, and it already disagrees with it: `resolve_status` counts only
+   *admissible* confirmations (mirror-loop — a testimonial claim needs an
+   explicit scope), while the prose counts every confirmation record and
+   then says "admissible" anyway. A claim would read: status `proposed`,
+   trail "1 confirmation", why "Nothing stronger than proposed evidence is
+   live yet." Unreachable while nothing creates confirmations — **M5 makes
+   it reachable**, and the case it garbles is exactly the mirror loop's
+   teaching moment ("you did not say for which scope"). The refactor moves
+   the function verbatim and does not touch it; the fix belongs here.
+
    Its target is concrete: the three unsupported **rule** items in the
    ReadinessMap (`which accounts are profit and loss`, `sign convention for
    income and expense`, `month cut-off for late postings`). A sign convention

@@ -137,6 +137,54 @@ finds nothing; False-Promotion tests untouched and green.
 The big one: `src/readiness_report/render.py` is 2,824 lines doing
 projection, wording and HTML at once. Three phases, **each its own PR**.
 
+### Pre-flight findings — read before starting (measured 2026-08-01)
+
+**What the 2,824 lines actually are.** Only **75 lines of CSS and 9 of JS**;
+`render_project` alone is **692 lines** (page skeleton + style block). The
+rest is Python: projection, wording, and 181 lines of f-string HTML. So
+WP5c is a *small* package — the weight is in 5a.
+
+**Wording ownership, decided — do not re-derive it per case.** Two kinds of
+sentence live in this file and they move differently:
+
+- **Passed through from the core** — `ReadinessItem.because`,
+  `ReadinessMap.reason()`, the guide's definitions. The renderer only
+  escapes and places them. These stay owned by `readiness/` and `core/`;
+  the projection carries them unchanged.
+- **Composed in the renderer** from derived facts — `_election_outcome`
+  ("Identified. The balance law passed on …"), `_render_readiness_item`,
+  `_render_treated_as`, `_rationales`, the section intros. These are
+  product voice with no other home. **Move them into the projection layer
+  verbatim.** Not one word changes; a diff that rewords one of these
+  sentences is a failed PR, however much better the new wording reads.
+
+**One trap, and it is a real one.** `_status_rationale`
+(`render.py:2674`) **restates the promotion law in prose** — "At least one
+failing check is present and no competing supporting evidence remains
+live", and so on, branch for branch alongside `core/transitions.py`
+`resolve_status`. It is a second implementation of the status rule, in
+strings, in the renderer.
+
+It already disagrees with the law it restates: `resolve_status` counts only
+**admissible** confirmations (the mirror-loop rule — confirming a
+testimonial claim requires an explicit scope, `_confirmation_admissible`),
+while `_status_rationale` counts every `CONFIRMATION` record and then
+asserts the word "admissible" in its sentence. A claim with an inadmissible
+confirmation would read: status `proposed`, trail "1 confirmation", why
+"Nothing stronger than proposed evidence is live yet." Unreachable today —
+no product code creates confirmation evidence — and reachable the moment M5
+builds `tell`/`confirm`.
+
+**In WP5: move it verbatim and leave a comment pointing here. Do not fix
+it.** Fixing it changes rendered output, which this refactor may not do, and
+the fix belongs with the milestone that makes it reachable. It is recorded
+as an M5 item in `meta/memory.md`.
+
+**Leave room for M5.** It adds a documents/anchors surface: a section for
+ingested documents and, per claim, `DOCUMENT_ANCHOR` evidence cards. The
+view model should take a new `*View` tuple without reshaping — do not build
+them, just do not build something they cannot join.
+
 **WP5a — extract the view model.** New `src/readiness_report/projection.py`:
 `build_view_model(store, root, config) -> ReportViewModel` — frozen
 dataclasses (`StageView`, `RequestView`, `ElectionView`, `QuestionView`,
