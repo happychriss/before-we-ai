@@ -39,13 +39,36 @@
    documents: `decodes` account ranges, the AR control account, and
    opening-balances coverage. Read them in the readiness report.
 
-   One design question to settle at the start: **the request's scope is
-   inferred by V4 from prose and never confirmed.** "P&L for Germany" — scope
-   or break-out? That single inference decides which elections run, which
-   cards are drafted and which claims count, so a wrong scope yields a
-   confident, fully-reasoned, wrong verdict. The spec's mirror loop already
-   demands scope confirmation for `tell` statements; M5 builds that machinery
-   anyway, so the AnswerRequest's scope should ride it.
+   One design question to settle at the start: **nothing confirms V4's
+   output, and two of its inferences bound the verdict.** One mirror loop
+   covers both — the spec already demands exactly this for `tell` statements
+   (reflect the interpretation back, including explicit scope; only the
+   human's confirmation promotes), and M5 builds that machinery anyway.
+
+   1. **The required-knowledge list is an unreviewed draft.** `evaluate()`
+      walks `required.items` and nothing else, and no field records whether a
+      human has ever read the list. Over-listing is handled (`waive_item`);
+      **under-listing is not, and it is silent** — a dependency the model
+      never listed appears nowhere, so the verdict is too *generous* and the
+      headline guarantee ("blocks when a material dependency remains
+      unsupported") never considers it material. Same shape as the domain
+      guide's known weakness: wrong by omission is invisible, wrong by
+      commission is catchable.
+   2. **The request's scope is inferred from prose.** "P&L for Germany" —
+      scope, or break-out? That inference decides which elections run, which
+      cards are drafted and which claims count, so a wrong scope yields a
+      confident, fully-reasoned, wrong verdict.
+
+   Proposed shape: `RequiredKnowledge` gains a confirmed flag; an
+   unconfirmed list caps the verdict at `ready_with_limitations`, the named
+   limitation being the list itself. Aggressive — every project starts "with
+   limitations" — but true, and it is the only thing that gives a reader a
+   reason to read the list. **Owner decision: this shape, and whether it
+   waits for M5.**
+
+   Not in scope: the `why` on each item. It is the model's reason for
+   listing, attributed and subordinate, and it cannot move a verdict — a
+   wrong `why` makes pruning easier, not harder.
 
 ### M5 kickoff batch
 
