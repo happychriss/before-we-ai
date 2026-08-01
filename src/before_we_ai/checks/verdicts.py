@@ -27,7 +27,7 @@ def empty_expected(rows: list[tuple], columns: list[str], ctx: dict) -> Assessme
 
 
 def report_only(rows: list[tuple], columns: list[str], ctx: dict) -> Assessment:
-    """K6: findings are a Befund, never a falsification."""
+    """K6: a finding is an observation, never a falsification."""
     if not rows:
         return Assessment(CheckVerdict.PASS, [], "no orphans")
     return Assessment(

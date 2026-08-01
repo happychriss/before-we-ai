@@ -1,7 +1,8 @@
-# Corpus — confirmed facts (M0, frozen)
+# Corpus — confirmed facts
 
-Frozen 2026-07-11, git tag `m0-corpus-v1`. Never regenerate or edit; the corpus is
-the fixed answer key for all later milestones.
+**Frozen.** Never regenerate or edit: the corpus is the fixed answer key
+every later measurement is scored against, so changing it invalidates the
+comparison. Test infrastructure only — `src/before_we_ai/` never imports it.
 
 ## Layout
 
@@ -10,7 +11,7 @@ the fixed answer key for all later milestones.
   `expected_verdicts.yaml`
 - Validation harness: `src/corpus/validation/` (all checks pass); interactive HTML
   report via `build_html_report.py`
-- Generator archive: `src/raw-training-data/` (generator.py, seed-stability report)
+- Generator archive: `src/raw-training-data/` (generator + seed-stability report)
 
 ## Traps
 

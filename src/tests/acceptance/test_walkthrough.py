@@ -64,7 +64,7 @@ def test_umsatz_claim_walkthrough(tmp_path):
     assert again.id == rule.id
     assert len(list((root / "claims").glob("*.yaml"))) == 1
 
-    # Step 4 — Sonde über 40.000 Zeilen widerspricht: EIN Aggregat-Beweis
+    # Step 4 — a check over 40,000 rows contradicts: ONE aggregate proof
     store = ProjectStore(root)
     rule = store.claims[rule.id]
     check = EvidenceRecord(
@@ -105,7 +105,7 @@ def test_umsatz_claim_walkthrough(tmp_path):
     assert child.derived_from == rule.id
     assert child.derived_from_evidence == check.id
 
-    # Step 6 — Abhängigkeit gated die Sonde; Gap-Lastliste zeigt den Impact
+    # Step 6 — the dependency gates the check; gap load shows the impact
     store = ProjectStore(root)
     child = store.claims[child.id]
     refined = create_claim(
@@ -143,7 +143,7 @@ def test_umsatz_claim_walkthrough(tmp_path):
     assert child.status is ClaimStatus.TEST_SUPPORTED
     assert ready_for_check(refined, store.claims) is True
 
-    # Step 7 — Spiegel-Schleife (F29): Bestätigung braucht den Geltungsbereich
+    # Step 7 — mirror loop (F29): a confirmation requires an explicit scope
     store = ProjectStore(root)
     tell = EvidenceRecord(
         type=EvidenceType.TESTIMONIAL,

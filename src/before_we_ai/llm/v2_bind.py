@@ -141,17 +141,15 @@ def _untested_claims(store: ProjectStore,
     """Every parameterised claim that no check has been planned for yet.
 
     Not "AI claims": **who said it, and whether anyone believes it, are
-    both irrelevant to whether it can be tested.** The spec is explicit —
-    *"Testimoniale Claims sind sondierbar wie alle anderen (widersprechende
-    Sondenbefunde ziehen sie auf `unresolved`) — das ist zugleich ihr
-    einziges Verfallsdatum"*: a human statement carries no data fingerprint,
-    so a contradicting check is the only thing that can ever expire it.
-    Filtering to ``Actor.AI`` and ``proposed`` would have made human and
-    document knowledge the one kind of claim nothing may question.
+    both irrelevant to whether it can be tested.** The spec requires that a
+    testimonial claim be checkable like any other, and that a contradicting
+    check pull it to ``unresolved`` — that is its *only* expiry date, since a
+    human statement carries no data fingerprint to go stale. Filtering to
+    ``Actor.AI`` and ``proposed`` would make human and document knowledge the
+    one kind of claim nothing may question.
 
-    Until M5 nothing produces such claims, so this widening changes no
-    number today; it is here so that when V3 does, its output is tested
-    rather than trusted.
+    Dormant until the document pipeline produces such claims; it is here so
+    that when it does, their output is tested rather than trusted.
 
     A claim that already has a plan is excluded — that is what "untested"
     means here, and it keeps re-runs from re-planning settled work.

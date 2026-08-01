@@ -4,9 +4,9 @@ Two guarantees are load-bearing here and each has its own block below.
 A verdict of blocked or ready_with_limitations must **name** the
 dependency it rests on — a verdict whose reason a reader has to hunt for
 is a verdict they will take on trust. And every satisfied item must say
-**how**, because since the owner's decision of 2026-07-31 *satisfied* and
-*promoted* are different things: a slot field is satisfied by the run that
-consumed its column while its own claims stay proposed.
+**how**, because *satisfied* and *promoted* are different things: a slot
+field is satisfied by the run that consumed its column while its own claims
+stay proposed.
 """
 
 import pytest
@@ -231,7 +231,7 @@ class TestEverySatisfiedItemSaysHow:
 
     def test_a_slot_field_is_satisfied_by_the_derivation_and_says_so(
             self, store, guide):
-        """The owner's decision of 2026-07-31: the map reads settled_slots
+        """The owner's decision: the map reads settled_slots
         and the field's own claims keep their status. An item that said only
         'satisfied' would hide exactly that."""
         _passing_balance(store, _candidate(store, "journal", "de_erp__gl"),
@@ -281,7 +281,7 @@ class TestEverySatisfiedItemSaysHow:
 
     def test_a_claim_that_states_the_rule_but_is_not_linked_is_not_support(
             self, store, guide):
-        """Name matching was rejected (owner decision 2026-07-31): V4 names a
+        """Name matching was rejected (owner decision): V4 names a
         rule in the human's words and whatever produces the claim coins its
         own term, so a match would miss where it matters and could hit
         something unrelated that happens to slug the same. A verdict resting

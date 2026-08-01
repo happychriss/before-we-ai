@@ -4,7 +4,7 @@ Runs the full M4 pipeline (scan -> V1 -> role proposals -> V2 -> engine ->
 role resolution) against the frozen corpus and scores which seeded traps
 surfaced as claims, per the recall_set in expected_verdicts.yaml. Reports;
 does not gate: the bar is an owner decision taken from real runs
-(owner-aligned 2026-07-12: measure first).
+(owner-aligned : measure first).
 
 Scoring is matcher-based and trap-class-generic in spirit: a trap counts
 as recalled when *some* claim grounds the seeded relationship (right

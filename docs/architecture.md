@@ -1,34 +1,92 @@
-# Product architecture — confirmed design (M1–M4 + M6 built; M5 specified where marked)
+# Product architecture — confirmed design
 
 Per-package confirmed decisions and gotchas for `src/before_we_ai/`. Feature
 status: `README.md` (roadmap table). Plain-language walkthrough:
-`docs/before-ai-concept.md`. Working rules: `meta/conventions.md`.
+`docs/before-ai-concept.md`. Working rules: `meta/conventions.md`. Open
+decisions and live state: `meta/memory.md`.
 
-## Terminology (realigned 2026-07-31)
+Everything here is the design as it stands. Where a rule has a reason, the
+reason is given — a rule without one gets re-litigated or quietly undone.
 
-The vocabulary was realigned to the question-first process description (owner
-decision 2026-07-30); `before_we_ai/glossary.py` is the one home of the terms.
-Renames: `Probe` → `CheckPlan`, `TemplateSpec` → `CheckDefinition` (package
-`probes/` → `checks/`), `RoleBindingClaim` → `MappingClaim`, `RoleSet` →
-`DomainGuide` (`llm/roles.py` → `llm/domain_guide.py`), `QuestionCard` →
-`ClarificationQuestion` ("Fachfrage" retired), statuses `inferred` → `proposed`
-and `tested` → `test-supported`, actor/evidence `probe`/`probe_result` →
-`check`/`check_result`.
+## Principles
 
-- **Config break, no shim**: `before-ai.yaml` key `llm.roles_file` is now
-  `llm.domain_guide_file`. Project stores are regenerated, not migrated
-  (no committed store carried the old strings).
-- **The model's wire contract stayed stable**: the 13 `REGISTRY` template
-  names (`anti_join`, `cardinality`, …), the JSON fields the model fills
-  (`claim_id`, `template`, `params`, `no_template_reason`, `hypotheses`,
-  `bindings`), the contract names (`v1_hypotheses`, `role_binding`,
-  `v2_bind`) and the claim labels `c1..cN` did not change. Prompt prose and
-  section headers did → fixtures re-recorded live; any count movement in
-  that diff is a signal about prompt fragility, not a schema artifact.
-- The concepts reserved at that rename (`AnswerRequest`, `RequiredKnowledge`,
-  `ReadinessMap` + ready/ready_with_limitations/blocked) were **built in M6**
-  and are live in `glossary.py`; `ClarificationQuestion.sql`/`result_ref`
-  moved to `AnswerRequest`, and the card gained a `scope`.
+Four statements the rest of the document is an implementation of.
+
+**The product thesis.** *before-we-ai traces a business answer back to every
+mapping, meaning and rule it depends on, tests what can be tested, and blocks
+the answer when a material dependency remains unsupported.* It is an
+**answer-readiness control layer**: it does not ask whether a data landscape
+is generally AI-ready, it decides whether **this specific answer** is.
+
+**The handover.** Measurement stays separate from interpretation. A check
+never directly proves a claim and never produces an answer:
+
+```
+CheckPlan → CheckRun → Evidence → claim status → readiness decision
+```
+
+The AI proposes the path; the engine measures what happened; evidence changes
+what the system is allowed to **believe**; the readiness evaluator decides
+what it is permitted to **claim**. Each arrow is a different authority, and
+none of them may be skipped.
+
+**Capability is not authority, and plausible reasoning is not evidence.**
+A more capable model may write the SQL, run it, read the exceptions and
+explain the result — and the check must still execute independently against
+pinned data. Otherwise one wrong assumption yields plausible SQL, a plausible
+result, and a plausible self-verification. The four questions in play are not
+the same question:
+
+```
+AI reasoning       what is likely?
+Deterministic check what happened in the data?
+Authority          what does the organisation intend?
+Readiness          is the available support sufficient for this use?
+```
+
+**Trust is conditional, and ends at a boundary set by consequence.** Not at
+the point where a model becomes clever enough. Exploratory analysis may need
+only visible assumptions; management reporting needs deterministic
+reconciliation and approved definitions; statutory reporting, payments and
+pricing need authoritative policy, access control, accountable approval and
+an audit trail. The chain:
+
+```
+The model may propose.
+The data may demonstrate.
+A source may authorise.
+A human may confirm.
+The system may enforce.
+The organisation accepts the remaining risk.
+```
+
+So the question is never "is this trusted?" but *trusted to do which task,
+within which scope, on which evidence, with which consequence if wrong?*
+
+## Vocabulary
+
+`before_we_ai/glossary.py` is the one home of the canonical terms, as data —
+every owner-facing surface renders that list, so the definitions cannot drift
+apart. Two standing rules:
+
+- **No synonyms.** The words in the glossary are the only words.
+- **No domain examples.** These terms render into every project's report
+  whatever its domain; a general term explained with a finance example
+  teaches a shipyard the wrong thing. Concrete nouns belong in the domain
+  guide, which the report quotes from. Enforced by
+  `tests/unit/test_glossary.py`.
+
+The German↔English table in `GERMAN_TERMS` maps the owner's spec (`docs/spec/`,
+German by design) onto these terms, and is the only place a German term of art
+belongs.
+
+**The model's wire contract is fixed** and changes only by deliberate
+re-recording: the 13 `REGISTRY` template names, the JSON fields the model
+fills (`claim_id`, `template`, `params`, `no_template_reason`, `hypotheses`,
+`bindings`), the contract names (`v1_hypotheses`, `role_binding`, `v2_bind`,
+`v4_request`) and the claim labels `c1..cN`. Prompt prose may be edited only
+together with a fixture re-record; count movement in such a diff is a signal
+about prompt fragility, not a schema artifact.
 
 ## Dev environment
 
@@ -36,7 +94,7 @@ and `tested` → `test-supported`, actor/evidence `probe`/`probe_result` →
 - Repo root: `/workspace` — https://github.com/happychriss/before-we-ai
   (`pyproject.toml` lives in `src/`)
 - Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
-  `/workspace/src`; run `python -m pytest -q` there (391 tests green after M6,
+  `/workspace/src`; run `python -m pytest -q` there (391 tests green,
   incl. readiness_report; CI runs fully offline from recorded fixtures)
 - Authoritative German spec: `docs/spec/`
 
@@ -59,7 +117,7 @@ business sentence can be rewritten for clarity without touching a single
 prompt byte.
 
 **The product is a general machine only together with a domain pack** —
-never on its own (owner decision 2026-07-12). A domain pack = the domain
+never on its own (owner decision). A domain pack = the domain
 guide (data) + the domain-tagged check definitions (code). What is
 domain-specific is therefore explicit and enumerable: `CheckDefinition.domain`
 (`None` = generic; today exactly the three invariants carry
@@ -68,41 +126,34 @@ domain-specific is therefore explicit and enumerable: `CheckDefinition.domain`
 the rendered V2 template docs would change prompt bytes → joins the M5
 fixture re-record batch.
 
-### Portability — measured, not assumed (2026-07-31)
+### Portability — what a second domain costs
 
-Owner question: would a second domain (shipbuilding — bill of materials and
-supply chain) work, or would the wording break? Tested by writing that guide
-and rendering a report from it. Three results, worth keeping:
+Measured by writing a shipbuilding guide (bill of materials, supply chain) and
+rendering a report from it, not assumed.
 
-1. **The narration is domain-neutral and needs no change.** Every derived
-   sentence is composed from three slots that belong to the domain pack: the
-   guide's **definition**, the law's **name**, and the run's **verdict
-   numbers**. "The bom_rollup law passed on `pdm__bom_positions` and felled
-   the other candidate" comes out of the same template as the finance one.
-   The only sentence carrying business meaning is the one the guide's author
-   wrote.
-2. **The cost of a new domain is laws, not prose — and it fails loudly.**
-   A guide naming a law that does not exist is rejected at load ("`bom_rollup`
-   is no check template and not 'clarification'"). A guide with only
+1. **The narration is domain-neutral.** Every derived sentence composes three
+   slots that belong to the domain pack: the guide's **definition**, the
+   law's **name**, and the run's **verdict numbers**. "The bom_rollup law
+   passed on `pdm__bom_positions` and felled the other candidate" comes out of
+   the same template as the finance one. The only sentence carrying business
+   meaning is the one the guide's author wrote.
+2. **A new domain costs laws, not prose — and it fails loudly.** A guide
+   naming a law that does not exist is rejected at load ("`bom_rollup` is no
+   check template and not 'clarification'"). A guide of only
    `decided_by: clarification` objects loads and renders, but then nothing is
-   ever promoted and every object ends in a question: honest, and no longer
-   discovery. So onboarding a domain means writing its conservation laws as
-   SQL templates.
-3. **Two leaks found and fixed.** `glossary.py` explained general terms with
-   finance examples ("a business object … journal, subledger, intercompany"),
-   and the "1.3 Domain-law templates" panel listed the whole `REGISTRY`, so a
-   shipbuilding project displayed three finance laws among its declared
-   inputs — laws its own lint would refuse. **Two rules follow, both now
-   enforced by tests:** the canonical vocabulary carries no domain examples
-   (`tests/unit/test_glossary.py`), and the law panel shows this project's
-   domain only, counting the others
-   (`test_the_law_panel_shows_this_project_s_domain_and_no_other`). A scan of
-   a rendered shipbuilding report for finance nouns now returns nothing.
+   ever promoted and every object ends in a question — honest, and no longer
+   discovery. Onboarding a domain means writing its conservation laws as SQL
+   templates.
+3. **Two rules keep it that way**, both test-enforced: the canonical
+   vocabulary carries no domain examples (`tests/unit/test_glossary.py`), and
+   the law panel shows this project's domain only, counting the rest
+   (`test_the_law_panel_shows_this_project_s_domain_and_no_other`). Without
+   them a shipbuilding project displays finance laws among its declared
+   inputs — laws its own lint would refuse.
 
 ### The domain pack is the critical — and currently unverified — input
 
-Established in the owner validation walkthrough of 2026-07-31. This is the
-most load-bearing open weakness in the product; treat it as such.
+This is the most load-bearing open weakness in the product; treat it as such.
 
 **Leverage.** The finance guide is **57 lines**, and it alone decides:
 (1) what the AI searches for — a concept not named in the guide is invisible,
@@ -122,7 +173,7 @@ AND per year, so a passing law never proves what one slot means.* A passing
 invariant is strong evidence about **data consistency** and only weak
 evidence about **meaning**.
 
-**Measured, not assumed (2026-07-31).** No plausible impostor in the frozen
+**Measured.** No plausible impostor in the frozen
 corpus passes the balance law: `de_erp__intercompany` fails 24/24 periods,
 `us_erp__intercompany` 23/23, `de_erp__ar_open_items` 420 groups. So the risk
 is not live here — but **what protects us is the shape of this dataset, not
@@ -143,32 +194,31 @@ writing it will usually know the domain, not the machine. That places the
 guide-drafting contract (parked as "Onboarding workflow" item 3, post-M5)
 closer to the commercial centre of the product than its position suggests.
 
-**Guide acceptance kit — the three parts.** `docs/before-ai-concept.md` §6
-predicted the need and sketched the first two; the third comes from the
-2026-07-31 findings:
+**Guide acceptance kit — three parts, one shipped.**
 
 1. **Per new law:** one fixture where it holds (check must PASS) and one
    deliberately violated (must FAIL, and only on the seeded row). Catches the
-   trivially-passing law — the named remaining path to false confidence.
+   trivially-passing law — the remaining path to false confidence. **Open.**
 2. **Per new role:** at least one wrong candidate that must lose its
-   election. Catches definitions too vague to discriminate.
-3. **Coherence lint** (static analysis over guide + REGISTRY, no data
-   needed): no role may declare a law it can only be a **slot** of; every
-   law's slots must be fillable by declared roles. Catches the `amount_local`
-   class automatically, and is the same mechanism as the slot-side lint
-   already queued for M5 — build them together.
+   election. Catches definitions too vague to discriminate. **Open.**
+3. **Coherence lint** — static analysis over guide + REGISTRY, no data
+   needed. **Shipped** (see "Guide by construction"): a field can never
+   declare a law, a slot must name a fillable slot of its object's law, and
+   the whole mis-declaration class is inexpressible rather than merely
+   caught.
 
-### Guide by construction — owner-aligned 2026-07-31 (pre-M6 + M6)
+Parts 1 and 2 are an owner decision, and they matter more under readiness
+framing: a wrong guide now produces a confident, product-branded "ready".
 
-Owner discussion record: `docs/before-we-ai-key-findings-and-conclusions.md`.
+### Guide by construction
+
 Three decisions close the "nothing tests the guide" gap **by construction**
-rather than only by testing. The first was the **pre-M6 alignment step**, and
-it had to land before the ReadinessMap consumes the guide's shape, because a
-structure change under an already-built dependent layer is the expensive kind.
+rather than only by testing — a whole class of mistake becomes unwritable
+instead of merely detected.
 
-1. **Objects with fields, not a flat role list — BUILT 2026-07-31.** The old
-   guide mixed levels: `journal` (a business object) and `amount_local` (a
-   field inside it) were both "roles" with their own settlement paths — which
+1. **Objects with fields, not a flat role list.** A flat list mixes levels:
+   `journal` (a business object) and `amount_local` (a
+   field inside it) would both be "roles" with their own settlement paths — which
    is exactly what made the `amount_local` mis-declaration *expressible*. The
    guide now declares **business objects** (`decided_by:` a domain law or
    `clarification`) each with **fields** (`decided_by: slot` plus `fills:`, or
@@ -177,15 +227,15 @@ structure change under an already-built dependent layer is the expensive kind.
    catches it. A slot field settles through its object's passing law from
    evidence that already existed and was simply not connected (`settled_slots`
    — see the resolution bullets under Domain inputs). The **coherence lint**
-   (part 3 of the acceptance kit) is built against the new shape and absorbed
-   the former M5 kickoff item 5; the slot-side metadata it needs lives on
-   `CheckDefinition.slots`.
-   **Wire-contract rule applied again, and held:** the model sees the same flat
-   rendered definitions as before (`decided_by` never entered a prompt; the
-   hierarchy is consumed by the lint, role resolution, and elections only).
-   Objects and their fields flatten in guide order, and the fixture drift guard
-   passed **untouched** — the byte-stability proof, offline. No fixture
-   re-record was needed: every recorded LLM answer replays unchanged.
+   (part 3 of the acceptance kit) is built against this shape; the slot-side
+   metadata it needs lives on `CheckDefinition.slots`.
+
+   **The hierarchy never reaches the model.** `decided_by` does not enter a
+   prompt; objects and their fields flatten in guide order into the same
+   rendered definitions a flat list would produce. The hierarchy is consumed
+   by the lint, by role resolution and by the elections only — which is why
+   the guide's shape can change without a fixture re-record, and the drift
+   guard proves it.
 
 2. **Guide provenance — the actor discipline extends to the guide.** The
    generic half (textbook laws and concepts: journals balance, AR ties to a
@@ -202,7 +252,7 @@ structure change under an already-built dependent layer is the expensive kind.
    `decided_by:` is literally an authority statement.
 
 3. **Question-first bounds the guide and makes omissions visible — but does
-   not replace the kit.** Under M6's question-first flow, a guide wrong by
+   not replace the kit.** Under the question-first flow, a guide wrong by
    *omission* surfaces as `blocked` in the ReadinessMap: the question is the
    external referent the guide is measured against, and small per-question
    guides (a page, reviewable) replace an unbounded domain model. A guide
@@ -212,7 +262,7 @@ structure change under an already-built dependent layer is the expensive kind.
    readiness framing, because a wrong guide then produces a confident,
    product-branded "ready".
 
-## Epistemic core (`model/`, `store/` — M1, tags m1-core-v1/v2)
+## Epistemic core (`model/`, `store/`)
 
 - `model/` is pure and IO-free; `store/` is a YAML repo with append-only evidence,
   integrity check, optional git checkpoint.
@@ -237,7 +287,7 @@ structure change under an already-built dependent layer is the expensive kind.
 - Reference usage demo: `tests/acceptance/test_walkthrough.py` (9-step
   "Umsatz-Claim" scenario, F15/F29).
 
-## Ingestion & profiling (`sources/`, `profile/`, `scan.py` — M2, tag m2-ingestion-v1)
+## Ingestion & profiling (`sources/`, `profile/`, `scan.py`)
 
 - **One canonicalization everywhere**: `canonical_text()` + SQL twin
   `canonical_sql_expr()` (unit-tested to agree) bridge BIGINT 1101 / DOUBLE 1101.0 /
@@ -260,7 +310,7 @@ structure change under an already-built dependent layer is the expensive kind.
   JSON+MD in `profiles/` (no timestamps). The matrix measures, never judges —
   chance overlaps deliberately included.
 
-## Checks & engine (`checks/`, `engine/` — M3, tag m3-probes-v1)
+## Checks & engine (`checks/`, `engine/`)
 
 - `checks/REGISTRY`: name → CheckDefinition(file, prepare, verdict, tolerances,
   question); 13 Jinja2 templates in `templates/*.sql.j2`, split by
@@ -285,7 +335,7 @@ structure change under an already-built dependent layer is the expensive kind.
   its exact contents.
 - `run_ready`: check plans topo-sorted by claim; `ready_for_check` gates (deps ≥
   test-supported); claim-less plans first; returns RunReport(executed,
-  skipped(reason)). Since M4, a check whose SQL cannot execute is **contained**:
+  skipped(reason)). A check whose SQL cannot execute is **contained**:
   it lands in `skipped` with the error as reason, writes no evidence, leaves its
   claim untouched — AI-planned checks must never kill the sweep (visibility, not
   judgment; the loud-crash-on-uncastable-amounts contract inside running checks
@@ -294,20 +344,25 @@ structure change under an already-built dependent layer is the expensive kind.
   `canonical: false` (raw CAST). decode template checks functional dependency,
   not string equality.
 
-## LLM contracts (`llm/` — M4, tag m4-llm-v1)
+## LLM contracts (`llm/`)
 
 - **Thin typed functions, no framework**: `hypothesize(root)` (V1, frontier),
   `propose_mappings(root)` (frontier), `plan_checks(root)` (invariant batch
   frontier / ordinary batch mid-tier) — library seams like `scan(root)`; models
   and offline switch in `before-ai.yaml` `llm:` (defaults in `llm/config.py`;
   key ONLY via env var `ANTHROPIC_API_KEY`, lazy SDK import, optional `[llm]` extra).
-  Owner decisions 2026-07-12: Anthropic API; `claude-opus-4-8` for V1 + mapping
+  Owner decisions : Anthropic API; `claude-opus-4-8` for V1 + mapping
   proposals, `claude-sonnet-5` for plain check planning.
 - **Controlled predicate vocabulary** (`llm/vocabulary.py`): closed `Literal` in
   the output schemas — free-form predicates fail validation. `TEMPLATE_PARAMS`
   mirrors `checks.REGISTRY` key-for-key, locked by a unit test. Every hypothesis
   carries a `Predicate` with canonicalized params ⇒ claim_key dedup works for
   AI claims; `rationale` is logged, never stored (wording-free identity).
+  **Provenance, stated so nobody assumes otherwise:** the 13 predicates are
+  derived bottom-up from the check templates the corpus forced into existence,
+  **not** from the spec. Completeness is not claimed, and the Seeded-Recall
+  misses are the measure of the gap. They grow by the same rule as templates —
+  see `meta/conventions.md`.
 - **Retry contract, two-tier** (the spec fixes the count — *ein Retry* — not
   its payload). Parse + Pydantic + semantic checks (mapping dry-run) share one
   code path; the *kind* of failure decides what the one extra call contains:
@@ -349,14 +404,14 @@ structure change under an already-built dependent layer is the expensive kind.
 - **Stub mode**: fixtures keyed contract+scenario (never input hash — a builder
   change must not strand keyless devs); drift guard = offline test comparing
   fixture `input_sha256` against rebuilt inputs; refresh procedure under
-  "Operations" below. GOTCHA (found+fixed 2026-07-31): the recorder must
+  "Operations" below. GOTCHA (found+fixed ): the recorder must
   take the last **non-repair** attempt — an item-scoped repair answer can
   never stand in for the full batch; and a live repair that *accepted*
   items is irreproducible offline (labels shift downstream) — the script
   warns, re-run the refresh in that case. GOTCHA: the corpus generator's
   `generator_spec/roles.yaml` names trap decoys — runtime domain guides must be
   clean (see `tests/fixtures/domain_guide_finance.yaml`).
-- **A refusal is a result — and it is persisted** (2026-07-12). Every claim V2
+- **A refusal is a result — and it is persisted**. Every claim V2
   leaves without a check (`unbindable` / `semantic_only` / `skipped`) gets a
   `DECLARATION` evidence record carrying the verbatim reason
   (`payload: {decision, reason}`). Before that the reason existed only in the
@@ -369,7 +424,7 @@ structure change under an already-built dependent layer is the expensive kind.
   accordingly: `llm/` may build exactly one `EvidenceRecord`, of type
   `DECLARATION`, and may not even name a promoting evidence type
   (`tests/unit/test_llm_guardrail.py`).
-- **Every entry declares its settlement path** (2026-07-12; the viewer's role
+- **Every entry declares its settlement path** (; the viewer's role
   elections made the gap visible). Each entry in the domain guide carries
   `decided_by:`. An **object**: the domain law that can elect it, or
   `clarification` (no arithmetic can decide what a column *means*: a journal
@@ -394,7 +449,7 @@ structure change under an already-built dependent layer is the expensive kind.
   their honest derived statuses. Still open: role claims binding to *generic*
   templates (M5, under "Onboarding workflow" below).
 - **A slot field rides its object's law — and is answered by the run, not by a
-  question** (`settled_slots`, pre-M6 alignment). `CheckDefinition.slots` names
+  question** (`settled_slots`). `CheckDefinition.slots` names
   which params of a law are slots and which view param each sits on (balance:
   `{"amount": "journal"}`). When an object's law passed, the column that run
   consumed for a slot *is* that field's answer — the elected journal's balance
@@ -407,7 +462,7 @@ structure change under an already-built dependent layer is the expensive kind.
   settlement is **derived, never stored**: the field's own candidate claims
   keep their evidence-derived statuses (today `proposed`), which is why the
   report shows the consumed column instead of an election. **DECIDED
-  2026-07-31 (owner): the ReadinessMap reads the derivation.** The claims keep
+  (owner): the ReadinessMap reads the derivation.** The claims keep
   their status; no new promotion path, so the machinery that keeps
   False-Promotion at 0 is untouched. The rejected alternative — letting the
   passing run's evidence attach to the field claim and promote it — would have
@@ -417,52 +472,46 @@ structure change under an already-built dependent layer is the expensive kind.
   it is and why** ("satisfied because its own claim is test-supported" vs
   "satisfied because the balance law of 'journal' passed while reading
   `<column>`; its own candidate claims are still proposed").
-- **Elections run per scope** (gap found 2026-07-31, **closed in M6**). A role
-  used to elect exactly one winner across the whole project, but a landscape is
-  typically
-  multi-entity: DE and US each legitimately own a journal, an account column,
-  a period column, a doc_ref. Two visible consequences in the walkthrough:
-  the `account`/`period`/`doc_ref` clarification questions offer three
-  candidates that are **all correct**, so answering forces the owner to
-  discard two right mappings; and `us_erp__gl_postings` is reported
-  `contradicted` for `journal`, which reads as "not the journal" when it *is*
-  the US journal carrying a €50k data defect (F22). Note the status alone
-  cannot separate "wrong table" from "right table, broken data" — only the
-  evidence can: the decoy fails 24/24 periods by millions, the US ledger
-  fails 1 period by exactly 50,000.
-
-  **The fix (M6).** The election unit is **role × scope**
+- **Elections run per scope.** The election unit is **role × scope**
   (`domain_guide.scopes_of`, `_candidates(store, role, scope)`), and
-  `settled_slots` is scoped too: each ledger consumed its own amount column,
-  and one entity's passing run answers nothing for another. Where a candidate's
-  scope comes from matters more than the grouping. **Not** the model — it has
-  not been told that scopes exist and must not be, since which entity a table
-  serves is a human's statement. **Not** the source's name — that would be
-  exactly the wording-dependent magic this product avoids. A **source declares
-  whose books it is** (`sources[].scope` in `before-ai.yaml` →
-  `Source.scope`), and a binding inherits the scope its sources agree on
-  (`ProfileIndex.scope_of`); a binding reaching across differently-owned
-  sources has no scope and belongs to no entity's election. A project that
-  declares nothing gets one landscape-wide election per role — byte-for-byte
-  its old behaviour, which is why no pinned number moved. `Scope` became
-  frozen (and hashable) in the process: elections group by it, and a value
-  editable underneath a grouping could move a claim into another entity's
-  election.
+  `settled_slots` is scoped with it. A landscape is typically multi-entity:
+  DE and US each legitimately own a journal, an account column, a period
+  column. One winner across the whole project would force a human to discard
+  correct mappings, and would report a working ledger as `contradicted`
+  because another entity's balances better. Status alone can never separate
+  "wrong table" from "right table, broken data" — only the evidence can (the
+  decoy fails 24/24 periods by millions; the US ledger fails 1 period by
+  exactly 50,000) — so the fix is the right unit, not a better verdict.
 
-  Two things ride along. Clarification questions gained a `scope` and dedup on
-  `(question, scope)` — see the defect note under "Question flow & readiness".
-  And the report renders one block per role × scope, naming the books in the
-  heading; its diagram counts "elections settled", not "roles elected",
+  **Where a candidate's scope comes from** matters more than the grouping.
+  **Not** the model: it has not been told scopes exist and must not be, since
+  which entity a table serves is a human's statement. **Not** the source's
+  name: that is exactly the wording-dependent magic this product avoids. A
+  **source declares whose books it is** (`sources[].scope` in
+  `before-ai.yaml` → `Source.scope`), and a binding inherits the scope its
+  sources agree on (`ProfileIndex.scope_of`). A binding reaching across
+  differently-owned sources has no scope and belongs to no entity's election.
+  A project that declares nothing gets one landscape-wide election per role.
+
+  `Scope` is frozen, and therefore hashable: elections group by it, and a
+  value editable underneath a grouping could move a claim into another
+  entity's election.
+
+  Riding along: clarification questions carry a `scope` and dedup on
+  `(question, scope)` — see "Clarification questions dedup on wording *and*
+  scope". The report renders one block per role × scope, naming the books in
+  the heading, and counts "elections settled" rather than "roles elected",
   because a slot answered by its object's passing run counts and nobody
   elected it.
-- Seeded-Recall lives in `tests/eval/seeded_recall.py` — reports, never gates.
-  First measurement (M4, full report `docs/seeded-recall-m4.md`):
-  **False-Promotion 0**, Seeded-Recall **15/25** in-scope traps incl. the T7
-  semantic-only pair; prompt-leakage scan clean (prompts carry no corpus
-  hints — findings derive from profile data, as designed). Open owner
-  decision: the numeric recall bar.
+- Seeded-Recall lives in `tests/eval/seeded_recall.py` — it **reports, never
+  gates**. Current standing: **False-Promotion 0** (non-negotiable),
+  Seeded-Recall **14–15/25** in-scope traps, prompt-leakage scan clean. Misses
+  cluster in the definition-style traps that need the document pipeline. Full
+  report and method: `docs/seeded-recall.md`. **Open: the numeric bar** — run-
+  to-run noise is ±2–3 traps, so a bar must sit outside it, and one over
+  relationship-style traps only is worth considering.
 
-### M4 design constraints (owner-aligned 2026-07-12, still binding)
+### Standing constraints on the LLM layer
 
 - Prompts stay domain-agnostic — no corpus-trap hints ever
   (`meta/conventions.md`).
@@ -476,7 +525,7 @@ structure change under an already-built dependent layer is the expensive kind.
 - No hard token limit — the goal is complete, well-structured context
   (~25k tokens is an orientation, not a cap).
 
-## Readiness report (`readiness_report/` — owned code since 2026-07-12)
+## Readiness report (`readiness_report/`)
 
 ```bash
 python -m readiness_report <project_root> -o <out.html>
@@ -484,15 +533,11 @@ python -m readiness_report <project_root> -o <out.html>
 
 The rendered state of knowledge: what is known, what is assumed, what is
 unknown — derived live from the store, never stored. Read-only and
-click-through for validators: start at the process diagram, walk down the
-pipeline, pick a claim and follow it outward to evidence, sources, lineage,
-and the questions that depend on it — without hand-reading YAML. Renders one
-self-contained HTML file; works for an empty project. Originally built by an
-external agent (PR #2) as the *claim viewer*; owned and maintained like the
-rest of the codebase since 2026-07-12, renamed 2026-07-31 when it became the
-owner's primary validation *and* understanding surface (it was never only a
-claim view). Since M6 it also carries the per-question ReadinessMap
-(section 6), and the diagram's M6 ghost is a real stage.
+click-through: start at the process diagram, walk down the pipeline, pick a
+claim and follow it outward to evidence, sources, lineage, and the questions
+that depend on it, without hand-reading YAML. One self-contained HTML file;
+works for an empty project. It is the owner's primary validation **and**
+understanding surface.
 
 **Binding constraints (in force):**
 
@@ -516,7 +561,7 @@ status/predicate/role filters; deep links reveal their claim:
   "proposed" and "decided" (nothing the AI authors can promote a claim — the
   structural False-Promotion invariant, made visible), and a **ghost node**
   for M5 (documents), dashed and labelled "not built", so what is missing is
-  stated rather than omitted. M6's node became real when M6 shipped.
+  stated rather than omitted.
 - **1 · Inputs** — the three declared domain inputs, live from the project:
   sources, the domain guide (domain, count, names, definitions, settlement
   paths), and the domain-law check definitions (naming the generic remainder
@@ -535,7 +580,10 @@ status/predicate/role filters; deep links reveal their claim:
   consumed; a role that lost every candidate ends in its clarification
   question.
 - **5 · Open** — the clarification-questions inbox with the claims each
-  question rests on: the human's to-do list.
+  question rests on: the human's to-do list. A card leaves it the moment a
+  claim it rests on settles (`semantics.is_answered`, derived from the same
+  evidence the readiness map reads, so the two cannot disagree). Answered
+  cards are kept, shown with what settled them.
 - **6 · Readiness** — per asked question: the business question verbatim, the
   derived verdict with the dependencies it names, and every required item with
   the sentence saying where it stands, grouped into "what the figures are
@@ -552,7 +600,7 @@ status/predicate/role filters; deep links reveal their claim:
 - **Core terms** (bottom) — rendered from `before_we_ai/glossary.py` (one
   home, no drift).
 
-**The three-voices rule (confirmed 2026-07-31).** The report is read by
+**The three-voices rule.** The report is read by
 people who will act on it, so it must be business-legible — and being
 legible is exactly how a page starts laundering a guess into a finding.
 Three voices, never mixed:
@@ -584,20 +632,21 @@ the ask, then the guide's definition of the thing, then what the machine
 already tried. Candidates are *not* formatted into the text — they are the
 `claim_ids` the card already carries, rendered as a list. Whether that list
 is a *choice* is read off the guide (`decided_by: clarification`), not off
-the question's wording. **Behaviour change 2026-07-31:** question dedup is
-exact-text, so with the candidate list out of the string, a changed candidate
-set no longer drafts a second card — it dedups to the same open question and
-keeps the first card's `claim_ids`. That is the more correct reading ("which
-column is the document reference?" is one question, not a new one per
-candidate shuffle), and append-only means older stores keep their old
-wording.
+the question's wording.
+
+Because the candidates are not in the string, a changed candidate set does
+not draft a second card: it dedups to the same open question and keeps the
+first card's `claim_ids`. That is the correct reading — "which column is the
+document reference?" is one question, not a new one per candidate shuffle —
+and it is why the dedup key had to gain a scope (below): two *entities* are
+two questions; a reshuffled candidate list is not.
 
 `tests/unit/test_readiness_report.py` locks the funnel stage counts, the
 winner / loser-with-its-law / clarification-question of the role elections,
 the process diagram (live counts, actor boundary, ghost nodes), the question
 pick-list and folded ids, and the three voices.
 
-## Onboarding workflow (design owner-aligned 2026-07-12, not yet built)
+## Onboarding workflow (specified, not built)
 
 The spec's Zielbild ("Datenbank verbinden, Dateien ablegen, Scan drücken") as
 a first-run flow: **init project → pick a bundled domain guide or draft one
@@ -619,10 +668,10 @@ re-record); piece 3 post-M5; the assembled workflow + quickstart is M8.
    `before_we_ai/domain_guides/finance.yaml` (content = today's test fixture
    `tests/fixtures/domain_guide_finance.yaml`). Config `domain_guide_file:
    finance` resolves to the bundled guide; an explicit path overrides. Flat
-   YAML, no plugin framework (Regel der Drei). Shipped guides must pass the
+   YAML, no plugin framework (rule of three). Shipped guides must pass the
    same leakage tripwire as prompts.
-   **Logical pack validation:** the entry half shipped 2026-07-12
-   (`decided_by:` + lint); the **slot side** shipped 2026-07-31 with the
+   **Logical pack validation:** the entry half shipped 
+   (`decided_by:` + lint); the **slot side** shipped with the
    objects-and-fields restructure — `CheckDefinition.slots` names each law's
    slot params, and the lint rejects a field whose `fills:` is no slot of its
    object's law. (Note the direction: the guide's fields must fill real slots,
@@ -646,24 +695,16 @@ re-record); piece 3 post-M5; the assembled workflow + quickstart is M8.
    clarification questions); a too-**loose** law is the one path to false
    confidence — an invariant that trivially passes promotes mappings on
    evidence that tests nothing. Authorship ends with a person signing off.
-   **Refined 2026-07-31:** the sign-off is per entry, not per file — generic
+   **Refined :** the sign-off is per entry, not per file — generic
    laws/concepts may stay AI-drafted; organisational bindings must be
    human-answered (see "Guide by construction" under Domain inputs).
 
-## Question flow & readiness (M6 — BUILT 2026-07-31)
+## Question flow & readiness
 
-Owner-aligned spec; discussion record
-`docs/before-we-ai-key-findings-and-conclusions.md`. Product thesis: **an
-answer-readiness control layer for enterprise AI.** The system does not ask
-whether the data landscape is generally AI-ready; it checks whether **this
-specific answer** is ready. USP in one sentence: *before-we-ai traces a
-business answer back to every mapping, meaning, and rule it depends on,
-tests what can be tested, and blocks the answer when a material dependency
-remains unsupported.*
-
-**Flow (top-down).** The pipeline before M6 ran bottom-up (scan everything,
-propose claims about the whole landscape) and survives unchanged as the
-middle of the machine; M6 added the top and the bottom:
+The layer that makes the product an answer-readiness control layer rather
+than a landscape scanner (see **Principles**). The middle of the machine runs
+bottom-up — scan everything, propose claims about the whole landscape — and
+the question flow wraps it:
 
 ```
 business question → AnswerRequest → RequiredKnowledge (scoped)
@@ -679,39 +720,40 @@ knowledge is bounded by the requested use case, never by an enterprise
 ontology. Visible in the walkthrough: the P&L question does not require
 `subledger_ar`, because open receivables do not enter a profit and loss.
 
-**Objects** (`model/objects.py`; all three words are live in
-`glossary.py` since M6, and carry no domain examples):
+**Objects** (`model/objects.py`, all live in `glossary.py`):
 
 - **`AnswerRequest`** — the structured form of one business question:
-  `requested_output` + `Scope`. The human question stays the *business
-  question* and is kept verbatim; this is its software representation. It
-  absorbed the vestigial `sql`/`result_ref` answer-half that
-  `ClarificationQuestion` used to carry. Stored in `answers/`.
-  **No `created_by`**, and neither has `RequiredKnowledge`: authorship here
-  is fixed by the shape — `question` is the human's, `requested_output` and
-  `scope` are V4's — so the field would have read `human` on every record
-  while being wrong about two of the three. A field whose value never varies
-  carries no information (same defect class as the redundant
-  `Hypothesis.kind`, M5 kickoff). `Claim.created_by` and
-  `KnowledgeLink.linked_by` are the contrast: they vary, and code branches
-  on them. The report attributes accordingly — the question as a human
-  quote, the requested output as the AI's.
+  `requested_output` + `Scope`, stored in `answers/`. The human question is
+  kept verbatim; this is its software representation, and it carries no
+  answer half.
+
+  **No `created_by`, here or on `RequiredKnowledge`.** Authorship is fixed by
+  the shape — `question` is the human's, `requested_output` and `scope` are
+  V4's — so such a field would read `human` on every record while being wrong
+  about two of the three. **A field whose value never varies carries no
+  information**, and one that is also *wrong* is worse than absent.
+  `Claim.created_by` and `KnowledgeLink.linked_by` are the contrast: they
+  vary, and code branches on them. The report attributes accordingly: the
+  question as a human quote, the requested output as the AI's.
 - **`RequiredKnowledge`** — `KnowledgeItem`s (`object` / `field` / `rule`),
-  each carrying the request's scope, each with a `why` a human can prune on.
-  Drafted by V4, persisted because the pruning is a human decision, not
-  something re-derivable from the request. **Only objects and fields carry
-  a scope**: for them it is a *selector* (which table, which column — DE's
-  ledger vs US's). A rule has nothing to select among, so where a rule is
-  valid lives on the **claim** that states it (`Claim.scope`,
-  `Claim.validity`, which can also say *from when*); the evaluator asks
-  whether that claim reaches the scope the question was asked in. A rule
-  item with an explicit scope is rejected at construction. That pruning is
-  `readiness.waive_item(ref, because=…)`: **waived, not deleted** (owner
-  decision 2026-07-31), so the item stays in the map struck through with its
-  reason — a deleted dependency is invisible, and "we decided this does not
-  matter, here is why" is exactly what this product refuses to lose. A
-  reason is mandatory; `require_again` undoes it. A field item names its object; a
-  rule item is what the vocabulary does *not* contain.
+  each with a `why` a human can prune on. Drafted by V4 and persisted,
+  because the pruning is a human decision rather than something re-derivable.
+
+  **Only objects and fields carry a scope.** For them it is a *selector*:
+  which table, which column — DE's ledger versus US's. A rule has nothing to
+  select among; where a rule is valid lives on the **claim** that states it
+  (`Claim.scope`, `Claim.validity`, which can also say *from when* — richer
+  than the item could express), and the evaluator asks whether that claim
+  reaches the scope the question was asked in. A rule item with an explicit
+  scope is rejected at construction.
+
+  **Pruning is `readiness.waive_item(ref, because=…)` — waived, not
+  deleted** (owner decision). The item stays in the map, struck through,
+  carrying the reason: a deleted dependency is invisible, and "we decided
+  this does not matter, here is why" is what this product refuses to lose. A
+  reason is mandatory; `require_again` undoes it. Waiving is allowed on any
+  kind, unlike linking — linking a non-rule would bypass an election,
+  waiving bypasses nothing.
 - **`ReadinessMap`** (`readiness/`, a *derived structure*, never a record) —
   per item: claim, evidence, ground, remaining gap; overall verdict
   `ready` / `ready_with_limitations` / `blocked`. Recomputed on every read,
@@ -723,13 +765,6 @@ epistemic core decides what may be **believed** from evidence; readiness
 decides what may be **claimed** from those beliefs. Keeping the two
 vocabularies apart is the handover principle spelled as a module boundary,
 which is why `Readiness` does not live in `model/enums.py`.
-
-**Handover principle** (measurement stays separate from interpretation): a
-check never directly proves a claim or produces an answer —
-`CheckPlan → CheckRun → Evidence → claim status → readiness decision`. In
-product words: the AI proposes the path; the check engine measures what
-happened; evidence changes what the system is allowed to believe; the
-readiness evaluator decides what the system is permitted to claim.
 
 ### V4 — the request contract (`llm/v4_request.py`)
 
@@ -772,7 +807,7 @@ Two things are non-negotiable in the output and are tested as such:
    without its reason is the one thing this product may not ship.
 2. **Every satisfied item says how it is satisfied** — by its own claim's
    status, or by the derivation `settled_slots` supplies for a slot field
-   whose claims are still `proposed`. Since the 2026-07-31 owner decision,
+   whose claims are still `proposed`. Since the owner decision,
    *satisfied* and *promoted* are deliberately different things (see "Guide by
    construction" above), and an item reading only "satisfied" would hide it.
 
@@ -787,7 +822,7 @@ the domain guide and its scoped election — that is what the guide is for. A
 **explicit claim link** (`KnowledgeItem.satisfied_by`, a `KnowledgeLink`
 carrying `linked_by`; created via `readiness.link_claim`).
 
-*Owner decision 2026-07-31.* The first implementation matched a rule's name
+*Owner decision .* The first implementation matched a rule's name
 against a concept claim's `term` or a predicate name, slug-normalised. That was
 rejected before M5 could build on it: V4 names a rule in the human's words
 ("sign convention for income and expense") while V3, reading a policy PDF,
@@ -806,32 +841,35 @@ a broken pointer and missing knowledge need different repairs. The report
 prints who linked it and why, since a wrong link points a verdict at an
 unrelated claim.
 
-**What propagates, and what has to be re-run** (owner question 2026-08-01).
+**What propagates, and what has to be re-run** (owner question).
 The verdict needs no re-run at all: the map is derived on every read, so a
 claim linked today changes the verdict on the next render. What *does* need a
 re-run is new **testable** knowledge — a policy claim like "revenue = 4000–4999
 minus contra" is a rule a check can falsify, so it must re-enter at V2 and the
-engine. That is why `v2_bind._untested_claims` (formerly `_unbound_ai_claims`)
-no longer filters on `Actor.AI` or on `proposed`: *who said it and whether
-anyone believes it are both irrelevant to whether it can be tested*, and the
-spec is explicit that a contradicting check is a testimonial claim's only
-expiry date. Latent until M5 produces such claims; it changes no count today.
+engine. `v2_bind._untested_claims` therefore selects **every parameterised
+claim without a plan**, filtering neither on `Actor.AI` nor on `proposed`:
+*who said it, and whether anyone believes it, are both irrelevant to whether
+it can be tested*, and the spec is explicit that a contradicting check is a
+testimonial claim's only expiry date — it carries no data fingerprint, so
+nothing else can ever expire it. Dormant until the document pipeline produces
+such claims.
 
-The third category is what was **written** to the store and never retracts.
-Answered clarification questions used to linger in "5 · Open" forever while
-the ReadinessMap called the same dependency settled — two surfaces of one
-store disagreeing. Fixed by deriving it: `semantics.is_answered` says a card
-is answered when a claim it rests on has settled, computed from the same
-evidence the map reads, so they cannot drift. Answered cards are kept and
-shown with what settled them, not dropped. The general rule: **derived
-surfaces propagate for free; written surfaces owe a retraction story** — and
-source-fingerprint staleness, the remaining case, is M7.
+The third category is what is **written** to the store, which needs someone
+to retract it. Answered clarification questions are handled by deriving the
+answer rather than flagging it: `semantics.is_answered` reads the same
+evidence the ReadinessMap reads, so the open-questions list and the map
+cannot disagree about one store. Answered cards are kept, shown with what
+settled them.
+
+The rule to apply whenever something new writes to the store: **derived
+surfaces propagate for free; written surfaces owe a retraction story.**
+Source-fingerprint staleness — the remaining written case — is M7.
 
 **A conflict is never silent.** A rule may carry several links. If a settled
 claim satisfies it while a *contradicted* claim is linked to the same rule,
 the verdict stands — the contradicted one may simply be the loser — but the
 sentence names it ("A contradicted claim is also linked to this rule …").
-Owner decision 2026-07-31: name it, keep the logic. Silence here would be the
+Owner decision: name it, keep the logic. Silence here would be the
 one failure the product exists to prevent, in the place that emits its
 loudest statement.
 
@@ -842,31 +880,29 @@ entity and "no declared owner" is its normal state. The sentence then says so
 mapping"). The reverse does not hold — DE's ledger says nothing about the
 landscape.
 
-### DEFECT closed in M6 — question dedup collided under scoped elections
+### Clarification questions dedup on wording *and* scope
 
-Clarification questions deduplicated on **exact text**
-(`llm/domain_guide.py::_save`, `engine/runner.py::_draft_question`) and
-`ClarificationQuestion` had no scope. While the candidate list sat inside the
-question text, two scopes produced two strings and two cards. The readability
-rework of 2026-07-31 took that list out — correctly, it was unreadable and
-duplicated `claim_ids` — which made *"Which of the proposed candidates is the
-'doc_ref'?"* byte-identical for DE and US. Under scoped elections the second
-scope's card would have collapsed into the first and taken its candidates
-with it: the "never silence" rule broken by a change made for readability.
+Cards carry a `scope`, and deduplication keys on
+`ClarificationQuestion.dedup_key()` = `(question, scope)` — in both drafting
+sites (`llm/domain_guide.py::_save`, `engine/runner.py::_draft_question`).
+The scope also leads the rendered question ("For entity DE: …") where a
+reader cannot miss it.
 
-Fixed before scoped elections landed: cards carry a `scope`, dedup keys on
-`ClarificationQuestion.dedup_key()` = `(question, scope)`, and the scope leads
-the rendered question ("For entity DE: …") where a reader cannot miss it. A
-regression test asks one role in two scopes and demands two cards.
+Text alone is not enough, and the reason is worth keeping: the candidate list
+is deliberately *not* in the question string, so *"Which of the proposed
+candidates is the 'doc_ref'?"* is byte-identical for DE and US. Keying on text
+would collapse the second scope's card into the first and take its candidates
+with it — silence, produced by a change made for readability. A regression
+test asks one role in two scopes and demands two cards.
 
 ### The surface
 
-The readiness report's process diagram had reserved M6's slot as a dashed
-ghost; that node is real now, carrying live counts ("2/9 dependencies
-supported · blocked") and linking into a new **section 6 · Readiness**.
-Two rules bind that panel, neither of which existed when M6 was specified:
+The readiness report's process diagram carries readiness as its sixth
+stage, with live counts ("2/9 dependencies
+supported · blocked") and linking into **section 6 · Readiness**.
+Two rules bind that panel:
 
-- **The three voices** (see "Readiness report" above). The business question
+- **The three voices** (see "Readiness report"). The business question
   appears verbatim — it is the human's. The verdict and every item's status
   sentence are derived and are the headline. The `why` the model wrote when it
   listed a dependency is legible, attributed and subordinate: it says why the
@@ -879,9 +915,10 @@ figures mean", which *is* the verdict rule, so the page explains itself.
 
 ### Acceptance — the six demo behaviours
 
-Discussion record §12: (1) identify both candidates, (2) contradict or qualify
-the wrong one, (3) surface the missing business rule, (4) ask one focused
-clarification, (5) build the ReadinessMap, (6) permit, narrow, or block.
+The narrow demo the product must satisfy: (1) identify both candidates,
+(2) contradict or qualify the wrong one, (3) surface the missing business
+rule, (4) ask one focused clarification, (5) build the ReadinessMap,
+(6) permit, narrow, or block.
 
 All six are asserted end to end in
 `tests/corpus_driven/test_llm_offline_corpus.py`, against the frozen corpus
@@ -894,26 +931,21 @@ exactly those. A companion test answers each open card and shows the verdict
 **narrow** to `ready_with_limitations` with the three conventions named — the
 third outcome.
 
-**Not built: the small standalone demo dataset** of findings §12 (one correct
+**Not built: the small standalone demo dataset** (one correct
 journal, one attractive wrong export, an account master, a sign convention, a
 non-inferable policy) intended to double as the first user experience. Running
 it offline needs its own recorded V1/role/V2 answers; hand-authoring those
 would mean writing the model's answers and then asserting the system found
 what was written, so the acceptance test uses the frozen corpus instead. The
-presentable dataset needs one live recording session — queued behind the API
-key rotation.
-
-**Ordering (owner decision 2026-07-31): M6 before M5**, with the pre-M6
-alignment step (guide objects+fields restructure + coherence lint, "Guide by
-construction") first, because the ReadinessMap must not be built on the flat
-role model. M5 stays necessary — the K3 document-only traps and three
-walkthrough claims whose V2 refusals literally name documents wait on it.
+presentable dataset needs one live recording session. **Open** — see
+`meta/memory.md`.
 
 ## Operations
 
 - **Install & test**: from `/workspace/src`, `source
   /workspace/.venv/bin/activate && pip install -e '.[dev]'`; `python -m
-  pytest -q` (257, fully offline). Never run pip against the system Python.
+  pytest -q` — fully offline, no API key. Never run pip against the system
+  Python.
 - **DuckDB catalog gotcha**: views over ATTACHed databases die on a fresh
   connection — always re-open via `sources.open_catalog(root)`; never hold a
   raw `duckdb.connect` on `cache/analysis.duckdb` across steps.

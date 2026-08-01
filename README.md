@@ -69,24 +69,24 @@ an expected verdict; several are designed so the only correct answer is
 "unresolved". Blind traps are held back by the owner to test what the implementer
 didn't anticipate.
 
-First measured run (M4): **False-Promotion 0**, Seeded-Recall **15/25** — reported
-honestly, misses diagnosed (they cluster in document-only rules, which is M5's job).
-Full report: `docs/seeded-recall-m4.md`. Owner-facing validation walkthrough:
+Standing measures: **False-Promotion 0** (structural, non-negotiable),
+Seeded-Recall **14–15/25**, prompt-leakage scan clean. The misses cluster in
+rules that live only in documents — the document pipeline's job. Method and
+current numbers: `docs/seeded-recall.md`. Owner-facing validation walkthrough:
 `validation/README.md`.
 
 ## Roadmap & status
 
 | Milestone | Deliverable | Status |
 |---|---|---|
-| M0 | Fixture corpus generator + expected verdicts (self-checking ground truth) | ✅ done — `m0-corpus-v1` |
-| M1 | Epistemic core: models, state machine, promotion rules (pure functions) | ✅ done — `m1-core-v1/v2` |
-| M2 | Ingestion & profiling (incl. dirty-Excel normalization) | ✅ done — `m2-ingestion-v1` |
-| M3 | Check engine + epistemics runtime — validated **without any LLM** | ✅ done — `m3-probes-v1` |
-| M4 | LLM contracts V1/V2 (hypotheses, check planning) + offline stub mode | ✅ done — `m4-llm-v1` |
-| — | Readiness report (read-only validation UI, one self-contained HTML) | ✅ done — owned code |
-| — | Pre-M6 alignment: domain guide → business objects + fields, coherence lint | ✅ done — 2026-07-31, prompts byte-identical |
-| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked) | ✅ done — 2026-07-31; elections now run per scope; standalone demo dataset pending one live recording |
-| M5 | Document pipeline + V3 (interpretation with anchor validation) | next — see `docs/architecture.md`; M5 kickoff batch in `meta/memory.md` |
+| M0 | Fixture corpus generator + expected verdicts (self-checking ground truth) | ✅ built |
+| M1 | Epistemic core: models, state machine, promotion rules (pure functions) | ✅ built |
+| M2 | Ingestion & profiling (incl. dirty-Excel normalization) | ✅ built |
+| M3 | Check engine + epistemics runtime — validated **without any LLM** | ✅ built |
+| M4 | LLM contracts V1/V2 (hypotheses, check planning) + offline stub mode | ✅ built |
+| — | Readiness report (read-only validation UI, one self-contained HTML) | ✅ built |
+| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked), elections per scope | ✅ built |
+| M5 | Document pipeline + V3 (interpretation with anchor validation) | **next** — scope and kickoff batch in `meta/memory.md` |
 | M7 | Staleness propagation & replay against a "prod" copy | planned |
 | M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart | planned |
 

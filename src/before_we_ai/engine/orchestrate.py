@@ -2,7 +2,7 @@
 
 Claims are visited in topological order of their `depends_on` graph and a
 claim-bound check only runs when every prerequisite is at least `test-supported`
-(`ready_for_check`, M1 scheduler) — the "Nebenbuch=Hauptbuch erst nach
+(`ready_for_check`, the scheduler) — the "subledger=GL only after
 Bindung beider Seiten" rule. Claim-less checks run unconditionally.
 
 A check whose SQL cannot execute (M4: checks may be AI-bound, and no

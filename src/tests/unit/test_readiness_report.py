@@ -263,7 +263,7 @@ def test_role_elections_show_winner_loser_and_clarification(tmp_path):
         store.save_claim(attach_evidence(claim, record, []))
 
     card = ClarificationQuestion(
-        question="Für die Rolle 'intercompany' hat keine Bindung ihre Sonde bestanden — welche Quelle führt?",
+        question="No binding for the 'intercompany' role passed its check — which source leads?",
         claim_ids=[orphan.id],
     )
     store.save_question(card)

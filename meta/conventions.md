@@ -20,6 +20,14 @@ about how to work.
   author promoting evidence.
 - **Growth contract:** a new normalization rule = one case in `sources/canonical.py`
   + one unit test + auto-declaration. Downstream never enumerates rules.
+- **Rule of three for the controlled vocabularies.** A new **check template**
+  or a new **predicate** is added only when a concrete corpus case forces it —
+  never speculatively, never "for completeness". Anything the vocabulary
+  cannot express is *untestable*, which is a clarification question and a
+  visible gap, not a reason to invent an entry. The pressure to add a
+  plausible-sounding predicate will come; this is the answer. Same rule
+  governs abstractions generally: no ontology, no plugin framework, until a
+  third real case demands one.
 - **Prompts are part of the product — they stay domain-agnostic too** (M4+): LLM
   prompts may contain generic data-profiling language only; domain knowledge enters
   a prompt exclusively via the profile/source data being passed in. Never encode
@@ -51,11 +59,15 @@ about how to work.
   confirmed design decisions; slim `meta/memory.md` back to live state.
 - Tag milestones `mN-<name>-vX` and push.
 
+**The docs are forward-looking, not a log.** State the design as it stands
+and why, never how it got there: no dates, no "we used to", no "renamed
+from", no milestone narrative. A rule keeps its *reason* — that is what
+stops it being re-litigated — but loses its story. Open points stay, and
+they belong in `meta/memory.md`; git holds the history.
+
 ## Readiness report
 
-`src/readiness_report/` was originally built by an external agent (PR #2, then
-called the claim viewer) but is now
-**fully owned code** (ownership transferred 2026-07-12): review it, maintain it,
+`src/readiness_report/` is **fully owned code**: review it, maintain it,
 extend it, and hold it to the same standards as the rest of the codebase.
 
 ## Language policy
@@ -66,5 +78,5 @@ extend it, and hold it to the same standards as the rest of the codebase.
   **English**. German terms encountered outside spec/ may simply be replaced with
   English equivalents (the German↔English table lives in
   `before_we_ai/glossary.py`).
-- No mass rewrite of existing mixed-language content: clean it up opportunistically
-  whenever you touch a file anyway.
+- No German outside `docs/spec/` — not in prose, not in comments, not in
+  quoted spec passages (translate them and cite the section instead).

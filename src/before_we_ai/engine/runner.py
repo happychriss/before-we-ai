@@ -114,7 +114,7 @@ def run_check(
 
 
 def _draft_question(store, spec, ctx, check: CheckPlan, record: EvidenceRecord) -> None:
-    """FAIL/INCONCLUSIVE findings surface as a clarification question (Fragen-Ausbeute)."""
+    """A FAIL or INCONCLUSIVE finding surfaces as a clarification question."""
     if spec.question is None or record.verdict.value == "pass":
         return
     text = spec.question.format_map(

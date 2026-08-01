@@ -9,9 +9,9 @@ New to the flow or the terminology? `docs/before-ai-concept.md` walks the whole
 flow in plain language and ends with a glossary — the walkthrough below is that
 flow, one stage per script.
 
-Default mode is **offline**: the recorded real answers (Opus 4.8 / Sonnet 5,
-re-recorded 2026-07-31 after the terminology realignment) are replayed through
-the full validation path, so every run is deterministic and needs no API key.
+Default mode is **offline**: recorded real answers (Opus 4.8 / Sonnet 5) are
+replayed through the full validation path, so every run is deterministic and
+needs no API key.
 For live calls run `1-scan.sh --online` and `export ANTHROPIC_API_KEY=...`
 first — expect different numbers (the model samples).
 
@@ -117,8 +117,8 @@ field ends in a check verdict or a clarification question, never in nothing.**
 
 Good (offline pins): **six** clarification questions, one per unsettled entry —
 
-- `intercompany`, `subledger_ar` — law-decided objects, but in this recording
-  V2 never bound their invariant to any candidate (honest `template=null`) →
+- `intercompany`, `subledger_ar` — law-decided objects whose invariant V2
+  bound to no candidate (an honest `template=null`) →
   "What is missing before the 'intercompany' can be tested? … No proposed
   candidate could be put to the ic_symmetry law at all, so nothing about it
   has been tested."
@@ -135,9 +135,7 @@ them as a list to pick from.
 Nothing is drafted for the settled object (`journal`) — nor for its
 `amount_local` slot, and the step says so explicitly: the passing balance run
 consumed `de_erp__gl_postings.amount_local_currency`, so the posting amount is
-answered by evidence that already existed. (Until 2026-07-31 the guide wrongly
-declared `amount_local` law-decided, and it drew a seventh question about
-knowledge that was never missing.) Note what a pass does *not* buy: the same
+answered by evidence that already existed. Note what a pass does *not* buy: the same
 run grouped by `period`, and `doc_ref` still has to be asked — a journal
 balances per document AND per period, so a passing law never identifies the
 grouping column.
@@ -182,7 +180,7 @@ Two things to check in the output, because they are the guarantees:
   balance law of `journal` passed while reading
   `de_erp__gl_postings.amount_local_currency` — its own candidate claims are
   still `proposed`, and the sentence says so. *Satisfied* and *promoted* are
-  deliberately different things (owner decision, 2026-07-31); an item reading
+  deliberately different things (owner decision); an item reading
   only "satisfied" would hide the difference.
 
 Answer the four open mapping questions and the verdict narrows rather than
@@ -227,10 +225,11 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   DE and US each own a ledger and a period column, both ledgers pass the
   balance law, and the question is asked *for Germany*. Renders its own report
   at `data/two-entities/report.html`. What to look for: **two** journal
-  elections rather than one contest with a loser, **two** period questions
-  (before M6 the second deduplicated into the first and its candidate was
-  lost), and a readiness map that reads only DE's evidence — `journal` for
-  entity DE, `amount_local` settled by DE's own passing run with DE's column.
+  elections rather than one contest with a loser; **two** period questions,
+  which is why the dedup key includes the scope — on text alone the second
+  would collapse into the first and lose its candidate; and a readiness map
+  that reads only DE's evidence — `journal` for entity DE, `amount_local`
+  settled by DE's own passing run with DE's column.
 - `db.sh` — SQL shell over the catalog (`db.sh "select …"` for one-shots).
 - `db-export.sh` — snapshot the catalog as a **self-contained** DuckDB file
   (`data/project/cache/export.duckdb`) — this is what you point DataGrip at.
@@ -254,7 +253,7 @@ DuckDB client takes an exclusive lock, and ours then fails with
 - `recall.sh [--online]` — Seeded-Recall scoring in its own project under
   `validation/data/recall/`. The offline replay deterministically scores
   **14/25** — the frozen fixtures are one particular sample; the online run of
-  2026-07-31 also scored 14/25 (`docs/seeded-recall-m4.md`). Note online runs
+  also scored 14/25 (`docs/seeded-recall.md`). Note online runs
   vary by ±2–3 traps.
 
 ## Expected behaviors that are NOT bugs

@@ -1,12 +1,13 @@
-# M0 — Corpus: logic, validation, and ground truth
+# Corpus: logic, validation, and ground truth
 
-This module is the **M0 milestone deliverable** for before-we-ai: a frozen, validated
-fixture corpus for the finance domain, with explicit trap catalogues, target questions,
-and independent validation that everything works correctly.
+A frozen, validated fixture corpus for the finance domain, with explicit trap
+catalogues, target questions, and independent validation that everything works
+correctly. It is **test infrastructure**: `src/before_we_ai/` never imports it.
 
-**What is not here:** The generator itself (external agent's work), the source data
-(external generator's output, moved here once curated). **What is here:** The spec
-that both build against, and the validation harness that grades the results.
+**What is here:** the specification the generator and the harness both build
+against, and the harness that grades the results. **What is not:** the
+generator itself and the raw source data, which live in
+`src/raw-training-data/`.
 
 ---
 

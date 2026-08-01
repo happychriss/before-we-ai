@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict
 
 from before_we_ai.store.layout import CONFIG_FILE
 
-# Owner decision 2026-07-12: Anthropic API; Opus 4.8 frontier, Sonnet 5 mid-tier.
+# Owner decision: Anthropic API; Opus 4.8 frontier, Sonnet 5 mid-tier.
 DEFAULT_MODELS = {
     "v1_hypotheses": "claude-opus-4-8",
     "role_binding": "claude-opus-4-8",

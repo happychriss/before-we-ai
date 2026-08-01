@@ -111,7 +111,7 @@ def build_ground_truth(store) -> dict[str, str]:
     ])
 
     # --- T12: partial coverage is a finding, not an error ---------------
-    add("t12_gl", "Hauptbuch deckt alle 24 Monate", [
+    add("t12_gl", "the GL covers all 24 months", [
         ("coverage", {"table": "de_erp__gl_postings", "unit_column": "period",
                       "expected": MONTHS_24}),
     ])
@@ -184,13 +184,13 @@ def build_ground_truth(store) -> dict[str, str]:
         ("ic_symmetry", {"left": "de_erp__intercompany", "right": "us_erp__intercompany",
                          "left_period": "period", "right_period": "period"}),
     ])
-    add("f20_subledger", "Nebenbuch AR = Hauptbuch Konto 1200 (mit dokumentierter Toleranz)", [
+    add("f20_subledger", "AR subledger = GL account 1200 (within the documented tolerance)", [
         ("subledger_equals_gl", {
             "subledger": "de_erp__ar_open_items", "subledger_amount": "amount",
             "journal": "de_erp__gl_postings", "journal_amount": "amount_local_currency",
             "account": "account_id", "accounts": [1200]}),
     ])
-    add("f27_reconciliation", "Report stimmt je Periode×Konto mit dem Hauptbuch überein", [
+    add("f27_reconciliation", "the report reconciles to the GL per period x account", [
         ("reconciliation", {
             "left": "buchungen_report__buchungen_report", "right": "de_erp__gl_postings",
             "left_group_expr": "\"period\" || '|' || \"konto\"",

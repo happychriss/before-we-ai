@@ -16,12 +16,11 @@ Two rules govern the output and are not negotiable:
 
 1. ``blocked`` and ``ready_with_limitations`` **name the dependency**. A
    verdict without its reason is the one thing this product may not ship.
-2. Every satisfied item says **how** it is satisfied. Since the owner's
-   decision of 2026-07-31, *satisfied* and *promoted* are deliberately
-   different things — a slot field can be satisfied by the run that
-   consumed its column while its own claims stay ``proposed`` — so an item
-   that said only "satisfied" would hide precisely the distinction that
-   decision preserves.
+2. Every satisfied item says **how** it is satisfied. *Satisfied* and
+   *promoted* are deliberately different things — a slot field can be
+   satisfied by the run that consumed its column while its own claims stay
+   ``proposed`` — so an item reading only "satisfied" would hide exactly
+   that distinction.
 """
 
 from dataclasses import dataclass
@@ -315,7 +314,7 @@ def _judge_binding(store: ProjectStore, item: KnowledgeItem) -> ReadinessItem:
 
 def _slot_derivation(store: ProjectStore, guide: DomainGuide,
                      item: KnowledgeItem) -> ReadinessItem | None:
-    """The owner's decision of 2026-07-31, made visible.
+    """The owner's decision, made visible.
 
     A slot field is answered by the column its object's passing law
     consumed. Its own candidate claims keep their evidence-derived status —
@@ -353,7 +352,7 @@ def _judge_rule(store: ProjectStore, item: KnowledgeItem,
 
     Only an explicit link counts. The alternative — matching the rule's name
     against a concept claim's term or a predicate name — was tried and
-    rejected (owner decision 2026-07-31): V4 names a rule in the human's
+    rejected (owner decision): V4 names a rule in the human's
     words ("sign convention for income and expense") while whatever produces
     the claim coins its own term, so the match would miss where it matters
     and, worse, could hit something unrelated that happens to slug the same.

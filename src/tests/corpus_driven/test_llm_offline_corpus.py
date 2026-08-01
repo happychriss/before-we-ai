@@ -105,7 +105,7 @@ def pipeline(tmp_path_factory):
 
 def test_contracts_ran_clean_offline(pipeline):
     """Pinned against the recorded real answers (Opus 4.8 / Sonnet 5,
-    refreshed 2026-07-31 after the terminology realignment). A red here
+    refreshed  after the terminology realignment). A red here
     after a fixture refresh is the guard working: review the new numbers
     and re-pin deliberately."""
     v4, v1 = pipeline["v4"], pipeline["v1"]

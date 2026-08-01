@@ -23,11 +23,11 @@ but never restate it:
   concept at a time, each tied to its real code object),
   `architecture.md` (confirmed design, component detail, operations),
   `corpus.md` (test-corpus facts & gotchas),
-  `seeded-recall-*.md` (published measurement reports),
+  `seeded-recall.md` (method + current measurement),
   `spec/` (authoritative German spec — edit only on explicit owner decision)
 - `meta/` — how we work, not what we build: `project-setup.md` (workflow),
-  `conventions.md` (project rules), `memory.md` (live state only — slim it when
-  items become durable), environment notes
+  `conventions.md` (project rules), `memory.md` (live state and open points —
+  forward-looking only; move durable facts into docs/), environment notes
 - `scripts/` — (reserved, added later) self-contained ops scripts: start the
   process, readiness report, cleanup of stale processes; runnable directly after login
 - `validation/` — owner-facing validation walkthrough: `README.md` (the test
