@@ -18,9 +18,9 @@ DEFAULT_MODELS = {
     "v1_hypotheses": "claude-opus-4-8",
     "role_binding": "claude-opus-4-8",
     "v2_bind": "claude-sonnet-5",
-    # V4 decomposes one question against the domain vocabulary — short input,
+    # the request contract classifies one question against the guide — short input,
     # but the item that gets left out is the gap nothing downstream can find.
-    "v4_request": "claude-opus-4-8",
+    "request": "claude-opus-4-8",
 }
 
 

@@ -92,7 +92,7 @@ class BindingBatch(BaseModel):
 
 
 class KnowledgeItemProposal(BaseModel):
-    """One thing the requested answer depends on (V4)."""
+    """One thing the requested answer depends on, drafted for this question."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -103,16 +103,26 @@ class KnowledgeItemProposal(BaseModel):
 
 
 class AnswerRequestDraft(BaseModel):
-    """The V4 answer: one business question, structured, plus its dependencies.
+    """The request contract's answer: one question, classified and structured.
 
-    ``required_knowledge`` is a *draft*. The human prunes it, and pruning is
-    only possible if every item says why it is there — hence the required
-    ``why`` on each one.
+    ``answer_type`` is the load-bearing field and the smallest claim the
+    contract can make: which family of questions this one belongs to. The
+    dependency list then follows from a guide entry a human reviewed, rather
+    than from the model's memory of what a question like this usually needs.
+
+    ``required_knowledge`` is what is left over — **the delta**. Empty when
+    the answer type covers the question; the whole list only when
+    ``answer_type`` is null, because no type matched. Those items are
+    drafted for this question alone and are marked as such everywhere they
+    appear, so a reader always knows which part of the list was reviewed.
+    Every one needs a ``why``: an item a human cannot prune is an item that
+    blocks an answer forever.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     requested_output: str  # what the answer must deliver, in one line
+    answer_type: str | None = None  # a declared answer type, or null
     scope: HypothesisScope | None = None  # only when the question names one
-    required_knowledge: list[KnowledgeItemProposal]
-    rationale: str  # why this decomposition — logged, never stored
+    required_knowledge: list[KnowledgeItemProposal] = []
+    rationale: str  # why this classification — logged, never stored

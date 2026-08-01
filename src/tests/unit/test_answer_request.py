@@ -59,7 +59,7 @@ class TestAnswerRequest:
         `created_by` was on both objects and would have read `human` on
         every AnswerRequest ever written — while being *wrong* about two of
         the three content fields, since `requested_output` and `scope` are
-        V4's, not the asker's. Nothing set it and nothing read it. The same
+        the contract's, not the asker's. Nothing set it and nothing read it. The same
         defect class as the redundant `Hypothesis.kind` (M5 kickoff).
 
         The contrast is the point: `Claim.created_by` and
@@ -103,7 +103,7 @@ class TestRequiredKnowledge:
         with pytest.raises(ValidationError, match="a rule item carries no scope"):
             KnowledgeItem(kind=KnowledgeKind.RULE, name="sign_convention",
                           why="w", scope=Scope(entity="DE"))
-        # and V4's mapping drops it rather than passing it through
+        # and the mapping drops it rather than passing it through
         item = item_to_knowledge(
             KnowledgeItemProposal(kind="rule", name="sign_convention",
                                   why="w"),

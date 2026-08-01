@@ -1,11 +1,12 @@
-"""V4: a business question becomes a request and the knowledge it requires.
+"""The request contract: a business question becomes a classified request.
 
-The contract's own guarantee is narrow and worth stating: V4 creates no
-claim, no evidence and no status. It writes down what the question is and
-what it rests on — the rest of the pipeline decides whether any of it is
-true. What these tests guard is that the decomposition can never name
-something the readiness evaluator would be unable to resolve, because an
-unresolvable dependency is a gap that would go quiet.
+The contract's own guarantee is narrow and worth stating: it creates no
+claim, no evidence and no status. It writes down what the question asks for
+and which family of questions it belongs to — the rest of the pipeline
+decides whether any of it holds. What these tests guard is that neither the
+classification nor a drafted item can ever name something the readiness
+evaluator would be unable to resolve, because an unresolvable dependency is
+a gap that would go quiet.
 """
 
 import json
@@ -14,16 +15,21 @@ import pytest
 
 from before_we_ai.llm import load_domain_guide
 from before_we_ai.llm.client import Completion
-from before_we_ai.llm.domain_guide import DomainGuide
+from before_we_ai.llm.domain_guide import (
+    AnswerTypeRequire,
+    AnswerTypeSpec,
+    DomainGuide,
+)
 from before_we_ai.llm.inputs import build_question_context
 from before_we_ai.llm.mapping import (
+    check_classification,
     check_knowledge_item,
     draft_to_request,
     item_to_knowledge,
 )
-from before_we_ai.llm.prompts import V4_SYSTEM
+from before_we_ai.llm.prompts import REQUEST_SYSTEM
 from before_we_ai.llm.schemas import AnswerRequestDraft, KnowledgeItemProposal
-from before_we_ai.llm.v4_request import ask
+from before_we_ai.llm.request import ask
 from before_we_ai.core import Actor, KnowledgeKind, Scope
 from before_we_ai.store import ProjectStore, init_project
 
@@ -150,12 +156,12 @@ class TestPrompt:
     def test_it_names_no_domain(self):
         """Same rule as V1/V2: domain knowledge enters through the built
         input, never through the prompt."""
-        lowered = V4_SYSTEM.lower()
+        lowered = REQUEST_SYSTEM.lower()
         for noun in ("journal", "ledger", "account", "invoice", "posting"):
             assert noun not in lowered
 
     def test_it_tells_the_model_it_decides_nothing(self):
-        assert "You decide nothing here." in V4_SYSTEM
+        assert "You decide nothing here." in REQUEST_SYSTEM
 
 
 class _ScriptedClient:
@@ -224,6 +230,86 @@ class TestAsk:
         assert ProjectStore(store.root).requests == {}
 
 
+class TestClassification:
+    """The one claim the call exists to make.
+
+    Everything the answer depends on follows from it, so unlike a delta item
+    it is not skippable: a request classified to a family the guide cannot
+    expand is worse than no request at all.
+    """
+
+    def _typed(self, guide) -> DomainGuide:
+        return guide.model_copy(update={"answer_types": {
+            "profit_and_loss": AnswerTypeSpec(
+                definition="the result of a period",
+                requires=[AnswerTypeRequire(object="journal")]),
+        }})
+
+    def test_the_answer_types_reach_the_model_with_what_they_require(self, guide):
+        """A definition alone does not let the model judge coverage."""
+        text = build_question_context(QUESTION, self._typed(guide)).text
+        assert "- profit_and_loss: the result of a period" in text
+        assert "  - requires object: journal" in text
+
+    def test_no_settlement_machinery_leaks_through_the_new_section(self, guide):
+        text = build_question_context(QUESTION, self._typed(guide)).text
+        for internal in ("decided_by", "fills", "slot", "clarification",
+                         "balance", "ic_symmetry"):
+            assert internal not in text
+
+    def test_a_guide_without_answer_types_renders_no_section(self, guide):
+        assert "answer type" not in build_question_context(QUESTION, guide).text
+
+    def test_naming_no_type_is_allowed_because_forcing_a_fit_is_worse(self, guide):
+        draft = AnswerRequestDraft(requested_output="o", answer_type=None,
+                                   rationale="r")
+        assert check_classification(draft, self._typed(guide)) is None
+
+    def test_a_type_the_guide_does_not_declare_is_an_error(self, guide):
+        draft = AnswerRequestDraft(requested_output="o",
+                                   answer_type="balance_sheet", rationale="r")
+        error = check_classification(draft, self._typed(guide))
+        assert "balance_sheet" in error and "profit_and_loss" in error
+
+    def test_a_bad_classification_fails_the_whole_call(self, tmp_path, guide):
+        store = ProjectStore(init_project(tmp_path / "p"), create=True)
+        client = _ScriptedClient({"requested_output": "o",
+                                  "answer_type": "balance_sheet",
+                                  "required_knowledge": [], "rationale": "r"})
+        report = ask(store.root, QUESTION, guide=self._typed(guide),
+                     client=client, store=store)
+        assert report.failure and "balance_sheet" in report.failure
+        assert report.request is None
+        assert client.calls == 2  # one retry, as everywhere
+        assert ProjectStore(store.root).requests == {}
+
+    def test_a_covered_question_stores_a_request_and_no_list(self, tmp_path, guide):
+        """Nothing to store: the list is expanded from the guide on read."""
+        store = ProjectStore(init_project(tmp_path / "p"), create=True)
+        client = _ScriptedClient({"requested_output": "o",
+                                  "answer_type": "profit_and_loss",
+                                  "required_knowledge": [], "rationale": "r"})
+        report = ask(store.root, QUESTION, guide=self._typed(guide),
+                     client=client, store=store)
+        assert report.failure is None
+        assert report.request.answer_type == "profit_and_loss"
+        assert report.required is None
+        reloaded = ProjectStore(store.root)
+        assert reloaded.knowledge_for(report.request.id) is None
+
+    def test_a_delta_is_stored_alongside_the_classification(self, tmp_path, guide):
+        store = ProjectStore(init_project(tmp_path / "p"), create=True)
+        client = _ScriptedClient({
+            "requested_output": "o", "answer_type": "profit_and_loss",
+            "required_knowledge": [_item(kind="rule", name="in USD at which rate",
+                                         of_object=None).model_dump()],
+            "rationale": "r"})
+        report = ask(store.root, QUESTION, guide=self._typed(guide),
+                     client=client, store=store)
+        assert [i.name for i in report.required.items] == \
+            ["in USD at which rate"]
+
+
 def test_the_shipped_fixture_matches_the_shipped_guide():
     """The hand-authored corpus fixture is only as good as its input hash;
     the drift guard in the corpus suite owns that. Here: it is well-formed
@@ -231,11 +317,12 @@ def test_the_shipped_fixture_matches_the_shipped_guide():
     from pathlib import Path
 
     path = (Path(__file__).resolve().parents[1] / "fixtures" / "llm"
-            / "v4_request__corpus.json")
+            / "request__corpus.json")
     entry = json.loads(path.read_text(encoding="utf-8"))
     assert entry["recorded_at"] == "hand-authored"
     guide = load_domain_guide(
         Path(__file__).resolve().parents[1] / "fixtures" / "domain_guide_finance.yaml")
     draft = AnswerRequestDraft.model_validate_json(entry["response_text"])
+    assert check_classification(draft, guide) is None
     for item in draft.required_knowledge:
         assert check_knowledge_item(item, guide) == []

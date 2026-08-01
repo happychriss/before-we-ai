@@ -142,9 +142,9 @@ def build_role_context(store: ProjectStore, matrix: dict, roles: DomainGuide,
 
 
 def build_question_context(question: str, guide: DomainGuide) -> BuiltInput:
-    """V4 input: the business question, then the domain's vocabulary.
+    """Request-contract input: the question, the vocabulary, the answer types.
 
-    No profiles: the request stage decomposes a question against what the
+    No profiles: the request stage classifies a question against what the
     domain *means*, not against what the landscape happens to contain.
     Whether the data can serve the request is the rest of the pipeline's
     job, and answering it here would be the model deciding.
@@ -153,6 +153,11 @@ def build_question_context(question: str, guide: DomainGuide) -> BuiltInput:
     input, which deliberately flattens them. Here the hierarchy is the
     point: a field is a property *of* something, and an item that names
     the wrong owner is a mis-decomposition we want the model able to avoid.
+
+    The answer types are shown with what each one requires, not only its
+    definition. Classification is a judgement about *coverage* — does this
+    family already carry what my question needs — and a definition alone
+    does not let the model make it.
     """
     lines = ["## The business question", question.strip(), "",
              f"## The domain vocabulary (domain: {guide.domain})"]
@@ -160,6 +165,12 @@ def build_question_context(question: str, guide: DomainGuide) -> BuiltInput:
         lines.append(f"- {name}: {spec.definition}")
         for field_name, field in spec.fields.items():
             lines.append(f"  - {field_name}: {field.definition}")
+    if guide.answer_types:
+        lines += ["", "## The answer types this domain declares"]
+        for name, spec in guide.answer_types.items():
+            lines.append(f"- {name}: {spec.definition}")
+            for require in spec.requires:
+                lines.append(f"  - requires {require.kind}: {require.ref}")
     return _built("\n".join(lines) + "\n")
 
 

@@ -24,7 +24,7 @@ PROJECT = DATA / "project"
 REPORT = DATA / "report"
 SCENARIO = "corpus"  # shared with fixtures and the eval tools
 # byte-identical to DEMO_QUESTION in the offline corpus suite and in
-# tests/eval/refresh_fixtures.py — the V4 drift guard rebuilds its input from it
+# tests/eval/refresh_fixtures.py — the drift guard rebuilds its input from it
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
 sys.path.insert(0, str(REPO / "src" / "tests" / "eval"))  # _corpus (test-side)
@@ -455,7 +455,7 @@ def stage_request(args) -> None:
         "  (definitions only — the request contract sees no profiles: whether "
         "the data can\n  serve the question is the rest of the pipeline's job, "
         "and answering it here\n  would be the model deciding)",
-        "system prompt: llm/prompts.py:V4_SYSTEM + the output schema",
+        "system prompt: llm/prompts.py:REQUEST_SYSTEM + the output schema",
         f"answers: {'recorded fixtures in src/tests/fixtures/llm/' if _offline() else 'live model calls'}",
         LLM_INPUT_NOTE,
     )

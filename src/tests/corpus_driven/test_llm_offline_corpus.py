@@ -425,7 +425,7 @@ def test_fixtures_match_current_inputs(pipeline):
     def fixture(name: str) -> dict:
         return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
 
-    assert fixture("v4_request__corpus")["input_sha256"] == \
+    assert fixture("request__corpus")["input_sha256"] == \
         build_question_context(DEMO_QUESTION, pipeline["roles"]).sha256
     assert fixture("v1_hypotheses__corpus")["input_sha256"] == \
         build_profile_context(store, matrix).sha256

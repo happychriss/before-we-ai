@@ -27,7 +27,7 @@ DEFAULT_PROJECT = Path(__file__).resolve().parents[1] / "data" / "project"
 
 
 def guide_for(contract: str, scenario: str) -> str:
-    if contract == "v4_request":
+    if contract == "request":
         return (
             "Walkthrough stage 0 (the request contract) — the top of the machine. Input: one "
             "business question + the domain vocabulary (definitions only, no "

@@ -26,7 +26,7 @@ from before_we_ai.llm.v2_bind import plan_checks
 from before_we_ai.store import ProjectStore
 
 # Must stay byte-identical to DEMO_QUESTION in the offline corpus suite —
-# the drift guard rebuilds the V4 input from it.
+# the drift guard rebuilds the request input from it.
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
 
@@ -78,14 +78,15 @@ def main() -> None:
     store = ProjectStore(root)
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
 
-    print("V4 request (frontier) ...")
-    v4 = ask(root, DEMO_QUESTION, guide=roles, client=client, store=store,
+    print("request (frontier) ...")
+    drafted = ask(root, DEMO_QUESTION, guide=roles, client=client, store=store,
              scenario="corpus")
-    if v4.failure:
-        raise SystemExit(f"V4 failed twice: {v4.failure} (log: {v4.log_ref})")
-    print(f"  {len(v4.required.items)} required-knowledge items, "
-          f"{len(v4.skipped)} skipped, usage {v4.usage}")
-    print("  fixture:", write_fixture_from_log(v4.log_ref).name)
+    if drafted.failure:
+        raise SystemExit(f"request failed twice: {drafted.failure} "
+                         f"(log: {drafted.log_ref})")
+    print(f"  {len(drafted.required.items)} required-knowledge items, "
+          f"{len(drafted.skipped)} skipped, usage {drafted.usage}")
+    print("  fixture:", write_fixture_from_log(drafted.log_ref).name)
 
     print("V1 hypotheses (frontier) ...")
     v1 = hypothesize(root, client=client, store=store, scenario="corpus")

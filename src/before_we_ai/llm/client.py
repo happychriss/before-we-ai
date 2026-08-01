@@ -233,11 +233,24 @@ def call_with_retry(
     repair: BatchRepair | None = None,
     logger: CallLogger,
 ) -> LLMResult:
-    def check(batch: BaseModel) -> list[str]:
-        if repair is not None:
-            return [e for item_errors in _item_errors(batch, repair)
-                    for e in item_errors]
+    # Two tiers of semantic error, and the difference decides the repair.
+    # An item error is local: everything else in the batch stands, so only
+    # the bad items go back. A whole-answer error (``semantic_check``) is
+    # not — it says the answer is wrong *as an answer*, and there is nothing
+    # to keep. The two can coexist on one schema, and when they do the
+    # whole-answer error wins: repairing items of an answer that should not
+    # have been given would be polishing the wrong thing.
+    def check_items(batch: BaseModel) -> list[str]:
+        if repair is None:
+            return []
+        return [e for item_errors in _item_errors(batch, repair)
+                for e in item_errors]
+
+    def check_whole(batch: BaseModel) -> list[str]:
         return semantic_check(batch) if semantic_check is not None else []
+
+    def check(batch: BaseModel) -> list[str]:
+        return check_whole(batch) + check_items(batch)
 
     messages = [{"role": "user", "content": built.text}]
     attempts: list[dict] = []
@@ -263,7 +276,8 @@ def call_with_retry(
         "ms": completion.ms,
     })
 
-    if parsed is not None and semantic_errors and repair is not None:
+    if (parsed is not None and repair is not None and semantic_errors
+            and not check_whole(parsed)):
         # Schema-valid batch: keep what validated, ask only for the rest.
         parsed, attempt, completion = _repair_batch(
             client, contract=contract, scenario=scenario, model=model,

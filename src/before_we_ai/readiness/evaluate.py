@@ -430,7 +430,7 @@ def _judge_rule(store: ProjectStore, item: KnowledgeItem,
 
     Only an explicit link counts. The alternative — matching the rule's name
     against a concept claim's term or a predicate name — was tried and
-    rejected (owner decision): V4 names a rule in the human's
+    rejected (owner decision): a rule is named in the human's
     words ("sign convention for income and expense") while whatever produces
     the claim coins its own term, so the match would miss where it matters
     and, worse, could hit something unrelated that happens to slug the same.

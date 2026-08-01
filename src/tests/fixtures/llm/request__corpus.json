@@ -1,5 +1,5 @@
 {
- "contract": "v4_request",
+ "contract": "request",
  "scenario": "corpus",
  "input_sha256": "be4923b0e8718261eb8fd65ffd5bf508b27abc9c231bf87280da680468002228",
  "model": "claude-opus-4-8",

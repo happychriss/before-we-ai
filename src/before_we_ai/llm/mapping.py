@@ -238,7 +238,7 @@ def proposal_to_mapping_claim(p: MappingProposal, index: ProfileIndex) -> Mappin
     )
 
 
-# -- V4: the request and what it requires ---------------------------------
+# -- the request and what it requires -------------------------------------
 
 def check_knowledge_item(item: KnowledgeItemProposal,
                          guide: "DomainGuide") -> list[str]:
@@ -298,10 +298,31 @@ def check_knowledge_item(item: KnowledgeItemProposal,
     return errors
 
 
+def check_classification(draft: AnswerRequestDraft,
+                         guide: "DomainGuide") -> str | None:
+    """Whether the classification names an answer type this guide declares.
+
+    Unlike a bad item, a bad classification is not skippable: it is the one
+    claim the call exists to make, and everything the answer depends on
+    follows from it. Naming a type that does not exist fails the whole call
+    so the retry can name a real one — or honestly name none.
+    """
+    if draft.answer_type is None:
+        return None
+    if draft.answer_type in guide.answer_types:
+        return None
+    return (
+        f"answer_type {draft.answer_type!r} is not declared by this domain "
+        f"(it has {sorted(guide.answer_types) or 'none'}) — name one of "
+        "those, or null if none covers the question"
+    )
+
+
 def draft_to_request(question: str, draft: AnswerRequestDraft) -> AnswerRequest:
     return AnswerRequest(
         question=question.strip(),
         requested_output=draft.requested_output.strip(),
+        answer_type=draft.answer_type,
         scope=Scope(**draft.scope.model_dump()) if draft.scope else Scope(),
     )
 

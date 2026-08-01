@@ -1,6 +1,6 @@
 """The LLM contract layer — thin, typed, structurally harmless.
 
-Three of the four contract functions live here: V4 turns a business
+Three of the four contract functions live here: the request contract turns a business
 question into an answer request and the knowledge it requires (M6), V1
 proposes claim hypotheses from column profiles and the candidate matrix,
 V2 binds claims to check definitions (including candidate role bindings
@@ -23,7 +23,7 @@ from before_we_ai.llm.v2_bind import (
     plan_checks,
     propose_mappings,
 )
-from before_we_ai.llm.v4_request import V4Report, ask
+from before_we_ai.llm.request import RequestReport, ask
 
 __all__ = [
     "LLMConfig",
@@ -31,7 +31,7 @@ __all__ = [
     "DomainGuide",
     "V1Report",
     "V2Report",
-    "V4Report",
+    "RequestReport",
     "ask",
     "plan_checks",
     "build_client",

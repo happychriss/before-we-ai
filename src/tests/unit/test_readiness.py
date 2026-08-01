@@ -286,7 +286,7 @@ class TestEverySatisfiedItemSaysHow:
 
     def test_a_claim_that_states_the_rule_but_is_not_linked_is_not_support(
             self, store, guide):
-        """Name matching was rejected (owner decision): V4 names a
+        """Name matching was rejected (owner decision): the contract names a
         rule in the human's words and whatever produces the claim coins its
         own term, so a match would miss where it matters and could hit
         something unrelated that happens to slug the same. A verdict resting
@@ -464,7 +464,7 @@ class TestConflictIsNeverSilent:
 
 
 class TestWaiving:
-    """V4 over-lists by design. Without pruning, an item nobody needs blocks
+    """A list over-lists by design. Without pruning, an item nobody needs blocks
     the answer forever — and pruning is what justifies persisting the draft
     at all."""
 

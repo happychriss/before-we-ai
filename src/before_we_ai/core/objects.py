@@ -305,7 +305,7 @@ class AnswerRequest(BaseModel):
 
     **Authorship is fixed by the shape, so no field records it.**
     ``question`` is the human's, verbatim; ``requested_output`` and
-    ``scope`` are V4's structuring of it. A ``created_by`` here would be
+    ``scope`` are the request contract's structuring of it. A ``created_by`` here would be
     ``human`` on every record ever written — and it would be *wrong* about
     two of the three fields, which is worse than absent. Contrast
     ``Claim.created_by`` and ``KnowledgeLink.linked_by``: those genuinely
