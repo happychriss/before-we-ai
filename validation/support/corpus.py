@@ -1,8 +1,13 @@
-"""Shared setup for the online eval tools: corpus project construction.
+"""A fresh project declared over the frozen corpus — the one construction.
 
-Corpus knowledge stays test-side — these tools live under tests/ and are
-run as scripts from src/ (``python tests/eval/seeded_recall.py``), never
-collected by pytest (no ``test_`` prefix).
+Three callers need it and none of them is a test: the owner walkthrough
+(`validation/scripts/_steps.py`) and the two online tools that live under
+`src/tests/eval/` (`refresh_fixtures.py`, `seeded_recall.py`, run as scripts,
+never collected). Keeping it here rather than under `tests/` is what stops
+owner-facing validation from depending on test-internal code.
+
+The corpus *data* it points at is still `src/corpus/data/` — frozen, and the
+one thing every offline run measures against.
 """
 
 from pathlib import Path
@@ -12,7 +17,7 @@ import yaml
 from before_we_ai import scan
 from before_we_ai.store import init_project
 
-SRC = Path(__file__).resolve().parents[2]
+SRC = Path(__file__).resolve().parents[2] / "src"
 CORPUS = SRC / "corpus" / "data"
 FIXTURES = SRC / "tests" / "fixtures" / "llm"
 DOMAIN_GUIDE_FILE = SRC / "tests" / "fixtures" / "domain_guide_finance.yaml"

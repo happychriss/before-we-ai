@@ -4,7 +4,7 @@
 Each stage runs exactly one pipeline step against the walkthrough project
 at validation/data/project and prints a human summary of what it produced,
 with pointers to the files that hold the full detail. Product code is only
-imported, never duplicated; corpus setup comes from tests/eval/_corpus.py.
+imported, never duplicated; corpus setup comes from validation/support/.
 """
 
 import argparse
@@ -27,13 +27,16 @@ SCENARIO = "corpus"  # shared with fixtures and the eval tools
 # tests/eval/refresh_fixtures.py — the drift guard rebuilds its input from it
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
-sys.path.insert(0, str(REPO / "src" / "tests" / "eval"))  # _corpus (test-side)
-import _corpus  # noqa: E402
-from _corpus import DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
+sys.path.insert(0, str(REPO))  # validation.support — owner-facing, not test code
+from validation.support import corpus as corpus_support  # noqa: E402
+from validation.support.corpus import (  # noqa: E402
+    DOMAIN_GUIDE_FILE,
+    build_corpus_project,
+)
 
 
 def _corpus_file() -> str:
-    return _corpus.__file__
+    return corpus_support.__file__
 
 from before_we_ai import scan  # noqa: E402
 from before_we_ai.engine import run_ready  # noqa: E402
@@ -517,7 +520,7 @@ def stage_inputs(args) -> None:
     print(f"creating walkthrough project: {PROJECT}\n  {mode}")
     build_corpus_project(PROJECT, offline=not args.online, scan_now=False)
 
-    from _corpus import SOURCES
+    from validation.support.corpus import SOURCES
     inputs(
         f"source list ({len(SOURCES)} sources), declared in "
         f"{Path(_corpus_file()).relative_to(REPO)} and written to "

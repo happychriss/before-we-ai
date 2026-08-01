@@ -128,7 +128,7 @@ the scan never infers.
 Who writes the source list: a **human**. `init_project()` creates
 `before-ai.yaml` with an empty `sources: []` — the product never discovers
 files by itself. For the walkthrough the corpus harness fills it in
-(`src/tests/eval/_corpus.py`), and the step prints which corpus files are
+(`validation/support/corpus.py`), and the step prints which corpus files are
 *not* listed: `buchhaltungsrichtlinie.pdf` and `rabattvertrag.pdf` carry the
 policy traps (F14/F15/F19/F25) and are invisible here — PDFs are only
 fingerprinted, the document pipeline is M5.

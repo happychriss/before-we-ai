@@ -18,7 +18,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from _corpus import FIXTURES, DOMAIN_GUIDE_FILE, build_corpus_project
+# The corpus project construction is owner-facing support, not test code
+# (validation/support/) — this tool is run as a script, so it says where.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from validation.support.corpus import FIXTURES, DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
 
 from before_we_ai.llm import ask, hypothesize, load_domain_guide, propose_mappings
 from before_we_ai.llm.client import AnthropicClient

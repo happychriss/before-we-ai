@@ -29,7 +29,10 @@ from pathlib import Path
 
 import yaml
 
-from _corpus import EXPECTED_VERDICTS, DOMAIN_GUIDE_FILE, build_corpus_project
+# The corpus project construction is owner-facing support, not test code
+# (validation/support/) — this tool is run as a script, so it says where.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from validation.support.corpus import EXPECTED_VERDICTS, DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
 
 from before_we_ai.engine import run_ready
 from before_we_ai.llm import (
