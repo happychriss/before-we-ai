@@ -82,6 +82,19 @@ validation depends on test-internal code, which is the wrong direction.
 `EvidenceRecord(` constructors. Too brittle (an extraction breaks it) and too
 weak (a helper that writes evidence escapes it). Replace text with capability.
 
+**State the invariant correctly first.** It is *the LLM layer writes no
+**promoting** evidence* — not *no evidence*. `resolve_status`
+(`core/transitions.py`) promotes on exactly two things: a `CHECK_RESULT`
+verdict and an admissible `CONFIRMATION`; a `TESTIMONIAL` blocks a conflict.
+`DECLARATION` and `DOCUMENT_ANCHOR` are read by nothing and promote nothing —
+the docstring calls them weak evidence and the code agrees.
+
+The current test's `for promoting in (...)` list wrongly includes
+`DOCUMENT_ANCHOR`. Harmless today (V2 writes none), a trap tomorrow:
+**M5's V3 writes document anchors — that is its job.** Carry that list into
+the new behavior test verbatim and the facade forbids V3 its core
+operation, after which M5 would have to weaken a safety test. Do not.
+
 - New `src/before_we_ai/store/proposals.py`: class `ProposalStore` wrapping a
   `ProjectStore`, exposing **reads** plus exactly: `save_claim`, `add_claim`,
   `save_check_plan`, `save_question`, `find_question`, `save_request`,
@@ -89,14 +102,19 @@ weak (a helper that writes evidence escapes it). Replace text with capability.
   constructs only `EvidenceType.DECLARATION` with `actor=Actor.SYSTEM`
   (v2_bind's one legitimate write; keep its exact payload shape). No
   `add_evidence`, no `mark_evidence_stale` on the facade.
+- Shape it so **one more weak-evidence method can be added without reopening
+  the design** — M5 adds `anchor(...)` for `DOCUMENT_ANCHOR`. Adding it must
+  not require the facade to expose `add_evidence`. Do not write `anchor()`
+  now: V3 does not exist, and its arguments are its own to decide.
 - LLM contract entry points (`hypothesize`, `propose_mappings`, `plan_checks`,
   `ask`) accept `ProjectStore` as today but immediately wrap:
   `store = ProposalStore(store)` — internal code uses only the facade.
 - Rewrite the guardrail test as behavior: run the offline corpus pipeline
-  through stage 3 and assert the evidence written is exactly the SYSTEM
-  declarations (no CHECK_RESULT/CONFIRMATION/TESTIMONIAL/DOCUMENT_ANCHOR
-  authored during LLM stages); assert `ProposalStore` has no evidence-writing
-  attribute. **Write the new test first, watch it pass, then delete the
+  through stage 3 and assert that **no promoting evidence** was authored
+  during the LLM stages — no `CHECK_RESULT`, no `CONFIRMATION`, no
+  `TESTIMONIAL` — and that every record written is a SYSTEM `DECLARATION`.
+  Assert `ProposalStore` exposes no `add_evidence` / `mark_evidence_stale`.
+  **Write the new test first, watch it pass, then delete the
   source-inspection tests** — never a moment without the guarantee.
 
 **Accept:** `grep -rn "add_evidence\|attach_evidence" src/before_we_ai/llm/`
