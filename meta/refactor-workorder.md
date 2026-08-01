@@ -291,8 +291,25 @@ dropping the link or by moving the whole f-string across.
 assertions; keep a deliberately small presentation suite on the HTML: every
 section renders, anchors resolve, escaping, self-contained (no external
 URLs), the three-voices attributions, verdict headline wording.
-*Accept: suite green; the HTML suite is a named small set; no fact is tested
-only through HTML anymore.*
+The six categories above **are the decision** — do not re-litigate which
+assertions stay on the HTML, just apply the list.
+
+**Accept — three gates, all mechanical:**
+
+1. **Production code untouched.** `git diff -- src/readiness_report/
+   src/before_we_ai/` must be **empty**. This package changes tests and
+   nothing else, which is what makes byte-identical output trivially true
+   rather than something to prove again.
+2. **Coverage does not shrink.** The suite count must not go down, and the
+   PR carries a **mapping table**: every assertion removed from the HTML
+   suite, next to the view-model assertion that now carries that fact. A
+   row with an empty right-hand column is a fact that stopped being tested
+   — stop and report instead.
+3. **The new tests can fail.** For at least three retargeted facts, show
+   that breaking the projection makes them red (change a value locally, run,
+   paste the failure, revert). A test that cannot fail is not a test, and an
+   assertion moved onto a view model is the easiest place in this codebase
+   to write one by accident.
 
 **WP5c — templates as resources.** Move HTML structure to jinja2 templates
 under `src/readiness_report/templates/` (package-data), CSS/JS as resources,
