@@ -12,7 +12,7 @@ stay proposed.
 import pytest
 from pydantic import ValidationError
 
-from before_we_ai.llm.domain_guide import DomainGuide
+from before_we_ai.llm.domain_guide import DomainGuide, load_domain_guide
 from before_we_ai.core import (
     Actor,
     AnswerRequest,
@@ -26,6 +26,7 @@ from before_we_ai.core import (
     KnowledgeLink,
     MappingClaim,
     Predicate,
+    Provenance,
     RequiredKnowledge,
     Scope,
     create_claim,
@@ -36,6 +37,9 @@ from before_we_ai.readiness import (
     Ground,
     Readiness,
     UnlinkableItem,
+    add_item,
+    assemble,
+    confirm_classification,
     evaluate,
     evaluate_request,
     link_claim,
@@ -104,11 +108,12 @@ def _confirmed_policy(store, term="sign convention for income"):
 
 
 def _map(store, guide, *items) -> "ReadinessMap":
+    """Judge a list handed in directly — the caller is its reviewer, so the
+    review cap is inert and what is under test is the verdict rule alone."""
     request = AnswerRequest(question="Can these files produce actual P&L?",
                             requested_output="P&L per entity per month",
                             scope=items[0].scope if items else Scope())
-    required = RequiredKnowledge(request_id=request.id, items=list(items))
-    return evaluate(store, guide, request, required)
+    return evaluate(store, guide, request, list(items))
 
 
 def _candidate(store, role, table, scope=None, status=None):
@@ -339,20 +344,24 @@ class TestLinking:
     """The seam M5 needs: V3 reads a policy, produces a claim, and says which
     open dependency that claim answers."""
 
-    def _asked(self, store, *items):
+    def _asked(self, store, *items, guide=None):
+        """A request whose list a human has already vouched for, so the
+        review cap is inert and these tests isolate their own subject."""
         request = AnswerRequest(question="q?", requested_output="o")
         store.save_request(request)
         store.save_required_knowledge(
             RequiredKnowledge(request_id=request.id, items=list(items)))
+        if guide is not None:
+            confirm_classification(store, guide, request.id)
         return request
 
     def test_linking_turns_a_named_gap_into_a_satisfied_item(self, store, guide):
-        request = self._asked(store, _rule())
+        request = self._asked(store, _rule(), guide=guide)
         assert evaluate_request(store, guide, request.id).verdict is \
             Readiness.READY_WITH_LIMITATIONS
         claim = _confirmed_policy(store)
 
-        link_claim(store, request.id, "sign convention for income", claim.id,
+        link_claim(store, guide, request.id, "sign convention for income", claim.id,
                    linked_by=Actor.AI, note="Buchhaltungsrichtlinie §2")
 
         result = evaluate_request(ProjectStore(store.root), guide, request.id)
@@ -361,11 +370,11 @@ class TestLinking:
 
     def test_a_link_cannot_promote_the_claim_it_points_at(self, store, guide):
         """The property that makes it safe for an AI to do."""
-        request = self._asked(store, _rule())
+        request = self._asked(store, _rule(), guide=guide)
         claim = ConceptClaim(statement="guessed", created_by=Actor.AI,
                              term="t", definition="d")
         store.save_claim(claim)
-        link_claim(store, request.id, "sign convention for income", claim.id,
+        link_claim(store, guide, request.id, "sign convention for income", claim.id,
                    linked_by=Actor.AI)
         assert ProjectStore(store.root).claims[claim.id].status is \
             ClaimStatus.PROPOSED
@@ -378,7 +387,7 @@ class TestLinking:
         request = self._asked(store, _obj())
         claim = _confirmed_policy(store)
         with pytest.raises(UnlinkableItem, match="only a rule"):
-            link_claim(store, request.id, "journal", claim.id,
+            link_claim(store, guide, request.id, "journal", claim.id,
                        linked_by=Actor.HUMAN)
         # and the model refuses to hold one even if constructed directly
         with pytest.raises(ValidationError, match="only a rule is satisfied"):
@@ -387,26 +396,30 @@ class TestLinking:
 
     def test_linking_something_the_question_does_not_require_is_refused(
             self, store, guide):
-        request = self._asked(store, _rule())
+        request = self._asked(store, _rule(), guide=guide)
         claim = _confirmed_policy(store)
         with pytest.raises(UnlinkableItem, match="is not required by"):
-            link_claim(store, request.id, "month cut-off", claim.id,
+            link_claim(store, guide, request.id, "month cut-off", claim.id,
                        linked_by=Actor.HUMAN)
 
     def test_linking_a_claim_that_does_not_exist_is_refused(self, store, guide):
-        request = self._asked(store, _rule())
+        request = self._asked(store, _rule(), guide=guide)
         with pytest.raises(UnlinkableItem, match="no claim"):
-            link_claim(store, request.id, "sign convention for income",
+            link_claim(store, guide, request.id, "sign convention for income",
                        "01NOPE", linked_by=Actor.HUMAN)
 
     def test_relinking_the_same_claim_does_not_stack(self, store, guide):
-        request = self._asked(store, _rule())
+        request = self._asked(store, _rule(), guide=guide)
         claim = _confirmed_policy(store)
         for _ in range(3):
-            required = link_claim(store, request.id,
-                                  "sign convention for income", claim.id,
-                                  linked_by=Actor.HUMAN)
-        assert len(required.items[0].satisfied_by) == 1
+            link_claim(store, guide, request.id,
+                       "sign convention for income", claim.id,
+                       linked_by=Actor.HUMAN)
+        # three acts are recorded — the history is not rewritten — but the
+        # list they replay into carries one link
+        assert len(store.acts_for(request.id)) == 4  # 3 links + the confirmation
+        item = assemble(store, guide, request).items[0]
+        assert len(item.satisfied_by) == 1
 
     def test_a_broken_link_is_an_integrity_finding(self, store, guide):
         request = self._asked(store, _rule(links=[
@@ -455,19 +468,23 @@ class TestWaiving:
     the answer forever — and pruning is what justifies persisting the draft
     at all."""
 
-    def _asked(self, store, *items):
+    def _asked(self, store, *items, guide=None):
+        """A request whose list a human has already vouched for, so the
+        review cap is inert and these tests isolate their own subject."""
         request = AnswerRequest(question="q?", requested_output="o")
         store.save_request(request)
         store.save_required_knowledge(
             RequiredKnowledge(request_id=request.id, items=list(items)))
+        if guide is not None:
+            confirm_classification(store, guide, request.id)
         return request
 
     def test_waiving_unblocks_the_answer_and_keeps_the_reason(self, store, guide):
-        request = self._asked(store, _obj("journal"))
+        request = self._asked(store, _obj("journal"), guide=guide)
         assert evaluate_request(store, guide, request.id).verdict is \
             Readiness.BLOCKED
 
-        waive_item(store, request.id, "journal",
+        waive_item(store, guide, request.id, "journal",
                    "this question is answered from the plan, not the ledger")
 
         result = evaluate_request(ProjectStore(store.root), guide, request.id)
@@ -481,40 +498,40 @@ class TestWaiving:
     def test_a_waived_item_is_kept_not_deleted(self, store, guide):
         """A deleted dependency is invisible; a waived one still shows, with
         the judgement attached."""
-        request = self._asked(store, _obj("journal"))
-        waive_item(store, request.id, "journal", "not needed here")
-        required = ProjectStore(store.root).knowledge_for(request.id)
-        assert len(required.items) == 1
-        assert required.items[0].waived_because == "not needed here"
-        assert required.items[0].waived is True
+        request = self._asked(store, _obj("journal"), guide=guide)
+        waive_item(store, guide, request.id, "journal", "not needed here")
+        items = assemble(ProjectStore(store.root), guide, request).items
+        assert len(items) == 1
+        assert items[0].waived_because == "not needed here"
+        assert items[0].waived is True
 
     def test_a_waiver_without_a_reason_is_refused(self, store, guide):
         """Indistinguishable from an oversight six months later."""
-        request = self._asked(store, _obj("journal"))
+        request = self._asked(store, _obj("journal"), guide=guide)
         with pytest.raises(UnlinkableItem, match="requires a reason"):
-            waive_item(store, request.id, "journal", "   ")
+            waive_item(store, guide, request.id, "journal", "   ")
 
     def test_a_waiver_can_be_revisited(self, store, guide):
-        request = self._asked(store, _obj("journal"))
-        waive_item(store, request.id, "journal", "thought we did not need it")
-        require_again(store, request.id, "journal")
+        request = self._asked(store, _obj("journal"), guide=guide)
+        waive_item(store, guide, request.id, "journal", "thought we did not need it")
+        require_again(store, guide, request.id, "journal")
         result = evaluate_request(ProjectStore(store.root), guide, request.id)
         assert result.verdict is Readiness.BLOCKED
         assert result.items[0].item.waived is False
 
     def test_waiving_something_not_required_is_refused(self, store, guide):
-        request = self._asked(store, _obj("journal"))
+        request = self._asked(store, _obj("journal"), guide=guide)
         with pytest.raises(UnlinkableItem, match="is not required by"):
-            waive_item(store, request.id, "intercompany", "nope")
+            waive_item(store, guide, request.id, "intercompany", "nope")
 
     def test_any_kind_may_be_waived_unlike_linking(self, store, guide):
         """Linking is rule-only because it would bypass an election. Waiving
         bypasses nothing — it removes a requirement, which is the human's to
         do for any kind."""
-        request = self._asked(store, _obj("journal"), _field(), _rule())
+        request = self._asked(store, _obj("journal"), _field(), _rule(), guide=guide)
         for ref in ("journal", "journal.amount_local",
                     "sign convention for income"):
-            waive_item(store, request.id, ref, "out of scope for this answer")
+            waive_item(store, guide, request.id, ref, "out of scope for this answer")
         assert evaluate_request(store, guide, request.id).verdict is \
             Readiness.READY
 
@@ -548,3 +565,211 @@ class TestDerivedNeverStored:
         store.save_request(request)
         assert evaluate_request(store, guide, request.id) is None
         assert evaluate_request(store, guide, "01NOPE") is None
+
+
+# -- the list itself -------------------------------------------------------
+
+def _typed_guide(*, requires=None, path=None) -> DomainGuide:
+    """The finance guide with one answer type, loaded from a file so it has
+    a fingerprint — which is what a human act records itself against."""
+    requires = requires or ["- object: journal",
+                            "- rule: sign convention for income"]
+    text = _GUIDE_TEXT + "answer_types:\n  profit_and_loss:\n" \
+        "    definition: the result of a period\n    requires:\n" \
+        + "".join(f"      {line}\n" for line in requires)
+    path.write_text(text, encoding="utf-8")
+    return load_domain_guide(path)
+
+
+_GUIDE_TEXT = """\
+domain: finance
+objects:
+  journal:
+    decided_by: balance
+    definition: the ledger of record
+    fields:
+      amount_local:
+        decided_by: slot
+        fills: amount
+        definition: the signed amount
+"""
+
+
+def _classified(store, answer_type="profit_and_loss") -> AnswerRequest:
+    request = AnswerRequest(question="Can these files produce actual P&L?",
+                            requested_output="P&L per entity per month",
+                            answer_type=answer_type)
+    store.save_request(request)
+    return request
+
+
+class TestTheListIsDerived:
+    """No stored list, so no list that can quietly describe an older guide."""
+
+    def test_a_classified_request_needs_no_stored_list_at_all(
+            self, store, tmp_path):
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store)
+        result = evaluate_request(store, guide, request.id)
+        assert [i.ref for i in result.items] == \
+            ["journal", "sign convention for income"]
+        assert store.knowledge_for(request.id) is None
+
+    def test_every_derived_item_says_it_came_from_the_contract(
+            self, store, tmp_path):
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        result = evaluate_request(store, guide, _classified(store).id)
+        assert all(i.item.provenance is Provenance.CONTRACT
+                   for i in result.items)
+
+    def test_editing_the_guide_changes_the_list_without_touching_the_store(
+            self, store, tmp_path):
+        """Monday: confirm a list of two. Wednesday: the guide grows a third
+        dependency. The verdict must move — a stored list would not have."""
+        path = tmp_path / "g.yaml"
+        guide = _typed_guide(path=path)
+        request = _classified(store)
+        _passing_balance(store, _candidate(store, "journal", "de_erp__gl"))
+        link_claim(store, guide, request.id, "sign convention for income",
+                   _confirmed_policy(store).id, linked_by=Actor.HUMAN)
+        confirm_classification(store, guide, request.id)
+        assert evaluate_request(store, guide, request.id).verdict is \
+            Readiness.READY
+
+        grown = _typed_guide(path=path, requires=[
+            "- object: journal",
+            "- rule: sign convention for income",
+            "- rule: month cut-off for late postings",
+        ])
+        result = evaluate_request(ProjectStore(store.root), grown, request.id)
+        assert "month cut-off for late postings" in result.reason()
+        assert result.verdict is Readiness.READY_WITH_LIMITATIONS
+
+    def test_an_answer_type_the_guide_dropped_blocks_and_says_why(
+            self, store, tmp_path):
+        """Expanding to nothing would be the silent short list itself."""
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store, answer_type="balance_sheet")
+        result = evaluate_request(store, guide, request.id)
+        assert result.verdict is Readiness.BLOCKED
+        assert "no longer declares" in result.reason()
+        assert "balance_sheet" in result.reason()
+
+
+class TestTheListItselfMustBeVouchedFor:
+    """A verdict is never stronger than the list it was computed over.
+
+    Whether the dependencies hold and whether anyone has read the list of
+    them are two questions, and only the second protects against a list that
+    was short to begin with.
+    """
+
+    def _supported(self, store, guide, request):
+        _passing_balance(store, _candidate(store, "journal", "de_erp__gl"))
+        link_claim(store, guide, request.id, "sign convention for income",
+                   _confirmed_policy(store).id, linked_by=Actor.HUMAN)
+
+    def test_an_unconfirmed_list_cannot_read_ready(self, store, tmp_path):
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store)
+        self._supported(store, guide, request)
+        result = evaluate_request(store, guide, request.id)
+        assert result.verdict is Readiness.READY_WITH_LIMITATIONS
+        assert result.confirmed is False
+        assert "nobody has confirmed" in result.reason()
+
+    def test_the_cap_does_not_hide_that_the_dependencies_hold(
+            self, store, tmp_path):
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store)
+        self._supported(store, guide, request)
+        reason = evaluate_request(store, guide, request.id).reason()
+        assert reason.startswith("All 2 things this answer depends on are "
+                                 "supported.")
+
+    def test_confirming_lifts_the_cap(self, store, tmp_path):
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store)
+        self._supported(store, guide, request)
+        confirm_classification(store, guide, request.id)
+        result = evaluate_request(ProjectStore(store.root), guide, request.id)
+        assert result.verdict is Readiness.READY
+        assert result.confirmed is True
+
+    def test_a_confirmation_lapses_when_the_guide_moves(self, store, tmp_path):
+        path = tmp_path / "g.yaml"
+        guide = _typed_guide(path=path)
+        request = _classified(store)
+        self._supported(store, guide, request)
+        confirm_classification(store, guide, request.id)
+
+        reworded = _typed_guide(path=path, requires=[
+            "- object: journal",
+            "- rule: sign convention for income",
+        ])
+        # same two dependencies, different bytes: the reader confirmed a list
+        # that was rendered from something else
+        path.write_text(path.read_text().replace("the ledger of record",
+                                                 "the ledger"), encoding="utf-8")
+        moved = load_domain_guide(path)
+        result = evaluate_request(store, moved, request.id)
+        assert result.verdict is Readiness.READY_WITH_LIMITATIONS
+        assert "earlier version of the domain guide" in result.reason()
+        assert reworded.fingerprint != moved.fingerprint
+
+    def test_a_confirmation_does_not_travel_to_another_classification(
+            self, store, tmp_path):
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store)
+        confirm_classification(store, guide, request.id)
+        reclassified = request.model_copy(update={"answer_type": "other"})
+        store.save_request(reclassified)
+        assert evaluate_request(store, guide, request.id).confirmed is False
+
+    def test_a_waiver_does_not_lapse_with_the_guide(self, store, tmp_path):
+        """Unlike a confirmation. 'This list is complete' stops being true
+        when the list moves; 'this item does not matter here' does not."""
+        path = tmp_path / "g.yaml"
+        guide = _typed_guide(path=path)
+        request = _classified(store)
+        waive_item(store, guide, request.id, "sign convention for income",
+                   "this question is gross-only")
+        grown = _typed_guide(path=path, requires=[
+            "- object: journal",
+            "- rule: sign convention for income",
+            "- rule: month cut-off for late postings",
+        ])
+        items = {i.ref: i for i in
+                 evaluate_request(store, grown, request.id).items}
+        assert items["sign convention for income"].ground is Ground.WAIVED
+
+    def test_a_list_nobody_matched_says_so_in_the_verdict(self, store, guide):
+        request = AnswerRequest(question="q?", requested_output="o")
+        store.save_request(request)
+        store.save_required_knowledge(
+            RequiredKnowledge(request_id=request.id, items=[_rule()]))
+        reason = evaluate_request(store, guide, request.id).reason()
+        assert "No answer type of the domain guide covers this question" in reason
+
+    def test_a_human_can_add_what_the_contract_missed(self, store, tmp_path):
+        """The reader who spots the gap closes it, and the item is marked so
+        nobody mistakes it for reviewed content."""
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store)
+        add_item(store, guide, request.id,
+                 _rule("month cut-off for late postings"))
+        items = {i.ref: i.item for i in
+                 evaluate_request(store, guide, request.id).items}
+        assert items["month cut-off for late postings"].provenance is \
+            Provenance.ADDED
+
+    def test_a_drafted_delta_alongside_a_contract_is_named(
+            self, store, tmp_path):
+        guide = _typed_guide(path=tmp_path / "g.yaml")
+        request = _classified(store)
+        store.save_required_knowledge(RequiredKnowledge(
+            request_id=request.id, items=[_rule("in USD, at which rate")]))
+        result = evaluate_request(store, guide, request.id)
+        assert "1 item drafted for this question alone" in result.reason()
+        assert {i.item.provenance for i in result.items} == \
+            {Provenance.CONTRACT, Provenance.PROPOSED}

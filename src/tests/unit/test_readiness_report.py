@@ -31,6 +31,7 @@ from html import escape
 
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.stages import BOUNDARY_TEXT, STAGES
+from before_we_ai.llm.domain_guide import load_domain_guide
 from before_we_ai.readiness import link_claim
 from before_we_ai.store import ProjectStore, init_project
 from readiness_report import render_project
@@ -765,14 +766,14 @@ def _p_and_l_project(tmp_path, name="readiness"):
         KnowledgeItem(kind=KnowledgeKind.RULE, name="sign convention",
                       why="it decides profit from loss"),
     ]))
-    return root, store
+    return root, store, load_domain_guide(guide)
 
 
 def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_path):
     """The bottom of the machine, on the page. The question is the human's
     words, the verdict is derived, and the AI's reason for listing a
     dependency is attributed and subordinate to it."""
-    root, store = _p_and_l_project(tmp_path)
+    root, store, _ = _p_and_l_project(tmp_path)
     journal = MappingClaim(statement="role 'journal' is played by de_erp__gl",
                            created_by=Actor.AI, role="journal",
                            binding={"table": "de_erp__gl"})
@@ -823,7 +824,7 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
 
 
 def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
-    root, _ = _p_and_l_project(tmp_path, "blocked")
+    root, _, _ = _p_and_l_project(tmp_path, "blocked")
 
     html = render_project(root)
 
@@ -836,7 +837,7 @@ def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
 def test_a_linked_rule_shows_who_linked_it_and_why(tmp_path):
     """A rule is only ever satisfied by an explicit link, so the link is part
     of the audit trail: a wrong one points a verdict at an unrelated claim."""
-    root, store = _p_and_l_project(tmp_path, "linked")
+    root, store, guide = _p_and_l_project(tmp_path, "linked")
     policy = ConceptClaim(
         statement="income is stored as a negative amount",
         created_by=Actor.HUMAN, term="haben_konvention",
@@ -844,7 +845,8 @@ def test_a_linked_rule_shows_who_linked_it_and_why(tmp_path):
         status=ClaimStatus.BUSINESS_CONFIRMED,
     )
     store.save_claim(policy)
-    link_claim(store, next(iter(store.requests)), "sign convention", policy.id,
+    link_claim(store, guide, next(iter(store.requests)), "sign convention",
+               policy.id,
                linked_by=Actor.AI, note="Buchhaltungsrichtlinie §2")
 
     html = render_project(root)

@@ -12,7 +12,7 @@ claims and evidence it rests on, exactly like ``resolve_status``. A stored
 readiness verdict could drift away from the evidence under it, and a
 verdict that has drifted is worse than none.
 
-Two rules govern the output and are not negotiable:
+Three rules govern the output and are not negotiable:
 
 1. ``blocked`` and ``ready_with_limitations`` **name the dependency**. A
    verdict without its reason is the one thing this product may not ship.
@@ -21,22 +21,29 @@ Two rules govern the output and are not negotiable:
    satisfied by the run that consumed its column while its own claims stay
    ``proposed`` — so an item reading only "satisfied" would hide exactly
    that distinction.
+3. A verdict is never stronger than the list it was computed over. Whether
+   the dependencies hold is one question; whether anyone has vouched for the
+   *list* of them is another (``assemble.Review``), and an unreviewed list
+   caps the verdict at ``ready_with_limitations`` naming itself. An
+   incomplete list would otherwise produce a confident ``ready`` with
+   nothing anywhere to show what was missing.
 """
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Sequence
 
 from before_we_ai.llm.domain_guide import DomainGuide, settled_slots
-from before_we_ai.core.enums import Actor, ClaimStatus, KnowledgeKind
+from before_we_ai.core.enums import ActKind, Actor, ClaimStatus, KnowledgeKind
 from before_we_ai.core.objects import (
     AnswerRequest,
     Claim,
+    KnowledgeAct,
     KnowledgeItem,
-    KnowledgeLink,
     MappingClaim,
-    RequiredKnowledge,
     Scope,
 )
+from before_we_ai.readiness.assemble import REVIEWED, Review, assemble
 from before_we_ai.store.repository import ProjectStore
 
 _SETTLED = (ClaimStatus.TEST_SUPPORTED, ClaimStatus.BUSINESS_CONFIRMED)
@@ -102,6 +109,15 @@ class ReadinessMap:
     request: AnswerRequest
     items: tuple[ReadinessItem, ...]
     verdict: Readiness
+    review: Review = REVIEWED
+
+    @property
+    def answer_type(self) -> str | None:
+        return self.review.answer_type
+
+    @property
+    def confirmed(self) -> bool:
+        return self.review.confirmed
 
     def unsupported(self) -> list[ReadinessItem]:
         return [i for i in self.items if not i.satisfied]
@@ -119,15 +135,16 @@ class ReadinessMap:
 
         Every branch names dependencies, because a verdict whose reason a
         reader has to go looking for is a verdict they will take on trust.
+        The review clause is appended rather than folded in: what is missing
+        from the list and what is missing from the *review of* the list are
+        two different gaps, and a reader has to act on them differently.
         """
-        if self.verdict is Readiness.READY:
-            n = len(self.items)
-            if n == 0:
-                return "This answer was declared to depend on nothing."
-            if n == 1:
-                return "The one thing this answer depends on is supported."
-            return f"All {n} things this answer depends on are supported."
-        if self.verdict is Readiness.BLOCKED:
+        note = self.review.note()
+        return f"{self._dependencies()} {note}".strip() if note \
+            else self._dependencies()
+
+    def _dependencies(self) -> str:
+        if self.blocking():
             one = len(self.blocking()) == 1
             missing = _list(i.ref for i in self.blocking())
             return (
@@ -135,17 +152,26 @@ class ReadinessMap:
                 f"{'is' if one else 'are'} unsupported, and the figures are "
                 f"computed from {'it' if one else 'them'}."
             )
-        one = len(self.limitations()) == 1
-        missing = _list(i.ref for i in self.limitations())
-        return (
-            f"The figures can be produced, but what they mean is not "
-            f"settled: {missing} {'remains' if one else 'remain'} unsupported."
-        )
+        if self.limitations():
+            one = len(self.limitations()) == 1
+            missing = _list(i.ref for i in self.limitations())
+            return (
+                f"The figures can be produced, but what they mean is not "
+                f"settled: {missing} {'remains' if one else 'remain'} "
+                "unsupported."
+            )
+        n = len(self.items)
+        if n == 0:
+            return "This answer was declared to depend on nothing."
+        if n == 1:
+            return "The one thing this answer depends on is supported."
+        return f"All {n} things this answer depends on are supported."
 
 
 def evaluate(store: ProjectStore, guide: DomainGuide, request: AnswerRequest,
-             required: RequiredKnowledge) -> ReadinessMap:
-    """Walk the required knowledge down to claims and evidence.
+             items: Sequence[KnowledgeItem], *,
+             review: Review = REVIEWED) -> ReadinessMap:
+    """Walk the dependency list down to claims and evidence.
 
     The verdict follows from *what kind* of dependency is missing, not from
     anyone's opinion of how important it is. An object or field is what the
@@ -153,79 +179,95 @@ def evaluate(store: ProjectStore, guide: DomainGuide, request: AnswerRequest,
     is **blocked**. A rule is what the figures mean — the number exists but
     is qualified, so the answer is **ready_with_limitations** and the map
     names every qualification. Nothing missing: **ready**.
+
+    ``review`` says whether anyone has vouched for the list itself, and an
+    unvouched-for list can never read ``ready``. The default assumes the
+    caller *is* the reviewer, which is true of a list handed in directly and
+    never assumed on the stored path — ``evaluate_request`` always works the
+    real state out.
     """
-    items = tuple(_judge(store, guide, item, request.scope)
-                  for item in required.items)
-    if all(i.satisfied for i in items):
-        verdict = Readiness.READY
-    elif any(not i.satisfied and i.structural for i in items):
+    judged = tuple(_judge(store, guide, item, request.scope) for item in items)
+    if review.broken:
+        # No dependency list at all is worse than an unsupported one: there
+        # is nothing to test and nothing to name.
         verdict = Readiness.BLOCKED
+    elif any(not i.satisfied and i.structural for i in judged):
+        verdict = Readiness.BLOCKED
+    elif all(i.satisfied for i in judged) and review.confirmed:
+        verdict = Readiness.READY
     else:
         verdict = Readiness.READY_WITH_LIMITATIONS
-    return ReadinessMap(request=request, items=items, verdict=verdict)
+    return ReadinessMap(request=request, items=judged, verdict=verdict,
+                        review=review)
 
 
 class UnlinkableItem(Exception):
-    """Raised when a link is aimed at something that cannot carry one."""
+    """Raised when an act is aimed at something that cannot carry one."""
 
 
-def _edit_item(store: ProjectStore, request_id: str, ref: str, change
-               ) -> RequiredKnowledge:
-    """Apply ``change`` to the one required item named by ``ref``, and save."""
-    required = store.knowledge_for(request_id)
-    if required is None:
-        raise UnlinkableItem(f"no required knowledge for request {request_id}")
-    items, found = [], False
-    for item in required.items:
-        if item.ref() != ref:
-            items.append(item)
-            continue
-        items.append(change(item))
-        found = True
-    if not found:
-        raise UnlinkableItem(
-            f"{ref!r} is not required by request {request_id} — "
-            f"required: {sorted(i.ref() for i in required.items)}"
-        )
-    updated = required.model_copy(update={"items": items})
-    store.save_required_knowledge(updated)
-    return updated
+def _act_on(store: ProjectStore, guide: DomainGuide, request_id: str,
+            ref: str) -> tuple[AnswerRequest, KnowledgeItem]:
+    """The request and the one assembled item ``ref`` names.
+
+    Acts are recorded against the *derived* list, so the item has to be
+    found there rather than in a stored record — there is no stored record
+    of the list any more, and that is the point.
+    """
+    request = store.requests.get(request_id)
+    if request is None:
+        raise UnlinkableItem(f"no request {request_id} in this project")
+    items = assemble(store, guide, request).items
+    for item in items:
+        if item.ref() == ref:
+            return request, item
+    raise UnlinkableItem(
+        f"{ref!r} is not required by request {request_id} — "
+        f"required: {sorted(i.ref() for i in items)}"
+    )
 
 
-def waive_item(store: ProjectStore, request_id: str, ref: str,
-               because: str) -> RequiredKnowledge:
+def waive_item(store: ProjectStore, guide: DomainGuide, request_id: str,
+               ref: str, because: str) -> KnowledgeAct:
     """A human strikes a dependency the answer does not actually rest on.
 
-    The pruning the draft exists for. V4 over-lists deliberately — better a
-    listed dependency nobody needs than a silent omission — so without this
-    an over-listed item blocks the answer forever.
+    Without it, a listed dependency nobody needs blocks the answer forever.
 
     Waived, not deleted: the item stays in the map, struck through, carrying
     the reason. A reason is mandatory; a waiver without one is the silence
     this product forbids, and it is also the only thing that distinguishes
     a judgement from a mistake six months later.
+
+    Unlike a confirmation, a waiver does **not** lapse when the guide
+    changes. A confirmation says "this list is complete", which stops being
+    true the moment the list moves; a waiver says "this item does not matter
+    for this question", which a change elsewhere leaves untouched.
     """
     if not because.strip():
         raise UnlinkableItem(
             f"waiving {ref!r} requires a reason — an unexplained waiver is "
             "indistinguishable from an oversight"
         )
-    return _edit_item(store, request_id, ref,
-                      lambda item: item.model_copy(
-                          update={"waived_because": because.strip()}))
+    _act_on(store, guide, request_id, ref)
+    return _record(store, request_id, ActKind.WAIVE, Actor.HUMAN, guide,
+                   ref=ref, reason=because.strip())
 
 
-def require_again(store: ProjectStore, request_id: str,
-                  ref: str) -> RequiredKnowledge:
-    """Undo a waiver — a judgement call may be revisited."""
-    return _edit_item(store, request_id, ref,
-                      lambda item: item.model_copy(
-                          update={"waived_because": None}))
+def require_again(store: ProjectStore, guide: DomainGuide, request_id: str,
+                  ref: str) -> KnowledgeAct:
+    """Undo a waiver — a judgement call may be revisited.
+
+    The waiver is not erased; this answers it. Both stay readable as the
+    history of one decision being taken and taken back.
+    """
+    _act_on(store, guide, request_id, ref)
+    return _record(store, request_id, ActKind.REQUIRE_AGAIN, Actor.HUMAN,
+                   guide, ref=ref)
 
 
-def link_claim(store: ProjectStore, request_id: str, ref: str, claim_id: str,
-               *, linked_by: Actor, note: str = "") -> RequiredKnowledge:
-    """Point a required rule at the claim that states it, and persist it.
+def link_claim(store: ProjectStore, guide: DomainGuide, request_id: str,
+               ref: str, claim_id: str, *, linked_by: Actor,
+               note: str = "") -> KnowledgeAct:
+    """Point a required rule at the claim that states it.
 
     The seam M5 needs: V3 reads a policy document, produces a claim, and
     says which open dependency that claim answers. It is also how a human
@@ -239,30 +281,66 @@ def link_claim(store: ProjectStore, request_id: str, ref: str, claim_id: str,
     """
     if claim_id not in store.claims:
         raise UnlinkableItem(f"no claim {claim_id} in this project")
+    _, item = _act_on(store, guide, request_id, ref)
+    if item.kind is not KnowledgeKind.RULE:
+        raise UnlinkableItem(
+            f"{item.kind.value} {ref!r} resolves through the domain "
+            "guide's scoped election; only a rule takes a linked claim"
+        )
+    return _record(store, request_id, ActKind.LINK, linked_by, guide,
+                   ref=ref, claim_id=claim_id, note=note)
 
-    def add_link(item: KnowledgeItem) -> KnowledgeItem:
-        if item.kind is not KnowledgeKind.RULE:
-            raise UnlinkableItem(
-                f"{item.kind.value} {ref!r} resolves through the domain "
-                "guide's scoped election; only a rule takes a linked claim"
-            )
-        kept = [l for l in item.satisfied_by if l.claim_id != claim_id]
-        return item.model_copy(update={"satisfied_by": kept + [
-            KnowledgeLink(claim_id=claim_id, linked_by=linked_by, note=note)
-        ]})
 
-    return _edit_item(store, request_id, ref, add_link)
+def add_item(store: ProjectStore, guide: DomainGuide, request_id: str,
+             item: KnowledgeItem) -> KnowledgeAct:
+    """A human puts on the list something the contract did not.
+
+    The answer to under-listing that does not wait for the guide to be
+    fixed: the reader who spots the gap can close it here, and the item is
+    marked ``added`` so nobody mistakes it for reviewed content.
+    """
+    if request_id not in store.requests:
+        raise UnlinkableItem(f"no request {request_id} in this project")
+    return _record(store, request_id, ActKind.ADD, Actor.HUMAN, guide,
+                   item=item)
+
+
+def confirm_classification(store: ProjectStore, guide: DomainGuide,
+                           request_id: str, *,
+                           by: Actor = Actor.HUMAN) -> KnowledgeAct:
+    """A human vouches for the dependency list as a whole.
+
+    This is the act the cap exists to ask for. It says two things at once:
+    the question was classified correctly, and the list that classification
+    expands to is complete. It is recorded against this guide's fingerprint,
+    so it lapses when the guide moves and the reader is asked again.
+    """
+    request = store.requests.get(request_id)
+    if request is None:
+        raise UnlinkableItem(f"no request {request_id} in this project")
+    return _record(store, request_id, ActKind.CONFIRM, by, guide,
+                   answer_type=request.answer_type)
+
+
+def _record(store: ProjectStore, request_id: str, kind: ActKind, actor: Actor,
+            guide: DomainGuide, **fields) -> KnowledgeAct:
+    act = KnowledgeAct(request_id=request_id, kind=kind, actor=actor,
+                       guide_fingerprint=guide.fingerprint, **fields)
+    store.save_act(act)
+    return act
 
 
 def evaluate_request(store: ProjectStore, guide: DomainGuide,
                      request_id: str) -> ReadinessMap | None:
-    """The map for a stored request, or None when nothing requires anything
-    of it yet (V4 has not run, or a human pruned the draft to nothing)."""
+    """The map for a stored request, or None when nothing states what it
+    depends on yet — no answer type, and no freely drafted list either."""
     request = store.requests.get(request_id)
-    required = store.knowledge_for(request_id) if request else None
-    if request is None or required is None:
+    if request is None:
         return None
-    return evaluate(store, guide, request, required)
+    built = assemble(store, guide, request)
+    if not built.items and not built.review.broken:
+        return None
+    return evaluate(store, guide, request, built.items, review=built.review)
 
 
 # -- judging one item ------------------------------------------------------

@@ -460,14 +460,15 @@ class KnowledgeAct(BaseModel):
     act is never edited — a waiver is undone by a later ``require_again``,
     so the pair stays readable as the history it is.
 
-    ``guide_fingerprint`` is what makes the derivation safe to trust. A
-    ``confirm`` says "I read this list and it is complete"; a ``waive`` says
-    "this item does not matter here". Both are statements about a *list*,
-    and the list changes when the guide changes — so both record which guide
-    they were made against, and both lapse when it no longer matches. A
-    ``link`` and an ``add`` do not lapse: a link only routes (the claim's
-    status still decides), and an added item is human-authored content, not
-    a judgement about someone else's list.
+    ``guide_fingerprint`` is what makes the derivation safe to trust — every
+    act records which guide it was taken against. Only a ``confirm`` lapses
+    when that guide moves, and the distinction is worth stating: a
+    confirmation says *"this list is complete"*, which stops being true the
+    moment the list changes. Every other act is about one item — "this does
+    not matter here", "this claim speaks to it" — and a change elsewhere in
+    the guide leaves that exactly as true as it was. Lapsing them too would
+    destroy a human's work to no one's benefit; the confirmation lapsing is
+    what brings them back in front of a reader anyway.
     """
 
     id: str = Field(default_factory=new_id)
