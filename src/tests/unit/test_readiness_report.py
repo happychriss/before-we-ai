@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 
 import json
@@ -29,28 +30,70 @@ from before_we_ai.core import (
 )
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.core.objects import DataProfile
-from html import escape
-
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.stages import BOUNDARY_TEXT, STAGES
 from before_we_ai.llm.domain_guide import load_domain_guide
 from before_we_ai.readiness import confirm_classification, link_claim
 from before_we_ai.store import ProjectStore, init_project
 from readiness_report import render_project
+from readiness_report.projection import load_view_model
 
 pytestmark = pytest.mark.integration
 
 
-def test_render_project_handles_empty_project(tmp_path):
+def _rich_text(value):
+    return "".join(part.text for part in value.parts)
+
+
+def _stage(view, name):
+    return next(stage for stage in view.stages if stage.name == name)
+
+
+def _claim(view, claim_id):
+    return next(claim for claim in view.claims if claim.index.id == claim_id)
+
+
+def _outcome_text(election):
+    return tuple((css, _rich_text(text)) for css, text in election.outcome.paragraphs)
+
+
+class _DocumentLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.ids = set()
+        self.urls = []
+        self.fragments = set()
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if values.get("id"):
+            self.ids.add(values["id"])
+        for name in ("href", "src"):
+            value = values.get(name)
+            if not value:
+                continue
+            self.urls.append(value)
+            if value.startswith("#") and len(value) > 1:
+                self.fragments.add(value[1:])
+
+
+def _document(html):
+    document = _DocumentLinks()
+    document.feed(html)
+    return document
+
+
+def test_view_model_handles_empty_project(tmp_path):
     root = init_project(tmp_path / "empty")
-    html = render_project(root)
+    view = load_view_model(root)
 
-    assert "No claims yet." in html
-    assert "No sources yet." in html
-    assert "No integrity findings." in html
+    assert view.funnel.empty == "No claims yet."
+    assert view.measurement.source_count == 0
+    assert view.measurement.sources == ()
+    assert view.integrity == ()
 
 
-def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
+def test_view_model_shows_claim_evidence_lineage_and_data(tmp_path):
     root = init_project(tmp_path / "project")
     store = ProjectStore(root)
 
@@ -136,18 +179,34 @@ def test_render_project_shows_claim_evidence_lineage_and_data(tmp_path):
     )
     store.add_evidence(declaration)
 
-    html = render_project(root)
+    view = load_view_model(root)
+    parent_view = _claim(view, parent.id)
+    child_view = _claim(view, child.id)
+    binding_view = _claim(view, binding.id)
+    evidence_view = next(item for item in parent_view.evidence if item.id == check.id)
+    question = next(
+        item for item in view.open_questions
+        if item.question == "Which invoices are missing orders?"
+    )
+    column = view.measurement.sources[0].tables[0].columns[0]
 
-    assert "Invoices reference orders" in html
-    assert "Conflict is present" in html or "failing check" in html
-    assert f'href="#claim-{parent.id}"' in html
-    assert f'id="evidence-{check.id}"' in html
-    assert "Exception samples" in html
-    assert "Which invoices are missing orders?" in html
-    assert "erp__invoices.invoice_id" in html
-    assert "erp__orders.order_id" in html
-    assert "Invoice id binds to invoice column" in html
-    assert "numeric_to_text" in html
+    assert parent_view.index.title == "Invoices reference orders"
+    assert parent_view.index.derived_status == "contradicted"
+    assert "failing check" in parent_view.headline
+    assert child_view.lineage.parent.reference.id == parent.id
+    assert child_view.lineage.evidence.reference.id == check.id
+    assert evidence_view.sample_headers == ("invoice_id", "order_id")
+    assert evidence_view.sample_rows == (("INV-1", "missing"),)
+    assert question.id in {item.id for item in view.open_questions}
+    assert column.key == "erp__invoices.invoice_id"
+    assert [(item.other, item.overlap) for item in column.candidates] == [
+        ("erp__orders.order_id", "10")
+    ]
+    assert binding_view.index.title == (
+        "'invoice_id' is played by erp__invoices.invoice_id"
+    )
+    assert binding_view.statement == "Invoice id binds to invoice column"
+    assert any("numeric_to_text" in item.payload for item in column.declarations)
 
 
 def test_funnel_counts_the_pipeline_stages(tmp_path):
@@ -209,20 +268,25 @@ def test_funnel_counts_the_pipeline_stages(tmp_path):
     )
     store.save_claim(semantic)
 
-    html = render_project(root)
+    view = load_view_model(root)
+    claims = {claim.statement: claim for claim in view.claims}
+    chips = {
+        chip.stage: chip
+        for stage in view.funnel.stages
+        for chip in stage.chips
+        if chip.stage
+    }
 
-    assert "3 · Proposed — what the AI guessed" in html
-    assert 'data-stage-chip="bound"' in html
-    # one claim per stage: bound / unbindable / semantic-only
-    assert html.count('data-stage="bound"') == 1
-    assert html.count('data-stage="unbindable"') == 1
-    assert html.count('data-stage="semantic_only"') == 1
-    assert html.count('data-executed="yes"') == 1
-    # the refusal is readable where the check would have been
-    assert "no documented pairs available to populate the template" in html
-    assert "Never tested" in html
-    # the funnel filters on the derived status, not the stored one
-    assert 'data-status="test-supported"' in html
+    assert _stage(view, "proposed").label == "3 · proposed"
+    assert chips["bound"].count == 1
+    assert chips["unbindable"].count == 1
+    assert chips["semantic_only"].count == 1
+    assert chips["executed"].count == 1
+    assert claims["Orders reference customers"].no_check.reason == (
+        "no documented pairs available to populate the template"
+    )
+    assert claims["Betrag means amount"].headline.startswith("Never tested")
+    assert claims["Postings reference invoices"].index.derived_status == "test-supported"
 
 
 def test_role_elections_show_winner_loser_and_clarification(tmp_path):
@@ -276,17 +340,30 @@ def test_role_elections_show_winner_loser_and_clarification(tmp_path):
     )
     store.save_question(card)
 
-    html = render_project(root)
+    view = load_view_model(root)
+    journal = next(item for item in view.elections if item.role == "journal")
+    intercompany = next(item for item in view.elections if item.role == "intercompany")
+    journal_outcome = " ".join(text for _, text in _outcome_text(journal))
+    loser_reasons = [
+        _rich_text(reason)
+        for candidate in journal.candidates
+        if candidate.css == "loser"
+        for reason in candidate.reasons
+    ]
+    intercompany_outcome = " ".join(text for _, text in _outcome_text(intercompany))
 
-    assert "4 · Tested — what the checks settled" in html
-    assert "<strong>Identified.</strong> The balance law passed on" in html
-    assert "felled by" in html
-    assert "24 exceptions in 383 rows" in html
-    assert "finance law" in html  # the domain-law tag of the invariant template
-    assert "<strong>Open — a human has to answer it.</strong>" in html
-    assert f'href="#question-{card.id}"' in html
-    # the open-questions inbox is its own pipeline step, and counts
-    assert "5 · Clarification — what only a human can answer (1)" in html
+    assert _stage(view, "tested").title == "The checks judge"
+    assert "Identified. The balance law passed on" in journal_outcome
+    assert "felled" in journal_outcome
+    assert any("24 exceptions in 383 rows" in reason for reason in loser_reasons)
+    assert any("finance law" in reason for reason in loser_reasons)
+    assert "Open — a human has to answer it." in intercompany_outcome
+    assert any(
+        part.reference and part.reference.id == card.id
+        for _, paragraph in intercompany.outcome.paragraphs
+        for part in paragraph.parts
+    )
+    assert _stage(view, "clarification").counts == (("1", "open question"),)
 
 
 def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
@@ -354,31 +431,29 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
         ClarificationQuestion(question="Which source leads?", claim_ids=[beaten.id])
     )
 
-    html = render_project(root)
+    view = load_view_model(root)
 
-    # every stage of the spine draws a node linking into its own section —
-    # the diagram renders before_we_ai.stages, it does not restate it
-    for stage in STAGES:
-        assert f'<div class="node-title"><a href="#{stage.name}">' in html
-        assert escape(stage.actor) in html
-    assert BOUNDARY_TEXT in html
-    # the counts are read from this project, not written into the template
+    assert [(stage.name, stage.actor) for stage in view.stages] == [
+        (stage.name, stage.actor) for stage in STAGES
+    ]
+    assert [stage.boundary_before for stage in view.stages if stage.boundary_before] == [
+        BOUNDARY_TEXT
+    ]
     laws = sum(1 for spec in REGISTRY.values() if spec.domain)
-    assert "<strong>1</strong> source" in html
-    assert "<strong>1+1</strong> objects + fields" in html
-    assert f"<strong>{laws}</strong> domain laws" in html
-    assert "<strong>1</strong> column profiles" in html
-    assert "<strong>2</strong> claims" in html
-    assert "<strong>2</strong> check runs" in html
-    assert "<strong>1/2</strong> elections settled" in html
-    assert "<strong>1</strong> open question" in html
-
-    # readiness is a real stage now; nothing was asked of this project, and
-    # the diagram says that rather than showing a verdict nobody earned
-    assert "<strong>—</strong> no question asked" in html
-    # what is not built still says so, rather than being left out
-    assert "M5 · documents" in html
-    assert html.count("not built") == 1
+    assert _stage(view, "inputs").counts == (
+        ("1", "source"),
+        ("1+1", "objects + fields"),
+        (str(laws), "domain laws"),
+    )
+    assert _stage(view, "measured").counts[0] == ("1", "column profiles")
+    assert _stage(view, "proposed").counts == (("2", "claims"),)
+    assert _stage(view, "tested").counts == (
+        ("2", "check runs"),
+        ("1/2", "elections settled"),
+    )
+    assert _stage(view, "clarification").counts == (("1", "open question"),)
+    assert _stage(view, "readiness").counts == (("—", "no question asked"),)
+    assert _rich_text(view.copy.process_ghost).startswith("M5 · documents — not built")
 
 
 def test_a_question_lists_candidates_and_hides_its_ids(tmp_path):
@@ -435,25 +510,30 @@ def test_a_question_lists_candidates_and_hides_its_ids(tmp_path):
         claim_ids=[c.id for c in unbound],
     ))
 
-    html = render_project(root)
+    view = load_view_model(root)
+    by_question = {item.question: item for item in view.open_questions}
+    picked = by_question[
+        "Which of the proposed candidates is the 'doc_ref'? The document reference."
+    ]
+    missing = by_question[
+        "What is missing before the 'subledger_ar' can be tested? The open receivables."
+    ]
 
-    # a clarification-decided role is answered by picking one of its candidates
-    assert "Pick one — 2 candidates were proposed:" in html
-    # a role whose law never ran is not a pick — it is asking for knowledge
-    assert "no law could be applied to any of them" in html
-    # the candidates are named by their binding; the claim's own sprawling
-    # statement survives only where the model's words belong (quoted and
-    # attributed) and in the hidden search index — never as a heading
-    short = "&#x27;doc_ref&#x27; is played by de_erp__gl_postings.document_reference"
-    assert f"<h3>{short}</h3>" in html
-    assert f"<div>{short}</div>" in html  # the index card in the sidebar
-    # ids and timestamps are reachable, never in the way
-    assert "<details class='tech'><summary>Technical details</summary>" in html
-    # and the YAML the page only renders is one click away
-    assert "questions/" in html and ".yaml" in html
+    assert picked.lead == "Pick one — 2 candidates were proposed:"
+    assert "no law could be applied to any of them" in missing.lead
+    assert [item.binding for item in picked.options] == [
+        "buchungen_report.buchung_id",
+        "de_erp__gl_postings.document_reference",
+    ]
+    assert "'doc_ref' is played by de_erp__gl_postings.document_reference" in {
+        claim.index.title for claim in view.claims
+    }
+    assert dict(picked.details)["id"] == picked.id
+    assert picked.provenance.reference.kind == "questions"
+    assert picked.provenance.reference.id == picked.id
 
 
-def test_the_page_speaks_in_three_voices(tmp_path):
+def test_view_model_keeps_three_voices_separate(tmp_path):
     """Derived sentences headline; the AI is quoted and attributed; the
     human's words are verbatim. A model's prose may never headline a status."""
     root = init_project(tmp_path / "voices")
@@ -484,23 +564,30 @@ def test_the_page_speaks_in_three_voices(tmp_path):
     claim = attach_evidence(claim, failed, [])
     store.save_claim(attach_evidence(claim, said, [failed]))
 
-    html = render_project(root)
+    view = load_view_model(root)
+    claim_view = _claim(view, claim.id)
+    failed_view = next(item for item in claim_view.evidence if item.id == failed.id)
+    said_view = next(item for item in claim_view.evidence if item.id == said.id)
 
-    # 1 — the derived voice states what happened, from the numbers
-    assert "The check refuted the claim: 8 exceptions in 400 rows (2.00% of the rows)." in html
-    # 2 — the AI's own sentence is kept, attributed, and marked a proposal
-    assert "wrote it, verbatim; a proposal, not a finding" in html
-    # 3 — the human's words are verbatim and marked as theirs
-    assert "Postings from the legacy migration never got an invoice." in html
-    assert "— stated by a human, verbatim" in html
-    # what this check tries to break, in business words, from its definition
-    assert "Every entry on one side must have a counterpart on the other." in html
-    # how far the claim got — a failing check against a human's word is a
-    # conflict, and the strip says which step reached which state
-    assert "1 proposed — the AI wrote it" in html
-    assert "2 planned — bound to a check" in html
-    assert "3 judged — a check ran" in html
-    assert "4 settled — status unresolved" in html
+    assert failed_view.sentence == (
+        "The check refuted the claim: 8 exceptions in 400 rows (2.00% of the rows)."
+    )
+    assert _rich_text(claim_view.proposal.cite).endswith(
+        "wrote it, verbatim; a proposal, not a finding"
+    )
+    assert said_view.voice.text == (
+        "Postings from the legacy migration never got an invoice."
+    )
+    assert _rich_text(said_view.voice.cite) == "— stated by a human, verbatim"
+    assert claim_view.checks[0].sentence.startswith(
+        "Every entry on one side must have a counterpart on the other."
+    )
+    assert [(step.label, step.explanation) for step in claim_view.stage_steps] == [
+        ("1 proposed", "the AI wrote it"),
+        ("2 planned", "bound to a check"),
+        ("3 judged", "a check ran"),
+        ("4 settled", "status unresolved"),
+    ]
 
 
 def test_check_card_shows_the_rendered_sql_that_was_asked(tmp_path):
@@ -536,13 +623,12 @@ def test_check_card_shows_the_rendered_sql_that_was_asked(tmp_path):
     store.add_evidence(record)
     store.save_claim(attach_evidence(claim, record, []))
 
-    html = render_project(root)
+    view = load_view_model(root)
+    check_view = _claim(view, claim.id).checks[0]
 
-    assert "Rendered SQL — the question that was asked of the data" in html
-    # the exact SQL, escaped, inside a code block under the check card
-    assert "<pre><code>" in html
-    assert "GROUP BY &quot;doc_ref&quot;" in html
-    assert "HAVING abs(total) &gt; 0.01" in html
+    assert check_view.rendered_sql == sql
+    assert 'GROUP BY "doc_ref"' in check_view.rendered_sql
+    assert "HAVING abs(total) > 0.01" in check_view.rendered_sql
 
 
 def test_check_without_a_run_says_no_sql_was_asked(tmp_path):
@@ -553,9 +639,9 @@ def test_check_without_a_run_says_no_sql_was_asked(tmp_path):
     store.save_claim(claim)
     store.save_check_plan(CheckPlan(template="anti_join", claim_id=claim.id, params={}))
 
-    html = render_project(root)
+    view = load_view_model(root)
 
-    assert "No rendered SQL yet" in html
+    assert _claim(view, claim.id).checks[0].rendered_sql == ""
 
 
 def test_a_slot_field_shows_the_column_its_object_s_law_consumed(tmp_path):
@@ -607,17 +693,24 @@ def test_a_slot_field_shows_the_column_its_object_s_law_consumed(tmp_path):
     store.add_evidence(record)
     store.save_claim(attach_evidence(journal, record, []))
 
-    html = render_project(root)
+    view = load_view_model(root)
+    field = next(item for item in view.elections if item.role == "amount_local")
+    outcome = " ".join(text for _, text in _outcome_text(field))
+    consumed = [
+        _rich_text(reason)
+        for candidate in field.candidates
+        for reason in candidate.reasons
+    ]
 
-    # the confusion this narration exists to end: the field IS answered, and
-    # its candidates still read `proposed` — both said, in that order
-    assert "<strong>Answered — without anyone being asked.</strong>" in html
-    assert ("The balance law of <code>journal</code> passed while reading "
-            "<code>de_erp__gl_postings.amount_local_currency</code>") in html
-    assert "nothing can prove by arithmetic what a single column" in html
-    # and the candidate row the law actually read says so where the eye is
-    assert "<strong>The passing run consumed this column</strong>" in html
-    assert "field of <code>journal</code>" in html  # nested under its object
+    assert field.field is True
+    assert field.owner == "journal"
+    assert "Answered — without anyone being asked." in outcome
+    assert (
+        "The balance law of journal passed while reading "
+        "de_erp__gl_postings.amount_local_currency"
+    ) in outcome
+    assert "nothing can prove by arithmetic what a single column means" in outcome
+    assert any("The passing run consumed this column" in reason for reason in consumed)
 
 
 def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
@@ -646,24 +739,27 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
     config["llm"] = {"domain_guide_file": str(domain_guide_file)}
     (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
 
-    html = render_project(root)
+    view = load_view_model(root)
+    pack = view.domain_pack
 
-    assert "0 · Inputs — what a human declared" in html
-    # 1 — the declared sources
-    assert "de_erp" in html and "/data/DE/erp.duckdb" in html
-    # 2 — the domain guide: file, domain, shape and names
-    assert "2 business objects with 1 field" in html
-    assert "journal" in html and "subledger_ar" in html
-    # the field is shown under its object, with the slot it fills
-    assert "amount_local" in html
-    assert "slot — elected as the &#x27;amount&#x27; of its object&#x27;s law" in html
-    assert str(domain_guide_file) in html
-    # 3 — the domain-law templates, and the generic remainder named as such
-    for template in ("balance", "subledger_equals_gl", "ic_symmetry"):
-        assert f"<code>{template}</code>" in html
-    assert "finance law" in html
+    assert [(item.name, item.location) for item in pack.sources] == [
+        ("de_erp", "/data/DE/erp.duckdb")
+    ]
+    assert pack.guide.state == "loaded"
+    assert (pack.guide.object_count, pack.guide.field_count) == (2, 1)
+    assert [item.name for item in pack.guide.entries] == ["journal", "subledger_ar"]
+    assert pack.guide.entries[0].fields[0].name == "amount_local"
+    assert pack.guide.entries[0].fields[0].decision == (
+        "slot — elected as the 'amount' of its object's law"
+    )
+    assert pack.guide.path == str(domain_guide_file)
+    assert {law.name for law in pack.laws.laws} == {
+        "balance", "subledger_equals_gl", "ic_symmetry"
+    }
+    assert all(law.domain == "finance" for law in pack.laws.laws)
     generic = len(REGISTRY) - sum(1 for spec in REGISTRY.values() if spec.domain)
-    assert f"The other {generic} templates in the catalog are generic" in html
+    assert pack.laws.generic_count == generic
+    assert f"The other {generic} templates in the catalog are generic" in pack.laws.note
 
 
 def test_the_law_panel_shows_this_project_s_domain_and_no_other(tmp_path):
@@ -686,16 +782,24 @@ def test_the_law_panel_shows_this_project_s_domain_and_no_other(tmp_path):
     config["llm"] = {"domain_guide_file": str(guide)}
     (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
 
-    html = render_project(root)
+    view = load_view_model(root)
+    laws = view.domain_pack.laws
+    domain_law_count = sum(1 for spec in REGISTRY.values() if spec.domain)
 
-    laws = sum(1 for spec in REGISTRY.values() if spec.domain)
-    # no finance law is presented as an input of a shipbuilding project
-    for finance_law in ("balance", "subledger_equals_gl", "ic_symmetry"):
-        assert f'<code>{finance_law}</code> <span class="badge' not in html
-    # and the absence is stated, with its consequence
-    assert "No domain law is shipped for <strong>shipbuilding</strong>" in html
-    assert "nothing here can be promoted by a check" in html
-    assert f"A further {laws} domain laws in the catalog belong to other domains" in html
+    assert not {"balance", "subledger_equals_gl", "ic_symmetry"} & {
+        item.name for item in laws.laws
+    }
+    assert "No domain law is shipped for shipbuilding" in _rich_text(
+        laws.empty_message
+    )
+    assert "nothing here can be promoted by a check" in _rich_text(
+        laws.empty_message
+    )
+    assert laws.foreign_count == domain_law_count
+    assert (
+        f"A further {domain_law_count} domain laws in the catalog belong to other domains"
+        in laws.note
+    )
 
 
 def test_two_entities_get_two_elections_and_the_page_says_which(tmp_path):
@@ -728,11 +832,13 @@ def test_two_entities_get_two_elections_and_the_page_says_which(tmp_path):
             binding={"table": table}, source_ids=[source.id],
         ))
 
-    html = render_project(root)
+    view = load_view_model(root)
+    journal_elections = [item for item in view.elections if item.role == "journal"]
 
-    assert html.count("<code>journal</code>") >= 2
-    assert "for entity DE" in html and "for entity US" in html
-    assert "<strong>0/2</strong> elections settled" in html
+    assert len(journal_elections) == 2
+    assert {item.scope for item in journal_elections} == {"entity DE", "entity US"}
+    assert all(item.candidate_count == 1 for item in journal_elections)
+    assert ("0/2", "elections settled") in _stage(view, "tested").counts
 
 
 def _p_and_l_project(tmp_path, name="readiness"):
@@ -793,38 +899,34 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
     store.add_evidence(record)
     store.save_claim(attach_evidence(journal, record, []))
 
-    html = render_project(root)
+    view = load_view_model(root)
+    request = view.requests[0]
+    readiness = view.readiness[0]
+    items = {item.ref: item for group in readiness.groups for item in group.items}
 
-    # the ghost is gone; the stage is real and carries live numbers
-    assert "M6 · question → readiness" not in html
-    assert "<strong>2/3</strong> dependencies supported" in html
-    assert "1 · Request — the question, and what it requires" in html
-    assert "6 · Readiness — what may be answered" in html
-
-    # the human's question, verbatim — and the AI's restatement attributed to
-    # the AI, not folded into the human's voice for sitting on one record
-    assert "Can these files reliably produce actual P&amp;L by entity and month?" in html
-    assert "— the business question, as it was asked" in html
-    assert "— the AI, on what the answer must deliver" in html
-    assert html.index("as it was asked") < html.index("what the answer must deliver")
-
-    # the verdict is narrowed, not blocked: the figures compute, the meaning
-    # is unsettled — and it names what is unsettled
-    assert "Ready, with limitations." in html
-    assert "&#x27;sign convention&#x27;" in html
-    assert "what they mean is not settled" in html
-
-    # every satisfied item says HOW, and the two grounds differ
-    assert "Satisfied because its own claim is test-supported" in html
-    assert "the balance law of &#x27;journal&#x27; passed while reading" in html
-    assert "still proposed" in html
-
-    # three voices: the AI's why is attributed and never the headline
-    assert "— the AI, on why the answer depends on this" in html
-    # section 0 states the dependency and the AI's reason for it; section 6
-    # states what became of it. The derived line is never below the AI's.
-    assert html.index("the figures are summed from it") < \
-        html.index("Satisfied because its own claim")
+    assert [stage.name for stage in view.stages] == [stage.name for stage in STAGES]
+    assert ("2/3", "dependencies supported") in _stage(view, "readiness").counts
+    assert _stage(view, "request").label == "1 · request"
+    assert _stage(view, "readiness").label == "6 · readiness"
+    assert request.question == (
+        "Can these files reliably produce actual P&L by entity and month?"
+    )
+    assert request.requested_output == "P&L per entity per month"
+    assert request.provenance.notes[0] == "asked by a human"
+    assert readiness.headline == "Ready, with limitations."
+    assert "'sign convention'" in readiness.reason
+    assert "What they mean is not fully settled" in readiness.explanation
+    assert items["journal"].because.startswith(
+        "Satisfied because its own claim is test-supported"
+    )
+    assert (
+        "the balance law of 'journal' passed while reading"
+        in items["journal.amount_local"].because
+    )
+    assert "still proposed" in items["journal.amount_local"].because
+    assert next(item for item in request.items if item.ref == "journal").why_cite == (
+        "— the AI, on why the answer depends on this"
+    )
 
 
 def test_an_unreviewed_dependency_list_says_so_where_it_is_listed(tmp_path):
@@ -833,28 +935,37 @@ def test_an_unreviewed_dependency_list_says_so_where_it_is_listed(tmp_path):
     there is none, the card says the list was written for this question."""
     root, _, _ = _p_and_l_project(tmp_path, "unreviewed")
 
-    html = render_project(root)
+    view = load_view_model(root)
 
-    assert "<strong>Treated as: no declared answer type.</strong>" in html
-    assert "nobody has reviewed it as a whole" in html
-    assert "drafted for this question" in html  # per-item provenance
-    # and the verdict carries it too, so neither surface can be read alone
-    assert "No answer type of the domain guide covers this question" in html
+    assert _rich_text(view.requests[0].treated_as).startswith(
+        "Treated as: no declared answer type."
+    )
+    assert "nobody has reviewed it as a whole" in _rich_text(
+        view.requests[0].treated_as
+    )
+    assert {item.provenance for item in view.requests[0].items} == {
+        "drafted for this question"
+    }
+    assert "No answer type of the domain guide covers this question" in (
+        view.readiness[0].reason
+    )
 
 
 def test_a_classified_list_names_its_answer_type_and_its_guide(tmp_path):
     root, store, guide_path = _typed_project(tmp_path)
 
-    html = render_project(root)
+    view = load_view_model(root)
+    request = view.requests[0]
+    treated_as = _rich_text(request.treated_as)
 
     fingerprint = load_domain_guide(guide_path).fingerprint[:12]
-    assert f"<strong>Treated as: profit_and_loss</strong>" in html
-    assert f"(guide {fingerprint})" in html
-    assert "not confirmed by anyone yet" in html
-    assert "from the answer type" in html
-    # the guide's reason for the dependency is the guide's, not the model's
-    assert "— the domain guide, on why an answer of this kind depends on it" \
-        in html
+    assert treated_as.startswith("Treated as: profit_and_loss")
+    assert f"(guide {fingerprint})" in treated_as
+    assert "not confirmed by anyone yet" in treated_as
+    assert {item.provenance for item in request.items} == {"from the answer type"}
+    assert {item.why_cite for item in request.items} == {
+        "— the domain guide, on why an answer of this kind depends on it"
+    }
 
 
 def test_confirming_the_list_is_visible_on_the_page(tmp_path):
@@ -862,10 +973,11 @@ def test_confirming_the_list_is_visible_on_the_page(tmp_path):
     confirm_classification(store, load_domain_guide(guide_path),
                            next(iter(store.requests)))
 
-    html = render_project(root)
+    view = load_view_model(root)
+    treated_as = _rich_text(view.requests[0].treated_as)
 
-    assert "confirmed by a human" in html
-    assert "nobody has confirmed" not in html
+    assert "confirmed by a human" in treated_as
+    assert "nobody has confirmed" not in treated_as
 
 
 def _typed_project(tmp_path):
@@ -901,12 +1013,16 @@ def _typed_project(tmp_path):
 def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
     root, _, _ = _p_and_l_project(tmp_path, "blocked")
 
-    html = render_project(root)
+    view = load_view_model(root)
+    readiness = view.readiness[0]
+    items = {item.ref: item for group in readiness.groups for item in group.items}
 
-    assert "Blocked." in html
-    assert "The answer cannot be produced" in html
-    assert "Not supported: nothing in this project plays it" in html
-    assert "<strong>blocked</strong> verdict" in html
+    assert readiness.headline == "Blocked."
+    assert readiness.explanation.startswith("The figures cannot be produced")
+    assert items["journal"].because == (
+        "Not supported: nothing in this project plays it."
+    )
+    assert ("blocked", "verdict") in _stage(view, "readiness").counts
 
 
 def test_a_linked_rule_shows_who_linked_it_and_why(tmp_path):
@@ -924,12 +1040,21 @@ def test_a_linked_rule_shows_who_linked_it_and_why(tmp_path):
                policy.id,
                linked_by=Actor.AI, note="Buchhaltungsrichtlinie §2")
 
-    html = render_project(root)
+    view = load_view_model(root)
+    items = {
+        item.ref: item
+        for group in view.readiness[0].groups
+        for item in group.items
+    }
+    linked = items["sign convention"]
 
-    assert "a business-confirmed claim is linked to it by the ai" in html
-    assert "Linked by the ai — Buchhaltungsrichtlinie §2" in html
-    # the claim's term and the rule's name do not match; only the link joins
-    # them, which is the whole reason the link exists
+    assert linked.because.startswith(
+        "Satisfied because a business-confirmed claim is linked to it by the ai"
+    )
+    assert "income is stored as a negative amount" in linked.because
+    assert [_rich_text(item.sentence) for item in linked.links] == [
+        f"Linked by the ai — Buchhaltungsrichtlinie §2 → {policy.id[-6:]}"
+    ]
     assert "haben_konvention" != "sign convention"
 
 
@@ -955,7 +1080,8 @@ def test_an_answered_question_leaves_the_open_list(tmp_path):
         question="Which of the proposed candidates is the 'account'?",
         claim_ids=[open_still.id]))
 
-    assert "5 · Clarification — what only a human can answer (2)" in render_project(root)
+    before = load_view_model(root)
+    assert len(before.open_questions) == 2
 
     # the human answers one of them
     record = EvidenceRecord(type=EvidenceType.CONFIRMATION, actor=Actor.HUMAN,
@@ -963,41 +1089,45 @@ def test_an_answered_question_leaves_the_open_list(tmp_path):
     store.add_evidence(record)
     store.save_claim(attach_evidence(picked, record, []))
 
-    html = render_project(root)
+    view = load_view_model(root)
 
-    assert "5 · Clarification — what only a human can answer (1)" in html
-    assert "Answered questions (1)" in html
-    assert "<strong>Answered.</strong> Settled by 1 claim" in html
-    # kept, not dropped: what settled it is part of the record
-    assert "the &#x27;period&#x27;" in html
-    assert "the &#x27;account&#x27;" in html
+    assert len(view.open_questions) == 1
+    assert len(view.answered_questions) == 1
+    assert view.answered_questions[0].summary == "Answered. Settled by 1 claim:"
+    assert [item.link.reference.id for item in view.answered_questions[0].settled] == [
+        picked.id
+    ]
+    assert "'period'" in view.answered_questions[0].settled[0].link.label
+    assert "'account'" in view.open_questions[0].options[0].link.label
 
 
 def test_a_project_nobody_asked_a_question_of_says_that_plainly(tmp_path):
     """Without a question the report describes a landscape, and whether a
     landscape is generally sound is a question nobody asked."""
-    html = render_project(init_project(tmp_path / "unasked"))
+    view = load_view_model(init_project(tmp_path / "unasked"))
 
-    assert "No business question has been asked of this project yet" in html
-    assert "<strong>—</strong> no question asked" in html
+    assert view.copy.no_request.startswith(
+        "No business question has been asked of this project yet"
+    )
+    assert _stage(view, "readiness").counts == (("—", "no question asked"),)
 
 
 def test_domain_pack_panel_is_honest_when_nothing_is_declared(tmp_path):
     root = init_project(tmp_path / "undeclared")
 
-    html = render_project(root)
+    view = load_view_model(root)
 
-    assert "No sources declared in before-ai.yaml." in html
-    assert "No domain guide declared (llm.domain_guide_file)." in html
+    assert view.domain_pack.sources == ()
+    assert view.domain_pack.guide.state == "missing"
 
 
 def test_core_terms_define_the_canonical_vocabulary(tmp_path):
     root = init_project(tmp_path / "terms")
 
-    html = render_project(root)
+    view = load_view_model(root)
+    terms = {term for term, _ in view.glossary}
 
-    assert "Core terms" in html
-    for term in (
+    assert {
         "hypothesis",
         "claim",
         "mapping claim",
@@ -1013,8 +1143,146 @@ def test_core_terms_define_the_canonical_vocabulary(tmp_path):
         "evidence",
         "domain law",
         "clarification question",
-    ):
-        assert f"<dt>{term}</dt>" in html
+    } <= terms
+
+
+def test_html_renders_every_report_section(tmp_path):
+    html = render_project(init_project(tmp_path / "sections"))
+    document = _document(html)
+
+    assert {
+        "process", "inputs", "request", "measured", "proposed", "tested",
+        "clarification", "readiness", "claims", "integrity", "terms",
+    } <= document.ids
+
+
+def test_html_internal_anchors_resolve(tmp_path):
+    root = init_project(tmp_path / "anchors")
+    store = ProjectStore(root)
+    source = Source(name="erp", kind="duckdb", location="/tmp/erp.duckdb")
+    store.save_source(source)
+    claim = create_claim(
+        "Postings reference invoices", Actor.AI, source_ids=[source.id]
+    )
+    store.save_claim(claim)
+    check = CheckPlan(template="anti_join", claim_id=claim.id, params={})
+    store.save_check_plan(check)
+    record = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        claim_id=claim.id,
+        check_plan_id=check.id,
+        verdict=CheckVerdict.FAIL,
+        population=4,
+        exception_count=1,
+    )
+    store.add_evidence(record)
+    store.save_claim(attach_evidence(claim, record, []))
+    store.save_question(
+        ClarificationQuestion(question="Which source leads?", claim_ids=[claim.id])
+    )
+
+    document = _document(render_project(root))
+
+    assert document.fragments - document.ids == set()
+
+
+def test_html_escapes_user_visible_values(tmp_path):
+    root = init_project(tmp_path / "escaping")
+    store = ProjectStore(root)
+    store.save_claim(create_claim("Revenue < forecast & plan", Actor.AI))
+
+    html = render_project(root)
+
+    assert "Revenue &lt; forecast &amp; plan" in html
+    assert "Revenue < forecast & plan" not in html
+
+
+def test_html_is_self_contained(tmp_path):
+    html = render_project(init_project(tmp_path / "self-contained"))
+    document = _document(html)
+
+    assert "http://" not in html
+    assert "https://" not in html
+    assert not [url for url in document.urls if url.startswith("//")]
+
+
+def test_html_preserves_three_voice_attributions(tmp_path):
+    root = init_project(tmp_path / "html-voices")
+    store = ProjectStore(root)
+    claim = create_claim("Postings reference invoices", Actor.AI)
+    store.save_claim(claim)
+    check = CheckPlan(template="anti_join", claim_id=claim.id, params={})
+    store.save_check_plan(check)
+    failed = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        claim_id=claim.id,
+        check_plan_id=check.id,
+        verdict=CheckVerdict.FAIL,
+        population=400,
+        exception_count=8,
+    )
+    said = EvidenceRecord(
+        type=EvidenceType.TESTIMONIAL,
+        actor=Actor.HUMAN,
+        claim_id=claim.id,
+        statement="Postings from the legacy migration never got an invoice.",
+    )
+    store.add_evidence(failed)
+    store.add_evidence(said)
+    claim = attach_evidence(claim, failed, [])
+    store.save_claim(attach_evidence(claim, said, [failed]))
+    request_root, _, _ = _p_and_l_project(tmp_path, "html-request-voices")
+
+    html = render_project(root)
+    request_html = render_project(request_root)
+
+    assert "wrote it, verbatim; a proposal, not a finding" in html
+    assert "Postings from the legacy migration never got an invoice." in html
+    assert "— stated by a human, verbatim" in html
+    assert "— the business question, as it was asked" in request_html
+    assert "— the AI, on what the answer must deliver" in request_html
+    assert request_html.index("as it was asked") < request_html.index(
+        "what the answer must deliver"
+    )
+
+
+def test_html_renders_verdict_headline_wording(tmp_path):
+    root, store, _ = _p_and_l_project(tmp_path, "html-verdict")
+    blocked_html = render_project(root)
+    journal = MappingClaim(
+        statement="role 'journal' is played by de_erp__gl",
+        created_by=Actor.AI,
+        role="journal",
+        binding={"table": "de_erp__gl"},
+    )
+    store.save_claim(journal)
+    plan = CheckPlan(
+        template="balance",
+        roles=["journal"],
+        params={
+            "journal": "de_erp__gl",
+            "amount": "betrag",
+            "group_column": "period",
+        },
+    )
+    store.save_check_plan(plan)
+    record = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        claim_id=journal.id,
+        check_plan_id=plan.id,
+        verdict=CheckVerdict.PASS,
+        population=9,
+        exception_count=0,
+    )
+    store.add_evidence(record)
+    store.save_claim(attach_evidence(journal, record, []))
+    limited_html = render_project(root)
+
+    assert "<strong>Blocked.</strong>" in blocked_html
+    assert "<strong>Ready, with limitations.</strong>" in limited_html
 
 
 def test_module_cli_writes_output_outside_project_by_default(tmp_path):
