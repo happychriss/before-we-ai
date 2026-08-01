@@ -198,7 +198,24 @@ ingested documents and, per claim, `DOCUMENT_ANCHOR` evidence cards. The
 view model should take a new `*View` tuple without reshaping — do not build
 them, just do not build something they cannot join.
 
-**WP5a — extract the view model.** New `src/readiness_report/projection.py`:
+**WP5a — extract the view model.** · DONE 2026-08-01 (`19a2c71`)
+
+Both gates passed on an independent re-run: report tests untouched
+(`git diff -- src/tests/` empty), and the rendered page byte-identical —
+1,279,721 bytes, same sha256, old renderer run from a worktree at the base
+commit against the same store. `projection.py` contains no `escape(`, no
+`<a href`, no `store_rel`, and does not know `out_dir` exists; `render.py`
+no longer imports `ProjectStore`, `evaluate_request` or `resolve_status`.
+`_status_rationale` moved verbatim with the required comment — the agent
+did not "fix" the defect the pre-flight had put in front of it.
+
+Gate 2 only proves what the corpus renders, so the wordings on branches it
+never reaches (`unresolved`, `business-confirmed`, `Ready.`, `Ready, with
+limitations.`) were checked separately: all verbatim. Cost, measured: +34%
+characters (114,355 → 154,068), of which 47 dataclasses are pure addition;
+`render.py` itself fell from 2,824 to 1,719 lines.
+
+New `src/readiness_report/projection.py`:
 `build_view_model(store, root, config) -> ReportViewModel` — frozen
 dataclasses (`StageView`, `RequestView`, `ElectionView`, `QuestionView`,
 `ReadinessView`, `ClaimView`, …) holding everything the page shows, including
