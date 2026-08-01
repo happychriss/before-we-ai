@@ -236,19 +236,34 @@ dropping the link or by moving the whole f-string across.
 1. All existing report tests pass **unmodified**. `git diff` on
    `src/tests/unit/test_readiness_report.py` must be **empty**. Do not touch
    a single assertion in this phase.
-2. **The rendered page is byte-identical.** The report is deterministic
-   (verified: two renders of the same store produce the same 38,936 bytes),
-   so this is a hard check, not a judgement:
+2. **The rendered page is byte-identical.** Rendering is deterministic *for a
+   given store* — two renders of the same project produce the same 38,936
+   bytes. **Building the store is not**: every walkthrough run mints fresh
+   ULIDs and timestamps, which is correct behaviour and must not be
+   "fixed". So build the store **once** and run both renderers against it:
 
    ```
+   # once — this is the fixed input, do not reset it again
    cd validation && ./scripts/reset.sh && for s in 0-inputs 1-request \
      2a-measure-scan 2b-measure-matrix 3a-propose-hypotheses \
      3b-propose-mappings 3c-propose-plans 4-test 5-clarify 6-readiness; do \
      ./scripts/$s.sh >/dev/null; done
-   cp data/report/readiness.html /tmp/before.html     # on the base commit
-   # …apply the change, re-run the ten stages…
-   diff /tmp/before.html data/report/readiness.html   # must print nothing
+
+   # the new renderer, from your branch
+   python -m readiness_report data/project -o /tmp/after.html
+
+   # the old renderer, from the base commit, against that same store
+   git worktree add /tmp/base <base-sha>
+   PYTHONPATH=/tmp/base/src python -m readiness_report data/project \
+     -o /tmp/before.html
+   git worktree remove /tmp/base
+
+   diff /tmp/before.html /tmp/after.html          # must print nothing
    ```
+
+   A worktree rather than `git stash`: nothing uncommitted is ever at risk.
+   The pipeline does not import `readiness_report`, so the store is the same
+   input for both.
 
    Paste the `diff` output (nothing) in the PR. A test suite proves what it
    asserts; this proves everything it does not — every space, every
