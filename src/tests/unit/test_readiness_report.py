@@ -456,7 +456,7 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
     assert _rich_text(view.copy.process_ghost).startswith("M5 · documents — not built")
 
 
-def test_a_question_lists_candidates_and_hides_its_ids(tmp_path):
+def test_question_view_model_lists_candidates_and_technical_refs(tmp_path):
     """The owner's complaint, pinned: no wall of prose, and ids folded away.
 
     Whether the list is a *choice* comes from the guide, not from the
@@ -915,6 +915,7 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
     assert request.provenance.notes[0] == "asked by a human"
     assert readiness.headline == "Ready, with limitations."
     assert "'sign convention'" in readiness.reason
+    assert "what they mean is not settled" in readiness.reason
     assert "What they mean is not fully settled" in readiness.explanation
     assert items["journal"].because.startswith(
         "Satisfied because its own claim is test-supported"
@@ -1018,6 +1019,7 @@ def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
     items = {item.ref: item for group in readiness.groups for item in group.items}
 
     assert readiness.headline == "Blocked."
+    assert readiness.reason.startswith("The answer cannot be produced")
     assert readiness.explanation.startswith("The figures cannot be produced")
     assert items["journal"].because == (
         "Not supported: nothing in this project plays it."
@@ -1245,6 +1247,9 @@ def test_html_preserves_three_voice_attributions(tmp_path):
     assert "— the AI, on what the answer must deliver" in request_html
     assert request_html.index("as it was asked") < request_html.index(
         "what the answer must deliver"
+    )
+    assert request_html.index("the figures are summed from it") < (
+        request_html.index("Not supported: nothing in this project plays it")
     )
 
 
