@@ -79,26 +79,61 @@ def need_project() -> ProjectStore:
     return ProjectStore(PROJECT)
 
 
-def refresh_llm_html() -> None:
-    """Re-render the browsable LLM-call log after every step that talked to
-    the model — the page grows with the walkthrough and always lives at the
-    same path, domain-knowledge header on top."""
-    if not (PROJECT / "cache" / "llm_log").is_dir():
-        return
-    REPORT.mkdir(parents=True, exist_ok=True)
-    import llm_log
-    out = llm_log.render_html(PROJECT, REPORT / "llm_calls.html")
-    print(f"\nLLM-call log (updated, grows with every step): {out}")
+def collect(next_step: str = "") -> None:
+    """Rebuild every artifact and the index — run at the end of every stage.
 
-
-def refresh_report_html() -> None:
-    """Re-render the readiness report after every step that changed the store —
-    same fixed path, so the browser tab just needs a reload."""
+    Paths are fixed, so a browser tab left open on ``index.html`` shows the
+    report growing as you walk. That is the point of running it every time
+    rather than once at the end: the interesting thing about this pipeline
+    is what each stage adds, and you can only see that if you look between
+    the stages.
+    """
     REPORT.mkdir(parents=True, exist_ok=True)
-    out = REPORT / "readiness.html"
     subprocess.run([sys.executable, "-m", "readiness_report", str(PROJECT),
-                    "-o", str(out)], check=True, stdout=subprocess.DEVNULL)
-    print(f"readiness report (updated): {out}")
+                    "-o", str(REPORT / "readiness.html")],
+                   check=True, stdout=subprocess.DEVNULL)
+
+    if (PROJECT / "cache" / "llm_log").is_dir():
+        import llm_log
+        llm_log.render_html(PROJECT, REPORT / "llm_calls.html")
+
+    matrix_md = PROJECT / "profiles" / "candidate_matrix.md"
+    if matrix_md.is_file():
+        shutil.copy2(matrix_md, REPORT / "candidate_matrix.md")
+    recall_md = DATA / "recall" / "project" / "cache" / "eval" / "seeded_recall.md"
+    if recall_md.is_file():
+        shutil.copy2(recall_md, REPORT / "seeded_recall.md")
+
+    links = [("readiness.html",
+              "Readiness report — the request, the inputs, what was measured, "
+              "proposed, tested, still open, and the verdict")]
+    if (REPORT / "llm_calls.html").is_file():
+        links.append(("llm_calls.html",
+                      "LLM calls — verbatim prompts, answers, retries, errors"))
+    if (REPORT / "candidate_matrix.md").is_file():
+        links.append(("candidate_matrix.md",
+                      "Candidate matrix — measured table:table value overlap"))
+    if (REPORT / "seeded_recall.md").is_file():
+        links.append(("seeded_recall.md", "Seeded-Recall report (from recall.sh)"))
+    links.append(("../project/",
+                  "Raw project files — answers/ claims/ checks/ evidence/ "
+                  "questions/ as YAML"))
+    items = "\n".join(
+        f'<li><a href="{href}">{href.rstrip("/")}</a> — {html.escape(text)}</li>'
+        for href, text in links)
+    (REPORT / "index.html").write_text(
+        "<meta charset='utf-8'><title>before-we-ai — validation</title>"
+        "<style>body{font-family:sans-serif;max-width:50em;margin:3em auto;"
+        "line-height:1.6}</style>"
+        "<h1>Validation artifacts</h1>"
+        "<p>Rebuilt after every stage — reload to watch the report grow.</p>"
+        f"<ul>\n{items}\n</ul>"
+        "<p>Walkthrough guide: <code>validation/README.md</code></p>\n",
+        encoding="utf-8")
+
+    print(f"\nreport rebuilt — reload {REPORT / 'index.html'}")
+    if next_step:
+        print(f"next: {next_step}")
 
 
 def clip(text: str, width: int = 90) -> str:
@@ -150,7 +185,7 @@ def stage_scan(args) -> None:
     print(f"  {len(store.claims)}  (scan must create ZERO claims — "
           "false promotion impossible by construction)")
     print(f"\nfull detail: {PROJECT}/evidence/  ·  profiles: {PROJECT}/profiles/")
-    print("next: 2b-measure-matrix.sh")
+    collect("2b-measure-matrix.sh")
 
 
 def stage_matrix(args) -> None:
@@ -177,7 +212,7 @@ def stage_matrix(args) -> None:
               f"{c['containment']:>6} {c['jaccard']:>6}")
     print(f"\nfull table: {PROJECT}/profiles/candidate_matrix.md "
           f"(+ .json, per-column profiles alongside)")
-    print("next: 3a-propose-hypotheses.sh")
+    collect("3a-propose-hypotheses.sh")
 
 
 def _print_call_report(report, store: ProjectStore) -> None:
@@ -216,9 +251,7 @@ def stage_hypotheses(args) -> None:
             print(f"  [{claim.status.value}] ({claim.predicate.name}) "
                   f"{clip(claim.statement, 80)}")
     print(f"\nfull detail: {PROJECT}/claims/")
-    refresh_llm_html()
-    refresh_report_html()
-    print("next: 3b-propose-mappings.sh")
+    collect("3b-propose-mappings.sh")
 
 
 def stage_mappings(args) -> None:
@@ -251,9 +284,7 @@ def stage_mappings(args) -> None:
         print(f"  {label:15s} {len(mine)} candidate(s)")
         for c in mine:
             print(f"      [{c.status.value}] {clip(', '.join(c.binding.values()), 75)}")
-    refresh_llm_html()
-    refresh_report_html()
-    print("next: 3c-propose-plans.sh")
+    collect("3c-propose-plans.sh")
 
 
 def stage_plans(args) -> None:
@@ -314,9 +345,7 @@ def stage_plans(args) -> None:
         for cid in report.semantic_only:
             print(f"  {clip(store.claims[cid].statement, 85)}")
     print(f"\nfull detail: {PROJECT}/checks/")
-    refresh_llm_html()
-    refresh_report_html()
-    print("next: 4-test.sh")
+    collect("4-test.sh")
 
 
 def stage_test(args) -> None:
@@ -367,8 +396,7 @@ def stage_test(args) -> None:
     print(f"\nfull detail: {PROJECT}/evidence/  ·  exception sets: "
           f"{PROJECT}/cache/check_runs/")
     print()
-    refresh_report_html()
-    print("next: 5-clarify.sh")
+    collect("5-clarify.sh")
 
 
 def stage_clarify(args) -> None:
@@ -406,8 +434,7 @@ def stage_clarify(args) -> None:
         print(f"  - {clip(card.question, 100)}")
     print(f"\nfull detail: {PROJECT}/questions/")
     print()
-    refresh_report_html()
-    print("next: 6-readiness.sh")
+    collect("6-readiness.sh")
 
 
 def stage_request(args) -> None:
@@ -457,9 +484,7 @@ def stage_request(args) -> None:
     for item in report.required.items:
         print(f"  {item.kind.value:7s} {item.ref():24s} {clip(item.why, 60)}")
     print(f"\nfull detail: {PROJECT}/answers/  (and section 0 of the report)")
-    refresh_llm_html()
-    refresh_report_html()
-    print("next: 1-inputs.sh")
+    collect("1-inputs.sh")
 
 
 def stage_inputs(args) -> None:
@@ -512,7 +537,7 @@ def stage_inputs(args) -> None:
         print(f"  {name:22s} [{spec.domain}] {clip(spec.tests, 60)}")
     print("\n  The other templates are generic data checks — they carry no "
           "domain knowledge.")
-    print("\nnext: 2a-measure-scan.sh")
+    collect("2a-measure-scan.sh")
 
 
 def stage_readiness(args) -> None:
@@ -545,66 +570,21 @@ def stage_readiness(args) -> None:
           "a slot field whose own\n  claims are still proposed. Those are "
           "deliberately different things.")
     print(f"\nfull detail: section 6 of the report")
-    refresh_report_html()
-    print("next: collect.sh")
-
-
-def stage_collect(args) -> None:
-    need_project()
-    REPORT.mkdir(parents=True, exist_ok=True)
-
-    subprocess.run([sys.executable, "-m", "readiness_report", str(PROJECT),
-                    "-o", str(REPORT / "readiness.html")], check=True)
-
-    import llm_log
-    llm_log.render_html(PROJECT, REPORT / "llm_calls.html")
-
-    matrix_md = PROJECT / "profiles" / "candidate_matrix.md"
-    if matrix_md.is_file():
-        shutil.copy2(matrix_md, REPORT / "candidate_matrix.md")
-    recall_md = DATA / "recall" / "project" / "cache" / "eval" / "seeded_recall.md"
-    if recall_md.is_file():
-        shutil.copy2(recall_md, REPORT / "seeded_recall.md")
-
-    links = [
-        ("readiness.html", "Readiness report — inputs, measurements, proposals, verdicts, open questions"),
-        ("llm_calls.html", "LLM calls — verbatim prompts, answers, retries, errors"),
-        ("candidate_matrix.md", "Candidate matrix — measured table:table value overlap"),
-    ]
-    if (REPORT / "seeded_recall.md").is_file():
-        links.append(("seeded_recall.md",
-                      "Seeded-Recall report (from recall.sh)"))
-    links.append(("../project/", "Raw project files — claims/ checks/ evidence/ questions/ as YAML"))
-    items = "\n".join(
-        f'<li><a href="{href}">{href.rstrip("/")}</a> — {html.escape(text)}</li>'
-        for href, text in links)
-    (REPORT / "index.html").write_text(
-        "<meta charset='utf-8'><title>M4 validation</title>"
-        "<style>body{font-family:sans-serif;max-width:50em;margin:3em auto;"
-        "line-height:1.6}</style>"
-        "<h1>M4 validation — collected artifacts</h1>"
-        f"<ul>\n{items}\n</ul>"
-        "<p>Walkthrough guide: <code>validation/README.md</code></p>\n",
-        encoding="utf-8")
-
-    section("collected")
-    for path in sorted(REPORT.iterdir()):
-        print(f"  {path}")
-    print(f"\nopen in a browser / VS Code: {REPORT / 'index.html'}")
+    collect()
+    print("\nthe walkthrough is complete — every artifact is in the index above")
 
 
 def stage_report(args) -> None:
+    """Rebuild everything on demand — the same collect every stage runs."""
     need_project()
-    REPORT.mkdir(parents=True, exist_ok=True)
-    subprocess.run([sys.executable, "-m", "readiness_report", str(PROJECT),
-                    "-o", str(REPORT / "readiness.html")], check=True)
+    collect()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=[
         "request", "inputs", "scan", "matrix", "hypotheses", "mappings",
-        "plans", "test", "clarify", "readiness", "collect", "report"])
+        "plans", "test", "clarify", "readiness", "report"])
     parser.add_argument("--online", action="store_true",
                         help="scan only: configure real model calls "
                              "(needs ANTHROPIC_API_KEY for stages 3-5)")
@@ -622,7 +602,6 @@ def main() -> None:
         "test": stage_test,
         "clarify": stage_clarify,
         "readiness": stage_readiness,
-        "collect": stage_collect,
         "report": stage_report,
     }[args.stage](args)
 

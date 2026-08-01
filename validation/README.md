@@ -35,9 +35,14 @@ at a time) it gets letters, not new numbers.
 Stages 0 and 6 are the **frame**; 1–5 are the middle. The question opens the
 frame because it bounds the work, and the verdict closes it.
 
+**Every stage rebuilds the report when it finishes.** Paths are fixed, so
+leave a browser tab open on `validation/data/report/index.html` and reload
+after each stage — the interesting thing about this pipeline is what each
+stage *adds*, and you can only see that by looking between them.
+
 Tools, not stages, so they carry no number: `reset.sh` (wipe
-`validation/data/`), `collect.sh` (gather everything into a clickable index),
-`report.sh`, `llm-log.sh`, `db.sh`, `db-export.sh`, `recall.sh`,
+`validation/data/`), `report.sh` (rebuild on demand — the same rebuild every
+stage runs), `llm-log.sh`, `db.sh`, `db-export.sh`, `recall.sh`,
 `two-entities.sh`.
 
 Every step opens with an **INPUT** block naming the files that drove it — the
@@ -220,12 +225,6 @@ Answer the four open mapping questions and the verdict narrows rather than
 clearing: `ready_with_limitations`, with the three business rules named as the
 limitations they are. That is the third outcome — permit, narrow, or block.
 
-### collect
-
-Builds `validation/data/report/index.html` linking the readiness report, the
-LLM-call browser, the candidate matrix, and (if `recall.sh` ran) the
-Seeded-Recall report. Open it in a browser or VS Code and click around.
-
 ## Tools
 
 - `llm-log.sh` — list all LLM calls; `llm-log.sh 2` shows one call fully
@@ -237,9 +236,9 @@ Seeded-Recall report. Open it in a browser or VS Code and click around.
   every call carries a comment mapping it back to its walkthrough step, and
   the page grows as you progress (stages 1, 2, 4, 5 and 6 add nothing: they
   never talk to the model).
-- `report.sh` — rebuild the readiness report HTML at any point mid-walkthrough.
-  Stages 0 and 3 also refresh it automatically at `data/report/readiness.html`
-  (every step that changes the store). The page *is* this walkthrough,
+- `report.sh` — rebuild every artifact on demand. You rarely need it: each
+  stage does the same rebuild when it finishes. The readiness page *is* this
+  walkthrough,
   rendered from the store, in the same order: a **process diagram** on top
   carrying this project's live numbers (each one a link into the section that
   produced it, with the actor boundary drawn where the AI's proposals stop and
