@@ -36,7 +36,7 @@ and `tested` → `test-supported`, actor/evidence `probe`/`probe_result` →
 - Repo root: `/workspace` — https://github.com/happychriss/before-we-ai
   (`pyproject.toml` lives in `src/`)
 - Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
-  `/workspace/src`; run `python -m pytest -q` there (374 tests green after M6,
+  `/workspace/src`; run `python -m pytest -q` there (383 tests green after M6,
   incl. readiness_report; CI runs fully offline from recorded fixtures)
 - Authoritative German spec: `docs/spec/`
 
@@ -699,7 +699,12 @@ ontology. Visible in the walkthrough: the P&L question does not require
 - **`RequiredKnowledge`** — `KnowledgeItem`s (`object` / `field` / `rule`),
   each carrying the request's scope, each with a `why` a human can prune on.
   Drafted by V4, persisted because the pruning is a human decision, not
-  something re-derivable from the request. A field item names its object; a
+  something re-derivable from the request. That pruning is
+  `readiness.waive_item(ref, because=…)`: **waived, not deleted** (owner
+  decision 2026-07-31), so the item stays in the map struck through with its
+  reason — a deleted dependency is invisible, and "we decided this does not
+  matter, here is why" is exactly what this product refuses to lose. A
+  reason is mandatory; `require_again` undoes it. A field item names its object; a
   rule item is what the vocabulary does *not* contain.
 - **`ReadinessMap`** (`readiness/`, a *derived structure*, never a record) —
   per item: claim, evidence, ground, remaining gap; overall verdict
@@ -794,6 +799,14 @@ and a distinct readiness sentence ("the link is broken, not the knowledge") —
 a broken pointer and missing knowledge need different repairs. The report
 prints who linked it and why, since a wrong link points a verdict at an
 unrelated claim.
+
+**A conflict is never silent.** A rule may carry several links. If a settled
+claim satisfies it while a *contradicted* claim is linked to the same rule,
+the verdict stands — the contradicted one may simply be the loser — but the
+sentence names it ("A contradicted claim is also linked to this rule …").
+Owner decision 2026-07-31: name it, keep the logic. Silence here would be the
+one failure the product exists to prevent, in the place that emits its
+loudest statement.
 
 One deliberate leniency, stated rather than hidden: a **landscape-wide claim
 covers a scoped item**, because a shared account master genuinely serves every

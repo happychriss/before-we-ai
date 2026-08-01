@@ -515,6 +515,8 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
     }}
     .ready-item.supported {{ border-left-color: var(--pass); }}
     .ready-item.missing {{ border-left-color: var(--fail); }}
+    .ready-item.waived {{ border-left-style: dashed; opacity: .7; }}
+    .ready-item.waived h5 code {{ text-decoration: line-through; }}
     .ready-item h5 {{ margin: 0 0 2px; font-size: 13px; }}
     .strip {{ display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }}
     .strip .step {{
@@ -1432,7 +1434,10 @@ def _render_readiness_item(item, rel: str) -> str:
     dependency is legible, attributed, and subordinate — it explains why the
     item is on the list, never what became of it.
     """
-    mark = "supported" if item.satisfied else "missing"
+    # a waiver is a human's judgement, not evidence — it must not read like
+    # a satisfied dependency, and it must not read like a gap either
+    mark = ("waived" if item.item.waived
+            else "supported" if item.satisfied else "missing")
     why = (
         f"<blockquote class='ai-said'>{escape(item.item.why)}"
         "<cite>— the AI, on why the answer depends on this</cite></blockquote>"

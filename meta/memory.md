@@ -5,7 +5,7 @@
 
 ## Current focus
 
-- **M6 — question flow + ReadinessMap: DONE 2026-07-31.** Suite **374
+- **M6 — question flow + ReadinessMap: DONE 2026-07-31.** Suite **383
   green**; prompt bytes of V1/V2 untouched at every commit (drift guard
   green, which is the proof). Built: `AnswerRequest` / `RequiredKnowledge`
   (`answers/` in the store), **V4** (`llm/v4_request.py`, hand-authored
@@ -80,7 +80,7 @@
   **0**; leakage CLEAN (`docs/seeded-recall-m4.md`). Finding to watch at the
   M5 re-record: the reworded V2 mapping prompt binds invariants more
   hesitantly (19/22 template=null vs 15/23).
-- Suite: **374 pass** when fixtures are current (`cd /workspace/src &&
+- Suite: **383 pass** when fixtures are current (`cd /workspace/src &&
   python -m pytest -q`, venv `/workspace/.venv`).
 
 ## Open items

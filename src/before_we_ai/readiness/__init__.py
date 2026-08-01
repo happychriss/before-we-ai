@@ -19,6 +19,8 @@ from before_we_ai.readiness.evaluate import (
     evaluate,
     evaluate_request,
     link_claim,
+    require_again,
+    waive_item,
 )
 
 __all__ = [
@@ -30,4 +32,6 @@ __all__ = [
     "evaluate",
     "evaluate_request",
     "link_claim",
+    "require_again",
+    "waive_item",
 ]

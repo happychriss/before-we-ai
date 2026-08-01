@@ -64,6 +64,7 @@ class Ground(str, Enum):
     ELECTED = "elected"  # its own claim carries check or human evidence
     SLOT_DERIVATION = "slot_derivation"  # its object's passing law consumed it
     STATED_RULE = "stated_rule"  # a settled claim states the rule
+    WAIVED = "waived"  # a human decided the answer does not rest on it
     # unsatisfied
     NOTHING_PROPOSED = "nothing_proposed"
     ALL_CONTRADICTED = "all_contradicted"
@@ -168,6 +169,60 @@ class UnlinkableItem(Exception):
     """Raised when a link is aimed at something that cannot carry one."""
 
 
+def _edit_item(store: ProjectStore, request_id: str, ref: str, change
+               ) -> RequiredKnowledge:
+    """Apply ``change`` to the one required item named by ``ref``, and save."""
+    required = store.knowledge_for(request_id)
+    if required is None:
+        raise UnlinkableItem(f"no required knowledge for request {request_id}")
+    items, found = [], False
+    for item in required.items:
+        if item.ref() != ref:
+            items.append(item)
+            continue
+        items.append(change(item))
+        found = True
+    if not found:
+        raise UnlinkableItem(
+            f"{ref!r} is not required by request {request_id} — "
+            f"required: {sorted(i.ref() for i in required.items)}"
+        )
+    updated = required.model_copy(update={"items": items})
+    store.save_required_knowledge(updated)
+    return updated
+
+
+def waive_item(store: ProjectStore, request_id: str, ref: str,
+               because: str) -> RequiredKnowledge:
+    """A human strikes a dependency the answer does not actually rest on.
+
+    The pruning the draft exists for. V4 over-lists deliberately — better a
+    listed dependency nobody needs than a silent omission — so without this
+    an over-listed item blocks the answer forever.
+
+    Waived, not deleted: the item stays in the map, struck through, carrying
+    the reason. A reason is mandatory; a waiver without one is the silence
+    this product forbids, and it is also the only thing that distinguishes
+    a judgement from a mistake six months later.
+    """
+    if not because.strip():
+        raise UnlinkableItem(
+            f"waiving {ref!r} requires a reason — an unexplained waiver is "
+            "indistinguishable from an oversight"
+        )
+    return _edit_item(store, request_id, ref,
+                      lambda item: item.model_copy(
+                          update={"waived_because": because.strip()}))
+
+
+def require_again(store: ProjectStore, request_id: str,
+                  ref: str) -> RequiredKnowledge:
+    """Undo a waiver — a judgement call may be revisited."""
+    return _edit_item(store, request_id, ref,
+                      lambda item: item.model_copy(
+                          update={"waived_because": None}))
+
+
 def link_claim(store: ProjectStore, request_id: str, ref: str, claim_id: str,
                *, linked_by: Actor, note: str = "") -> RequiredKnowledge:
     """Point a required rule at the claim that states it, and persist it.
@@ -182,34 +237,21 @@ def link_claim(store: ProjectStore, request_id: str, ref: str, claim_id: str,
     anything and an AI may do it. Re-linking the same claim replaces the
     earlier link rather than stacking duplicates.
     """
-    required = store.knowledge_for(request_id)
-    if required is None:
-        raise UnlinkableItem(f"no required knowledge for request {request_id}")
     if claim_id not in store.claims:
         raise UnlinkableItem(f"no claim {claim_id} in this project")
-    items, found = [], False
-    for item in required.items:
-        if item.ref() != ref:
-            items.append(item)
-            continue
+
+    def add_link(item: KnowledgeItem) -> KnowledgeItem:
         if item.kind is not KnowledgeKind.RULE:
             raise UnlinkableItem(
                 f"{item.kind.value} {ref!r} resolves through the domain "
                 "guide's scoped election; only a rule takes a linked claim"
             )
         kept = [l for l in item.satisfied_by if l.claim_id != claim_id]
-        items.append(item.model_copy(update={"satisfied_by": kept + [
+        return item.model_copy(update={"satisfied_by": kept + [
             KnowledgeLink(claim_id=claim_id, linked_by=linked_by, note=note)
-        ]}))
-        found = True
-    if not found:
-        raise UnlinkableItem(
-            f"{ref!r} is not required by request {request_id} — "
-            f"required: {sorted(i.ref() for i in required.items)}"
-        )
-    updated = required.model_copy(update={"items": items})
-    store.save_required_knowledge(updated)
-    return updated
+        ]})
+
+    return _edit_item(store, request_id, ref, add_link)
 
 
 def evaluate_request(store: ProjectStore, guide: DomainGuide,
@@ -227,6 +269,16 @@ def evaluate_request(store: ProjectStore, guide: DomainGuide,
 
 def _judge(store: ProjectStore, guide: DomainGuide,
            item: KnowledgeItem) -> ReadinessItem:
+    if item.waived:
+        # A waiver is a human overriding the draft, so it says who decided
+        # and why — it never reads as evidence, and it never reads as a gap.
+        return ReadinessItem(
+            item=item, satisfied=True, ground=Ground.WAIVED,
+            because=(
+                "Not required: a human waived this dependency — "
+                f"{item.waived_because}"
+            ),
+        )
     if item.kind is KnowledgeKind.RULE:
         return _judge_rule(store, item)
     if item.kind is KnowledgeKind.FIELD:
@@ -319,14 +371,26 @@ def _judge_rule(store: ProjectStore, item: KnowledgeItem) -> ReadinessItem:
                if claim.status in _SETTLED]
     if winners:
         link, claim = winners[0]
+        # A rule can carry several links. Satisfaction rests on the settled
+        # one — but a contradicted claim linked to the same rule is a
+        # conflict, and a conflict this product does not say out loud is the
+        # one failure it exists to prevent. Named, verdict unchanged: the
+        # contradicted claim may simply be the loser.
+        beaten = [c for _, c in in_scope
+                  if c.status is ClaimStatus.CONTRADICTED]
+        conflict = (
+            f" A contradicted claim is also linked to this rule "
+            f"({'; '.join(c.statement for c in beaten)}) — read both before "
+            "relying on the answer." if beaten else ""
+        )
         return ReadinessItem(
             item=item, satisfied=True, ground=Ground.STATED_RULE,
             because=(
                 f"Satisfied because a {claim.status.value} claim is linked to "
                 f"it by the {link.linked_by.value}: {claim.statement}"
-                f"{_scope_note(claim.scope, item.scope)}."
+                f"{_scope_note(claim.scope, item.scope)}.{conflict}"
             ),
-            claim_ids=tuple(sorted(c.id for _, c in winners)),
+            claim_ids=tuple(sorted(c.id for _, c in in_scope)),
         )
     if dangling:
         # integrity also reports it; the verdict must not read as a mere gap

@@ -294,10 +294,12 @@ class AnswerRequest(BaseModel):
     depends on must be known and nothing else has to be. That is what keeps
     domain knowledge tied to a use case instead of an enterprise ontology.
 
-    ``sql``/``result_ref`` are the answer half, migrated here from the
-    pre-M6 question card: the query that would produce the requested output
-    and a disposable ``cache/`` path to its result. Neither is truth — the
-    ReadinessMap decides whether the answer may be given at all.
+    It carries **no answer half**. ``sql``/``result_ref`` came here from the
+    pre-M6 question card, where they did not belong either — but nothing
+    sets or reads them, and the milestone that would produce SQL is not
+    planned. They are gone; whatever generates an answer will bring its own
+    shape. (Third instance of one defect: a field nothing populates is a
+    field that gets reasoned about as if it meant something.)
 
     **Authorship is fixed by the shape, so no field records it.**
     ``question`` is the human's, verbatim; ``requested_output`` and
@@ -312,8 +314,6 @@ class AnswerRequest(BaseModel):
     question: str  # verbatim, as the human asked it
     requested_output: str  # V4's one-line statement of what the answer delivers
     scope: Scope = Field(default_factory=Scope)
-    sql: str | None = None
-    result_ref: str | None = None
     created_at: datetime = Field(default_factory=_now)
 
 
@@ -353,6 +353,14 @@ class KnowledgeItem(BaseModel):
     around it. A rule is precisely the thing the guide has no entry for, so
     nothing but an explicit link can connect it to the claim that states
     it.
+
+    ``waived_because`` is how a human prunes the draft — the pruning the
+    whole draft exists for. V4 over-lists by design, and an item nobody
+    needs would otherwise block an answer forever. Waived, **not deleted**:
+    a deleted dependency is invisible, and "we decided this does not
+    matter, here is why" is exactly the kind of decision this product
+    refuses to lose. A waived item still appears in the map, struck
+    through, carrying its reason.
     """
 
     kind: KnowledgeKind
@@ -361,6 +369,14 @@ class KnowledgeItem(BaseModel):
     why: str = ""
     scope: Scope = Field(default_factory=Scope)
     satisfied_by: list[KnowledgeLink] = Field(default_factory=list)
+    # None = required. A reason is the only way to stop requiring it — there
+    # is no bare `waived: bool`, because a waiver without a reason is the
+    # silence this product forbids.
+    waived_because: str | None = None
+
+    @property
+    def waived(self) -> bool:
+        return self.waived_because is not None
 
     @model_validator(mode="after")
     def _check_shape(self) -> "KnowledgeItem":

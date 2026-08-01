@@ -67,12 +67,14 @@ class TestAnswerRequest:
         assert KnowledgeLink(claim_id="c", linked_by=Actor.AI).linked_by \
             is Actor.AI
 
-    def test_it_carries_the_answer_half_the_question_card_used_to_hold(self):
-        """sql/result_ref moved off ClarificationQuestion — the card asks, the
-        request answers, and neither is truth on its own."""
-        request = _request(sql="select 1", result_ref="cache/answer.parquet")
-        assert request.sql and request.result_ref
-        assert not hasattr(ClarificationQuestion(question="?"), "sql")
+    def test_there_is_no_answer_half_on_either_object(self):
+        """`sql`/`result_ref` sat on the question card, moved here in M6, and
+        are now gone from both. Nothing set them, nothing read them, and no
+        milestone plans to produce SQL — so they were a third field that
+        would be reasoned about as if it meant something."""
+        for obj in (_request(), ClarificationQuestion(question="?")):
+            assert not hasattr(obj, "sql")
+            assert not hasattr(obj, "result_ref")
 
 
 class TestRequiredKnowledge:

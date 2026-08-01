@@ -39,6 +39,8 @@ from before_we_ai.readiness import (
     evaluate,
     evaluate_request,
     link_claim,
+    require_again,
+    waive_item,
 )
 from before_we_ai.store import ProjectStore, check_integrity, init_project
 
@@ -411,6 +413,110 @@ class TestLinking:
             KnowledgeLink(claim_id="01GONE", linked_by=Actor.AI)]))
         findings = check_integrity(ProjectStore(store.root))
         assert any("linked to missing claim 01GONE" in f for f in findings)
+
+
+class TestConflictIsNeverSilent:
+    """A rule can carry several links. If one of them is contradicted, the
+    verdict may still stand — but the conflict must be said out loud. A
+    conflict this product does not report is the one failure it exists to
+    prevent."""
+
+    def _both(self, store):
+        good = _confirmed_policy(store)
+        bad = ConceptClaim(
+            statement="income is positive", created_by=Actor.AI, term="b",
+            definition="d", status=ClaimStatus.CONTRADICTED)
+        store.save_claim(bad)
+        return good, bad
+
+    def test_a_contradicted_co_link_is_named(self, store, guide):
+        good, bad = self._both(store)
+        item = _map(store, guide, _rule(
+            links=[_link(good), _link(bad, Actor.AI)])).items[0]
+        assert item.satisfied  # the settled claim still decides
+        assert "A contradicted claim is also linked to this rule" in item.because
+        assert "income is positive" in item.because
+        assert "read both before relying on the answer" in item.because
+
+    def test_both_claims_are_reachable_from_the_item(self, store, guide):
+        good, bad = self._both(store)
+        item = _map(store, guide, _rule(
+            links=[_link(good), _link(bad, Actor.AI)])).items[0]
+        assert set(item.claim_ids) == {good.id, bad.id}
+
+    def test_no_conflict_means_no_clause(self, store, guide):
+        item = _map(store, guide,
+                    _rule(links=[_link(_confirmed_policy(store))])).items[0]
+        assert "contradicted" not in item.because
+
+
+class TestWaiving:
+    """V4 over-lists by design. Without pruning, an item nobody needs blocks
+    the answer forever — and pruning is what justifies persisting the draft
+    at all."""
+
+    def _asked(self, store, *items):
+        request = AnswerRequest(question="q?", requested_output="o")
+        store.save_request(request)
+        store.save_required_knowledge(
+            RequiredKnowledge(request_id=request.id, items=list(items)))
+        return request
+
+    def test_waiving_unblocks_the_answer_and_keeps_the_reason(self, store, guide):
+        request = self._asked(store, _obj("journal"))
+        assert evaluate_request(store, guide, request.id).verdict is \
+            Readiness.BLOCKED
+
+        waive_item(store, request.id, "journal",
+                   "this question is answered from the plan, not the ledger")
+
+        result = evaluate_request(ProjectStore(store.root), guide, request.id)
+        assert result.verdict is Readiness.READY
+        item = result.items[0]
+        assert item.ground is Ground.WAIVED
+        assert item.because == (
+            "Not required: a human waived this dependency — this question is "
+            "answered from the plan, not the ledger")
+
+    def test_a_waived_item_is_kept_not_deleted(self, store, guide):
+        """A deleted dependency is invisible; a waived one still shows, with
+        the judgement attached."""
+        request = self._asked(store, _obj("journal"))
+        waive_item(store, request.id, "journal", "not needed here")
+        required = ProjectStore(store.root).knowledge_for(request.id)
+        assert len(required.items) == 1
+        assert required.items[0].waived_because == "not needed here"
+        assert required.items[0].waived is True
+
+    def test_a_waiver_without_a_reason_is_refused(self, store, guide):
+        """Indistinguishable from an oversight six months later."""
+        request = self._asked(store, _obj("journal"))
+        with pytest.raises(UnlinkableItem, match="requires a reason"):
+            waive_item(store, request.id, "journal", "   ")
+
+    def test_a_waiver_can_be_revisited(self, store, guide):
+        request = self._asked(store, _obj("journal"))
+        waive_item(store, request.id, "journal", "thought we did not need it")
+        require_again(store, request.id, "journal")
+        result = evaluate_request(ProjectStore(store.root), guide, request.id)
+        assert result.verdict is Readiness.BLOCKED
+        assert result.items[0].item.waived is False
+
+    def test_waiving_something_not_required_is_refused(self, store, guide):
+        request = self._asked(store, _obj("journal"))
+        with pytest.raises(UnlinkableItem, match="is not required by"):
+            waive_item(store, request.id, "intercompany", "nope")
+
+    def test_any_kind_may_be_waived_unlike_linking(self, store, guide):
+        """Linking is rule-only because it would bypass an election. Waiving
+        bypasses nothing — it removes a requirement, which is the human's to
+        do for any kind."""
+        request = self._asked(store, _obj("journal"), _field(), _rule())
+        for ref in ("journal", "journal.amount_local",
+                    "sign convention for income"):
+            waive_item(store, request.id, ref, "out of scope for this answer")
+        assert evaluate_request(store, guide, request.id).verdict is \
+            Readiness.READY
 
 
 class TestDerivedNeverStored:
