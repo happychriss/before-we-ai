@@ -1,6 +1,7 @@
 # Refactor work order — for an external coding agent
 
-Five work packages, each one PR, in this order. Scope decided by the owner
+Five work packages in this order, **seven PRs** — WP5 splits into 5a/5b/5c,
+each reviewed on its own because the first of them carries the whole risk. Scope decided by the owner
 2026-08-01 from `docs/draft-thoughts/code-structure-and-testing-recommendations.md`
 (accepted: C, D, F-half, G, B · deferred: A, until the GUI milestone defines
 its shape · rejected: generating the architecture stage table, the drift test
@@ -188,11 +189,36 @@ them, just do not build something they cannot join.
 **WP5a — extract the view model.** New `src/readiness_report/projection.py`:
 `build_view_model(store, root, config) -> ReportViewModel` — frozen
 dataclasses (`StageView`, `RequestView`, `ElectionView`, `QuestionView`,
-`ReadinessView`, `ClaimView`, …) holding everything the page shows,
-presentation-ready, including the derived sentences (wording moves, verbatim
-— it is produced by evaluate/semantics and passes through). `render.py` keeps
-every HTML string but reads only the view model — no `ProjectStore`, no
-`evaluate_request`, no `resolve_status` imports left in it.
+`ReadinessView`, `ClaimView`, …) holding everything the page shows, including
+the derived sentences (wording moves verbatim — it is produced by
+evaluate/semantics and passes through). `render.py` keeps every HTML string
+but reads only the view model — no `ProjectStore`, no `evaluate_request`, no
+`resolve_status` imports left in it.
+
+**Where the line falls between the two** (the agent asked, and the question
+was right: `build_view_model(store, root, config)` has no `out_dir`, so it
+*cannot* build the YAML links `render_project` threads around today as
+`store_rel`):
+
+| projection owns | renderer owns |
+|---|---|
+| what is true, and the exact sentence for it | HTML, CSS, the page skeleton |
+| a **reference** to an object — kind + id, e.g. `("answers", request_id)` | resolving it to an href via `_relative_prefix(root, out_dir)` |
+| ordering, grouping, counts | escaping (`html.escape`) |
+
+The reason is not tidiness. A GUI has no output directory and no relative
+file paths; if the projection bakes in `../../project/answers/x.yaml` the GUI
+cannot reuse it — and being the layer both consumers share is the whole
+argument for extracting it. Same for escaping: a non-HTML consumer must not
+be handed pre-escaped text.
+
+**One complication, so it is not a surprise.** Some sentences embed a link
+mid-sentence — `_election_outcome` returns *"**Identified.** The balance law
+passed on `<a …>de_erp__gl_postings</a>"*, and `_render_readiness_item` does
+the same with claim ids. For those, the projection emits the sentence's
+**pieces plus the reference** and the renderer assembles. Do not simplify by
+dropping the link or by moving the whole f-string across.
+
 *Accept: all existing report tests pass **unmodified**. That is the proof the
 extraction preserved behavior — do not touch test assertions in this phase.*
 
