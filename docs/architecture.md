@@ -76,17 +76,17 @@ applies to the vocabulary. The table below is that data, for reading.
 | § | stage | who is responsible | reads | produces |
 |---|-------|--------------------|-------|----------|
 | 0 | **Inputs** — what a human declared | human | before-ai.yaml, the domain guide file, the check registry | the declared sources, business objects and domain laws |
-| 1 | **Request** — the question, and what it requires | human asks · AI structures | one business question + the domain guide's definitions | AnswerRequest, RequiredKnowledge |
+| 1 | **Request** — the question, and what it requires | human asks · AI classifies | one business question + the domain guide's definitions and answer types | AnswerRequest (with its answer type) |
 | 2 | **Measured** — what the data says about itself | no model involved | the declared sources | data profiles, the candidate matrix |
 | 3 | **Proposed** — what the AI guessed | AI — proposals only | profiles, the candidate matrix, the domain guide | claims, mapping candidates, check plans — all proposed |
 | 4 | **Tested** — what the checks settled | check — may promote | check plans, the data | evidence, derived statuses, scoped elections |
 | 5 | **Clarification** — what only a human can answer | human — may promote | what the checks could not settle | clarification questions, and the answers that close them |
-| 6 | **Readiness** — what may be answered | derived — never stored | the required knowledge, and every claim and status under it | the ReadinessMap: ready / ready_with_limitations / blocked |
+| 6 | **Readiness** — what may be answered | derived — never stored | the dependency list, and every claim and status under it | the ReadinessMap: ready / ready_with_limitations / blocked |
 
 **Stage 0 is the precondition, not part of the run.** A source list and a
 domain pack are chosen once, and many questions are asked against them. It
 comes first for a hard reason, not a stylistic one: the request contract reads
-the domain guide, so a question cannot be decomposed against a vocabulary
+the domain guide, so a question cannot be classified against a vocabulary
 nobody has declared yet.
 
 **Stages 1 and 6 are the frame** around the middle (2–5, which runs
@@ -110,7 +110,7 @@ is a spec alias:
 
 | contract | § | spec | status |
 |----------|---|------|--------|
-| request | 0 | — | built (module `v4_request`, **misnamed** — the spec's V4 is SQL generation) |
+| request | 1 | — | built (module `request` — deliberately unnumbered) |
 | hypotheses | 3 | V1 | built |
 | mappings | 3 | — (Rollenbindung) | built |
 | plans | 3 | V2 | built |
@@ -138,7 +138,7 @@ belongs.
 re-recording: the 13 `REGISTRY` template names, the JSON fields the model
 fills (`claim_id`, `template`, `params`, `no_template_reason`, `hypotheses`,
 `bindings`), the contract names (`v1_hypotheses`, `role_binding`, `v2_bind`,
-`v4_request`) and the claim labels `c1..cN`. Prompt prose may be edited only
+`request`) and the claim labels `c1..cN`. Prompt prose may be edited only
 together with a fixture re-record; count movement in such a diff is a signal
 about prompt fragility, not a schema artifact.
 
@@ -828,15 +828,20 @@ decides what may be **claimed** from those beliefs. Keeping the two
 vocabularies apart is the handover principle spelled as a module boundary,
 which is why `Readiness` does not live in `model/enums.py`.
 
-### V4 — the request contract (`llm/v4_request.py`)
+### The request contract (`llm/request.py`)
 
-`ask(root, question, guide=…)`, the standard V-contract shape (typed schema,
+`ask(root, question, guide=…)`, the standard contract shape (typed schema,
 `call_with_retry` with the two-tier repair, `CallLogger`, offline stub, drift
-guard). Its input (`inputs.build_question_context`) is the question plus the
-domain vocabulary — **no profiles**: whether the data can serve the request is
-the rest of the pipeline's job, and answering it here would be the model
-deciding. Fields render nested under their objects, unlike the flattened
-role-binding input, because here the hierarchy is the point.
+guard). Its input (`inputs.build_question_context`) is the question, the
+domain vocabulary and the answer types — **no profiles**: whether the data can
+serve the request is the rest of the pipeline's job, and answering it here
+would be the model deciding. Fields render nested under their objects, unlike
+the flattened role-binding input, because here the hierarchy is the point.
+
+**Not numbered.** The spec's four are V1 hypotheses, V2 check binding, V3
+document interpretation and V4 SQL generation; this is none of them, and the
+built-but-unnumbered `role_binding` already showed that five contracts do not
+fit four slots.
 
 The semantic check (`mapping.check_knowledge_item`) is asymmetric on purpose.
 Objects and fields must exist in the vocabulary and sit where the item says
@@ -845,59 +850,81 @@ a gap that would go quiet. Rules are the mirror image: they exist *because*
 the vocabulary has no entry for them, so a rule is rejected only when it names
 one — which makes it a mis-kinded object or field, and the error says so.
 
-The corpus fixture (`v4_request__corpus.json`) is **hand-authored** and marked
-as such, per the rule in `llm/stub.py`; `refresh_fixtures.py` records V4 first,
-so the next online run replaces it.
+The corpus fixture (`request__corpus.json`) is **hand-authored** and marked as
+such, per the rule in `llm/stub.py`; `refresh_fixtures.py` records this
+contract first, so the next online run replaces it.
 
-### Answer types — deriving the dependency list (decided 2026-08-01, not built)
+### Answer types — deriving the dependency list
 
-The verdict is only as good as the required-knowledge list, and today the
-model drafts that list freely. Over-listing is visible (`waive_item`);
-**under-listing is silent** — a dependency the model never listed appears
-nowhere, so nobody can test, waive or clarify it, and the verdict comes out
-too generous. The fix reduces the model's claim from *inventing the list* to
-*classifying the question*, and it is decided in six parts (option analysis:
-`docs/draft-thoughts/dependency-contract-proposal-for-review.md`):
+The verdict is only as good as the dependency list. When the model drafted
+that list freely, over-listing was visible and fixable (`waive_item`) but
+**under-listing was silent**: a dependency the model never listed appeared
+nowhere, so nobody could test, waive or clarify it, and the verdict came out
+too generous with nothing anywhere to show why. The fix reduces the model's
+claim from *inventing the list* to *classifying the question* (option
+analysis: `docs/draft-thoughts/dependency-contract-proposal-for-review.md`).
 
-1. **The guide gains `answer_types:`** — a reviewed dependency list per
-   question family, living *inside* the domain guide, not beside it. One
-   reviewed artifact means version skew is structurally impossible, and the
-   loader validates that every named concept exists in the same document.
-   The engine consumes the loaded answer type and never asks where it came
-   from — that seam is the function `expand(answer_type, guide) → items`,
-   which later sources (starter packs, a guide builder) feed unchanged.
-2. **`RequiredKnowledge` becomes derived, never stored.** The list is
-   recomputed on every read from (classification × guide); persisted are
-   only the **human acts** — the confirmed classification, waivers, manually
-   added items — each recorded against the guide version it was made
-   against. A guide edit therefore re-expands the list, and acts that no
-   longer match their version lapse by themselves: staleness is impossible
-   by construction, the same discipline as `resolve_status`.
-3. **No `criticality` field.** Severity already follows from *kind* (the
-   verdict rule); an authored weight would be a second home for the same
-   decision, and a typo in it would turn a missing field into a friendly
-   verdict. Per-question exceptions are what `waive_item` is for.
-4. **No `condition:` field.** Variants are separate answer types; the
-   condition decision ("consolidated or not?") thereby lives inside the one
-   decision that is already visible and confirmed — the classification,
-   rendered as *"treated as: … (guide vN)"*. (`extends:` between answer
-   types is the reserved data-level answer if the type list ever sprawls.)
-5. **An unmatched question falls back to free drafting** — today's V4
-   behaviour, labelled *unreviewed AI draft* and capped at
-   `ready_with_limitations`; confirming the draft (a clarification — the
-   existing machinery) lifts the cap. Hard `blocked` is reserved for a
-   broken contract: a dead concept reference or a cycle. **A broken
-   contract must never degrade into a shorter list.**
-6. **One new canonical word: `answer type`** (reserved in `glossary.py`
-   `PLANNED`). "Dependency contract" is the proposal paper's name for the
-   seam, not a code object.
+1. **The guide declares `answer_types:`** — per family of question, the
+   objects, fields and rules an answer to it depends on, reviewed once and
+   reused. It lives *inside* the guide, not beside it, so a rename cannot
+   leave a dependency list pointing at a vocabulary entry that no longer
+   exists: one lint checks both halves of one document. A dead reference is a
+   **hard load error**, never a skipped item — it would expand to a silently
+   shorter list. Rules are the mirror image, as in the contract's own
+   semantic check: rejected only when they shadow an entry, because a rule
+   exists precisely where the vocabulary is silent.
+2. **The list is derived, never stored** (`readiness.assemble`). It is put
+   together on every read from the expanded answer type, whatever the
+   contract drafted freely for this question, and the acts replayed over
+   both. Only the **acts** persist (`KnowledgeAct`, append-only in
+   `answers/`), each recording the guide fingerprint it was taken against. A
+   stored list would go on describing a guide that has since changed, and a
+   list quietly out of date is the same failure as one that was short to
+   begin with.
+3. **No `criticality` field.** Severity follows from *kind* (the verdict
+   rule); an authored weight would be a second home for the same decision,
+   and a typo in it would turn a missing field into a friendly verdict.
+   Per-question exceptions are what `waive_item` is for.
+4. **No `condition:` field.** Variants are separate answer types, so the
+   condition decision ("consolidated or not?") lives inside the one decision
+   that is already visible and confirmed — the classification. (`extends:`
+   between types is the reserved answer if the type list ever sprawls.)
+5. **An unmatched question falls back to free drafting**, labelled as such
+   and capped; only a broken contract blocks (see the verdict rule below).
+6. **One new canonical word: `answer type`.** "Dependency contract" is the
+   proposal paper's name for the seam, not a code object. The seam itself is
+   the function `expand(answer_type, guide, scope)`, and the engine never
+   asks where an answer type came from — a hand-written guide, a starter
+   pack, or one day a guide builder that proposes one from documents.
 
-The build slice reshapes V4 — classify + propose deltas, both visible,
-provenance-labelled apart (`contract` vs `proposed`) — which is also the
-moment for the pending rename off the spec's V4 slot: one schema change, one
-fixture re-record. The guide-bootstrap outlook (documents + profiles →
-proposed answer types) stays in the proposal paper as the later Guide
-Builder layer.
+**Only a confirmation lapses.** A `confirm` says *"this list is complete"*,
+which stops being true the moment the list changes, so it is ignored once the
+guide fingerprint no longer matches. Every other act is about one item —
+"this does not matter here", "this claim speaks to it" — and a change
+elsewhere in the guide leaves it exactly as true as it was; lapsing those too
+would destroy a human's work to no one's benefit, and the lapsed confirmation
+already puts them back in front of a reader.
+
+**The contract** (`llm/request.py`) has two tiers of failure. A delta item
+that fails its semantic check is skipped and reported, as everywhere. A
+classification naming an answer type the guide does not declare fails the
+whole call, retry included: it is the one claim the call exists to make, and
+a request classified to a family that cannot be expanded is worse than no
+request at all. The answer types reach the model *with what each one
+requires*, because classification is a judgement about coverage and a
+definition alone does not support one.
+
+**On the page**, the classification headlines the request card in the derived
+voice — *"Treated as: profit_and_loss_by_dimension (guide a1b2c3d4e5f6) — not
+confirmed by anyone yet"* — above everything it governs, because naming the
+wrong family makes the whole list below it wrong quietly. Each item shows its
+provenance, and the `why` is attributed to whoever wrote it: a `why` expanded
+from the guide is the reviewer's sentence, and citing it as the AI's would
+put a human's words in the model's mouth.
+
+**Not built, deliberately:** `extends` between types, and the guide-bootstrap
+layer (documents + profiles → proposed answer types), which stays in the
+proposal paper as the later Guide Builder.
 
 ### The verdict rule
 

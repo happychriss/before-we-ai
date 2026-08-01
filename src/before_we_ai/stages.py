@@ -10,7 +10,7 @@ data, and let every surface render it.
 **Stage 0 is the precondition, not part of the run.** A domain pack and a
 source list are chosen once and many questions are asked against them — and
 the request contract *reads* the domain guide, so a question cannot be
-decomposed against a vocabulary nobody has declared yet.
+classified against a vocabulary nobody has declared yet.
 
 **Stages 1 and 6 are the frame** around the middle (2–5, which runs
 bottom-up). The question opens it because it bounds the work — what the
@@ -47,9 +47,9 @@ STAGES: tuple[Stage, ...] = (
           "before-ai.yaml, the domain guide file, the check registry",
           "the declared sources, business objects and domain laws"),
     Stage("1", "request", "the question, and what it requires",
-          "A human asks", "human asks · AI structures",
-          "one business question + the domain guide's definitions",
-          "AnswerRequest, RequiredKnowledge"),
+          "A human asks", "human asks · AI classifies",
+          "one business question + the domain guide's definitions and answer types",
+          "AnswerRequest (with its answer type)"),
     Stage("2", "measured", "what the data says about itself",
           "The data describes itself", "no model involved",
           "the declared sources",
@@ -68,7 +68,7 @@ STAGES: tuple[Stage, ...] = (
           "clarification questions, and the answers that close them"),
     Stage("6", "readiness", "what may be answered",
           "What may be answered", "derived — never stored",
-          "the required knowledge, and every claim and status under it",
+          "the dependency list, and every claim and status under it",
           "the ReadinessMap: ready / ready_with_limitations / blocked"),
 )
 

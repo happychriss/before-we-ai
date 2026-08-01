@@ -53,32 +53,19 @@
    documents: `decodes` account ranges, the AR control account, and
    opening-balances coverage. Read them in the readiness report.
 
-3. **The answer-type slice** (all six design decisions taken 2026-08-01;
-   the design is `docs/architecture.md` → "Answer types — deriving the
-   dependency list", the option analysis is
-   `docs/draft-thoughts/dependency-contract-proposal-for-review.md`).
-   This is the fix for the two inferences of V4's that nothing confirms:
-   under-listing (the model invents the dependency list; what it forgets is
-   silent) becomes classification against a reviewed `answer_types:` guide
-   section, and the scope-from-prose inference ("P&L for Germany" — scope,
-   or break-out?) is reflected back in the same visible, confirmable
-   *"treated as: … (guide vN)"* sentence.
+3. **Confirm the answer-type slice against real output.** Built
+   2026-08-01 (`docs/architecture.md` → "Answer types"); the walkthrough now
+   classifies, shows the guide fingerprint and per-item provenance, and
+   demonstrates the confirmation lifting the cap. What has *not* happened
+   is a human reading it end to end — which is the same argument as item 1
+   above, applied to the newest surface.
 
-   Build list: `answer_types:` in the guide schema + loader validation
-   (unknown concept / cycle = hard error) · deterministic
-   `expand(answer_type, guide)` → **derived** `RequiredKnowledge` (persist
-   only human acts, each against a guide version) · V4 reshaped to classify
-   + propose deltas, provenance-labelled apart · unmatched question →
-   labelled free-draft fallback capped at `ready_with_limitations`,
-   confirmation via the existing clarification machinery lifts the cap ·
-   report shows the classification and per-item provenance · one finance
-   answer type in the demo guide · tests for determinism, hard failure,
-   fallback cap, delta labelling.
-
-   **Bundled in: the rename off the spec's V4 slot** (see Open decisions) —
-   the schema changes anyway, so it is one fixture re-record, not two.
-   Timing (owner to confirm): after the validation run, either as its own
-   batch or riding the M5 kickoff re-record.
+   Two things to judge while reading, both deliberate and both reversible:
+   - **The cap is aggressive.** Every project reads
+     `ready_with_limitations` until someone confirms the classification.
+     True, but it means `ready` is now rare by construction.
+   - **Only a confirmation lapses** when the guide moves, not waivers or
+     links. A waiver is about one item; a confirmation is about the list.
 
 ### M5 kickoff batch
 
@@ -118,28 +105,13 @@ recording (its corpus fixture is hand-authored and marked as such).
 
 ## Open decisions (owner)
 
-- **The request contract sits on the spec's V4 slot, which belongs to SQL
-  generation.** `docs/spec/before-we-ai-systemarchitektur.md:53` assigns the
-  four contract numbers: V1 hypotheses, V2 check binding, V3 document
-  interpretation, **V4 SQL generation**. What is built and called V4 is the
-  *request* contract (business question → `AnswerRequest` +
-  `RequiredKnowledge`), which the spec does not number at all — and the
-  built-but-unnumbered `role_binding` already proves five contracts do not fit
-  four slots.
-
-  Rename `llm/v4_request.py`, `CONTRACT = "v4_request"`, the fixture filename
-  and the `DEFAULT_MODELS` key to **`request`**, leaving V4 free. **Bundled
-  into the answer-type slice** (Next, item 3): that slice reshapes the same
-  contract's schema anyway, so the rename and the reshape share one fixture
-  re-record. Must land before the M5 live recording either way, or the
-  recorded fixture lands under the wrong name too.
-
-  Related and already acted on: `sql`/`result_ref` were deleted from
+- **`sql`/`result_ref` return with the spec's V4.** They were deleted from
   `AnswerRequest` on the stated grounds that "no milestone produces SQL".
-  **That reason was wrong** — the spec's V4 does, and `:59` says its result
-  goes into the question card. The deletion still stands (nothing set or read
-  them), but they are unbuilt scaffolding that returns with V4, not dead
-  weight.
+  **That reason was wrong** — the spec's V4 (SQL generation) does, and
+  `docs/spec/before-we-ai-systemarchitektur.md:59` says its result goes into
+  the question card. The deletion stands (nothing set or read them), but they
+  are unbuilt scaffolding that comes back, not dead weight. The V4 slot is
+  now free: the request contract was renamed off it 2026-08-01.
 
 - **Assumption Capture is unbuilt, unlisted, and its dependency undeclared.**
   `docs/spec/before-we-ai-systemarchitektur.md:59` (`sql` — Fragenfluss):

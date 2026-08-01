@@ -56,16 +56,45 @@ can produce the answer. For group revenue it must know, at least:
 * which currency rate policy converts the US figures;
 * whether the two entities' books are internally consistent at all.
 
-This required information is called the **required knowledge**
-[`RequiredKnowledge` — **built**]. The answer request identifies the required
-knowledge; from here on, the system hunts for exactly these items and
-nothing else.
+This required information is called the **required knowledge**. From here on,
+the system hunts for exactly these items and nothing else.
+
+**But who writes that list?** Not the AI — and this is the part worth
+slowing down for. If a model writes the list, a forgotten dependency is
+*invisible*: it appears nowhere, so nobody can test it, waive it or ask
+about it, and the final verdict comes out confidently too generous with
+nothing anywhere to show what was missed. Over-listing is a nuisance;
+under-listing is a lie nobody can see.
+
+So the domain guide declares **answer types** [`answer_types:` — **built**]:
+per family of question — "a result by dimension", "a balance sheet",
+"expected cost of a vessel" — the dependencies an answer of that family
+carries, written and reviewed once by a human. The AI makes one much smaller
+claim: *this question belongs to that family*. The engine then expands the
+list [`readiness.expand` — **built**]. A human can read one classification;
+nobody re-reads nine dependencies per question.
+
+The list is **never stored** [`readiness.assemble` — **built**]. It is put
+together on every read, so editing the guide changes every list that rests on
+it — no copy anywhere can go on describing a guide that has moved. Only the
+human *decisions* about it persist: the confirmation, the waivers, the items
+someone added because the guide was short.
+
+And until a human confirms the classification, the verdict is capped at
+*ready with limitations*, naming the list itself as the limitation. Whether
+the dependencies hold is one question; whether anyone has read the list of
+them is another.
 
 > **(built) honestly stated:** the middle of the pipeline runs *bottom-up* —
 > it scans the whole landscape and proposes everything it can find. The
 > question is the frame around it: it decides what must be known, and the
 > readiness map at the end judges only those items. An item the question does
 > not depend on is not a gap.
+>
+> And when no answer type fits the question, the AI does draft the list after
+> all — labelled as an unreviewed draft, and capped the same way. The product
+> stays usable on day one, before anyone has written a single answer type;
+> *ready* is what has to be earned.
 
 ---
 
@@ -441,8 +470,9 @@ Every run is measured against it:
 | **check run** | the deterministic execution of a check plan | `run_check` (`engine/`) |
 | **evidence** | an append-only finding: check result, document anchor, confirmation, testimonial, declaration | `EvidenceRecord` (five types) |
 | **clarification question** | a drafted question to the humans when data alone cannot decide | `ClarificationQuestion` |
-| **answer request** | the structured form of one business question: requested output + scope | `AnswerRequest` (V4, `llm/v4_request.py`) |
-| **required knowledge** | the objects, fields and rules one answer depends on, each scoped | `RequiredKnowledge`, `KnowledgeItem` |
+| **answer request** | the structured form of one business question: requested output + scope + which answer type it was classified to | `AnswerRequest` (`llm/request.py`) |
+| **answer type** | a family of question with the dependencies an answer to it carries, declared in the guide and reviewed once | `AnswerTypeSpec` (`llm/domain_guide.py`) |
+| **required knowledge** | the objects, fields and rules one answer depends on, each scoped — expanded on every read, never stored | `readiness.assemble`, `KnowledgeItem` |
 | **readiness map** | per knowledge item: claim, evidence, gap, and how each satisfied one is satisfied → ready / limited / blocked | `readiness/` (derived, never stored) |
 
 ---

@@ -72,17 +72,17 @@ GLOSSARY: list[tuple[str, str]] = [
     ("scope", "the entity, period or segment a claim, question or request is "
      "about; roles are elected once per scope, so two parts of a landscape "
      "can each own their occupant without competing"),
+    ("answer type", "a family of business question with the objects, fields "
+     "and rules an answer to it depends on, declared in the domain guide and "
+     "reviewed once; the model classifies a question to one and the engine "
+     "expands the dependencies, so what the model never lists it can no "
+     "longer silently omit"),
 ]
 
 # Reserved for a milestone that has not shipped: the words exist in one place
 # before the objects do. Emptied when M6 landed; the next reservation goes
 # here. See docs/before-ai-concept.md.
-PLANNED: list[tuple[str, str]] = [
-    ("answer type", "a reviewed guide entry naming the dependencies one "
-     "family of questions carries; the model only classifies a question to "
-     "one, and the engine expands the dependency list deterministically — "
-     "decided 2026-08-01, not built (architecture.md → 'Answer types')"),
-]
+PLANNED: list[tuple[str, str]] = []
 
 # German terms of art from the owner's spec (docs/spec/, German by design)
 # mapped to the canonical English vocabulary.

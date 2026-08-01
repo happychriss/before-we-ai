@@ -54,7 +54,7 @@ verdict closes it.
 
 ```
 0 inputs         a human declares       → sources, domain guide, domain laws
-1 request        a human asks           → what must be known, and nothing else
+1 request        a human asks           → classified; what must be known, nothing else
 2 measured       nobody, it is counted  → data profiles, candidate overlaps
 3 proposed       the AI guesses         → claims, candidates, check plans
   ─────────────── no proposal may promote itself ───────────────
@@ -109,7 +109,8 @@ current numbers: `docs/seeded-recall.md`. Owner-facing validation walkthrough:
 | M3 | Check engine + epistemics runtime — validated **without any LLM** | ✅ built |
 | M4 | LLM contracts V1/V2 (hypotheses, check planning) + offline stub mode | ✅ built |
 | — | Readiness report (read-only validation UI, one self-contained HTML) | ✅ built |
-| M6 | Question flow + V4 (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked), elections per scope | ✅ built |
+| M6 | Question flow (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked), elections per scope | ✅ built |
+| — | Answer types: the guide declares what a family of question depends on; the model classifies, the engine expands, a human confirms | ✅ built |
 | M5 | Document pipeline + V3 (interpretation with anchor validation) | **next** — scope and kickoff batch in `meta/memory.md` |
 | M7 | Staleness propagation & replay against a "prod" copy | planned |
 | M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart | planned |
