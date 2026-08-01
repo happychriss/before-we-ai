@@ -50,8 +50,15 @@ clarification question — never in nothing*:
 
 The losing candidates keep their derived statuses; nothing is silently
 discarded.
+
+**Answer types** (``answer_types:``) are the guide's second job: per family of
+business question, the reviewed list of what an answer to it depends on. They
+live here rather than in a file of their own so a rename cannot leave a
+dependency list pointing at a vocabulary entry that no longer exists — the
+lint checks both halves of one document at once.
 """
 
+import hashlib
 from pathlib import Path
 
 import yaml
@@ -129,13 +136,75 @@ class ObjectSpec(BaseModel):
     provenance: str = PROVENANCE_HUMAN
 
 
+class AnswerTypeRequire(BaseModel):
+    """One dependency of an answer type: exactly one of object/field/rule.
+
+    ``field`` is written as ``object.field``, the same addressing
+    ``KnowledgeItem.ref()`` produces, so the two surfaces read alike.
+    ``why`` is optional and is the *guide's* voice — a reviewed sentence,
+    unlike the model's ``why`` on a freely drafted item.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    object: str | None = None
+    field: str | None = None  # "object.field"
+    rule: str | None = None
+    why: str = ""
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> "AnswerTypeRequire":
+        given = [k for k in ("object", "field", "rule")
+                 if getattr(self, k) is not None]
+        if len(given) != 1:
+            raise ValueError(
+                "an answer-type requirement names exactly one of "
+                f"object/field/rule, got {given or 'none'}"
+            )
+        return self
+
+    @property
+    def kind(self) -> str:
+        return next(k for k in ("object", "field", "rule")
+                    if getattr(self, k) is not None)
+
+    @property
+    def ref(self) -> str:
+        return getattr(self, self.kind)
+
+
+class AnswerTypeSpec(BaseModel):
+    """One family of questions and everything an answer to it depends on."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    definition: str
+    requires: list[AnswerTypeRequire] = []
+
+
 class DomainGuide(BaseModel):
-    """One domain's business objects with their fields, linted on load."""
+    """One domain's business objects with their fields, linted on load.
+
+    ``answer_types`` is the reviewed dependency list per question family. It
+    exists so the model no longer has to *invent* what an answer depends on —
+    it classifies the question to one type, and the engine expands that
+    type's ``requires`` deterministically (``readiness.expand``). The list
+    is flat: an answer type names guide entries and rules, never another
+    answer type. (``extends`` between types is the reserved answer if the
+    type list ever sprawls; until it exists there is no cycle to check for.)
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     domain: str
     objects: dict[str, ObjectSpec]
+    answer_types: dict[str, AnswerTypeSpec] = {}
+
+    # sha256 of the file the guide was loaded from — set by
+    # load_domain_guide, empty for a guide built in memory. Human acts record
+    # it, so a confirmation made against an older guide can lapse instead of
+    # silently vouching for a list that has since changed.
+    fingerprint: str = ""
 
     @property
     def entries(self) -> dict[str, ObjectSpec | FieldSpec]:
@@ -203,9 +272,66 @@ class DomainGuide(BaseModel):
                 errors += self._lint_field(name, spec, field_name, field,
                                            law if decider in laws else None,
                                            filled)
+        errors += self._lint_answer_types(seen)
         if errors:
             raise ValueError("domain guide lint: " + "; ".join(errors))
         return self
+
+    def _lint_answer_types(self, entry_names: set[str]) -> list[str]:
+        """A dependency list that cannot hold together must not load.
+
+        A dead reference is the one failure this list may never survive: it
+        would silently expand to a *shorter* list, and a dependency nobody
+        lists is a dependency nobody can test, waive or clarify. So an
+        unknown object or field is a load error, not a skipped item.
+
+        Rules are the mirror image, exactly as in the request contract's
+        semantic check: a rule exists *because* the vocabulary has no entry
+        for it, so it is rejected only when it shadows one.
+        """
+        errors = []
+        for type_name, spec in self.answer_types.items():
+            if type_name in entry_names:
+                errors.append(
+                    f"answer type {type_name!r}: the name is already taken by "
+                    "a guide entry — one namespace"
+                )
+            if not spec.requires:
+                errors.append(
+                    f"answer type {type_name!r}: requires nothing — an answer "
+                    "type that depends on nothing cannot bound anything"
+                )
+            seen: set[str] = set()
+            for require in spec.requires:
+                ref = require.ref
+                where = f"answer type {type_name!r}: {require.kind} {ref!r}"
+                if ref in seen:
+                    errors.append(f"{where} is required twice")
+                seen.add(ref)
+                if require.kind == "object":
+                    if ref not in self.objects:
+                        errors.append(f"{where} is no business object of this "
+                                      "guide")
+                elif require.kind == "field":
+                    errors += self._lint_required_field(where, ref)
+                elif ref in entry_names:
+                    errors.append(
+                        f"{where} names a guide entry, so it is not a rule — "
+                        f"require it as an object or a field instead"
+                    )
+        return errors
+
+    def _lint_required_field(self, where: str, ref: str) -> list[str]:
+        object_name, _, field_name = ref.partition(".")
+        if not field_name:
+            return [f"{where} must be written 'object.field'"]
+        spec = self.objects.get(object_name)
+        if spec is None:
+            return [f"{where} names no business object of this guide"]
+        if field_name not in spec.fields:
+            return [f"{where} is no field of {object_name!r} "
+                    f"(it has {sorted(spec.fields) or 'none'})"]
+        return []
 
     def _lint_field(self, object_name, object_spec, field_name, field, law,
                     filled) -> list[str]:
@@ -239,8 +365,15 @@ class DomainGuide(BaseModel):
 
 
 def load_domain_guide(path: str | Path) -> DomainGuide:
-    data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    return DomainGuide.model_validate(data)
+    raw = Path(path).read_bytes()
+    data = yaml.safe_load(raw.decode("utf-8"))
+    guide = DomainGuide.model_validate(data)
+    return guide.model_copy(update={"fingerprint": hashlib.sha256(raw).hexdigest()})
+
+
+def short_fingerprint(fingerprint: str) -> str:
+    """The display form: enough to tell two guides apart, short enough to read."""
+    return fingerprint[:12]
 
 
 def _has_no_check_declaration(store: ProjectStore,
