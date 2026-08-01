@@ -148,8 +148,11 @@ about prompt fragility, not a schema artifact.
 - Repo root: `/workspace` — https://github.com/happychriss/before-we-ai
   (`pyproject.toml` lives in `src/`)
 - Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
-  `/workspace/src`; run `python -m pytest -q` there (391 tests green,
-  incl. readiness_report; CI runs fully offline from recorded fixtures)
+  `/workspace/src`; run `python -m pytest -q` there — **the gate is that every
+  test passes**, and CI runs it fully offline from recorded fixtures. Lanes
+  for faster feedback between edits: `meta/project-setup.md`. No exact suite
+  count is kept in this document; it went stale three times before anyone
+  noticed, and a number nobody acts on is a number nobody maintains.
 - Authoritative German spec: `docs/spec/`
 
 ## Domain inputs — declared, transparent, validated (cross-cutting)

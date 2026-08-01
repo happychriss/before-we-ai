@@ -14,10 +14,14 @@
   number. 0 inputs · 1 request · 2 measured · 3 proposed · 4 tested ·
   5 clarification · 6 readiness. Stage 0 is the precondition; 1 and 6 are the
   frame around the middle.
-- **Suite: 397 pass**, fully offline (`cd /workspace/src &&
-  source /workspace/.venv/bin/activate && python -m pytest -q`).
-- **Standing measures:** False-Promotion **0** (non-negotiable at every
-  commit) · Seeded-Recall **14–15/25** · prompt-leakage scan CLEAN.
+- **The suite is green and fully offline** (`cd /workspace/src &&
+  source /workspace/.venv/bin/activate && python -m pytest -q`); lanes for
+  faster feedback in `meta/project-setup.md`. No count is written down
+  anywhere, here included — it went stale three times and never once
+  changed a decision.
+- **Standing measures** (these do change decisions, so they are written
+  down): False-Promotion **0** (non-negotiable at every commit) ·
+  Seeded-Recall **14–15/25** · prompt-leakage scan CLEAN.
 - **Walkthrough pins** (offline; `validation/README.md` carries them per
   stage): 52 hypotheses / 0 deduped / 3 skipped · 22 candidates · 42 plans /
   19 unbindable / 6 semantic-only / 7 skipped · 42 executed, 35 pass / 7 fail ·
@@ -29,9 +33,9 @@
 
 1. **Owner validation run using only the readiness report.** Deferred twice,
    and the reason to do it is now evidence rather than principle: reading real
-   output has found four things the 397 tests did not — a grammar slip in a
-   derived sentence, three dead fields, two report surfaces disagreeing about
-   one store, and the unconfirmed required-knowledge list below.
+   output has found four things the whole green suite did not — a grammar slip
+   in a derived sentence, three dead fields, two report surfaces disagreeing
+   about one store, and the unconfirmed required-knowledge list below.
 
    Run it: `cd validation && ./scripts/reset.sh && ./scripts/0-inputs.sh`,
    then follow the `next:` line each stage prints. Every stage rebuilds

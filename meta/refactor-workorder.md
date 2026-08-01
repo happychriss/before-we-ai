@@ -9,10 +9,11 @@ report sections and must build them into the new structure, not the old one.
 
 ## Hard rules — every work package, no exceptions
 
-1. **The full suite passes** (`cd src && python -m pytest -q`, currently 457).
-   Never delete or weaken a test to get green. If a pinned wording or a
-   pinned number blocks you, **stop and report** — the pins are the product's
-   voice and someone decided them.
+1. **The full suite passes** (`cd src && python -m pytest -q`). Run it before
+   you start, put that number in the PR, and it must not go **down** — a
+   package may add tests, never lose them. Never delete or weaken a test to
+   get green. If a pinned wording or a pinned number blocks you, **stop and
+   report** — the pins are the product's voice and someone decided them.
 2. **Prompt bytes are frozen.** No edit to any prompt or model-facing input
    under `src/before_we_ai/llm/`, and every file under
    `src/tests/fixtures/llm/` stays byte-identical. The drift guard
@@ -33,7 +34,7 @@ offline walkthrough (`validation/scripts/reset.sh`, then stages 0–6); the
 walkthrough's printed output must be unchanged except where a package says
 otherwise.
 
-## WP1 — test lanes (recommendation C)
+## WP1 — test lanes (recommendation C) · DONE 2026-08-01 (`5a9f590`)
 
 Markers only; zero behavior change.
 
@@ -49,16 +50,20 @@ Markers only; zero behavior change.
 
 **Accept:** `pytest -m unit` runs a strict subset; full run count unchanged.
 
-## WP2 — no live counts in durable docs (recommendation F, accepted half)
+## WP2 — no live counts in durable docs (recommendation F, half) · DONE 2026-08-01
 
-- `docs/architecture.md` currently claims "391 tests green" — already false
-  (457). Replace every exact suite count in `docs/` and `README.md` with the
-  command plus the gate ("run the full offline suite; all tests must pass").
-- `meta/memory.md` may keep counts — it is the live-state file.
-- Do **not** generate the architecture stage table from `stages.py`. The
-  drift test (`tests/unit/test_stages.py`) is deliberate and stays.
+- `docs/architecture.md` claimed "391 tests green" — false by 69. Replaced
+  with the command and the gate.
+- **`meta/memory.md` lost its count too**, which this order originally
+  allowed. The evidence overruled it: the number went stale three times
+  (391 → 397 → 460), was corrected by hand each time, and never once changed
+  a decision. What stayed are the measures that *do* — False-Promotion 0,
+  Seeded-Recall 14–15/25, leakage CLEAN.
+- The architecture stage table is **not** generated from `stages.py`. The
+  drift test (`tests/unit/test_stages.py`) is deliberate and stays: it
+  stopped a wrong edit twice, which silent regeneration would not have.
 
-**Accept:** `grep -rn "[0-9]\{3\} tests" docs/ README.md` finds nothing.
+**Accept:** `grep -rn "[0-9]\{3\} tests" docs/ README.md meta/` finds nothing.
 
 ## WP3 — shared corpus construction out of tests/ (recommendation G)
 
