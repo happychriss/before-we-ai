@@ -31,6 +31,7 @@ from before_we_ai.model.objects import (
     Source,
 )
 from before_we_ai.checks.library import REGISTRY
+from before_we_ai.stages import BOUNDARY_BEFORE, BOUNDARY_TEXT, STAGES
 from before_we_ai.readiness import Readiness, evaluate_request
 from before_we_ai.store import ProjectStore, check_integrity
 from before_we_ai.store.layout import CONFIG_FILE
@@ -206,8 +207,9 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
     guide_fields = len(guide.owner)
     elected, elections = _election_tally(facts, answered_slots)
     readiness_maps = _readiness_maps(store, root_path, config)
-    diagram = _render_process_diagram(
-        readiness_counts=_readiness_counts(readiness_maps),
+    diagram = _render_process_diagram(_stage_counts(
+        readiness=_readiness_counts(readiness_maps),
+        required=sum(len(m.items) for m in readiness_maps),
         declared_sources=len(config.get("sources") or []),
         guide_objects=len(guide.order) - guide_fields,
         guide_fields=guide_fields,
@@ -222,7 +224,7 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         elected=elected,
         elections=elections,
         questions=len(questions),
-    )
+    ))
 
     return f"""<!doctype html>
 <html lang="en">
@@ -609,8 +611,8 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         <a href="#inputs">1 Inputs</a>
         <a href="#measured">2 Measured</a>
         <a href="#proposed">3 Proposed</a>
-        <a href="#decided">4 Tested</a>
-        <a href="#open">5 Clarification</a>
+        <a href="#tested">4 Tested</a>
+        <a href="#clarification">5 Clarification</a>
         <a href="#readiness">6 Readiness</a>
         <a href="#claims">Claim detail</a>
         <a href="#integrity">Integrity</a>
@@ -671,14 +673,14 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         nothing it writes can change that. Click any number to filter the claim list.</p>
         {_render_funnel(facts)}
       </section>
-      <section class="panel" id="decided">
+      <section class="panel" id="tested">
         <h2>4 · Tested — what the checks settled</h2>
         <p class="muted">Every role the AI proposed candidates for. Each role declares its
         settlement path: a domain law elects the winner, or the humans decide via clarification question —
         never silence.</p>
         {_render_role_elections(facts, questions, guide, answered_slots)}
       </section>
-      <section class="panel" id="open">
+      <section class="panel" id="clarification">
         <h2>5 · Clarification — what only a human can answer ({len(still_open)})</h2>
         <p class="muted">What the checks could not settle. This is the human's to-do list.
         A question leaves it the moment a claim it rests on settles — derived from the
@@ -1040,13 +1042,15 @@ def _election_tally(facts: dict[str, ClaimFacts],
     return settled, len(grouped)
 
 
-def _node(step: str, title: str, target: str, actor: str, counts: list[tuple[str, str]]) -> str:
+def _node(stage, counts: list[tuple[str, str]]) -> str:
     """One stage of the process diagram: what it is, who authors it, its live counts."""
     lines = "".join(
-        f'<a class="node-count" href="#{escape(target)}">'
+        f'<a class="node-count" href="#{escape(stage.name)}">'
         f"<strong>{escape(number)}</strong> {escape(label)}</a>"
         for number, label in counts
     )
+    step, title, target, actor = (stage.label, stage.title, stage.name,
+                                  stage.actor)
     return (
         f'<div class="node"><div class="node-step">{escape(step)}</div>'
         f'<div class="node-title"><a href="#{escape(target)}">{escape(title)}</a></div>'
@@ -1055,55 +1059,53 @@ def _node(step: str, title: str, target: str, actor: str, counts: list[tuple[str
     )
 
 
-def _render_process_diagram(
-    *,
-    declared_sources: int,
-    guide_objects: int,
-    guide_fields: int,
-    domain_laws: int,
-    profiles: int,
-    candidates: int,
-    claims: int,
-    runs: int,
-    elected: int,
-    elections: int,
-    questions: int,
-    readiness_counts: list[tuple[str, str]],
-) -> str:
-    """The whole machine on one line, with this project's numbers in it.
+def _stage_counts(*, readiness, required, declared_sources, guide_objects,
+                  guide_fields, domain_laws, profiles, candidates, claims,
+                  runs, elected, elections, questions
+                  ) -> dict[str, list[tuple[str, str]]]:
+    """This project's live numbers, per stage of the spine."""
+    def plural(n: int, word: str) -> str:
+        return f"{word}{'s' if n != 1 else ''}"
 
-    The actor boundary is drawn where authorship shifts: everything left of it
-    is a proposal, and no proposal can promote a claim. That is not a drawing
-    convention — it is the structural invariant (`Actor.AI` cannot author
-    promoting evidence), made visible.
-    """
-    arrow = '<div class="arrow" aria-hidden="true">→</div>'
-    flow = arrow.join([
-        _node("1 · inputs", "Humans declare", "inputs", "human", [
-            (str(declared_sources), f"source{'s' if declared_sources != 1 else ''}"),
+    return {
+        "request": ([(str(required), "things it depends on")] if required
+                    else [("—", "no question asked")]),
+        "inputs": [
+            (str(declared_sources), plural(declared_sources, "source")),
             (f"{guide_objects}+{guide_fields}", "objects + fields"),
-            (str(domain_laws), f"domain law{'s' if domain_laws != 1 else ''}"),
-        ]),
-        _node("2 · measured", "The data describes itself", "measured", "no model involved", [
-            (str(profiles), "column profiles"),
-            (str(candidates), "candidate overlaps"),
-        ]),
-        _node("3 · proposed", "The AI guesses", "proposed", "AI — proposals only", [
-            (str(claims), f"claim{'s' if claims != 1 else ''}"),
-        ]),
-        '<div class="boundary"><span>no proposal may promote itself</span></div>',
-        _node("4 · tested", "The checks judge", "decided", "check — may promote", [
-            (str(runs), f"check run{'s' if runs != 1 else ''}"),
+            (str(domain_laws), plural(domain_laws, "domain law")),
+        ],
+        "measured": [(str(profiles), "column profiles"),
+                     (str(candidates), "candidate overlaps")],
+        "proposed": [(str(claims), plural(claims, "claim"))],
+        "tested": [
+            (str(runs), plural(runs, "check run")),
             # role x scope, and "settled" not "elected": a slot answered by
             # its object's passing run counts, and nobody elected it
             (f"{elected}/{elections}", "elections settled"),
-        ]),
-        _node("5 · clarification", "Humans decide the rest", "open", "human — may promote", [
-            (str(questions), f"open question{'s' if questions != 1 else ''}"),
-        ]),
-        _node("6 · readiness", "What may be answered", "readiness",
-              "derived — never stored", readiness_counts),
-    ])
+        ],
+        "clarification": [(str(questions), plural(questions, "open question"))],
+        "readiness": readiness,
+    }
+
+
+def _render_process_diagram(counts: dict[str, list[tuple[str, str]]]) -> str:
+    """The whole machine on one line, with this project's numbers in it.
+
+    Stages, their order, their actors and the boundary all come from
+    ``before_we_ai.stages`` — the diagram renders the spine, it does not
+    restate it. ``counts`` supplies this project's live numbers per stage
+    name; a stage with none still draws, because a stage that has produced
+    nothing yet is information.
+    """
+    arrow = '<div class="arrow" aria-hidden="true">→</div>'
+    parts = []
+    for stage in STAGES:
+        if stage.name == BOUNDARY_BEFORE:
+            parts.append(f'<div class="boundary"><span>'
+                         f'{escape(BOUNDARY_TEXT)}</span></div>')
+        parts.append(_node(stage, counts.get(stage.name, [])))
+    flow = arrow.join(parts)
     ghosts = (
         '<div class="ghosts">'
         '<div class="ghost"><strong>M5 · documents</strong> — not built. '

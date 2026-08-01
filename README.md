@@ -45,6 +45,29 @@ tests. Everything domain-specific enters through a declared **domain pack** (a
 curated domain-guide YAML + domain-law check definitions) — new domain, new pack,
 same machine. Model quality affects efficiency, never correctness.
 
+## The machine, in seven stages
+
+A **stage** is a change in what is known, with one actor responsible. Stages 0
+and 6 are the frame — the question bounds the work, the verdict closes it —
+and 1–5 are the middle, which runs bottom-up.
+
+```
+0 request        a human asks           → what must be known, and nothing else
+1 inputs         a human declares       → sources, domain guide, domain laws
+2 measured       nobody, it is counted  → data profiles, candidate overlaps
+3 proposed       the AI guesses         → claims, candidates, check plans
+  ─────────────── no proposal may promote itself ───────────────
+4 tested         the checks judge       → evidence, statuses, elections
+5 clarification  a human answers        → what no check could settle
+6 readiness      derived, never stored  → ready / with limitations / blocked
+```
+
+The line is the structural invariant, not a drawing convention: `Actor.AI`
+cannot author promoting evidence, so nothing the model produces changes what is
+believed. Full table with what each stage reads and produces:
+`docs/architecture.md` → *The stage spine*, held as data in
+`before_we_ai/stages.py`. Running it stage by stage: `validation/README.md`.
+
 ```
 myproject/
   before-ai.yaml # sources, domain guide, model tiers, tolerance overrides

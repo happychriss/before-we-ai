@@ -65,24 +65,40 @@ within which scope, on which evidence, with which consequence if wrong?*
 
 ## The stage spine
 
-One spine, referenced by everything else: a **stage** is a change in what is
-known, with one actor responsible. The readiness report's section number, the
-walkthrough script number, and this document all use it.
+One spine, referenced by everything else. A **stage** is a change in what is
+known, with **one actor responsible**. The readiness report's section numbers,
+the walkthrough's script numbers and this document all use it, and the report's
+process diagram renders it rather than restating it.
 
-| § | stage | actor | produces |
-|---|-------|-------|----------|
-| 0 | Request | human asks, AI structures | `AnswerRequest`, `RequiredKnowledge` |
-| 1 | Inputs | human | sources, domain guide, domain laws |
-| 2 | Measured | nobody — deterministic | data profiles, candidate matrix |
-| 3 | Proposed | AI, proposals only | claims, mapping candidates, check plans |
-| 4 | Tested | check, may promote | evidence, statuses, elections |
-| 5 | Clarification | human, may promote | clarification questions |
-| 6 | Readiness | derived, never stored | ReadinessMap, verdict |
+**One home: `before_we_ai/stages.py`** — the same discipline `glossary.py`
+applies to the vocabulary. The table below is that data, for reading.
+
+| § | stage | who is responsible | reads | produces |
+|---|-------|--------------------|-------|----------|
+| 0 | **Request** — the question, and what it requires | human asks · AI structures | one business question + the domain guide's definitions | AnswerRequest, RequiredKnowledge |
+| 1 | **Inputs** — what a human declared | human | before-ai.yaml, the domain guide file, the check registry | the declared sources, business objects and domain laws |
+| 2 | **Measured** — what the data says about itself | no model involved | the declared sources | data profiles, the candidate matrix |
+| 3 | **Proposed** — what the AI guessed | AI — proposals only | profiles, the candidate matrix, the domain guide | claims, mapping candidates, check plans — all proposed |
+| 4 | **Tested** — what the checks settled | check — may promote | check plans, the data | evidence, derived statuses, scoped elections |
+| 5 | **Clarification** — what only a human can answer | human — may promote | what the checks could not settle | clarification questions, and the answers that close them |
+| 6 | **Readiness** — what may be answered | derived — never stored | the required knowledge, and every claim and status under it | the ReadinessMap: ready / ready_with_limitations / blocked |
 
 Stages **0 and 6 are the frame**; 1–5 are the middle, which runs bottom-up.
-The question opens the frame because it bounds the work; the verdict closes
-it. A stage may need several runs to be inspectable one model call at a time
-— those get letters (`3a`, `3b`, `3c`), never new numbers.
+The question opens the frame because it bounds the work — what the answer does
+not depend on, nobody has to know — and the verdict closes it. That is why the
+walkthrough asks first and rules last, and why the report opens with §0 and
+closes with §6.
+
+The **actor boundary** falls before *tested*: everything to its left
+is a proposal. That is not a drawing convention but the structural invariant
+made visible — `Actor.AI` cannot author promoting evidence, so nothing the
+model produces can change what is believed.
+
+**The script number is the section number.** A validator who ran `3b` knows to
+read section 3. A stage that needs several runs, so one model call can be
+inspected at a time, gets letters (`3a`, `3b`, `3c`) — never new numbers.
+Per-stage detail, and the numbers each one should produce offline, live in
+`validation/README.md`.
 
 **LLM contracts are not a second numbering.** There are five of them in the
 spec's four V-slots, so the contract's *name* is the handle and the V-number

@@ -27,7 +27,10 @@ from before_we_ai.model import (
 )
 from before_we_ai.model.transitions import attach_evidence
 from before_we_ai.model.objects import DataProfile
+from html import escape
+
 from before_we_ai.checks.library import REGISTRY
+from before_we_ai.stages import BOUNDARY_TEXT, STAGES
 from before_we_ai.readiness import link_claim
 from before_we_ai.store import ProjectStore, init_project
 from readiness_report import render_project
@@ -348,10 +351,12 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
 
     html = render_project(root)
 
-    # every stage is a link into the section that produced it
-    for anchor in ("inputs", "measured", "proposed", "decided", "open",
-                   "readiness"):
-        assert f'<div class="node-title"><a href="#{anchor}">' in html
+    # every stage of the spine draws a node linking into its own section —
+    # the diagram renders before_we_ai.stages, it does not restate it
+    for stage in STAGES:
+        assert f'<div class="node-title"><a href="#{stage.name}">' in html
+        assert escape(stage.actor) in html
+    assert BOUNDARY_TEXT in html
     # the counts are read from this project, not written into the template
     laws = sum(1 for spec in REGISTRY.values() if spec.domain)
     assert "<strong>1</strong> source" in html
@@ -362,10 +367,7 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
     assert "<strong>2</strong> check runs" in html
     assert "<strong>1/2</strong> elections settled" in html
     assert "<strong>1</strong> open question" in html
-    # the invariant, drawn: the AI's side of the line proposes and nothing more
-    assert "no proposal may promote itself" in html
-    assert "AI — proposals only" in html
-    assert "check — may promote" in html
+
     # readiness is a real stage now; nothing was asked of this project, and
     # the diagram says that rather than showing a verdict nobody earned
     assert "<strong>—</strong> no question asked" in html

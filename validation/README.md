@@ -18,22 +18,24 @@ first — expect different numbers (the model samples).
 ## The stages
 
 **One spine.** A stage is a change in what is known, with one actor
-responsible. The script number *is* the report section number — run `3b`, read
-section 3. Where a stage needs several runs (so you can inspect one model call
-at a time) it gets letters, not new numbers.
+responsible — *what each stage is, who is responsible, what it reads and
+produces*: `docs/architecture.md` → **The stage spine** (held as data in
+`before_we_ai/stages.py`). This page is the same seven stages as commands, and
+what to look for when you run them.
 
-| § | stage | who | script |
-|---|-------|-----|--------|
-| **0** | **Request** — the question, and what it requires | human asks · AI structures | `0-request.sh` |
-| 1 | **Inputs** — what a human declared | human | `1-inputs.sh` |
-| 2 | **Measured** — what the data says about itself | nobody: deterministic | `2a-measure-scan.sh` · `2b-measure-matrix.sh` |
-| 3 | **Proposed** — what the AI guessed | AI, proposals only | `3a-propose-hypotheses.sh` · `3b-propose-mappings.sh` · `3c-propose-plans.sh` |
-| 4 | **Tested** — what the checks settled | check, may promote | `4-test.sh` |
-| 5 | **Clarification** — what only a human can answer | human, may promote | `5-clarify.sh` |
-| **6** | **Readiness** — what may be answered | derived, never stored | `6-readiness.sh` |
+**The script number is the report section number** — run `3b`, read section 3.
+A stage needing several runs, so you can inspect one model call at a time, gets
+letters rather than new numbers.
 
-Stages 0 and 6 are the **frame**; 1–5 are the middle. The question opens the
-frame because it bounds the work, and the verdict closes it.
+| § | stage | script |
+|---|-------|--------|
+| **0** | Request | `0-request.sh` |
+| 1 | Inputs | `1-inputs.sh` |
+| 2 | Measured | `2a-measure-scan.sh` · `2b-measure-matrix.sh` |
+| 3 | Proposed | `3a-propose-hypotheses.sh` · `3b-propose-mappings.sh` · `3c-propose-plans.sh` |
+| 4 | Tested | `4-test.sh` |
+| 5 | Clarification | `5-clarify.sh` |
+| **6** | Readiness | `6-readiness.sh` |
 
 **Every stage rebuilds the report when it finishes.** Paths are fixed, so
 leave a browser tab open on `validation/data/report/index.html` and reload
