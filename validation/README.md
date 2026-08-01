@@ -259,7 +259,7 @@ Answer the four open mapping questions and the verdict narrows rather than
 clearing: `ready_with_limitations`, with the three business rules named as the
 limitations they are. That is the third outcome — permit, narrow, or block.
 
-**Try this.** Edit `src/tests/fixtures/domain_guide_finance.yaml`, add a fourth
+**Try this.** Edit `src/before_we_ai/domains/finance.yaml`, add a fourth
 rule to the answer type, and re-run `./scripts/report.sh`. The new dependency
 is on the list and named in the verdict, the confirmation you just gave has
 lapsed, and nothing in `data/project/` changed — the list was never stored.

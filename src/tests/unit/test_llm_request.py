@@ -13,6 +13,7 @@ import json
 
 import pytest
 
+from before_we_ai.domains import packaged
 from before_we_ai.llm import load_domain_guide
 from before_we_ai.llm.client import Completion
 from before_we_ai.llm.domain_guide import (
@@ -322,8 +323,7 @@ def test_the_shipped_fixture_matches_the_shipped_guide():
             / "request__corpus.json")
     entry = json.loads(path.read_text(encoding="utf-8"))
     assert entry["recorded_at"] == "hand-authored"
-    guide = load_domain_guide(
-        Path(__file__).resolve().parents[1] / "fixtures" / "domain_guide_finance.yaml")
+    guide = load_domain_guide(packaged("finance"))
     draft = AnswerRequestDraft.model_validate_json(entry["response_text"])
     assert check_classification(draft, guide) is None
     for item in draft.required_knowledge:

@@ -15,12 +15,13 @@ from pathlib import Path
 import yaml
 
 from before_we_ai import scan
+from before_we_ai.domains import packaged
 from before_we_ai.store import init_project
 
 SRC = Path(__file__).resolve().parents[2] / "src"
 CORPUS = SRC / "corpus" / "data"
 FIXTURES = SRC / "tests" / "fixtures" / "llm"
-DOMAIN_GUIDE_FILE = SRC / "tests" / "fixtures" / "domain_guide_finance.yaml"
+DOMAIN_GUIDE_FILE = packaged("finance")
 EXPECTED_VERDICTS = CORPUS / "expected_verdicts.yaml"
 
 SOURCES = [

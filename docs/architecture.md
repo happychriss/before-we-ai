@@ -467,7 +467,7 @@ instead of merely detected.
   items is irreproducible offline (labels shift downstream) — the script
   warns, re-run the refresh in that case. GOTCHA: the corpus generator's
   `generator_spec/roles.yaml` names trap decoys — runtime domain guides must be
-  clean (see `tests/fixtures/domain_guide_finance.yaml`).
+  clean (see `before_we_ai/domains/finance.yaml`).
 - **A refusal is a result — and it is persisted**. Every claim V2
   leaves without a check (`unbindable` / `semantic_only` / `skipped`) gets a
   `DECLARATION` evidence record carrying the verbatim reason
@@ -729,7 +729,7 @@ re-record); piece 3 post-M5; the assembled workflow + quickstart is M8.
    yields only a fingerprint until M5, but becomes *visible* in the list.
 2. **Bundled domain guides.** Ship curated per-domain guides as package data:
    `before_we_ai/domain_guides/finance.yaml` (content = today's test fixture
-   `tests/fixtures/domain_guide_finance.yaml`). Config `domain_guide_file:
+   `before_we_ai/domains/finance.yaml`). Config `domain_guide_file:
    finance` resolves to the bundled guide; an explicit path overrides. Flat
    YAML, no plugin framework (rule of three). Shipped guides must pass the
    same leakage tripwire as prompts.

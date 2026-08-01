@@ -186,14 +186,21 @@ recording (its corpus fixture is hand-authored and marked as such).
 
 ## Open decisions (owner)
 
-- **The finance guide lives in `src/tests/fixtures/` — the wrong home.**
-  It is the domain pack, the product artifact the architecture calls "the
-  critical input", and the report prints that path prominently, telling the
-  reader it is test infrastructure. Decide the real home before a second
-  domain copies the mistake: `src/before_we_ai/domains/` (shipped,
-  importable) or a top-level `domains/` (data, never code — matches the
-  guide's own rule). Mechanical move either way; the fingerprint does not
-  change, the printed path does.
+- **Domain packs live in `before_we_ai/domains/` — decided and done
+  2026-08-01.** The finance guide was in `src/tests/fixtures/`, which told
+  every reader of the report that the product's critical input is test
+  infrastructure. It is now `before_we_ai/domains/finance.yaml`, declared
+  package-data and reached through `domains.packaged("finance")`.
+
+  The deciding argument was not tidiness but **shipping**: the M5 item
+  `discover(root)` promises "bundled domain guides", and nothing bundles out
+  of `tests/fixtures/`. "Data, never code" is a rule about the *format*
+  (YAML, not Python), not the location. A customer's own guide stays a
+  different thing entirely — their data, in their project, via
+  `llm.domain_guide_file`.
+
+  The content did not change, so the fingerprint did not either
+  (`0ac5f94b7b63`) and every walkthrough pin held.
 
 - **`sql`/`result_ref` return with the spec's V4.** They were deleted from
   `AnswerRequest` on the stated grounds that "no milestone produces SQL".

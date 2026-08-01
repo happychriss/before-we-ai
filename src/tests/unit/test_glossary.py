@@ -16,7 +16,7 @@ from before_we_ai.glossary import GERMAN_TERMS, GLOSSARY, PLANNED
 pytestmark = pytest.mark.unit
 
 # Nouns of the one domain the product has a pack for today. They are correct
-# in `checks/library.py`, in `tests/fixtures/domain_guide_finance.yaml` and in
+# in `checks/library.py`, in `before_we_ai/domains/finance.yaml` and in
 # the corpus — and wrong in a definition of a general term.
 FINANCE_NOUNS = (
     "journal", "ledger", "subledger", "posting", "debit", "credit",

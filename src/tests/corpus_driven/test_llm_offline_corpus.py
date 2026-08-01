@@ -20,6 +20,7 @@ import pytest
 import yaml
 
 from before_we_ai import scan
+from before_we_ai.domains import packaged
 from before_we_ai.engine import run_ready
 from before_we_ai.llm import ask, plan_checks, hypothesize, load_domain_guide, propose_mappings, resolve_mappings
 from before_we_ai.llm.domain_guide import settled_slots
@@ -53,7 +54,7 @@ pytestmark = pytest.mark.acceptance
 
 CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
-DOMAIN_GUIDE_FILE = Path(__file__).resolve().parents[1] / "fixtures" / "domain_guide_finance.yaml"
+DOMAIN_GUIDE_FILE = packaged("finance")
 
 SOURCES = [
     {"name": "de_erp", "kind": "duckdb", "location": str(CORPUS / "DE" / "erp.duckdb")},

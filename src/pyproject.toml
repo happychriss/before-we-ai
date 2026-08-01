@@ -33,6 +33,7 @@ packages = [
     "before_we_ai.sources",
     "before_we_ai.profile",
     "before_we_ai.checks",
+    "before_we_ai.domains",
     "before_we_ai.engine",
     "before_we_ai.llm",
     "before_we_ai.readiness",
@@ -41,6 +42,7 @@ packages = [
 
 [tool.setuptools.package-data]
 "before_we_ai.checks" = ["templates/*.sql.j2"]
+"before_we_ai.domains" = ["*.yaml"]
 "readiness_report" = [
     "templates/*.html.j2",
     "static/*.css",
