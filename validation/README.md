@@ -12,7 +12,7 @@ flow, one stage per script.
 Default mode is **offline**: recorded real answers (Opus 4.8 / Sonnet 5) are
 replayed through the full validation path, so every run is deterministic and
 needs no API key.
-For live calls run `0-request.sh --online` and `export ANTHROPIC_API_KEY=...`
+For live calls run `0-inputs.sh --online` and `export ANTHROPIC_API_KEY=...`
 first — expect different numbers (the model samples).
 
 ## The stages
@@ -29,8 +29,8 @@ letters rather than new numbers.
 
 | § | stage | script |
 |---|-------|--------|
-| **0** | Request | `0-request.sh` |
-| 1 | Inputs | `1-inputs.sh` |
+| 0 | Inputs | `0-inputs.sh` |
+| **1** | Request | `1-request.sh` |
 | 2 | Measured | `2a-measure-scan.sh` · `2b-measure-matrix.sh` |
 | 3 | Proposed | `3a-propose-hypotheses.sh` · `3b-propose-mappings.sh` · `3c-propose-plans.sh` |
 | 4 | Tested | `4-test.sh` |
@@ -58,13 +58,35 @@ is idempotent. `3c` refuses to run twice: the offline replay answers are keyed
 to the first run's claim labels, so a re-bind would misapply them — run
 `reset.sh` and walk through again instead.
 
-### Stage 0 — the request
+### Stage 0 — the declared inputs
+
+The precondition, not part of the run: a source list and a domain pack are
+chosen once, and many questions are asked against them. This stage creates the
+project and writes those declarations, then shows all three before any data is
+touched: the **source list** (a human
+writes it — the product never discovers files), the **domain guide**, and the
+**domain laws** shipped for that domain.
+
+It is the only stage that can fail before measurement: the guide's coherence
+lint runs at load, so a guide that contradicts itself — a field declaring a
+law, a slot its object's law does not have — is caught here rather than
+surfacing later as a strange question.
+
+Good (offline pins): 7 sources; 3 business objects and 5 fields, lint passed;
+3 domain laws of 13 templates, the other 10 generic. The step also names the
+corpus files *not* listed, so their absence is a visible decision rather than
+an oversight.
+
+### Stage 1 — the request
 
 The frame opens. A human asks a business question; the request contract turns
 it into an `AnswerRequest` (what output is wanted, over which scope) and a
 draft of the **required knowledge** — the objects, fields and rules the answer
-depends on. This stage also creates the project, because the question comes
-before anything is measured.
+depends on.
+
+It comes *after* the declared inputs for a hard reason: the contract is
+decomposed against the domain guide, and you cannot decompose a question
+against a vocabulary nobody has chosen yet.
 
 The contract reads the question and the domain vocabulary — *definitions only,
 no profiles*. Whether the data can serve the question is the rest of the
@@ -79,23 +101,6 @@ Look at what is **not** on the list: `subledger_ar`. Open receivables do not
 enter a profit and loss, so this question does not require them. That absence
 is the question bounding discovery, made visible — and it is the whole reason
 the frame exists.
-
-### Stage 1 — the declared inputs
-
-Everything domain-specific enters through three declared inputs, and this
-stage shows all three before any data is touched: the **source list** (a human
-writes it — the product never discovers files), the **domain guide**, and the
-**domain laws** shipped for that domain.
-
-It is the only stage that can fail before measurement: the guide's coherence
-lint runs at load, so a guide that contradicts itself — a field declaring a
-law, a slot its object's law does not have — is caught here rather than
-surfacing later as a strange question.
-
-Good (offline pins): 7 sources; 3 business objects and 5 fields, lint passed;
-3 domain laws of 13 templates, the other 10 generic. The step also names the
-corpus files *not* listed, so their absence is a visible decision rather than
-an oversight.
 
 ### Stage 2a — scan
 

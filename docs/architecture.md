@@ -75,19 +75,23 @@ applies to the vocabulary. The table below is that data, for reading.
 
 | § | stage | who is responsible | reads | produces |
 |---|-------|--------------------|-------|----------|
-| 0 | **Request** — the question, and what it requires | human asks · AI structures | one business question + the domain guide's definitions | AnswerRequest, RequiredKnowledge |
-| 1 | **Inputs** — what a human declared | human | before-ai.yaml, the domain guide file, the check registry | the declared sources, business objects and domain laws |
+| 0 | **Inputs** — what a human declared | human | before-ai.yaml, the domain guide file, the check registry | the declared sources, business objects and domain laws |
+| 1 | **Request** — the question, and what it requires | human asks · AI structures | one business question + the domain guide's definitions | AnswerRequest, RequiredKnowledge |
 | 2 | **Measured** — what the data says about itself | no model involved | the declared sources | data profiles, the candidate matrix |
 | 3 | **Proposed** — what the AI guessed | AI — proposals only | profiles, the candidate matrix, the domain guide | claims, mapping candidates, check plans — all proposed |
 | 4 | **Tested** — what the checks settled | check — may promote | check plans, the data | evidence, derived statuses, scoped elections |
 | 5 | **Clarification** — what only a human can answer | human — may promote | what the checks could not settle | clarification questions, and the answers that close them |
 | 6 | **Readiness** — what may be answered | derived — never stored | the required knowledge, and every claim and status under it | the ReadinessMap: ready / ready_with_limitations / blocked |
 
-Stages **0 and 6 are the frame**; 1–5 are the middle, which runs bottom-up.
-The question opens the frame because it bounds the work — what the answer does
-not depend on, nobody has to know — and the verdict closes it. That is why the
-walkthrough asks first and rules last, and why the report opens with §0 and
-closes with §6.
+**Stage 0 is the precondition, not part of the run.** A source list and a
+domain pack are chosen once, and many questions are asked against them. It
+comes first for a hard reason, not a stylistic one: the request contract reads
+the domain guide, so a question cannot be decomposed against a vocabulary
+nobody has declared yet.
+
+**Stages 1 and 6 are the frame** around the middle (2–5, which runs
+bottom-up). The question opens it because it bounds the work — what the answer
+does not depend on, nobody has to know — and the verdict closes it.
 
 The **actor boundary** falls before *tested*: everything to its left
 is a proposal. That is not a drawing convention but the structural invariant

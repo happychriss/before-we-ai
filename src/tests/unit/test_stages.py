@@ -27,8 +27,12 @@ def test_every_stage_says_who_is_responsible_and_what_it_moves():
         assert s.actor and s.reads and s.produces and s.heading
 
 
-def test_the_frame_is_the_first_and_last_stage():
-    assert FRAME == (STAGES[0].name, STAGES[-1].name)
+def test_the_frame_opens_at_the_question_and_closes_at_the_verdict():
+    """Stage 0 is outside it: declared inputs are the precondition every
+    question shares, and the request contract reads the domain guide — so
+    a question cannot come before the vocabulary it is decomposed against."""
+    assert FRAME == (STAGES[1].name, STAGES[-1].name)
+    assert STAGES[0].name == "inputs"
 
 
 def test_the_boundary_falls_where_authorship_shifts():

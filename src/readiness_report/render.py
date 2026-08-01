@@ -607,8 +607,8 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
       <p class="muted">{escape(str(root_path))}</p>
       <div class="section-links">
         <a href="#process">Process</a>
-        <a href="#request">0 Request</a>
-        <a href="#inputs">1 Inputs</a>
+        <a href="#inputs">0 Inputs</a>
+        <a href="#request">1 Request</a>
         <a href="#measured">2 Measured</a>
         <a href="#proposed">3 Proposed</a>
         <a href="#tested">4 Tested</a>
@@ -645,16 +645,18 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         {diagram}
         <p class="muted">{escape(READING_GUIDE)}</p>
       </section>
+      <section class="panel" id="inputs">
+        <h2>0 · Inputs — what a human declared</h2>
+        {_render_domain_pack(root_path, config)}
+      </section>
       <section class="panel" id="request">
-        <h2>0 · Request — the question, and what it requires</h2>
+        <h2>1 · Request — the question, and what it requires</h2>
         <p class="muted">The frame opens here. The question bounds the work: it
         defines what must be known, and nothing else has to be. Section 6 closes
-        the frame with the verdict those dependencies earn.</p>
+        the frame with the verdict those dependencies earn. It comes after the
+        declared inputs because it is decomposed against the domain guide —
+        a vocabulary someone had to choose first.</p>
         {_render_request(readiness_maps, store_rel)}
-      </section>
-      <section class="panel" id="inputs">
-        <h2>1 · Inputs — what a human declared</h2>
-        {_render_domain_pack(root_path, config)}
       </section>
       <section class="panel" id="measured">
         <h2>2 · Measured — what the data says about itself ({len(sources)} sources)</h2>

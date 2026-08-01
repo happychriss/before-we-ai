@@ -7,9 +7,14 @@ diagram and section headings, the validation walkthrough's scripts, and
 same one `glossary.py` applies to the vocabulary — state the fact once, as
 data, and let every surface render it.
 
-Stages **0 and 6 are the frame**; 1–5 are the middle, which runs bottom-up.
-The question opens the frame because it bounds the work — what the answer
-does not depend on, nobody has to know — and the verdict closes it.
+**Stage 0 is the precondition, not part of the run.** A domain pack and a
+source list are chosen once and many questions are asked against them — and
+the request contract *reads* the domain guide, so a question cannot be
+decomposed against a vocabulary nobody has declared yet.
+
+**Stages 1 and 6 are the frame** around the middle (2–5, which runs
+bottom-up). The question opens it because it bounds the work — what the
+answer does not depend on, nobody has to know — and the verdict closes it.
 
 The **actor boundary** falls between *proposed* and *tested*. That is not a
 drawing convention: `Actor.AI` structurally cannot author promoting
@@ -37,14 +42,14 @@ class Stage:
 
 
 STAGES: tuple[Stage, ...] = (
-    Stage("0", "request", "the question, and what it requires",
-          "A human asks", "human asks · AI structures",
-          "one business question + the domain guide's definitions",
-          "AnswerRequest, RequiredKnowledge"),
-    Stage("1", "inputs", "what a human declared",
+    Stage("0", "inputs", "what a human declared",
           "Humans declare", "human",
           "before-ai.yaml, the domain guide file, the check registry",
           "the declared sources, business objects and domain laws"),
+    Stage("1", "request", "the question, and what it requires",
+          "A human asks", "human asks · AI structures",
+          "one business question + the domain guide's definitions",
+          "AnswerRequest, RequiredKnowledge"),
     Stage("2", "measured", "what the data says about itself",
           "The data describes itself", "no model involved",
           "the declared sources",
@@ -74,5 +79,6 @@ BY_NAME = {stage.name: stage for stage in STAGES}
 BOUNDARY_BEFORE = "tested"
 BOUNDARY_TEXT = "no proposal may promote itself"
 
-# Stages that frame the middle rather than belonging to it.
+# Stages that frame the middle rather than belonging to it. Stage 0 is
+# outside the frame entirely: it is the precondition every question shares.
 FRAME = ("request", "readiness")

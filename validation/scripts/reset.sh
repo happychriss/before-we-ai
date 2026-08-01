@@ -2,4 +2,4 @@
 set -euo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/_env.sh"
 rm -rf "$BW_REPO/validation/data"
-echo "removed $BW_REPO/validation/data — start fresh with 0-request.sh"
+echo "removed $BW_REPO/validation/data — start fresh with 0-inputs.sh"

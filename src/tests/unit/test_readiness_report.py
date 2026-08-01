@@ -643,7 +643,7 @@ def test_domain_pack_panel_lists_the_three_declared_inputs(tmp_path):
 
     html = render_project(root)
 
-    assert "1 · Inputs — what a human declared" in html
+    assert "0 · Inputs — what a human declared" in html
     # 1 — the declared sources
     assert "de_erp" in html and "/data/DE/erp.duckdb" in html
     # 2 — the domain guide: file, domain, shape and names
@@ -793,7 +793,7 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
     # the ghost is gone; the stage is real and carries live numbers
     assert "M6 · question → readiness" not in html
     assert "<strong>2/3</strong> dependencies supported" in html
-    assert "0 · Request — the question, and what it requires" in html
+    assert "1 · Request — the question, and what it requires" in html
     assert "6 · Readiness — what may be answered" in html
 
     # the human's question, verbatim — and the AI's restatement attributed to

@@ -75,7 +75,7 @@ LLM_INPUT_NOTE = (
 
 def need_project() -> ProjectStore:
     if not PROJECT.is_dir():
-        sys.exit("no walkthrough project yet — run 0-request.sh first")
+        sys.exit("no walkthrough project yet — run 0-inputs.sh first")
     return ProjectStore(PROJECT)
 
 
@@ -438,20 +438,16 @@ def stage_clarify(args) -> None:
 
 
 def stage_request(args) -> None:
-    """Stage 0 — the question, and what it requires.
+    """Stage 1 — the question, and what it requires.
 
-    The frame opens here. In a driven run this is genuinely first: the
-    question bounds discovery, so what it does not depend on nobody has to
-    know. Stage 6 closes the frame with the verdict.
+    The frame opens here: the question bounds discovery, so what it does not
+    depend on nobody has to know. Stage 6 closes the frame with the verdict.
+
+    It comes *after* the declared inputs and not before, because the request
+    contract reads the domain guide — a question cannot be decomposed
+    against a vocabulary nobody has chosen yet.
     """
-    if PROJECT.exists():
-        sys.exit(f"{PROJECT} already exists — run reset.sh for a clean start")
-    mode = ("ONLINE — model stages will make real calls (needs "
-            "ANTHROPIC_API_KEY)" if args.online else
-            "OFFLINE — model stages will replay the recorded real answers")
-    print(f"creating walkthrough project: {PROJECT}\n  {mode}")
-    build_corpus_project(PROJECT, offline=not args.online, scan_now=False)
-    store = ProjectStore(PROJECT)
+    store = need_project()
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
     inputs(
         f"the business question, as a human asked it: {DEMO_QUESTION!r}",
@@ -484,17 +480,28 @@ def stage_request(args) -> None:
     for item in report.required.items:
         print(f"  {item.kind.value:7s} {item.ref():24s} {clip(item.why, 60)}")
     print(f"\nfull detail: {PROJECT}/answers/  (and section 0 of the report)")
-    collect("1-inputs.sh")
+    collect("2a-measure-scan.sh")
 
 
 def stage_inputs(args) -> None:
-    """Stage 1 — what a human declared, and whether it holds together.
+    """Stage 0 — what a human declared, and whether it holds together.
 
-    The only stage that can fail before any data is touched: the domain
-    guide's coherence lint runs at load, so a guide that contradicts itself
-    is caught here rather than surfacing as a strange question later.
+    The precondition, not part of the run: a source list and a domain pack
+    are chosen once, and many questions are asked against them. This stage
+    creates the project and writes those declarations.
+
+    It is also the only stage that can fail before any data is touched — the
+    domain guide's coherence lint runs at load, so a guide that contradicts
+    itself is caught here rather than surfacing as a strange question later.
     """
-    need_project()
+    if PROJECT.exists():
+        sys.exit(f"{PROJECT} already exists — run reset.sh for a clean start")
+    mode = ("ONLINE — model stages will make real calls (needs "
+            "ANTHROPIC_API_KEY)" if args.online else
+            "OFFLINE — model stages will replay the recorded real answers")
+    print(f"creating walkthrough project: {PROJECT}\n  {mode}")
+    build_corpus_project(PROJECT, offline=not args.online, scan_now=False)
+
     from _corpus import SOURCES
     inputs(
         f"source list ({len(SOURCES)} sources), declared in "
@@ -537,7 +544,7 @@ def stage_inputs(args) -> None:
         print(f"  {name:22s} [{spec.domain}] {clip(spec.tests, 60)}")
     print("\n  The other templates are generic data checks — they carry no "
           "domain knowledge.")
-    collect("2a-measure-scan.sh")
+    collect("1-request.sh")
 
 
 def stage_readiness(args) -> None:
@@ -551,7 +558,7 @@ def stage_readiness(args) -> None:
     request = next(iter(sorted(store.requests.values(),
                                key=lambda r: r.created_at)), None)
     if request is None:
-        sys.exit("no request in this project — run 0-request.sh first")
+        sys.exit("no request in this project — run 1-request.sh first")
     inputs(
         f"the request from stage 0: {PROJECT.name}/answers/",
         "the claims, evidence and statuses stages 2-5 produced",

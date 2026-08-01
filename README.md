@@ -47,13 +47,14 @@ same machine. Model quality affects efficiency, never correctness.
 
 ## The machine, in seven stages
 
-A **stage** is a change in what is known, with one actor responsible. Stages 0
-and 6 are the frame — the question bounds the work, the verdict closes it —
-and 1–5 are the middle, which runs bottom-up.
+A **stage** is a change in what is known, with one actor responsible. Stage 0
+is the precondition — a source list and a domain pack, chosen once. Stages 1
+and 6 are the frame around the middle: the question bounds the work, the
+verdict closes it.
 
 ```
-0 request        a human asks           → what must be known, and nothing else
-1 inputs         a human declares       → sources, domain guide, domain laws
+0 inputs         a human declares       → sources, domain guide, domain laws
+1 request        a human asks           → what must be known, and nothing else
 2 measured       nobody, it is counted  → data profiles, candidate overlaps
 3 proposed       the AI guesses         → claims, candidates, check plans
   ─────────────── no proposal may promote itself ───────────────
