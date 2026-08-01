@@ -9,13 +9,19 @@ from typing import Iterable
 import yaml
 
 from before_we_ai.glossary import GLOSSARY
-from before_we_ai.llm.domain_guide import load_domain_guide, scopes_of, settled_slots
+from before_we_ai.llm.domain_guide import (
+    DomainGuide,
+    load_domain_guide,
+    scopes_of,
+    settled_slots,
+)
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.core import (
     Actor,
     ClaimStatus,
     EvidenceType,
     CheckVerdict,
+    Provenance,
     is_answered,
     resolve_status,
     settling_claims,
@@ -32,7 +38,7 @@ from before_we_ai.core.objects import (
 )
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.stages import BOUNDARY_BEFORE, BOUNDARY_TEXT, STAGES
-from before_we_ai.readiness import Readiness, evaluate_request
+from before_we_ai.readiness import Readiness, evaluate_request, guide_label
 from before_we_ai.store import ProjectStore, check_integrity
 from before_we_ai.store.layout import CONFIG_FILE
 
@@ -206,7 +212,7 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
     answered_slots = _settled_slot_columns(root_path, config, store)
     guide_fields = len(guide.owner)
     elected, elections = _election_tally(facts, answered_slots)
-    readiness_maps = _readiness_maps(store, root_path, config)
+    readiness_guide, readiness_maps = _readiness_maps(store, root_path, config)
     diagram = _render_process_diagram(_stage_counts(
         readiness=_readiness_counts(readiness_maps),
         required=sum(len(m.items) for m in readiness_maps),
@@ -656,7 +662,7 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         the frame with the verdict those dependencies earn. It comes after the
         declared inputs because it is decomposed against the domain guide —
         a vocabulary someone had to choose first.</p>
-        {_render_request(readiness_maps, store_rel)}
+        {_render_request(readiness_maps, store_rel, readiness_guide)}
       </section>
       <section class="panel" id="measured">
         <h2>2 · Measured — what the data says about itself ({len(sources)} sources)</h2>
@@ -1378,26 +1384,28 @@ _VERDICT_HEADLINE = {
 }
 
 
-def _readiness_maps(store: ProjectStore, root: Path, config: dict) -> list:
-    """Every asked question, judged. Empty when none has been asked.
+def _readiness_maps(store: ProjectStore, root: Path,
+                    config: dict) -> tuple[DomainGuide | None, list]:
+    """Every asked question, judged, and the guide they were judged against.
 
     Derived on this render, never read from a file — a stored verdict could
     drift away from the evidence beneath it, and a drifted verdict is worse
-    than none.
+    than none. The guide comes back with them because the report names which
+    one a dependency list was expanded from.
     """
     path = _guide_path(root, config)
     if path is None or not store.requests:
-        return []
+        return None, []
     try:
         guide = load_domain_guide(path)
     except (OSError, ValueError):
-        return []
+        return None, []
     maps = []
     for request in sorted(store.requests.values(), key=lambda r: r.created_at):
         result = evaluate_request(store, guide, request.id)
         if result is not None:
             maps.append(result)
-    return maps
+    return guide, maps
 
 
 def _readiness_counts(maps: list) -> list[tuple[str, str]]:
@@ -1424,7 +1432,7 @@ _NOTHING_ASKED = (
 )
 
 
-def _render_request(maps: list, rel: str) -> str:
+def _render_request(maps: list, rel: str, guide: DomainGuide) -> str:
     """Stage 0 — what was asked, and what the answer therefore depends on.
 
     Separate from the verdict on purpose: this is the frame opening. A
@@ -1433,16 +1441,65 @@ def _render_request(maps: list, rel: str) -> str:
     """
     if not maps:
         return _NOTHING_ASKED
-    return "".join(_render_request_card(result, rel) for result in maps)
+    return "".join(_render_request_card(result, rel, guide) for result in maps)
 
 
-def _render_request_card(result, rel: str) -> str:
+# Where each item on the list came from. The reader needs this before they
+# can judge the list: only a reviewed answer type was ever read as a whole.
+_PROVENANCE_LABEL = {
+    Provenance.CONTRACT: "from the answer type",
+    Provenance.PROPOSED: "drafted for this question",
+    Provenance.ADDED: "added by a human",
+}
+
+# Whose sentence the item's `why` is. The three-voices rule turns on this:
+# a `why` expanded from the guide was written by whoever reviewed the guide,
+# and attributing it to the AI would put a human's words in the model's
+# mouth — the mirror image of the mistake the rule exists to prevent.
+_WHY_CITE = {
+    Provenance.CONTRACT: "— the domain guide, on why an answer of this kind "
+                         "depends on it",
+    Provenance.PROPOSED: "— the AI, on why the answer depends on this",
+    Provenance.ADDED: "— the human who added it",
+}
+
+
+def _render_treated_as(result, guide: DomainGuide) -> str:
+    """The classification, in the derived voice — the line the cap asks about.
+
+    It headlines the request card because it is the single claim everything
+    below it rests on: name the wrong family and the whole list is wrong,
+    quietly. The AI's own words for the question stay quoted underneath,
+    subordinate to this, as the three-voices rule requires.
+    """
+    if result.answer_type is None:
+        return (
+            "<p class='derived'><strong>Treated as: no declared answer "
+            "type.</strong> The list below was drafted for this question "
+            "alone — nobody has reviewed it as a whole.</p>"
+        )
+    state = ("confirmed by a human" if result.confirmed
+             else "confirmed against an earlier guide" if result.review.lapsed
+             else "not confirmed by anyone yet")
+    return (
+        f"<p class='derived'><strong>Treated as: "
+        f"{escape(result.answer_type)}</strong> "
+        f"<span class='muted'>(guide {escape(guide_label(guide))})</span> — "
+        f"{escape(state)}.</p>"
+    )
+
+
+def _render_request_card(result, rel: str, guide: DomainGuide) -> str:
     scope = result.request.scope
     items = "".join(
-        f"<li><code>{escape(i.ref)}</code> "
-        f"<span class='muted'>{escape(i.item.kind.value)}</span>"
+        f"<li class='{'waived' if i.item.waived else ''}'>"
+        f"<code>{escape(i.ref)}</code> "
+        f"<span class='muted'>{escape(i.item.kind.value)} · "
+        f"{escape(_PROVENANCE_LABEL[i.item.provenance])}</span>"
+        + (f"<p class='fine'>Waived: {escape(i.item.waived_because)}</p>"
+           if i.item.waived else "")
         + (f"<blockquote class='ai-said'>{escape(i.item.why)}"
-           "<cite>— the AI, on why the answer depends on this</cite>"
+           f"<cite>{escape(_WHY_CITE[i.item.provenance])}</cite>"
            "</blockquote>" if i.item.why else "")
         + "</li>"
         for i in result.items
@@ -1451,6 +1508,7 @@ def _render_request_card(result, rel: str) -> str:
         f"<div class='ready-map' id='request-{escape(result.request.id)}'>"
         f"<blockquote class='quote'>{escape(result.request.question)}"
         "<cite>— the business question, as it was asked</cite></blockquote>"
+        f"{_render_treated_as(result, guide)}"
         f"<blockquote class='ai-said'>{escape(result.request.requested_output)}"
         "<cite>— the AI, on what the answer must deliver</cite></blockquote>"
         + (f"<p class='fine'>Asked for {escape(scope.label())}.</p>"
@@ -1459,7 +1517,7 @@ def _render_request_card(result, rel: str) -> str:
         + f"<h4 class='fine'>What this answer depends on "
           f"({len(result.items)}) — and nothing else has to be known</h4>"
         f"<ul class='picks'>{items}</ul>"
-        f"{_provenance(rel, 'answers', result.request.id, 'asked by a human', 'structured by the request contract')}"
+        f"{_provenance(rel, 'answers', result.request.id, 'asked by a human', 'expanded on this render')}"
         "</div>"
     )
 

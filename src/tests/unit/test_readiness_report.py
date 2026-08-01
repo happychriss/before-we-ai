@@ -32,7 +32,7 @@ from html import escape
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.stages import BOUNDARY_TEXT, STAGES
 from before_we_ai.llm.domain_guide import load_domain_guide
-from before_we_ai.readiness import link_claim
+from before_we_ai.readiness import confirm_classification, link_claim
 from before_we_ai.store import ProjectStore, init_project
 from readiness_report import render_project
 
@@ -821,6 +821,77 @@ def test_readiness_is_a_real_stage_and_the_verdict_names_what_it_rests_on(tmp_pa
     # states what became of it. The derived line is never below the AI's.
     assert html.index("the figures are summed from it") < \
         html.index("Satisfied because its own claim")
+
+
+def test_an_unreviewed_dependency_list_says_so_where_it_is_listed(tmp_path):
+    """The reader has to know what kind of list they are reading before they
+    read it, so the classification headlines the request card — and when
+    there is none, the card says the list was written for this question."""
+    root, _, _ = _p_and_l_project(tmp_path, "unreviewed")
+
+    html = render_project(root)
+
+    assert "<strong>Treated as: no declared answer type.</strong>" in html
+    assert "nobody has reviewed it as a whole" in html
+    assert "drafted for this question" in html  # per-item provenance
+    # and the verdict carries it too, so neither surface can be read alone
+    assert "No answer type of the domain guide covers this question" in html
+
+
+def test_a_classified_list_names_its_answer_type_and_its_guide(tmp_path):
+    root, store, guide_path = _typed_project(tmp_path)
+
+    html = render_project(root)
+
+    fingerprint = load_domain_guide(guide_path).fingerprint[:12]
+    assert f"<strong>Treated as: profit_and_loss</strong>" in html
+    assert f"(guide {fingerprint})" in html
+    assert "not confirmed by anyone yet" in html
+    assert "from the answer type" in html
+    # the guide's reason for the dependency is the guide's, not the model's
+    assert "— the domain guide, on why an answer of this kind depends on it" \
+        in html
+
+
+def test_confirming_the_list_is_visible_on_the_page(tmp_path):
+    root, store, guide_path = _typed_project(tmp_path)
+    confirm_classification(store, load_domain_guide(guide_path),
+                           next(iter(store.requests)))
+
+    html = render_project(root)
+
+    assert "confirmed by a human" in html
+    assert "nobody has confirmed" not in html
+
+
+def _typed_project(tmp_path):
+    """A project whose question was classified to a declared answer type."""
+    root = init_project(tmp_path / "typed")
+    store = ProjectStore(root)
+    guide_path = tmp_path / "typed-guide.yaml"
+    guide_path.write_text(
+        "domain: finance\n"
+        "objects:\n"
+        "  journal:\n"
+        "    decided_by: balance\n"
+        "    definition: The transactional ledger of record.\n"
+        "answer_types:\n"
+        "  profit_and_loss:\n"
+        "    definition: The result of a period.\n"
+        "    requires:\n"
+        "      - object: journal\n"
+        "        why: the figures are summed from it\n",
+        encoding="utf-8",
+    )
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8")) or {}
+    config["llm"] = {"domain_guide_file": str(guide_path)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    store.save_request(AnswerRequest(
+        question="Can these files reliably produce actual P&L?",
+        requested_output="P&L per entity per month",
+        answer_type="profit_and_loss",
+    ))
+    return root, store, guide_path
 
 
 def test_a_blocked_answer_says_so_before_it_says_anything_else(tmp_path):
