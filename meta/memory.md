@@ -53,36 +53,32 @@
    documents: `decodes` account ranges, the AR control account, and
    opening-balances coverage. Read them in the readiness report.
 
-   One design question to settle at the start: **nothing confirms V4's
-   output, and two of its inferences bound the verdict.** One mirror loop
-   covers both — the spec already demands exactly this for `tell` statements
-   (reflect the interpretation back, including explicit scope; only the
-   human's confirmation promotes), and M5 builds that machinery anyway.
+3. **The answer-type slice** (all six design decisions taken 2026-08-01;
+   the design is `docs/architecture.md` → "Answer types — deriving the
+   dependency list", the option analysis is
+   `docs/draft-thoughts/dependency-contract-proposal-for-review.md`).
+   This is the fix for the two inferences of V4's that nothing confirms:
+   under-listing (the model invents the dependency list; what it forgets is
+   silent) becomes classification against a reviewed `answer_types:` guide
+   section, and the scope-from-prose inference ("P&L for Germany" — scope,
+   or break-out?) is reflected back in the same visible, confirmable
+   *"treated as: … (guide vN)"* sentence.
 
-   1. **The required-knowledge list is an unreviewed draft.** `evaluate()`
-      walks `required.items` and nothing else, and no field records whether a
-      human has ever read the list. Over-listing is handled (`waive_item`);
-      **under-listing is not, and it is silent** — a dependency the model
-      never listed appears nowhere, so the verdict is too *generous* and the
-      headline guarantee ("blocks when a material dependency remains
-      unsupported") never considers it material. Same shape as the domain
-      guide's known weakness: wrong by omission is invisible, wrong by
-      commission is catchable.
-   2. **The request's scope is inferred from prose.** "P&L for Germany" —
-      scope, or break-out? That inference decides which elections run, which
-      cards are drafted and which claims count, so a wrong scope yields a
-      confident, fully-reasoned, wrong verdict.
+   Build list: `answer_types:` in the guide schema + loader validation
+   (unknown concept / cycle = hard error) · deterministic
+   `expand(answer_type, guide)` → **derived** `RequiredKnowledge` (persist
+   only human acts, each against a guide version) · V4 reshaped to classify
+   + propose deltas, provenance-labelled apart · unmatched question →
+   labelled free-draft fallback capped at `ready_with_limitations`,
+   confirmation via the existing clarification machinery lifts the cap ·
+   report shows the classification and per-item provenance · one finance
+   answer type in the demo guide · tests for determinism, hard failure,
+   fallback cap, delta labelling.
 
-   Proposed shape: `RequiredKnowledge` gains a confirmed flag; an
-   unconfirmed list caps the verdict at `ready_with_limitations`, the named
-   limitation being the list itself. Aggressive — every project starts "with
-   limitations" — but true, and it is the only thing that gives a reader a
-   reason to read the list. **Owner decision: this shape, and whether it
-   waits for M5.**
-
-   Not in scope: the `why` on each item. It is the model's reason for
-   listing, attributed and subordinate, and it cannot move a verdict — a
-   wrong `why` makes pruning easier, not harder.
+   **Bundled in: the rename off the spec's V4 slot** (see Open decisions) —
+   the schema changes anyway, so it is one fixture re-record, not two.
+   Timing (owner to confirm): after the validation run, either as its own
+   batch or riding the M5 kickoff re-record.
 
 ### M5 kickoff batch
 
@@ -132,10 +128,11 @@ recording (its corpus fixture is hand-authored and marked as such).
   four slots.
 
   Rename `llm/v4_request.py`, `CONTRACT = "v4_request"`, the fixture filename
-  and the `DEFAULT_MODELS` key to **`request`**, leaving V4 free. Mechanical:
-  no prompt bytes move, and fixture lookup is by contract+scenario, so only
-  the filename changes. Do it before the M5 live recording, or the recorded
-  fixture lands under the wrong name too.
+  and the `DEFAULT_MODELS` key to **`request`**, leaving V4 free. **Bundled
+  into the answer-type slice** (Next, item 3): that slice reshapes the same
+  contract's schema anyway, so the rename and the reshape share one fixture
+  re-record. Must land before the M5 live recording either way, or the
+  recorded fixture lands under the wrong name too.
 
   Related and already acted on: `sql`/`result_ref` were deleted from
   `AnswerRequest` on the stated grounds that "no milestone produces SQL".

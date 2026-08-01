@@ -77,7 +77,12 @@ GLOSSARY: list[tuple[str, str]] = [
 # Reserved for a milestone that has not shipped: the words exist in one place
 # before the objects do. Emptied when M6 landed; the next reservation goes
 # here. See docs/before-ai-concept.md.
-PLANNED: list[tuple[str, str]] = []
+PLANNED: list[tuple[str, str]] = [
+    ("answer type", "a reviewed guide entry naming the dependencies one "
+     "family of questions carries; the model only classifies a question to "
+     "one, and the engine expands the dependency list deterministically — "
+     "decided 2026-08-01, not built (architecture.md → 'Answer types')"),
+]
 
 # German terms of art from the owner's spec (docs/spec/, German by design)
 # mapped to the canonical English vocabulary.

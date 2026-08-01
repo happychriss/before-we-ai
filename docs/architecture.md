@@ -798,6 +798,8 @@ ontology. Visible in the walkthrough: the P&L question does not require
 - **`RequiredKnowledge`** — `KnowledgeItem`s (`object` / `field` / `rule`),
   each with a `why` a human can prune on. Drafted by V4 and persisted,
   because the pruning is a human decision rather than something re-derivable.
+  (Decided 2026-08-01, not built: it becomes a *derived* structure once
+  answer types land — see **Answer types** below.)
 
   **Only objects and fields carry a scope.** For them it is a *selector*:
   which table, which column — DE's ledger versus US's. A rule has nothing to
@@ -846,6 +848,56 @@ one — which makes it a mis-kinded object or field, and the error says so.
 The corpus fixture (`v4_request__corpus.json`) is **hand-authored** and marked
 as such, per the rule in `llm/stub.py`; `refresh_fixtures.py` records V4 first,
 so the next online run replaces it.
+
+### Answer types — deriving the dependency list (decided 2026-08-01, not built)
+
+The verdict is only as good as the required-knowledge list, and today the
+model drafts that list freely. Over-listing is visible (`waive_item`);
+**under-listing is silent** — a dependency the model never listed appears
+nowhere, so nobody can test, waive or clarify it, and the verdict comes out
+too generous. The fix reduces the model's claim from *inventing the list* to
+*classifying the question*, and it is decided in six parts (option analysis:
+`docs/draft-thoughts/dependency-contract-proposal-for-review.md`):
+
+1. **The guide gains `answer_types:`** — a reviewed dependency list per
+   question family, living *inside* the domain guide, not beside it. One
+   reviewed artifact means version skew is structurally impossible, and the
+   loader validates that every named concept exists in the same document.
+   The engine consumes the loaded answer type and never asks where it came
+   from — that seam is the function `expand(answer_type, guide) → items`,
+   which later sources (starter packs, a guide builder) feed unchanged.
+2. **`RequiredKnowledge` becomes derived, never stored.** The list is
+   recomputed on every read from (classification × guide); persisted are
+   only the **human acts** — the confirmed classification, waivers, manually
+   added items — each recorded against the guide version it was made
+   against. A guide edit therefore re-expands the list, and acts that no
+   longer match their version lapse by themselves: staleness is impossible
+   by construction, the same discipline as `resolve_status`.
+3. **No `criticality` field.** Severity already follows from *kind* (the
+   verdict rule); an authored weight would be a second home for the same
+   decision, and a typo in it would turn a missing field into a friendly
+   verdict. Per-question exceptions are what `waive_item` is for.
+4. **No `condition:` field.** Variants are separate answer types; the
+   condition decision ("consolidated or not?") thereby lives inside the one
+   decision that is already visible and confirmed — the classification,
+   rendered as *"treated as: … (guide vN)"*. (`extends:` between answer
+   types is the reserved data-level answer if the type list ever sprawls.)
+5. **An unmatched question falls back to free drafting** — today's V4
+   behaviour, labelled *unreviewed AI draft* and capped at
+   `ready_with_limitations`; confirming the draft (a clarification — the
+   existing machinery) lifts the cap. Hard `blocked` is reserved for a
+   broken contract: a dead concept reference or a cycle. **A broken
+   contract must never degrade into a shorter list.**
+6. **One new canonical word: `answer type`** (reserved in `glossary.py`
+   `PLANNED`). "Dependency contract" is the proposal paper's name for the
+   seam, not a code object.
+
+The build slice reshapes V4 — classify + propose deltas, both visible,
+provenance-labelled apart (`contract` vs `proposed`) — which is also the
+moment for the pending rename off the spec's V4 slot: one schema change, one
+fixture re-record. The guide-bootstrap outlook (documents + profiles →
+proposed answer types) stays in the proposal paper as the later Guide
+Builder layer.
 
 ### The verdict rule
 
