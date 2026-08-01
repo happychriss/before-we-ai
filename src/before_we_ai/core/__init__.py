@@ -13,11 +13,13 @@ the epistemic core; the package now agrees with it.
 """
 
 from before_we_ai.core.enums import (
+    ActKind,
     Actor,
     ClaimStatus,
     EvidenceType,
     CheckVerdict,
     KnowledgeKind,
+    Provenance,
 )
 from before_we_ai.core.ids import new_id
 from before_we_ai.core.objects import (
@@ -27,6 +29,7 @@ from before_we_ai.core.objects import (
     DataProfile,
     ConceptClaim,
     EvidenceRecord,
+    KnowledgeAct,
     KnowledgeItem,
     KnowledgeLink,
     Predicate,
@@ -54,6 +57,7 @@ from before_we_ai.core.transitions import (
 )
 
 __all__ = [
+    "ActKind",
     "Actor",
     "AnswerRequest",
     "Claim",
@@ -63,6 +67,7 @@ __all__ = [
     "CycleError",
     "EvidenceRecord",
     "EvidenceType",
+    "KnowledgeAct",
     "KnowledgeItem",
     "KnowledgeKind",
     "KnowledgeLink",
@@ -71,6 +76,7 @@ __all__ = [
     "CheckPlan",
     "CheckVerdict",
     "PromotionError",
+    "Provenance",
     "ClarificationQuestion",
     "MappingClaim",
     "RequiredKnowledge",

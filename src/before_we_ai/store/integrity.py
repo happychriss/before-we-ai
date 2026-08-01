@@ -69,6 +69,18 @@ def check_integrity(store: "ProjectStore") -> list[str]:
                         f"linked to missing claim {link.claim_id}"
                     )
 
+    for act in store.acts.values():
+        if act.request_id not in store.requests:
+            findings.append(
+                f"knowledge act {act.id}: dangling request reference "
+                f"{act.request_id}"
+            )
+        if act.claim_id and act.claim_id not in store.claims:
+            findings.append(
+                f"knowledge act {act.id}: {act.ref} is linked to missing "
+                f"claim {act.claim_id}"
+            )
+
     for profile in store.profiles.values():
         if profile.source_id not in store.sources:
             findings.append(

@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from before_we_ai.core.objects import (
     AnswerRequest,
+    KnowledgeAct,
     Claim,
     DataProfile,
     ConceptClaim,
@@ -34,11 +35,12 @@ _CLAIM_TYPES = {
     "MappingClaim": MappingClaim,
 }
 
-# answers/ holds a request and the knowledge it requires side by side —
-# they are one story and are read together.
+# answers/ holds a request, whatever knowledge was drafted freely for it, and
+# every act taken on its dependency list — one story, read together.
 _ANSWER_TYPES = {
     "AnswerRequest": AnswerRequest,
     "RequiredKnowledge": RequiredKnowledge,
+    "KnowledgeAct": KnowledgeAct,
 }
 
 
@@ -81,6 +83,7 @@ class ProjectStore:
         self.checks: dict[str, CheckPlan] = {}
         self.requests: dict[str, AnswerRequest] = {}
         self.required: dict[str, RequiredKnowledge] = {}
+        self.acts: dict[str, KnowledgeAct] = {}
         self._load()
 
     # -- loading ---------------------------------------------------------
@@ -115,6 +118,9 @@ class ProjectStore:
         }
         self.required = {
             o.id: o for o in answers if isinstance(o, RequiredKnowledge)
+        }
+        self.acts = {
+            o.id: o for o in answers if isinstance(o, KnowledgeAct)
         }
 
     def _read_dir(self, dirname: str, parse, keep_type: bool = False) -> list:
@@ -220,6 +226,30 @@ class ProjectStore:
             if required.request_id == request_id:
                 return required
         return None
+
+    def save_act(self, act: KnowledgeAct) -> None:
+        """Record one decision about a dependency list — append-only.
+
+        Same rule as evidence, for the same reason: these acts *are* the
+        stored history of a list that is otherwise derived, so rewriting one
+        would erase a decision rather than answer it. A waiver is undone by
+        a later ``require_again``, not by editing the waiver away.
+        """
+        path = self.root / "answers" / f"{act.id}.yaml"
+        if act.id in self.acts or path.exists():
+            raise AppendOnlyViolation(
+                f"knowledge act {act.id} already exists — acts are append-only"
+            )
+        self._write("answers", act)
+        self.acts[act.id] = act
+
+    def acts_for(self, request_id: str) -> list[KnowledgeAct]:
+        """Every act on one request's list, oldest first — the order they
+        are replayed in, so a later act answers an earlier one."""
+        return sorted(
+            (a for a in self.acts.values() if a.request_id == request_id),
+            key=lambda a: (a.created_at, a.id),
+        )
 
     def save_source(self, source: Source) -> None:
         # metadata about a source, not the dropped file itself (sources/)

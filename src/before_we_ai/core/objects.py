@@ -10,11 +10,13 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from before_we_ai.core.enums import (
+    ActKind,
     Actor,
     ClaimStatus,
     EvidenceType,
     CheckVerdict,
     KnowledgeKind,
+    Provenance,
 )
 from before_we_ai.core.ids import new_id
 
@@ -312,7 +314,13 @@ class AnswerRequest(BaseModel):
 
     id: str = Field(default_factory=new_id)
     question: str  # verbatim, as the human asked it
-    requested_output: str  # V4's one-line statement of what the answer delivers
+    requested_output: str  # the contract's one-line statement of the output
+    # Which answer type of the domain guide this question was classified to,
+    # or None when none matched. A proposal like requested_output, and the
+    # smallest claim the contract can make: everything the answer depends on
+    # follows from it deterministically, so this one line is what a human
+    # confirms instead of a list they must read item by item.
+    answer_type: str | None = None
     scope: Scope = Field(default_factory=Scope)
     created_at: datetime = Field(default_factory=_now)
 
@@ -362,19 +370,25 @@ class KnowledgeItem(BaseModel):
     nothing but an explicit link can connect it to the claim that states
     it.
 
-    ``waived_because`` is how a human prunes the draft — the pruning the
-    whole draft exists for. V4 over-lists by design, and an item nobody
-    needs would otherwise block an answer forever. Waived, **not deleted**:
-    a deleted dependency is invisible, and "we decided this does not
-    matter, here is why" is exactly the kind of decision this product
-    refuses to lose. A waived item still appears in the map, struck
-    through, carrying its reason.
+    ``waived_because`` is how a human prunes the list — the pruning the
+    list exists to allow. An item nobody needs would otherwise block an
+    answer forever. Waived, **not deleted**: a deleted dependency is
+    invisible, and "we decided this does not matter, here is why" is
+    exactly the kind of decision this product refuses to lose. A waived
+    item still appears in the map, struck through, carrying its reason.
+
+    It is set by the overlay, not by whoever built the item: the waiver
+    itself is a stored ``KnowledgeAct``, because the list is derived and a
+    derived thing cannot remember a decision.
     """
 
     kind: KnowledgeKind
     name: str
     of_object: str | None = None  # set for fields, empty otherwise
     why: str = ""
+    # Where the item came from — see Provenance. Defaults to `proposed`
+    # because that is what an item is when nobody says otherwise.
+    provenance: Provenance = Provenance.PROPOSED
     scope: Scope = Field(default_factory=Scope)
     satisfied_by: list[KnowledgeLink] = Field(default_factory=list)
     # None = required. A reason is the only way to stop requiring it — there
@@ -416,20 +430,77 @@ class KnowledgeItem(BaseModel):
 
 
 class RequiredKnowledge(BaseModel):
-    """What must be known before the requested answer can be produced.
+    """The model's freely drafted items for one request — the fallback list.
 
-    Derived from the AnswerRequest and drafted by the AI — then pruned by
-    the human, as everywhere: the model proposes. It is persisted because
-    that pruning is a human decision, not something re-derivable from the
-    request.
+    **This is no longer the dependency list.** That list is derived on every
+    read (``readiness.assemble``): an answer type expands deterministically
+    into ``contract`` items, and only what a human *did* to them is stored
+    (``KnowledgeAct``). A stored list would go stale the moment the guide it
+    was drafted against changed — and a stale dependency list is exactly the
+    silent under-listing this design exists to prevent.
 
-    Drafted by V4 always, so — as on ``AnswerRequest`` — that is a fact
-    about the shape and not a field. What does vary, and therefore is a
-    field, is who linked each rule to the claim answering it
-    (``KnowledgeLink.linked_by``).
+    What remains here is what cannot be derived: the items the contract
+    could **not** supply, drafted by the model for this one question,
+    because no answer type matched or because the question carries a delta
+    the type does not cover. They are ``proposed`` items, they are labelled
+    as such wherever they appear, and while a request rests on them its
+    verdict is capped.
     """
 
     id: str = Field(default_factory=new_id)
     request_id: str
     items: list[KnowledgeItem] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_now)
+
+
+class KnowledgeAct(BaseModel):
+    """One decision taken about a dependency list, stored append-only.
+
+    The list is derived; these are the only records of it that persist. An
+    act is never edited — a waiver is undone by a later ``require_again``,
+    so the pair stays readable as the history it is.
+
+    ``guide_fingerprint`` is what makes the derivation safe to trust. A
+    ``confirm`` says "I read this list and it is complete"; a ``waive`` says
+    "this item does not matter here". Both are statements about a *list*,
+    and the list changes when the guide changes — so both record which guide
+    they were made against, and both lapse when it no longer matches. A
+    ``link`` and an ``add`` do not lapse: a link only routes (the claim's
+    status still decides), and an added item is human-authored content, not
+    a judgement about someone else's list.
+    """
+
+    id: str = Field(default_factory=new_id)
+    request_id: str
+    kind: ActKind
+    actor: Actor
+    guide_fingerprint: str = ""
+    ref: str | None = None  # which item — waive / require_again / link
+    reason: str = ""  # waive: why it does not matter here
+    claim_id: str | None = None  # link
+    note: str = ""  # link: why this claim answers this dependency
+    item: KnowledgeItem | None = None  # add
+    answer_type: str | None = None  # confirm: what was confirmed
+    created_at: datetime = Field(default_factory=_now)
+
+    @model_validator(mode="after")
+    def _check_shape(self) -> "KnowledgeAct":
+        if self.kind in (ActKind.WAIVE, ActKind.REQUIRE_AGAIN, ActKind.LINK):
+            if not self.ref:
+                raise ValueError(f"a {self.kind.value} act must name the item "
+                                 "it acts on")
+        if self.kind is ActKind.WAIVE and not self.reason.strip():
+            raise ValueError(
+                "a waiver must carry a reason — 'we decided this does not "
+                "matter' without the why is the silence this product forbids"
+            )
+        if self.kind is ActKind.LINK and not self.claim_id:
+            raise ValueError("a link act must name the claim it routes to")
+        if self.kind is ActKind.ADD and self.item is None:
+            raise ValueError("an add act must carry the item it adds")
+        if self.kind is ActKind.CONFIRM and self.ref:
+            raise ValueError(
+                "a confirmation is about the whole list, not one item — that "
+                "is the point of it"
+            )
+        return self

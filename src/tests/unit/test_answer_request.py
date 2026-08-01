@@ -11,10 +11,12 @@ import pytest
 from pydantic import ValidationError
 
 from before_we_ai.core import (
+    ActKind,
     Actor,
     AnswerRequest,
     Claim,
     ClarificationQuestion,
+    KnowledgeAct,
     KnowledgeItem,
     KnowledgeKind,
     KnowledgeLink,
@@ -25,6 +27,7 @@ from before_we_ai.core import (
 from before_we_ai.llm.mapping import item_to_knowledge
 from before_we_ai.llm.schemas import KnowledgeItemProposal
 from before_we_ai.store import ProjectStore, check_integrity
+from before_we_ai.store.repository import AppendOnlyViolation
 
 
 @pytest.fixture
@@ -141,6 +144,86 @@ class TestStore:
         store.save_required_knowledge(RequiredKnowledge(request_id="01NOPE"))
         findings = check_integrity(ProjectStore(store.root))
         assert any("dangling request reference 01NOPE" in f for f in findings)
+
+
+class TestTheActRecord:
+    """The dependency list is derived; what a human did to it is stored.
+
+    So these records carry the whole history of decisions about a list that
+    itself leaves no trace — which is why they are append-only and why a
+    waiver may not exist without its reason.
+    """
+
+    def test_acts_survive_reload_in_the_order_they_were_taken(self, store):
+        request = _request()
+        store.save_request(request)
+        for kind, extra in [
+            (ActKind.CONFIRM, {"answer_type": "profit_and_loss"}),
+            (ActKind.WAIVE, {"ref": "intercompany", "reason": "one entity only"}),
+            (ActKind.REQUIRE_AGAIN, {"ref": "intercompany"}),
+        ]:
+            store.save_act(KnowledgeAct(request_id=request.id, kind=kind,
+                                        actor=Actor.HUMAN, **extra))
+
+        reloaded = ProjectStore(store.root)
+        assert [a.kind for a in reloaded.acts_for(request.id)] == [
+            ActKind.CONFIRM, ActKind.WAIVE, ActKind.REQUIRE_AGAIN
+        ]
+        assert check_integrity(reloaded) == []
+
+    def test_an_act_is_never_overwritten(self, store):
+        request = _request()
+        store.save_request(request)
+        act = KnowledgeAct(request_id=request.id, kind=ActKind.CONFIRM,
+                           actor=Actor.HUMAN, answer_type="profit_and_loss")
+        store.save_act(act)
+        with pytest.raises(AppendOnlyViolation):
+            store.save_act(act)
+
+    def test_a_waiver_without_a_reason_cannot_be_constructed(self):
+        with pytest.raises(ValidationError, match="reason"):
+            KnowledgeAct(request_id="01R", kind=ActKind.WAIVE,
+                         actor=Actor.HUMAN, ref="intercompany")
+
+    def test_an_act_on_one_item_must_name_it(self):
+        with pytest.raises(ValidationError, match="must name the item"):
+            KnowledgeAct(request_id="01R", kind=ActKind.REQUIRE_AGAIN,
+                         actor=Actor.HUMAN)
+
+    def test_a_link_act_must_name_its_claim(self):
+        with pytest.raises(ValidationError, match="name the claim"):
+            KnowledgeAct(request_id="01R", kind=ActKind.LINK,
+                         actor=Actor.AI, ref="sign convention")
+
+    def test_a_confirmation_is_about_the_whole_list(self):
+        with pytest.raises(ValidationError, match="whole list"):
+            KnowledgeAct(request_id="01R", kind=ActKind.CONFIRM,
+                         actor=Actor.HUMAN, ref="journal")
+
+    def test_an_act_records_which_guide_it_was_made_against(self, store):
+        request = _request()
+        store.save_request(request)
+        store.save_act(KnowledgeAct(
+            request_id=request.id, kind=ActKind.CONFIRM, actor=Actor.HUMAN,
+            answer_type="profit_and_loss", guide_fingerprint="a" * 64,
+        ))
+        assert ProjectStore(store.root).acts_for(request.id)[0] \
+            .guide_fingerprint == "a" * 64
+
+    def test_an_act_pointing_at_no_request_is_an_integrity_finding(self, store):
+        store.save_act(KnowledgeAct(request_id="01NOPE", kind=ActKind.CONFIRM,
+                                    actor=Actor.HUMAN))
+        findings = check_integrity(ProjectStore(store.root))
+        assert any("dangling request reference 01NOPE" in f for f in findings)
+
+    def test_a_link_to_a_missing_claim_is_an_integrity_finding(self, store):
+        request = _request()
+        store.save_request(request)
+        store.save_act(KnowledgeAct(request_id=request.id, kind=ActKind.LINK,
+                                    actor=Actor.AI, ref="sign convention",
+                                    claim_id="01GONE"))
+        findings = check_integrity(ProjectStore(store.root))
+        assert any("missing claim 01GONE" in f for f in findings)
 
 
 class TestQuestionDedup:

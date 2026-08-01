@@ -61,6 +61,38 @@ class KnowledgeKind(str, Enum):
     RULE = "rule"
 
 
+class Provenance(str, Enum):
+    """Where a required-knowledge item came from.
+
+    The distinction the reader needs before trusting a dependency list:
+    ``contract`` items were expanded from an answer type a human reviewed in
+    the domain guide, ``proposed`` items were drafted by the model for this
+    one question, ``added`` items were written by a human who found the list
+    incomplete. A list of nothing but ``contract`` items is the only kind
+    that was ever reviewed as a whole.
+    """
+
+    CONTRACT = "contract"
+    PROPOSED = "proposed"
+    ADDED = "added"
+
+
+class ActKind(str, Enum):
+    """What a human (or the AI, for links) did to a dependency list.
+
+    The list itself is derived; these acts are the only part that is
+    stored, so they are the complete record of every decision taken about
+    it. Append-only: an act is never edited, only answered by a later one
+    (``require_again`` after ``waive``).
+    """
+
+    WAIVE = "waive"
+    REQUIRE_AGAIN = "require_again"
+    LINK = "link"
+    ADD = "add"
+    CONFIRM = "confirm"
+
+
 class CheckVerdict(str, Enum):
     """Outcome of a check run, carried on its EvidenceRecord.
 
