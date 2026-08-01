@@ -5,13 +5,20 @@ prove the LLM layer rides on it: AI-born claims start proposed, AI cannot
 author promoting evidence, and model-facing code receives only proposal
 capabilities."""
 
+import sys
 from pathlib import Path
 
 import pytest
-import yaml
 from pydantic import ValidationError
 
-from before_we_ai import scan
+# The one corpus project construction, owner-facing support rather than test
+# code (WP3). A test may depend on it; product code may not.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from validation.support.corpus import (  # noqa: E402
+    DOMAIN_GUIDE_FILE,
+    build_corpus_project,
+)
+
 from before_we_ai.llm import (
     ask,
     hypothesize,
@@ -28,51 +35,16 @@ from before_we_ai.store import ProjectStore, ProposalStore, init_project
 
 pytestmark = pytest.mark.contract
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
-DOMAIN_GUIDE_FILE = (
-    Path(__file__).resolve().parents[1] / "fixtures" / "domain_guide_finance.yaml"
-)
-
-SOURCES = [
-    {
-        "name": "de_erp",
-        "kind": "duckdb",
-        "location": str(CORPUS / "DE" / "erp.duckdb"),
-    },
-    {
-        "name": "us_erp",
-        "kind": "duckdb",
-        "location": str(CORPUS / "US" / "erp.duckdb"),
-    },
-    {
-        "name": "kunden_migration",
-        "kind": "xlsx",
-        "location": str(CORPUS / "kunden_migration.xlsx"),
-    },
-    {
-        "name": "marketing_grouping",
-        "kind": "xlsx",
-        "location": str(CORPUS / "marketing_grouping.xlsx"),
-    },
-    {
-        "name": "kontakte_aussendienst",
-        "kind": "xlsx",
-        "location": str(CORPUS / "kontakte_aussendienst.xlsx"),
-    },
-    {
-        "name": "buchungen_report",
-        "kind": "csv",
-        "location": str(CORPUS / "buchungen_report.csv"),
-    },
-    {
-        "name": "management_report",
-        "kind": "pdf",
-        "location": str(CORPUS / "management_report.pdf"),
-    },
-]
-
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
+
+# Everything a promotion needs an author for. Stated as the rule, not as
+# today's snapshot: the allow-list below says what the LLM stages happen to
+# write now, and this says what they may never write however that changes.
+# M5's V3 will add DOCUMENT_ANCHOR to the first list and must not touch this
+# one — an anchor is read by nothing and promotes nothing
+# (`core/transitions.py::resolve_status`).
+PROMOTING = (EvidenceType.CHECK_RESULT, EvidenceType.CONFIRMATION,
+             EvidenceType.TESTIMONIAL)
 
 
 @pytest.fixture()
@@ -96,21 +68,8 @@ def hypothesized_claim(tmp_path):
 @pytest.fixture(scope="module")
 def llm_stage_evidence(tmp_path_factory):
     """Evidence added by the model-facing stages, excluding scan declarations."""
-    root = init_project(tmp_path_factory.mktemp("guardrail") / "corpus")
-    config_data = yaml.safe_load(
-        (root / "before-ai.yaml").read_text(encoding="utf-8")
-    )
-    config_data["sources"] = SOURCES
-    config_data["llm"] = {
-        "offline": True,
-        "fixtures_dir": str(FIXTURES),
-        "domain_guide_file": str(DOMAIN_GUIDE_FILE),
-    }
-    (root / "before-ai.yaml").write_text(
-        yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8"
-    )
-
-    scan(root)
+    root = build_corpus_project(
+        tmp_path_factory.mktemp("guardrail") / "corpus", offline=True)
     store = ProjectStore(root)
     evidence_before = set(store.evidence)
     guide = load_domain_guide(DOMAIN_GUIDE_FILE)
@@ -144,8 +103,29 @@ def test_ai_cannot_author_promoting_evidence(hypothesized_claim):
                        claim_id=hypothesized_claim.id, statement="trust me")
 
 
-def test_llm_stages_write_only_system_declarations(llm_stage_evidence):
+def test_llm_stages_author_nothing_that_could_promote(llm_stage_evidence):
+    """The invariant, and the one that survives the list below changing.
+
+    A stage may start writing a new *weak* record — M5's V3 writes document
+    anchors — and that is a widening someone must justify. Writing something
+    that can move a status is never a widening; it is the failure this whole
+    layer is arranged to prevent.
+    """
     assert llm_stage_evidence
+    offenders = [r for r in llm_stage_evidence if r.type in PROMOTING]
+    assert not offenders, (
+        "the LLM stages authored promoting evidence: "
+        + ", ".join(f"{r.type.value} by {r.actor.value}" for r in offenders)
+    )
+
+
+def test_llm_stages_write_only_system_declarations(llm_stage_evidence):
+    """Today's list, deliberately narrow so a change has to be noticed.
+
+    An allow-list fails loudly when a stage starts writing something new,
+    which is exactly when a human should look. Widen it only together with
+    the milestone that earns it — and never at the cost of the test above.
+    """
     assert all(
         record.type is EvidenceType.DECLARATION
         and record.actor is Actor.SYSTEM
