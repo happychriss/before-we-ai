@@ -286,7 +286,23 @@ dropping the link or by moving the whole f-string across.
    asserts; this proves everything it does not — every space, every
    attribute, every sentence.
 
-**WP5b — retarget the semantic tests.** Report tests asserting *facts*
+**WP5b — retarget the semantic tests.** · DONE 2026-08-01 (`e8f5535`)
+
+All three gates verified independently. Production diff empty, so
+byte-identity is definitional rather than something to re-prove. Suite
+463 → 469. The mapping table runs to 38 rows with no empty replacement
+side, and the HTML suite is exactly the six named contracts.
+
+Coverage was checked by mutation rather than by reading the table: five
+values changed one at a time — `"Identified."`, `"Treated as:"`, the
+no-answer-type sentence, `field_count`, `source_count` — each produced
+exactly one red test, and `projection.py` came back byte-identical. Four
+old tests vanished by name; the load-bearing one
+(`test_the_page_speaks_in_three_voices`) was traced fact by fact — the
+attributions stayed in the HTML contract, the sentences moved to the view
+model, and the new HTML test additionally pins the request card's ordering.
+
+Report tests asserting *facts*
 (counts, verdicts, grounds, which items appear) move to view-model
 assertions; keep a deliberately small presentation suite on the HTML: every
 section renders, anchors resolve, escaping, self-contained (no external
