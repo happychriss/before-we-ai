@@ -65,7 +65,14 @@ Markers only; zero behavior change.
 
 **Accept:** `grep -rn "[0-9]\{3\} tests" docs/ README.md meta/` finds nothing.
 
-## WP3 — shared corpus construction out of tests/ (recommendation G)
+## WP3 — shared corpus construction out of tests/ (rec. G) · DONE 2026-08-01
+
+Landed as written, minus the bridge: **no collected test imported the
+module**, so the re-import shim below was unnecessary and the file was moved
+outright. Its only consumers were the walkthrough and the two online tools,
+which are owner-facing operations themselves — it was never test-internal,
+it just lived under `tests/`. The guard is `tests/unit/test_layering.py`
+(parsed imports, not text).
 
 `validation/scripts/_steps.py` imports `src/tests/eval/_corpus.py`: owner
 validation depends on test-internal code, which is the wrong direction.
