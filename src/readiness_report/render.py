@@ -11,7 +11,15 @@ import yaml
 from before_we_ai.glossary import GLOSSARY
 from before_we_ai.llm.domain_guide import load_domain_guide, scopes_of, settled_slots
 from before_we_ai.llm.mapping import admissible_templates
-from before_we_ai.model import Actor, ClaimStatus, EvidenceType, CheckVerdict, resolve_status
+from before_we_ai.model import (
+    Actor,
+    ClaimStatus,
+    EvidenceType,
+    CheckVerdict,
+    is_answered,
+    resolve_status,
+    settling_claims,
+)
 from before_we_ai.model.objects import (
     Claim,
     DataProfile,
@@ -151,10 +159,25 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         )
         for claim in claims
     ) or '<p class="empty">No claims yet.</p>'
+    # Answered is derived, not flagged: a card whose bill of materials
+    # contains a settled claim has been answered, and the same evidence the
+    # ReadinessMap reads says so. Storing an "answered" flag would let this
+    # list and the map disagree about one store — which is exactly what
+    # happened before this split existed.
+    still_open = [c for c in questions if not is_answered(c, store.claims)]
+    answered = [c for c in questions if is_answered(c, store.claims)]
     question_sections = "".join(
         _render_question_section(card, store.claims, store_rel, guide)
-        for card in questions
-    ) or '<p class="empty">No questions yet.</p>'
+        for card in still_open
+    ) or '<p class="empty">No open questions.</p>'
+    answered_sections = (
+        "<details><summary>Answered questions "
+        f"({len(answered)}) — kept, because what settled them is part of "
+        "the record</summary>"
+        + "".join(_render_answered_question(card, store.claims, store_rel)
+                  for card in answered)
+        + "</details>"
+    ) if answered else ""
     source_index = "".join(_render_source_index_card(source, profiles_by_source) for source in sources)
     source_sections = "".join(
         _render_source_section(
@@ -648,9 +671,12 @@ def render_project(root: str | Path, out_dir: str | Path | None = None) -> str:
         {_render_role_elections(facts, questions, guide, answered_slots)}
       </section>
       <section class="panel" id="open">
-        <h2>5 · Open — what only a human can answer ({len(questions)})</h2>
-        <p class="muted">What the checks could not settle. This is the human's to-do list.</p>
+        <h2>5 · Open — what only a human can answer ({len(still_open)})</h2>
+        <p class="muted">What the checks could not settle. This is the human's to-do list.
+        A question leaves it the moment a claim it rests on settles — derived from the
+        same evidence the readiness map reads, so the two can never disagree.</p>
         {question_sections}
+        {answered_sections}
       </section>
       <section class="panel" id="readiness">
         <h2>6 · Readiness — what may be answered</h2>
@@ -2203,6 +2229,31 @@ def _evidence_author(record: EvidenceRecord) -> str:
         Actor.SYSTEM: "written by the system",
     }
     return who.get(record.actor, f"written by {record.actor.value}")
+
+
+def _render_answered_question(card: ClarificationQuestion,
+                              claims: dict[str, Claim], rel: str) -> str:
+    """An answered card, with what settled it.
+
+    Kept rather than dropped, for the same reason a waiver is kept: the
+    question that had to be asked, and the answer that closed it, are part
+    of how this landscape came to be understood.
+    """
+    settled = settling_claims(card, claims)
+    answers = "".join(
+        f"<li>{_claim_link(claim, label=_claim_title(claim))} "
+        f"<span class='muted'>{escape(claim.status.value)}</span></li>"
+        for claim in settled
+    )
+    return (
+        f'<div class="question-card answered" id="question-{escape(card.id)}">'
+        f"<h3>{escape(card.question)}</h3>"
+        f"<p class='derived'><strong>Answered.</strong> Settled by "
+        f"{len(settled)} claim{'s' if len(settled) != 1 else ''}:</p>"
+        f"<ul class='picks'>{answers}</ul>"
+        f"{_provenance(rel, 'questions', card.id, 'no longer open')}"
+        "</div>"
+    )
 
 
 def _render_question_section(

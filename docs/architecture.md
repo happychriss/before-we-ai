@@ -36,7 +36,7 @@ and `tested` → `test-supported`, actor/evidence `probe`/`probe_result` →
 - Repo root: `/workspace` — https://github.com/happychriss/before-we-ai
   (`pyproject.toml` lives in `src/`)
 - Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
-  `/workspace/src`; run `python -m pytest -q` there (383 tests green after M6,
+  `/workspace/src`; run `python -m pytest -q` there (391 tests green after M6,
   incl. readiness_report; CI runs fully offline from recorded fixtures)
 - Authoritative German spec: `docs/spec/`
 
@@ -699,7 +699,13 @@ ontology. Visible in the walkthrough: the P&L question does not require
 - **`RequiredKnowledge`** — `KnowledgeItem`s (`object` / `field` / `rule`),
   each carrying the request's scope, each with a `why` a human can prune on.
   Drafted by V4, persisted because the pruning is a human decision, not
-  something re-derivable from the request. That pruning is
+  something re-derivable from the request. **Only objects and fields carry
+  a scope**: for them it is a *selector* (which table, which column — DE's
+  ledger vs US's). A rule has nothing to select among, so where a rule is
+  valid lives on the **claim** that states it (`Claim.scope`,
+  `Claim.validity`, which can also say *from when*); the evaluator asks
+  whether that claim reaches the scope the question was asked in. A rule
+  item with an explicit scope is rejected at construction. That pruning is
   `readiness.waive_item(ref, because=…)`: **waived, not deleted** (owner
   decision 2026-07-31), so the item stays in the map struck through with its
   reason — a deleted dependency is invisible, and "we decided this does not
@@ -799,6 +805,27 @@ and a distinct readiness sentence ("the link is broken, not the knowledge") —
 a broken pointer and missing knowledge need different repairs. The report
 prints who linked it and why, since a wrong link points a verdict at an
 unrelated claim.
+
+**What propagates, and what has to be re-run** (owner question 2026-08-01).
+The verdict needs no re-run at all: the map is derived on every read, so a
+claim linked today changes the verdict on the next render. What *does* need a
+re-run is new **testable** knowledge — a policy claim like "revenue = 4000–4999
+minus contra" is a rule a check can falsify, so it must re-enter at V2 and the
+engine. That is why `v2_bind._untested_claims` (formerly `_unbound_ai_claims`)
+no longer filters on `Actor.AI` or on `proposed`: *who said it and whether
+anyone believes it are both irrelevant to whether it can be tested*, and the
+spec is explicit that a contradicting check is a testimonial claim's only
+expiry date. Latent until M5 produces such claims; it changes no count today.
+
+The third category is what was **written** to the store and never retracts.
+Answered clarification questions used to linger in "5 · Open" forever while
+the ReadinessMap called the same dependency settled — two surfaces of one
+store disagreeing. Fixed by deriving it: `semantics.is_answered` says a card
+is answered when a claim it rests on has settled, computed from the same
+evidence the map reads, so they cannot drift. Answered cards are kept and
+shown with what settled them, not dropped. The general rule: **derived
+surfaces propagate for free; written surfaces owe a retraction story** — and
+source-fingerprint staleness, the remaining case, is M7.
 
 **A conflict is never silent.** A rule may carry several links. If a settled
 claim satisfies it while a *contradicted* claim is linked to the same rule,

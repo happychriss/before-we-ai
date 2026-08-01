@@ -311,13 +311,18 @@ def item_to_knowledge(item: KnowledgeItemProposal, scope: Scope) -> KnowledgeIte
 
     The scope is inherited, never taken from the model: the request says
     what it is about, and every item it spawns is about the same thing.
+
+    Except a rule, which takes none. Scope selects among candidates and a
+    rule has none to select among; where a rule is valid is a property of
+    the claim that states it, not of the dependency.
     """
+    kind = KnowledgeKind(item.kind)
     return KnowledgeItem(
-        kind=KnowledgeKind(item.kind),
+        kind=kind,
         name=item.name.strip(),
         of_object=item.of_object.strip() if item.of_object else None,
         why=item.why.strip(),
-        scope=scope,
+        scope=Scope() if kind is KnowledgeKind.RULE else scope,
     )
 
 

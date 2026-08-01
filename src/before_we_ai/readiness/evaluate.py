@@ -155,7 +155,8 @@ def evaluate(store: ProjectStore, guide: DomainGuide, request: AnswerRequest,
     is qualified, so the answer is **ready_with_limitations** and the map
     names every qualification. Nothing missing: **ready**.
     """
-    items = tuple(_judge(store, guide, item) for item in required.items)
+    items = tuple(_judge(store, guide, item, request.scope)
+                  for item in required.items)
     if all(i.satisfied for i in items):
         verdict = Readiness.READY
     elif any(not i.satisfied and i.structural for i in items):
@@ -267,8 +268,8 @@ def evaluate_request(store: ProjectStore, guide: DomainGuide,
 
 # -- judging one item ------------------------------------------------------
 
-def _judge(store: ProjectStore, guide: DomainGuide,
-           item: KnowledgeItem) -> ReadinessItem:
+def _judge(store: ProjectStore, guide: DomainGuide, item: KnowledgeItem,
+           asked: Scope) -> ReadinessItem:
     if item.waived:
         # A waiver is a human overriding the draft, so it says who decided
         # and why — it never reads as evidence, and it never reads as a gap.
@@ -280,7 +281,9 @@ def _judge(store: ProjectStore, guide: DomainGuide,
             ),
         )
     if item.kind is KnowledgeKind.RULE:
-        return _judge_rule(store, item)
+        # a rule carries no scope of its own; what matters is whether the
+        # claim stating it reaches the scope the question was asked in
+        return _judge_rule(store, item, asked)
     if item.kind is KnowledgeKind.FIELD:
         derived = _slot_derivation(store, guide, item)
         if derived is not None:
@@ -344,7 +347,8 @@ def _slot_derivation(store: ProjectStore, guide: DomainGuide,
     )
 
 
-def _judge_rule(store: ProjectStore, item: KnowledgeItem) -> ReadinessItem:
+def _judge_rule(store: ProjectStore, item: KnowledgeItem,
+                asked: Scope) -> ReadinessItem:
     """A rule the vocabulary does not contain, satisfied by a **linked** claim.
 
     Only an explicit link counts. The alternative — matching the rule's name
@@ -366,7 +370,7 @@ def _judge_rule(store: ProjectStore, item: KnowledgeItem) -> ReadinessItem:
     dangling = [link for link in item.satisfied_by
                 if link.claim_id not in store.claims]
     in_scope = [(link, claim) for link, claim in linked
-                if _covers(claim.scope, item.scope)]
+                if _covers(claim.scope, asked)]
     winners = [(link, claim) for link, claim in in_scope
                if claim.status in _SETTLED]
     if winners:
@@ -388,7 +392,7 @@ def _judge_rule(store: ProjectStore, item: KnowledgeItem) -> ReadinessItem:
             because=(
                 f"Satisfied because a {claim.status.value} claim is linked to "
                 f"it by the {link.linked_by.value}: {claim.statement}"
-                f"{_scope_note(claim.scope, item.scope)}.{conflict}"
+                f"{_rule_scope_note(claim.scope, asked)}.{conflict}"
             ),
             claim_ids=tuple(sorted(c.id for _, c in in_scope)),
         )
@@ -406,11 +410,12 @@ def _judge_rule(store: ProjectStore, item: KnowledgeItem) -> ReadinessItem:
     return ReadinessItem(
         item=item, satisfied=False,
         claim_ids=tuple(sorted(c.id for _, c in in_scope)),
-        **_why_not([c for _, c in in_scope], item, "is linked to it"))
+        **_why_not([c for _, c in in_scope], item, "is linked to it",
+                   asked))
 
 
-def _why_not(candidates: list[Claim], item: KnowledgeItem,
-             verb: str) -> dict:
+def _why_not(candidates: list[Claim], item: KnowledgeItem, verb: str,
+             asked: Scope | None = None) -> dict:
     """Why an item is unsupported, specifically enough to act on.
 
     "Unsupported" alone sends a reader hunting. Each branch says what state
@@ -422,7 +427,7 @@ def _why_not(candidates: list[Claim], item: KnowledgeItem,
             "ground": Ground.NOTHING_PROPOSED,
             "because": (
                 f"Not supported: nothing in this project {verb}"
-                f"{_scope_ask(item.scope)}."
+                f"{_scope_ask(asked if asked is not None else item.scope)}."
             ),
         }
     if all(c.status is ClaimStatus.CONTRADICTED for c in candidates):
@@ -470,6 +475,21 @@ def _scope_note(claim_scope: Scope | None, item_scope: Scope) -> str:
         return (f" — though no source declares it as {item_scope.label()}'s, "
                 "so this rests on a landscape-wide mapping")
     return f" for {claim_scope.label()}"
+
+
+def _rule_scope_note(claim_scope: Scope | None, asked: Scope) -> str:
+    """The scope clause for a rule — which must not talk about sources.
+
+    ``_scope_note`` was written for role bindings, where "no source
+    declares it as DE's" is the right sentence. An accounting policy has no
+    source and is not a mapping; what it has is a validity, on the claim.
+    """
+    if not asked.is_explicit():
+        return ""
+    if claim_scope is None or not claim_scope.is_explicit():
+        return (" — the claim states no scope of its own, so it is taken to "
+                f"hold for {asked.label()} as well")
+    return f", and that claim holds for {claim_scope.label()}"
 
 
 def _scope_ask(scope: Scope) -> str:

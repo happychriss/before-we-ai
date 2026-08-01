@@ -136,14 +136,30 @@ class V2Report:
     log_refs: list[str] = field(default_factory=list)
 
 
-def _unbound_ai_claims(store: ProjectStore,
-                       claim_ids: list[str] | None) -> list[Claim]:
+def _untested_claims(store: ProjectStore,
+                     claim_ids: list[str] | None) -> list[Claim]:
+    """Every parameterised claim that no check has been planned for yet.
+
+    Not "AI claims": **who said it, and whether anyone believes it, are
+    both irrelevant to whether it can be tested.** The spec is explicit —
+    *"Testimoniale Claims sind sondierbar wie alle anderen (widersprechende
+    Sondenbefunde ziehen sie auf `unresolved`) — das ist zugleich ihr
+    einziges Verfallsdatum"*: a human statement carries no data fingerprint,
+    so a contradicting check is the only thing that can ever expire it.
+    Filtering to ``Actor.AI`` and ``proposed`` would have made human and
+    document knowledge the one kind of claim nothing may question.
+
+    Until M5 nothing produces such claims, so this widening changes no
+    number today; it is here so that when V3 does, its output is tested
+    rather than trusted.
+
+    A claim that already has a plan is excluded — that is what "untested"
+    means here, and it keeps re-runs from re-planning settled work.
+    """
     bound = {p.claim_id for p in store.checks.values() if p.claim_id}
     selected = [
         c for c in store.claims.values()
-        if c.created_by is Actor.AI
-        and c.status is ClaimStatus.PROPOSED
-        and c.predicate is not None
+        if c.predicate is not None
         and c.id not in bound
         and (claim_ids is None or c.id in claim_ids)
     ]
@@ -201,7 +217,7 @@ def plan_checks(
     index = ProfileIndex(store)
     report = V2Report()
 
-    candidates = _unbound_ai_claims(store, claim_ids)
+    candidates = _untested_claims(store, claim_ids)
     role_claims, ordinary = [], []
     for claim in candidates:
         if isinstance(claim, MappingClaim):

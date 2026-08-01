@@ -851,6 +851,46 @@ def test_a_linked_rule_shows_who_linked_it_and_why(tmp_path):
     assert "haben_konvention" != "sign convention"
 
 
+def test_an_answered_question_leaves_the_open_list(tmp_path):
+    """Before this, answering a card left it in "5 · Open" forever while the
+    readiness map called the same dependency settled — two surfaces of one
+    store disagreeing. Answered is derived from the same evidence the map
+    reads, so they cannot drift apart."""
+    root = init_project(tmp_path / "answered")
+    store = ProjectStore(root)
+    picked = MappingClaim(statement="role 'period' is played by de_erp__gl",
+                          created_by=Actor.AI, role="period",
+                          binding={"table": "de_erp__gl"})
+    store.save_claim(picked)
+    store.save_question(ClarificationQuestion(
+        question="Which of the proposed candidates is the 'period'?",
+        claim_ids=[picked.id]))
+    open_still = MappingClaim(statement="role 'account' is played by de_erp__gl",
+                              created_by=Actor.AI, role="account",
+                              binding={"table": "de_erp__gl"})
+    store.save_claim(open_still)
+    store.save_question(ClarificationQuestion(
+        question="Which of the proposed candidates is the 'account'?",
+        claim_ids=[open_still.id]))
+
+    assert "5 · Open — what only a human can answer (2)" in render_project(root)
+
+    # the human answers one of them
+    record = EvidenceRecord(type=EvidenceType.CONFIRMATION, actor=Actor.HUMAN,
+                            claim_id=picked.id)
+    store.add_evidence(record)
+    store.save_claim(attach_evidence(picked, record, []))
+
+    html = render_project(root)
+
+    assert "5 · Open — what only a human can answer (1)" in html
+    assert "Answered questions (1)" in html
+    assert "<strong>Answered.</strong> Settled by 1 claim" in html
+    # kept, not dropped: what settled it is part of the record
+    assert "the &#x27;period&#x27;" in html
+    assert "the &#x27;account&#x27;" in html
+
+
 def test_a_project_nobody_asked_a_question_of_says_that_plainly(tmp_path):
     """Without a question the report describes a landscape, and whether a
     landscape is generally sound is a question nobody asked."""

@@ -9,7 +9,7 @@ drift from reality.
 
 import hashlib
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from before_we_ai.model.enums import ClaimStatus
 from before_we_ai.model.objects import Claim, ClarificationQuestion
@@ -43,6 +43,38 @@ def questions_resting_on(
 ) -> list[ClarificationQuestion]:
     """All question cards whose bill of materials includes the claim."""
     return [q for q in questions if claim_id in q.claim_ids]
+
+
+def is_answered(card: ClarificationQuestion,
+                claims: Mapping[str, Claim]) -> bool:
+    """Has this question been answered? Derived, never stored.
+
+    A card is answered when at least one claim it rests on has settled. For
+    a pick-one-of-these card that is exactly right: the human chose, the
+    chosen candidate carries their confirmation, the question is done. For
+    a card the engine drafted over a failing check it is right the other
+    way round — that claim is ``contradicted``, never settled, so the
+    question stays open until someone deals with it. A card resting on no
+    claim at all (nothing was ever proposed) can never be answered this
+    way, which is also correct: nothing has changed for it.
+
+    Derived rather than flagged because a stored "answered" is a fact that
+    can fall out of step with the evidence — the same reason status and
+    readiness are derived. It is what keeps the open-questions list and
+    the ReadinessMap from disagreeing about the same store.
+    """
+    return any(
+        cid in claims and claims[cid].status in _PROVEN
+        for cid in card.claim_ids
+    )
+
+
+def settling_claims(card: ClarificationQuestion,
+                    claims: Mapping[str, Claim]) -> list[Claim]:
+    """The settled claims that answer this card — what to show instead of
+    the question."""
+    return [claims[cid] for cid in card.claim_ids
+            if cid in claims and claims[cid].status in _PROVEN]
 
 
 def gap_load(

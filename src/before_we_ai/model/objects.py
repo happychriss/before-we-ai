@@ -339,9 +339,17 @@ class KnowledgeItem(BaseModel):
     """One thing the requested answer depends on.
 
     ``kind`` says what it points at — a business object of the domain
-    guide, one of that object's fields, or a rule. Every item carries its
-    request's scope: that is what makes elections and questions scoped
-    rather than landscape-wide, and it is inherited, never invented here.
+    guide, one of that object's fields, or a rule.
+
+    ``scope`` is inherited from the request, and only objects and fields
+    carry one. For those it is a **selector**: it decides *which* table or
+    column plays the role, so DE's ledger and US's compete in separate
+    elections. A rule has nothing to select among — there is no "DE's copy"
+    of an accounting policy — so its scope would be meaningless here. Where
+    a rule's validity genuinely lives is on the **claim** that states it
+    (``Claim.scope`` and ``Claim.validity``), which can also say *from when*
+    — richer than this item could express. The evaluator asks whether that
+    claim's scope reaches the scope the question was asked in.
 
     ``why`` states the dependency in business words. An item without a
     reason cannot be pruned by a human with any confidence, and pruning is
@@ -392,6 +400,13 @@ class KnowledgeItem(BaseModel):
                 f"{self.kind.value} '{self.name}': only a rule is satisfied by "
                 "a linked claim — an object or field resolves through the "
                 "domain guide's scoped election, and a link would bypass it"
+            )
+        if self.kind is KnowledgeKind.RULE and self.scope.is_explicit():
+            raise ValueError(
+                f"rule '{self.name}': a rule item carries no scope. A scope "
+                "selects among candidates and a rule has none; the validity "
+                "of a rule lives on the claim that states it (Claim.scope / "
+                "Claim.validity)"
             )
         return self
 

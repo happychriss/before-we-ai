@@ -31,7 +31,13 @@ from before_we_ai.model.objects import (
     Validity,
 )
 from before_we_ai.model.scheduler import CycleError, ready_for_check, topological_order
-from before_we_ai.model.semantics import claim_key, gap_load, questions_resting_on
+from before_we_ai.model.semantics import (
+    claim_key,
+    gap_load,
+    is_answered,
+    questions_resting_on,
+    settling_claims,
+)
 from before_we_ai.model.transitions import (
     PromotionError,
     create_claim,
@@ -67,8 +73,10 @@ __all__ = [
     "create_claim",
     "escalate_exception",
     "gap_load",
+    "is_answered",
     "new_id",
     "questions_resting_on",
     "resolve_status",
+    "settling_claims",
     "topological_order",
 ]

@@ -32,7 +32,7 @@ from before_we_ai.llm.inputs import (
 )
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.llm.prompts import render_template_docs
-from before_we_ai.llm.v2_bind import _unbound_ai_claims
+from before_we_ai.llm.v2_bind import _untested_claims
 from before_we_ai.model import (
     Actor,
     ClaimStatus,
@@ -267,7 +267,7 @@ def test_pipeline_is_idempotent(pipeline):
     assert proposals.claims_created == [] and proposals.claims_deduped == 22
     # only the honestly unbound claims are still selectable for V2:
     # 19 unbindable + 6 semantic-only + 7 skipped bindings
-    assert len(_unbound_ai_claims(store, None)) == 32
+    assert len(_untested_claims(store, None)) == 32
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):

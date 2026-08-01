@@ -22,6 +22,8 @@ from before_we_ai.model import (
     Scope,
     create_claim,
 )
+from before_we_ai.llm.mapping import item_to_knowledge
+from before_we_ai.llm.schemas import KnowledgeItemProposal
 from before_we_ai.store import ProjectStore, check_integrity
 
 
@@ -78,20 +80,32 @@ class TestAnswerRequest:
 
 
 class TestRequiredKnowledge:
-    def test_every_item_inherits_the_requests_scope(self):
+    def test_objects_and_fields_inherit_the_requests_scope(self):
+        """For them a scope is a *selector*: it decides which table or column
+        plays the role, so DE's ledger and US's compete separately."""
         scope = Scope(entity="DE")
-        items = [
+        required = RequiredKnowledge(request_id="req", items=[
             KnowledgeItem(kind=KnowledgeKind.OBJECT, name="journal",
                           why="the P&L is summed from it", scope=scope),
             KnowledgeItem(kind=KnowledgeKind.FIELD, name="amount",
                           of_object="journal", why="it is what gets summed",
                           scope=scope),
-            KnowledgeItem(kind=KnowledgeKind.RULE, name="sign_convention",
-                          why="credits and debits must not cancel wrongly",
-                          scope=scope),
-        ]
-        required = RequiredKnowledge(request_id="req", items=items)
+        ])
         assert {i.scope.entity for i in required.items} == {"DE"}
+
+    def test_a_rule_carries_no_scope_because_it_selects_nothing(self):
+        """There is no "DE's copy" of an accounting policy to choose among.
+        Where a rule is valid belongs to the claim that states it —
+        `Claim.scope` and `Claim.validity`, which can also say *from when*."""
+        with pytest.raises(ValidationError, match="a rule item carries no scope"):
+            KnowledgeItem(kind=KnowledgeKind.RULE, name="sign_convention",
+                          why="w", scope=Scope(entity="DE"))
+        # and V4's mapping drops it rather than passing it through
+        item = item_to_knowledge(
+            KnowledgeItemProposal(kind="rule", name="sign_convention",
+                                  why="w"),
+            Scope(entity="DE"))
+        assert item.scope.is_explicit() is False
 
     def test_a_field_must_name_its_object_and_only_a_field_may(self):
         with pytest.raises(ValidationError, match="must name the object"):
