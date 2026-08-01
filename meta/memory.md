@@ -8,7 +8,13 @@
 
 - **Built:** M0 corpus · M1 core · M2 ingestion · M3 checks & engine ·
   M4 LLM contracts V1/V2 · readiness report · M6 question flow + ReadinessMap.
-- **Suite: 391 pass**, fully offline (`cd /workspace/src &&
+- **The stage spine is the organising idea** (`before_we_ai/stages.py`, as
+  data; `docs/architecture.md` → "The stage spine" for reading). Seven stages,
+  one actor each; the walkthrough script number *is* the report section
+  number. 0 inputs · 1 request · 2 measured · 3 proposed · 4 tested ·
+  5 clarification · 6 readiness. Stage 0 is the precondition; 1 and 6 are the
+  frame around the middle.
+- **Suite: 397 pass**, fully offline (`cd /workspace/src &&
   source /workspace/.venv/bin/activate && python -m pytest -q`).
 - **Standing measures:** False-Promotion **0** (non-negotiable at every
   commit) · Seeded-Recall **14–15/25** · prompt-leakage scan CLEAN.
@@ -21,8 +27,16 @@
 
 ## Next
 
-1. **Owner validation run using only the readiness report.** Deferred twice.
-   Reading real output has found things the suite did not, repeatedly.
+1. **Owner validation run using only the readiness report.** Deferred twice,
+   and the reason to do it is now evidence rather than principle: reading real
+   output has found four things the 397 tests did not — a grammar slip in a
+   derived sentence, three dead fields, two report surfaces disagreeing about
+   one store, and the unconfirmed required-knowledge list below.
+
+   Run it: `cd validation && ./scripts/reset.sh && ./scripts/0-inputs.sh`,
+   then follow the `next:` line each stage prints. Every stage rebuilds
+   `validation/data/report/index.html` — leave a tab open on it.
+   `validation/README.md` says what to look for and the numbers to expect.
 2. **M5 — documents & V3.** PDF pipeline, position anchors, DuckDB FTS,
    multi-anchor reconciliation, `tell` + mirror loop. Acceptance: T8
    negatives and a real PDF — every PDF it needs is in the frozen corpus
