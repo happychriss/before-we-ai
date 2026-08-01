@@ -7,7 +7,18 @@
 ## Where we are
 
 - **Built:** M0 corpus · M1 core · M2 ingestion · M3 checks & engine ·
-  M4 LLM contracts V1/V2 · readiness report · M6 question flow + ReadinessMap.
+  M4 LLM contracts V1/V2 · readiness report · M6 question flow +
+  ReadinessMap · **answer types** (the guide declares what a family of
+  question depends on; the model classifies, the engine expands, a human
+  confirms) · **the outer-layer refactor** (`meta/refactor-workorder.md`,
+  all seven PRs).
+- **What the refactor changed for anyone writing code now:** report facts
+  live in `readiness_report/projection.py`, HTML in
+  `templates/report.html.j2` with CSS/JS as package resources, and
+  `render.py` is 98 lines of wiring. Model-facing code receives a
+  `ProposalStore` and structurally cannot write promoting evidence. Test
+  lanes exist (`pytest -m unit`, ~0.5s); every test module declares one.
+  Domain packs ship in `before_we_ai/domains/`.
 - **The stage spine is the organising idea** (`before_we_ai/stages.py`, as
   data; `docs/architecture.md` → "The stage spine" for reading). Seven stages,
   one actor each; the walkthrough script number *is* the report section
@@ -41,23 +52,19 @@
    then follow the `next:` line each stage prints. Every stage rebuilds
    `validation/data/report/index.html` — leave a tab open on it.
    `validation/README.md` says what to look for and the numbers to expect.
-2. **The refactor work order — external agent (Copilot), before M5.**
-   `meta/refactor-workorder.md`: five packages (test lanes · counts out of
-   durable docs · corpus construction out of tests/ · capability boundary
-   replacing the source-inspection guardrail · report view-model extraction
-   in three phases), each one PR under hard gates — suite green without
-   deleting tests, fixtures byte-identical, wording moved never reworded,
-   stop-and-report on any pinned-test conflict. Owner reviews each PR with
-   `/code-review ultra <PR#>` and re-runs the walkthrough. **Must finish
-   before M5 starts** so M5 builds its document sections into the view
-   model, not into the old 2,800-line renderer. Recommendation A
-   (application layer) is explicitly out of scope — see the GUI milestone
-   below. Source paper: `docs/draft-thoughts/`.
-
-3. **M5 — documents & V3.** PDF pipeline, position anchors, DuckDB FTS,
+2. **M5 — documents & V3.** PDF pipeline, position anchors, DuckDB FTS,
    multi-anchor reconciliation, `tell` + mirror loop. Acceptance: T8
    negatives and a real PDF — every PDF it needs is in the frozen corpus
    (`src/corpus/data/`, including `noise/`).
+
+   **Unblocked, and the sequencing was deliberate:** the refactor ran first
+   so M5 builds its document surfaces into `projection.py` and the template
+   rather than into a 2,800-line renderer that no longer exists. Its new
+   contract (V3) is born inside `ProposalStore`, and `anchor()` is the
+   weak-evidence method that facade was shaped to accept — `DOCUMENT_ANCHOR`
+   promotes nothing (`resolve_status` never reads it), so V3 writing anchors
+   does not touch the promotion boundary. **`PyMuPDF` is M5's first line of
+   code**: the spec names it and it is still undeclared.
 
    **M5 also builds the missing answer operation.** The *law* exists and is
    tested (a scoped CONFIRMATION makes a claim business-confirmed,
@@ -89,7 +96,7 @@
    documents: `decodes` account ranges, the AR control account, and
    opening-balances coverage. Read them in the readiness report.
 
-4. **Confirm the answer-type slice against real output.** Built
+3. **Confirm the answer-type slice against real output.** Built
    2026-08-01 (`docs/architecture.md` → "Answer types"); the walkthrough now
    classifies, shows the guide fingerprint and per-item provenance, and
    demonstrates the confirmation lifting the cap. What has *not* happened
@@ -103,7 +110,7 @@
    - **Only a confirmation lapses** when the guide moves, not waivers or
      links. A waiver is about one item; a confirmation is about the list.
 
-5. **Confirm the two report fixes while reading** (done 2026-08-01, worth a
+4. **Confirm the two report fixes while reading** (done 2026-08-01, worth a
    look because both were found by reading and not by testing): section 0
    now lists the guide's answer types with what each one requires — a
    reader cannot judge the classification in section 1 without seeing what
@@ -251,8 +258,6 @@ recording (its corpus fixture is hand-authored and marked as such).
   frozen corpus, which invalidates every pinned number and every fixture. It
   must be rare and deliberate; rewriting it correctly then costs ten minutes,
   merging it stale costs a file that rots further.
-- **PyMuPDF is not a declared dependency.** The spec names it and M5 needs
-  it; adding it to `pyproject.toml` is M5's first line of code.
 
 ## Standing constraints
 
