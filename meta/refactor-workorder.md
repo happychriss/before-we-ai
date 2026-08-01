@@ -231,8 +231,28 @@ the same with claim ids. For those, the projection emits the sentence's
 **pieces plus the reference** and the renderer assembles. Do not simplify by
 dropping the link or by moving the whole f-string across.
 
-*Accept: all existing report tests pass **unmodified**. That is the proof the
-extraction preserved behavior — do not touch test assertions in this phase.*
+**Accept — two gates, and the second is the real one:**
+
+1. All existing report tests pass **unmodified**. `git diff` on
+   `src/tests/unit/test_readiness_report.py` must be **empty**. Do not touch
+   a single assertion in this phase.
+2. **The rendered page is byte-identical.** The report is deterministic
+   (verified: two renders of the same store produce the same 38,936 bytes),
+   so this is a hard check, not a judgement:
+
+   ```
+   cd validation && ./scripts/reset.sh && for s in 0-inputs 1-request \
+     2a-measure-scan 2b-measure-matrix 3a-propose-hypotheses \
+     3b-propose-mappings 3c-propose-plans 4-test 5-clarify 6-readiness; do \
+     ./scripts/$s.sh >/dev/null; done
+   cp data/report/readiness.html /tmp/before.html     # on the base commit
+   # …apply the change, re-run the ten stages…
+   diff /tmp/before.html data/report/readiness.html   # must print nothing
+   ```
+
+   Paste the `diff` output (nothing) in the PR. A test suite proves what it
+   asserts; this proves everything it does not — every space, every
+   attribute, every sentence.
 
 **WP5b — retarget the semantic tests.** Report tests asserting *facts*
 (counts, verdicts, grounds, which items appear) move to view-model
