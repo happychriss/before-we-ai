@@ -14,6 +14,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+pytestmark = pytest.mark.acceptance
+
 CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
 MANIFEST = (Path(__file__).resolve().parents[2] / "corpus" / "generator_spec"
             / "sources_manifest.yaml")

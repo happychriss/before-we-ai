@@ -33,6 +33,8 @@ from before_we_ai.llm.request import ask
 from before_we_ai.core import Actor, KnowledgeKind, Scope
 from before_we_ai.store import ProjectStore, init_project
 
+pytestmark = pytest.mark.contract
+
 QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
 

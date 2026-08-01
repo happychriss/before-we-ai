@@ -17,6 +17,45 @@ This is required when `claude install` warns that the install location is not in
 
 ---
 
+## 0b. Running the tests — the lanes
+
+```bash
+cd /workspace/src && source /workspace/.venv/bin/activate
+python -m pytest -q                    # the gate: everything must pass
+python -m pytest -m unit -q            # ~0.5s — pure logic
+python -m pytest -m "unit or integration" -q
+python -m pytest -m contract -q        # prompts, schemas, fixtures, drift
+python -m pytest -m acceptance -q      # the frozen corpus, ~12s
+```
+
+**The full suite is the release gate and nothing replaces it.** The lanes
+exist so a red test says what *class* of thing broke, and so an edit to pure
+logic does not wait on the corpus. What each lane owns is registered in
+`src/pyproject.toml`; the rule of thumb:
+
+| lane | owns | run it when you touched |
+|------|------|-------------------------|
+| `unit` | pure functions, validation, derivation | core, semantics, expansion, glossary, stages |
+| `integration` | package boundaries over a temp project store | store, engine, readiness, the report |
+| `contract` | the model-facing interface | prompts, schemas, fixtures — **includes the drift guard** |
+| `acceptance` | the product promise on the frozen corpus | anything, before pushing |
+
+Two things to know:
+
+- **Every test module declares one lane** (`pytestmark = pytest.mark.<lane>`
+  under the imports), and `tests/unit/test_lanes.py` fails if one does not.
+  A module in no lane would be silently skipped by every lane run — a green
+  nobody earned.
+- **`--strict-markers` catches a typo in a declaration**, not in the command.
+  `pytest -m unt` does not fail; it deselects everything and reports
+  "460 deselected". Read the count, not just the colour.
+
+`tests/eval/` holds runnable tools, not tests — `refresh_fixtures.py` and
+`seeded_recall.py` talk to a live model and cost money. They carry no
+`test_` prefix and are never collected.
+
+---
+
 ## 1. Folder Structure
 
 `/workspace` is the git repo root (one repo for everything):

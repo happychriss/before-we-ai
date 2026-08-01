@@ -2,7 +2,11 @@
 
 import duckdb
 
+import pytest
+
 from before_we_ai.sources.fingerprint import file_fingerprint, schema_hash, table_fingerprint
+
+pytestmark = pytest.mark.unit
 
 
 def test_file_fingerprint_deterministic_and_sensitive(tmp_path):

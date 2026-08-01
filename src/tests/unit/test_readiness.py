@@ -48,6 +48,8 @@ from before_we_ai.readiness import (
 )
 from before_we_ai.store import ProjectStore, check_integrity, init_project
 
+pytestmark = pytest.mark.integration
+
 DE = Scope(entity="DE")
 
 

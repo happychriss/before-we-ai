@@ -1,10 +1,13 @@
 """Profiling and the candidate matrix on small synthetic tables."""
 
 import duckdb
+
 import pytest
 
 from before_we_ai.profile.candidates import build_matrix
 from before_we_ai.profile.columns import pattern_mask, profile_view, value_class
+
+pytestmark = pytest.mark.unit
 
 
 @pytest.fixture

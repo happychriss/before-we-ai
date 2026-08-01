@@ -29,6 +29,8 @@ from before_we_ai.llm.schemas import KnowledgeItemProposal
 from before_we_ai.store import ProjectStore, check_integrity
 from before_we_ai.store.repository import AppendOnlyViolation
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def store(tmp_path):

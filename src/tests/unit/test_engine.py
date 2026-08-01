@@ -1,6 +1,7 @@
 """Engine: gating, claim status wiring, store persistence, integrity."""
 
 import duckdb
+
 import pytest
 
 from before_we_ai.engine import run_check, run_ready
@@ -14,6 +15,8 @@ from before_we_ai.core import (
     create_claim,
 )
 from before_we_ai.store import ProjectStore, check_integrity
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture

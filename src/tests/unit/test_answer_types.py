@@ -15,6 +15,8 @@ from before_we_ai.llm.domain_guide import (
     short_fingerprint,
 )
 
+pytestmark = pytest.mark.unit
+
 
 def _guide(answer_types: dict) -> DomainGuide:
     return DomainGuide(

@@ -8,12 +8,16 @@ blank rows — is exercised here, domain-free.
 import duckdb
 import openpyxl
 
+import pytest
+
 from before_we_ai.sources.excel import (
     RULE_BLANK_ROWS,
     RULE_MERGED_HEADER,
     read_workbook,
     sheet_to_parquet,
 )
+
+pytestmark = pytest.mark.unit
 
 
 def ugly_workbook(path):

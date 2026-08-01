@@ -23,6 +23,8 @@ from before_we_ai.core.objects import MappingClaim
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, check_integrity, init_project
 
+pytestmark = pytest.mark.acceptance
+
 CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
 
 SOURCES = [

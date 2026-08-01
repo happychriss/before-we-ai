@@ -5,6 +5,8 @@ from pydantic import ValidationError
 
 from before_we_ai.core import Actor, EvidenceRecord, EvidenceType, CheckVerdict
 
+pytestmark = pytest.mark.unit
+
 
 def test_check_result_requires_verdict():
     with pytest.raises(ValidationError):

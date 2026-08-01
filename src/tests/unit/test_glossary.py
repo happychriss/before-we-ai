@@ -9,7 +9,11 @@ quotes from.
 
 import re
 
+import pytest
+
 from before_we_ai.glossary import GERMAN_TERMS, GLOSSARY, PLANNED
+
+pytestmark = pytest.mark.unit
 
 # Nouns of the one domain the product has a pack for today. They are correct
 # in `checks/library.py`, in `tests/fixtures/domain_guide_finance.yaml` and in

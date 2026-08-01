@@ -25,6 +25,8 @@ from before_we_ai.llm.vocabulary import (
 )
 from before_we_ai.checks.library import REGISTRY
 
+pytestmark = pytest.mark.contract
+
 
 def test_template_params_mirror_the_registry_exactly():
     assert set(TEMPLATE_PARAMS) == set(REGISTRY)

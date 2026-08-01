@@ -10,7 +10,11 @@ tests are what stops that returning.
 import re
 from pathlib import Path
 
+import pytest
+
 from before_we_ai.stages import BOUNDARY_BEFORE, BY_NAME, FRAME, STAGES
+
+pytestmark = pytest.mark.unit
 
 REPO = Path(__file__).resolve().parents[3]
 

@@ -11,6 +11,8 @@ from before_we_ai.core import KnowledgeKind, Provenance, Scope
 from before_we_ai.llm.domain_guide import DomainGuide
 from before_we_ai.readiness.expand import UnknownAnswerType, expand
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.fixture
 def guide() -> DomainGuide:

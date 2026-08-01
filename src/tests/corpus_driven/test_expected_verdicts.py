@@ -26,6 +26,8 @@ from before_we_ai.core import (
 )
 from before_we_ai.core.transitions import attach_evidence, resolve_status
 
+pytestmark = pytest.mark.acceptance
+
 GROUND_TRUTH = Path(__file__).resolve().parents[2] / "corpus" / "data" / "expected_verdicts.yaml"
 
 _DATA = yaml.safe_load(GROUND_TRUTH.read_text(encoding="utf-8"))

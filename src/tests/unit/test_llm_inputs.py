@@ -9,6 +9,8 @@ from before_we_ai.core import Actor, Predicate, create_claim
 from before_we_ai.core.objects import DataProfile
 from before_we_ai.store import ProjectStore, init_project
 
+pytestmark = pytest.mark.contract
+
 
 def _profile(table: str, column: str, **stats) -> DataProfile:
     base = {

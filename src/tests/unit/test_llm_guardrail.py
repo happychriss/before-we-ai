@@ -20,6 +20,8 @@ from before_we_ai.core.enums import CheckVerdict
 from before_we_ai.core.objects import DataProfile, EvidenceRecord
 from before_we_ai.store import ProjectStore, init_project
 
+pytestmark = pytest.mark.contract
+
 
 @pytest.fixture()
 def hypothesized_claim(tmp_path):

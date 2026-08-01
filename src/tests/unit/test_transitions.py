@@ -20,6 +20,8 @@ from before_we_ai.core import (
 )
 from before_we_ai.core.transitions import attach_evidence, resolve_status
 
+pytestmark = pytest.mark.unit
+
 
 def check(verdict: CheckVerdict) -> EvidenceRecord:
     return EvidenceRecord(

@@ -27,6 +27,8 @@ from before_we_ai.store import (
     is_project,
 )
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def store(tmp_path):

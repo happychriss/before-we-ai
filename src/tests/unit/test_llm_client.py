@@ -19,6 +19,8 @@ from before_we_ai.llm.config import LLMConfig, build_client
 from before_we_ai.llm.inputs import BuiltInput
 from before_we_ai.llm.stub import FixtureMissing, StubClient
 
+pytestmark = pytest.mark.contract
+
 
 class Answer(BaseModel):
     model_config = ConfigDict(extra="forbid")

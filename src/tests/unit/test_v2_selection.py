@@ -7,6 +7,7 @@ testimonial claim carries no data fingerprint, so a contradicting check is
 its *only* expiry date. These tests pin the widened rule before M5 starts
 producing the claims it applies to.
 """
+import pytest
 
 from before_we_ai.llm.v2_bind import _untested_claims
 from before_we_ai.core import (
@@ -17,6 +18,8 @@ from before_we_ai.core import (
     create_claim,
 )
 from before_we_ai.store import ProjectStore, init_project
+
+pytestmark = pytest.mark.integration
 
 
 def _store(tmp_path) -> ProjectStore:

@@ -1,4 +1,5 @@
 """Declarations observe, never promote — the ingestion layer's epistemic limit."""
+import pytest
 
 from before_we_ai.core import (
     Actor,
@@ -8,6 +9,8 @@ from before_we_ai.core import (
     create_claim,
 )
 from before_we_ai.core.transitions import attach_evidence, resolve_status
+
+pytestmark = pytest.mark.unit
 
 
 def declaration():

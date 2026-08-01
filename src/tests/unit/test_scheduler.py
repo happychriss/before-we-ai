@@ -5,6 +5,8 @@ import pytest
 from before_we_ai.core import Actor, ClaimStatus, CycleError, create_claim
 from before_we_ai.core.scheduler import ready_for_check, topological_order
 
+pytestmark = pytest.mark.unit
+
 
 def claim(statement, depends_on=(), status=ClaimStatus.PROPOSED):
     c = create_claim(statement, Actor.AI, depends_on=list(depends_on))

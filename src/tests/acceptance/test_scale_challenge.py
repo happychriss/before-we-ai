@@ -30,6 +30,8 @@ from before_we_ai.core import (
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.store import ProjectStore
 
+pytestmark = pytest.mark.acceptance
+
 N_ROWS = 100_000
 
 

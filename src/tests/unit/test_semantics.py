@@ -22,6 +22,8 @@ from before_we_ai.core import (
     resolve_status,
 )
 
+pytestmark = pytest.mark.unit
+
 
 def rule_claim(**overrides):
     kw = dict(

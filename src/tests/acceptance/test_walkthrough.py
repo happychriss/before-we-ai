@@ -33,6 +33,8 @@ from before_we_ai.core import (
 from before_we_ai.core.transitions import attach_evidence, resolve_status
 from before_we_ai.store import ProjectStore, check_integrity, checkpoint, init_project
 
+pytestmark = pytest.mark.acceptance
+
 
 def revenue_rule(statement: str):
     return create_claim(

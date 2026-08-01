@@ -6,6 +6,8 @@ import json
 
 import yaml
 
+import pytest
+
 from before_we_ai.core import (
     Actor,
     AnswerRequest,
@@ -35,6 +37,8 @@ from before_we_ai.llm.domain_guide import load_domain_guide
 from before_we_ai.readiness import confirm_classification, link_claim
 from before_we_ai.store import ProjectStore, init_project
 from readiness_report import render_project
+
+pytestmark = pytest.mark.integration
 
 
 def test_render_project_handles_empty_project(tmp_path):

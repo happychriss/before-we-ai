@@ -44,3 +44,13 @@ packages = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Lanes say what CLASS of thing a red test is about, so a failure points at
+# the layer that owns it. The full suite stays the release gate — these only
+# decide what is worth running between edits.
+addopts = "--strict-markers"
+markers = [
+    "unit: pure logic — no project directory, no model, no corpus",
+    "integration: package boundaries over a temporary project store",
+    "contract: the model-facing interface — prompts, schemas, fixtures, drift",
+    "acceptance: the product promise, against the frozen corpus",
+]

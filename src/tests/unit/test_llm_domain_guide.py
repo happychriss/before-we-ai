@@ -23,6 +23,8 @@ from before_we_ai.core.semantics import claim_key
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.store import ProjectStore, init_project
 
+pytestmark = pytest.mark.integration
+
 
 def _guide(**objects) -> DomainGuide:
     """Each keyword is one object: ``name=decided_by`` or

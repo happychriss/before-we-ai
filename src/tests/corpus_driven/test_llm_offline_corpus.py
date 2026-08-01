@@ -49,6 +49,8 @@ from before_we_ai.readiness import Ground, Readiness, evaluate_request
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, init_project
 
+pytestmark = pytest.mark.acceptance
+
 CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
 DOMAIN_GUIDE_FILE = Path(__file__).resolve().parents[1] / "fixtures" / "domain_guide_finance.yaml"
@@ -420,6 +422,9 @@ def test_the_readiness_map_never_writes_anything(pipeline):
     assert {p: p.stat().st_mtime_ns for p in sorted(root.rglob("*.yaml"))} == before
 
 
+# Also the contract lane, not only acceptance: this is THE drift guard, and
+# someone editing a prompt must see it go red without running the corpus.
+@pytest.mark.contract
 def test_fixtures_match_current_inputs(pipeline):
     """THE drift guard: each fixture answered a specific input; rebuild those
     inputs from the frozen corpus and compare hashes. Red here means a

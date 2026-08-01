@@ -1,6 +1,7 @@
 """Templates and verdict functions on small synthetic tables."""
 
 import duckdb
+
 import pytest
 
 from before_we_ai.core.enums import CheckVerdict
@@ -15,6 +16,8 @@ from before_we_ai.checks.verdicts import (
 )
 from before_we_ai.engine.runner import run_check
 from before_we_ai.store import ProjectStore
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture

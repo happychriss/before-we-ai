@@ -3,6 +3,7 @@
 from datetime import date, datetime
 
 import duckdb
+
 import pytest
 
 from before_we_ai.sources.canonical import (
@@ -15,6 +16,8 @@ from before_we_ai.sources.canonical import (
     canonical_text,
     canonicalize,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestCanonicalText:
