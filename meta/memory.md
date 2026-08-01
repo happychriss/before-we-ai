@@ -85,17 +85,39 @@ recording (its corpus fixture is hand-authored and marked as such).
 
 ## Open decisions (owner)
 
-- **Rename the request contract off the spec's V4 slot.** The spec's V4 is
-  **SQL generation**; the request contract (business question →
-  `AnswerRequest` + `RequiredKnowledge`) took the name and the number.
-  `llm/v4_request.py`, `CONTRACT = "v4_request"`, the fixture filename and the
-  model-tier key should become `request`. Mechanical; no prompt bytes move.
-- **Assumption Capture is unbuilt and untracked.** The spec's `sql` module:
+- **The request contract sits on the spec's V4 slot, which belongs to SQL
+  generation.** `docs/spec/before-we-ai-systemarchitektur.md:53` assigns the
+  four contract numbers: V1 hypotheses, V2 check binding, V3 document
+  interpretation, **V4 SQL generation**. What is built and called V4 is the
+  *request* contract (business question → `AnswerRequest` +
+  `RequiredKnowledge`), which the spec does not number at all — and the
+  built-but-unnumbered `role_binding` already proves five contracts do not fit
+  four slots.
+
+  Rename `llm/v4_request.py`, `CONTRACT = "v4_request"`, the fixture filename
+  and the `DEFAULT_MODELS` key to **`request`**, leaving V4 free. Mechanical:
+  no prompt bytes move, and fixture lookup is by contract+scenario, so only
+  the filename changes. Do it before the M5 live recording, or the recorded
+  fixture lands under the wrong name too.
+
+  Related and already acted on: `sql`/`result_ref` were deleted from
+  `AnswerRequest` on the stated grounds that "no milestone produces SQL".
+  **That reason was wrong** — the spec's V4 does, and `:59` says its result
+  goes into the question card. The deletion still stands (nothing set or read
+  them), but they are unbuilt scaffolding that returns with V4, not dead
+  weight.
+
+- **Assumption Capture is unbuilt, unlisted, and its dependency undeclared.**
+  `docs/spec/before-we-ai-systemarchitektur.md:59` (`sql` — Fragenfluss):
   sqlglot parses the generated query, checks it against the allowed subset,
   extracts joins and claim-requiring filters, matches them against the claim
-  store, and **materialises what is missing as `proposed` claims** — the query
-  itself becomes a source of claims. It appears in no roadmap row, and
-  `sqlglot` is not a declared dependency. Decide where it belongs.
+  store, and **materialises what is missing as `proposed` claims**. The query
+  itself becomes a source of claims — a real epistemic feature, not plumbing.
+
+  It appears in no roadmap row in `README.md`, in no milestone here, and
+  `sqlglot` is not in `src/pyproject.toml`. Decide where it belongs: with V4
+  (they are the same spec paragraph) or as its own milestone.
+
 - **Domain-guide acceptance kit, parts 1 + 2.** Part 3 (the coherence lint)
   is shipped. Per new law: one holds-fixture and one violated-fixture. Per
   new role: one wrong candidate that must lose. This is the only protection
