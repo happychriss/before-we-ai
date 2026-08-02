@@ -37,7 +37,7 @@
   stage; re-pinned end to end 2026-08-02 after the live re-record): 12 sources
   (6 data, 6 documents) · 260 column profiles · 6 pages / 10 passages, 1 inside
   a chart · 54 hypotheses / 1 deduped / 1 skipped · 22 candidates · 54 plans /
-  12 unbindable / 6 semantic-only / 4 skipped · **0 param normalizations** ·
+  11 unbindable / 6 semantic-only / 5 skipped · **0 param normalizations** ·
   9 document claims / 9 anchors / 2 links / 5 refusals · 54 executed,
   42 pass / 12 fail · 6 role questions, 22 open in total · 2 statements told
   (1 parked, 1 claim) · 9 required-knowledge items · verdict **blocked**,
@@ -569,11 +569,13 @@ recording touched two and left eight. Before, both would have replaced
 everything wholesale — and a replaced fixture moves the corpus baseline
 that every pinned number is measured against.
 
-## Open, found while finishing M5 — 2026-08-02
+## Found while finishing M5 — 2026-08-02 — ALL FOUR CLOSED
 
-Small, real, and none of them blocking. Listed because each was found by
-reading output rather than by testing, and none has a test that would
-catch it coming back.
+Each was found by reading output rather than by testing, and none had a
+test that would catch it coming back. All four now do. Kept in full
+rather than deleted: what was wrong and how it was found is the part
+worth re-reading, and three of the four turned out to hide something
+larger than the note that raised them.
 
 - ~~**`reconciliation` still asks the model to cast.**~~ **CLOSED
   2026-08-02.** The note now says why it differs: a measure there may be
@@ -588,24 +590,56 @@ catch it coming back.
   three as before the change, which is how we know the note did not cause
   them. Seeded-Recall **unchanged at 14/25**, F27 and F22 both still HIT.
 
-- **A two-sided law is still modelled as a one-sided claim.** A
-  `MappingClaim` binds one candidate to one view; `ic_symmetry` and
-  `subledger_equals_gl` need two. The fix that landed is a *permission*
-  in `V2_ROLES_SYSTEM` ("take the missing params from the other claims
-  in this batch"), which works and is recorded — but the object model
-  still cannot express "this pair plays this role", so the pairing lives
-  in the model's answer rather than in a claim. If two-sided laws ever
-  need to be elected against each other, this is where to start.
+- **A two-sided law is still modelled as a one-sided claim.**
+  **CLOSED as far as it matters, 2026-08-02** — and the note was hiding
+  a live false-promotion path. A `MappingClaim` binds one candidate to
+  one view; `ic_symmetry` and `subledger_equals_gl` relate two, and the
+  pairing lived only in the model's answer. Nothing checked that the
+  answer named *two things*: hand `ic_symmetry` one view twice and it
+  compares a view's leg counts to its own, finds no difference and
+  **passes** — and a passing domain law elects the candidate carrying
+  it. Every param valid, every view real, every column real, and a
+  business object settled by a check that measured nothing.
 
-- **The escape guard allows by prefix.** `test_no_fixture_escapes_the_
-  drift_guard` waves through anything named `v3_documents__*` on the
-  grounds that the documents file pins it. Two `tell` fixtures shipped
-  green and pinned by nothing before that was noticed. A new fixture
-  under an existing prefix still inherits a guarantee nobody checked.
+  `vocabulary.TWO_SIDED` now refuses it at binding time, so the model
+  gets it back as retry feedback. Sides are compared as *tuples* of the
+  params that make them up, never by view alone — "these two columns of
+  the same export must agree" is a legitimate check, and a blanket
+  `left != right` would have traded one false answer for another. The
+  vacuous PASS is executed in `test_check_library.py` rather than
+  asserted, so the reason the rule exists cannot rot.
+
+  What stays open is only the object model: no claim can say "this pair
+  plays this role". Deliberate boundary, recorded in
+  `docs/architecture.md` — nothing needs two-sided candidates *elected
+  against each other* yet, and the failure that mattered is closed.
+
+- **The escape guard allows by prefix.** **CLOSED 2026-08-02, and it
+  was worse than the note said.** The guard waved through anything named
+  `v3_documents__*` on the grounds that the documents file pinned it —
+  and that file's project declares the *three* PDFs its traps need, so
+  **three of the six recorded document answers were pinned by nobody**,
+  not just the two `tell` fixtures. A prefix cannot express "and
+  something actually checks it".
+
+  `tests/corpus_driven/fixture_registry.py` now holds the one list both
+  sides meet on: the guards iterate what it declares, and the escape
+  guard asserts the shipped files are **exactly** the names it produces.
+  Set equality, so it also catches the other direction — a registry name
+  with no file, which would leave a guard silently iterating nothing.
+  Both directions proven by mutation. The drift guard reads all six PDFs
+  now, in a fixture of its own; the acceptance project keeps its three.
 
 - **`amount_expr` covers `balance` and `subledger_equals_gl` only.**
-  Other templates that touch numbers (`reconciliation` measure
-  expressions) still rely on whatever the model wrote.
+  **CLOSED 2026-08-02**, and without prompt bytes — so no recording.
+  `checks.library.measure_expr` reads a `reconciliation` measure as an
+  amount **when it names a column**, which is what most measures are.
+  Anything with an operator in it is the model's expression and is left
+  exactly as written; a bare name that is not a column of the view is
+  left alone too, because it may be a literal and inventing a reading
+  for it is the guesswork this avoids. So the boundary the prompt note
+  describes is now the real boundary rather than a larger one: the
+  template converts what it can identify, and says so.
 
 ## Open decisions (owner)
 

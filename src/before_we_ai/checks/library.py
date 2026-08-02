@@ -14,6 +14,7 @@ business words (``tests``, rendered in the readiness report), and the
 clarification question it drafts on FAIL/INCONCLUSIVE.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -211,14 +212,45 @@ def _prep_attribute_contradiction(con, p, tol):
     }
 
 
+_BARE_COLUMN = re.compile(r'^"?([A-Za-z_][A-Za-z0-9_]*)"?$')
+
+
+def measure_expr(con, view: str, expression: str) -> str:
+    """Read a reconciliation measure as an amount when it names a column.
+
+    ``reconciliation`` differs from ``balance`` and ``subledger_equals_gl``
+    on purpose: its measures are row-level arithmetic, so the template
+    cannot know which column carries the number and the prompt says as
+    much. But *most* measures are just a column name, and for those the
+    template does know — so those get the same treatment the two amount
+    templates get, and a German export stops depending on the model having
+    remembered to write the cast.
+
+    Anything with an operator in it is the model's expression and is left
+    exactly as written. A bare name that is not a column of the view is
+    also left alone: it may be a literal, and inventing a reading for it
+    would be the guesswork this function exists to avoid.
+    """
+    match = _BARE_COLUMN.match(expression.strip())
+    if match is None:
+        return expression
+    column = match.group(1)
+    columns = {row[0] for row in con.execute(f'DESCRIBE "{view}"').fetchall()}
+    if column not in columns:
+        return expression
+    return amount_expr(con, view, column)
+
+
 def _prep_reconciliation(con, p, tol):
     return {
         "left": _ident(p["left"]),
         "right": _ident(p["right"]),
         "left_group_expr": p["left_group_expr"],
         "right_group_expr": p["right_group_expr"],
-        "left_measure_expr": p["left_measure_expr"],
-        "right_measure_expr": p["right_measure_expr"],
+        "left_measure_expr": measure_expr(con, p["left"],
+                                          p["left_measure_expr"]),
+        "right_measure_expr": measure_expr(con, p["right"],
+                                           p["right_measure_expr"]),
         "left_where": p.get("left_where"),
         "right_where": p.get("right_where"),
         "tolerance": tol["absolute"],

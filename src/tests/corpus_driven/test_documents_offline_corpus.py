@@ -33,6 +33,12 @@ from before_we_ai.domains import packaged
 from before_we_ai.llm import ask, interpret_documents, load_domain_guide
 from before_we_ai.readiness import evaluate_request
 from before_we_ai.store import ProjectStore, init_project
+from fixture_registry import (
+    PDF_SOURCES,
+    document_fixture,
+    statement_fixture,
+    statement_scenarios,
+)
 
 pytestmark = pytest.mark.acceptance
 
@@ -210,11 +216,42 @@ def test_no_figure_was_ever_linked_to_a_rule_item(read):
 # Its twin for V1/V2/request lives in test_llm_offline_corpus.py, and the
 # completeness check over there names this file — neither guard can quietly
 # stop covering a fixture.
+@pytest.fixture(scope="module")
+def every_document(tmp_path_factory):
+    """A project over **all six** corpus PDFs, for the drift guard alone.
+
+    The acceptance project above declares the three the traps need, and
+    the guard used to iterate its `store.documents` — so the other three
+    recorded answers were pinned by nothing while the escape guard waved
+    them through on their name. The guard needs the whole set; the
+    acceptance tests do not, and reading three PDFs they never assert on
+    would only make them slower to fail.
+    """
+    root = init_project(tmp_path_factory.mktemp("v3-all") / "corpus-docs-all")
+    config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8"))
+    config["sources"] = PDF_SOURCES
+    config["llm"] = {"offline": True, "fixtures_dir": str(FIXTURES),
+                     "domain_guide_file": str(DOMAIN_GUIDE_FILE)}
+    (root / "before-ai.yaml").write_text(yaml.safe_dump(config, sort_keys=False),
+                                         encoding="utf-8")
+    read_documents(root)
+    guide = load_domain_guide(DOMAIN_GUIDE_FILE)
+    ask(root, DEMO_QUESTION, guide=guide, store=ProjectStore(root),
+        scenario="corpus")
+    return root, guide, ProjectStore(root)
+
+
 @pytest.mark.contract
-def test_fixtures_match_current_inputs(read):
+def test_fixtures_match_current_inputs(every_document):
     """Each fixture answered one specific input. Rebuild those inputs from
     the frozen corpus and compare hashes. Red here means the recorded
-    answers are stale — refresh the fixtures, do not touch this test."""
+    answers are stale — refresh the fixtures, do not touch this test.
+
+    Iterates `PDF_SOURCES` rather than whatever the project happens to
+    hold: the guard's job is to cover the declared set, and a project that
+    quietly read fewer documents would otherwise quietly check fewer
+    fixtures.
+    """
     import json
 
     import duckdb
@@ -226,14 +263,16 @@ def test_fixtures_match_current_inputs(read):
         select_passages,
     )
 
-    root, guide, _report, store = read
+    root, guide, store = every_document
     items = open_rule_items(store, guide)
     con = duckdb.connect(str(root / "cache" / "analysis.duckdb"))
     try:
-        for profile in sorted(store.documents.values(), key=lambda d: d.document):
-            chunks = select_passages(con, profile.document, items, V3Report())
-            built = build_document_context(profile.document, chunks, items)
-            path = FIXTURES / f"v3_documents__corpus__{profile.document}.json"
+        for source in PDF_SOURCES:
+            document = source["name"]
+            chunks = select_passages(con, document, items, V3Report())
+            built = build_document_context(document, chunks, items)
+            path = FIXTURES / f"{document_fixture(document)}.json"
+            assert path.is_file(), f"no recorded answer for {document}"
             recorded = json.loads(path.read_text(encoding="utf-8"))
             assert recorded["input_sha256"] == built.sha256, (
                 f"{path.name} answered a different input than the one built "
@@ -245,21 +284,14 @@ def test_fixtures_match_current_inputs(read):
 
 # The K8 statements ride the same contract as the documents, so they need
 # the same guard. They very nearly did not get one: the escape guard in
-# test_llm_offline_corpus.py waves through anything called
+# test_llm_offline_corpus.py waved through anything called
 # `v3_documents__*` on the grounds that this file pins it — and this file
-# pinned the six PDFs by iterating `store.documents`, which a statement is
-# not. Two fixtures were therefore green and unpinned.
-STATEMENTS_SPEC = (Path(__file__).resolve().parents[2]
-                   / "corpus" / "data" / "tell_statements.yaml")
-
-
-def _statement_scenarios() -> list[tuple[str, str]]:
-    spec = yaml.safe_load(STATEMENTS_SPEC.read_text(encoding="utf-8"))
-    return [(e["id"], e["text"]) for e in spec["statements"]]
-
-
+# pinned documents by iterating `store.documents`, which a statement is
+# not. Two fixtures were therefore green and unpinned. Both guards now
+# iterate `fixture_registry`, and the escape guard compares the shipped
+# files against exactly what that module names.
 @pytest.mark.contract
-@pytest.mark.parametrize("statement_id,text", _statement_scenarios())
+@pytest.mark.parametrize("statement_id,text", statement_scenarios())
 def test_statement_fixtures_answer_the_input_built_today(read, statement_id,
                                                          text):
     """A person's sentence is read exactly like a page of a policy."""
@@ -277,8 +309,7 @@ def test_statement_fixtures_answer_the_input_built_today(read, statement_id,
     try:
         built = build_document_context(STATEMENTS, [chunk],
                                        open_rule_items(scratch, guide))
-        path = FIXTURES / (f"v3_documents__corpus_{statement_id.lower()}"
-                           f"__statements.json")
+        path = FIXTURES / f"{statement_fixture(statement_id)}.json"
         assert path.is_file(), f"no recorded answer for {statement_id}"
         recorded = json.loads(path.read_text(encoding="utf-8"))
         assert recorded["input_sha256"] == built.sha256, (
@@ -317,12 +348,11 @@ class TestTheK8StatementsAgainstTheRecordedAnswers:
         (root / "before-ai.yaml").write_text(
             yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
         guide = load_domain_guide(DOMAIN_GUIDE_FILE)
-        spec = yaml.safe_load(STATEMENTS_SPEC.read_text(encoding="utf-8"))
         reports = {
-            entry["id"]: tell(root, entry["text"], guide=guide,
-                              store=ProjectStore(root),
-                              scenario=f"corpus_{entry['id'].lower()}")
-            for entry in spec["statements"]
+            statement_id: tell(root, text, guide=guide,
+                               store=ProjectStore(root),
+                               scenario=f"corpus_{statement_id.lower()}")
+            for statement_id, text in statement_scenarios()
         }
         return root, guide, reports
 

@@ -248,6 +248,36 @@ COLUMN_PARAMS: dict[str, tuple[tuple[str, str], ...]] = {
     "ic_symmetry": (("left_period", "left"), ("right_period", "right")),
 }
 
+# The two sides of a two-sided check, as the params that make each side up.
+#
+# A law that relates two sides tests nothing when both sides are the same
+# rows read the same way: `ic_symmetry` compares a view's leg counts to its
+# own and finds no difference, `reconciliation` sums identical rows twice
+# and finds no gap. They **pass**, and a passing domain law elects the
+# candidate that carries it — so this is a false-promotion path, not a
+# cosmetic slip. Nothing else catches it: every param is individually
+# valid, every view exists, every column is real.
+#
+# Compared as tuples rather than by view alone, because two sides of one
+# view is a legitimate check — "these two columns of the same export must
+# agree" — and only sides identical in *every* distinguishing param are
+# self-comparisons. `decode` shares its `key` param, so its sides differ
+# exactly when its two views do.
+TWO_SIDED: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    "ic_symmetry": (("left", "left_period"), ("right", "right_period")),
+    "reconciliation": (
+        ("left", "left_group_expr", "left_measure_expr", "left_where"),
+        ("right", "right_group_expr", "right_measure_expr", "right_where"),
+    ),
+    "attribute_contradiction": (("left", "left_key", "left_attr"),
+                                ("right", "right_key", "right_attr")),
+    "anti_join": (("child", "child_column"), ("parent", "parent_column")),
+    "cardinality": (("child", "child_column"), ("parent", "parent_column")),
+    "decode": (("encoded", "key"), ("decode", "key")),
+    "subledger_equals_gl": (("subledger", "subledger_amount"),
+                            ("journal", "journal_amount")),
+}
+
 def _required(template: str) -> frozenset:
     contract = TEMPLATE_PARAMS.get(template)
     return contract.required if contract else frozenset()
@@ -369,6 +399,28 @@ TEMPLATE_NOTES: dict[str, str] = {
 }
 
 
+def _self_comparison(template: str, params: dict) -> list[str]:
+    """Refuse a two-sided check whose two sides are the same thing.
+
+    The verdict such a check produces is PASS, and it is not a measurement
+    of anything — the rows are compared to themselves. On a domain law that
+    PASS elects the candidate, which makes this the cheapest false
+    promotion available and the only one no other validation sees.
+    """
+    sides = TWO_SIDED.get(template)
+    if sides is None:
+        return []
+    left, right = ([params.get(name) for name in side] for side in sides)
+    if left != right:
+        return []
+    named = " and ".join(f"{a}/{b}" for a, b in zip(*sides))
+    return [
+        f"template {template!r}: {named} are identical, so this check "
+        f"would compare rows to themselves and pass without testing "
+        f"anything. Name the two sides it is meant to relate."
+    ]
+
+
 def check_template_params(template: str, params: dict) -> list[str]:
     """Validate a param dict against a template's contract; returns errors."""
     contract = TEMPLATE_PARAMS.get(template)
@@ -387,6 +439,7 @@ def check_template_params(template: str, params: dict) -> list[str]:
             )
     for unknown in sorted(keys - contract.allowed):
         errors.append(f"template {template!r}: unknown param {unknown!r}")
+    errors += _self_comparison(template, params)
     for key in _LIST_PARAMS:
         if key in keys and key in contract.allowed and not isinstance(params[key], list):
             errors.append(

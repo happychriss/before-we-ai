@@ -18,7 +18,7 @@ is exercised there. That is exactly why it is unit-tested here.
 import duckdb
 import pytest
 
-from before_we_ai.checks.library import amount_expr
+from before_we_ai.checks.library import amount_expr, measure_expr
 
 pytestmark = pytest.mark.unit
 
@@ -95,6 +95,49 @@ class TestWhatItRefuses:
         view = _view(con, ["1.234", "5.678"])
         with pytest.raises(ValueError, match='"v"."amount"'):
             amount_expr(con, view, "amount")
+
+
+class TestTheReconciliationMeasure:
+    """`reconciliation` cannot be given the same treatment wholesale — its
+    measures are row-level arithmetic, and the template has no way to know
+    which column inside `qty * unit_price` carries the money. Its prompt
+    note says so.
+
+    But most measures are just a column name, and for those the template
+    *does* know. Those get read as amounts like any other; anything with
+    an operator stays exactly as the model wrote it.
+    """
+
+    def test_a_bare_column_is_read_as_an_amount(self, con):
+        """The case the note alone could not fix: a German export, and the
+        model writing the column name without a cast — correct per the
+        contract, and previously a summed-as-what error."""
+        view = _view(con, ["1.234,56", "-234,56"])
+        expr = measure_expr(con, view, "amount")
+        assert _total(con, view, expr) == pytest.approx(1000.0)
+
+    def test_a_quoted_bare_column_counts_as_bare(self, con):
+        view = _view(con, ["10,50", "10,50"])
+        assert _total(con, view, measure_expr(con, view, '"amount"')) == \
+            pytest.approx(21.0)
+
+    def test_an_expression_is_left_exactly_as_written(self, con):
+        con.execute("CREATE TABLE t (qty INTEGER, price DOUBLE)")
+        con.execute("INSERT INTO t VALUES (2, 3.5)")
+        con.execute('CREATE VIEW "v" AS SELECT * FROM t')
+        assert measure_expr(con, "v", "qty * price") == "qty * price"
+
+    def test_a_name_that_is_not_a_column_is_left_alone(self, con):
+        """It may be a literal or a function call. Inventing a reading for
+        it would be exactly the guesswork this avoids."""
+        view = _view(con, ["1,50"])
+        assert measure_expr(con, view, "42") == "42"
+        assert measure_expr(con, view, "not_a_column") == "not_a_column"
+
+    def test_a_refusal_still_refuses_through_the_measure(self, con):
+        view = _view(con, ["1.234", "5.678"])
+        with pytest.raises(ValueError, match="ambiguous"):
+            measure_expr(con, view, "amount")
 
 
 def test_three_decimals_are_fine_when_the_column_settles_it(con):

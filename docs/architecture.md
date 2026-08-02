@@ -480,6 +480,27 @@ decision revealed far more existing leniency than it added.
   exist on the view they're used against). Unambiguous `view.column` values
   are normalized to bare columns, not rejected. What still slips through is
   contained by the engine (see run_ready) — visible, never fatal.
+- **A two-sided check must have two sides** (`vocabulary.TWO_SIDED`, added
+  2026-08-02). A law relating two sides tests nothing when both sides are
+  the same rows read the same way: `ic_symmetry` compares a view's leg
+  counts to its own and **passes**; a passing domain law elects the
+  candidate carrying it, so this is a false-promotion path that every
+  other validation waves through — each param is valid, each view exists,
+  each column is real. The sides are compared as *tuples* of the params
+  that make them up, never by view alone: "these two columns of the same
+  export must agree" is a legitimate check, and only sides identical in
+  every distinguishing param are self-comparisons. The vacuous PASS is
+  executed, not asserted, in `test_check_library.py`.
+
+  This is also as far as the object model goes on two-sided laws. A
+  `MappingClaim` binds one candidate to one view; `ic_symmetry` and
+  `subledger_equals_gl` relate two, and the pairing lives in the model's
+  answer (V2 is permitted to take missing params from the other claims in
+  its batch) rather than in a claim that could say "this pair plays this
+  role". That is a deliberate boundary, not an oversight: nothing yet
+  needs two-sided candidates *elected against each other*, and the guard
+  above closes the failure that mattered. The day they do, this is where
+  to start.
 - **ULIDs never enter a prompt**: V2 references claims via deterministic labels
   (`claim_label_map`, identity-sorted c1..cN) — planning inputs are byte-stable
   across fresh projects, which is what makes fixture hashes meaningful.

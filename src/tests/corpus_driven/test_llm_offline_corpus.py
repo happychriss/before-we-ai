@@ -49,6 +49,7 @@ from before_we_ai.profile.candidates import load_matrix
 from before_we_ai.readiness import Ground, Readiness, evaluate_request
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, init_project
+from fixture_registry import all_guarded
 
 pytestmark = pytest.mark.acceptance
 
@@ -625,25 +626,27 @@ def test_fixtures_match_the_prompts_they_answered():
 # that nobody earned — the exact silence the drift guard exists to break.
 # (V3's fixtures are checked in test_documents_offline_corpus.py, which
 # needs a project with documents read.)
-_GUARDED_HERE = {
-    "request__corpus",
-    "v1_hypotheses__corpus",
-    "role_binding__corpus",
-    "v2_bind__corpus_roles",
-    "v2_bind__corpus_claims",
-}
-_GUARDED_IN_THE_DOCUMENTS_FILE = "v3_documents__"
-
-
+#
+# It used to allow the V3 half **by prefix**, and a prefix cannot say "and
+# something actually checks it": three of the six document answers and both
+# statement answers were pinned by nobody while passing this test. Names on
+# both sides now come from `fixture_registry`, which the guards iterate.
 @pytest.mark.contract
 def test_no_fixture_escapes_the_drift_guard():
     shipped = {p.stem for p in FIXTURES.glob("*.json")}
-    unguarded = {
-        name for name in shipped
-        if name not in _GUARDED_HERE
-        and not name.startswith(_GUARDED_IN_THE_DOCUMENTS_FILE)
-    }
+    guarded = all_guarded()
+
+    unguarded = shipped - guarded
     assert not unguarded, (
         "these fixtures are pinned by no drift guard, so a prompt or builder "
-        f"change would leave them stale and green: {sorted(unguarded)}"
+        f"change would leave them stale and green: {sorted(unguarded)}. Add "
+        "them to fixture_registry and make a guard iterate them."
+    )
+    # The other direction, and the one a prefix could never give: a name
+    # the registry claims is guarded but no file answers. Without it a
+    # deleted fixture leaves its guard silently iterating nothing.
+    missing = guarded - shipped
+    assert not missing, (
+        f"fixture_registry names recorded answers that do not exist: "
+        f"{sorted(missing)}"
     )

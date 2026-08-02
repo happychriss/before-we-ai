@@ -165,3 +165,36 @@ def test_every_registry_entry_has_a_template_file():
     files = {f.name for f in resources.files("before_we_ai.checks").joinpath("templates").iterdir()}
     for name, spec in REGISTRY.items():
         assert spec.file in files, name
+
+
+class TestWhyASelfComparisonIsRefusedAtBindingTime:
+    """The premise behind `vocabulary.TWO_SIDED`, executed rather than
+    asserted. Binding-time validation now rejects a two-sided check whose
+    sides are the same rows — and this is what would happen if one got
+    through: it does not error, it does not fail, it **passes**, and a
+    passing domain law elects the candidate that carries it.
+
+    Kept here, on the engine side, because the reason the validation
+    exists lives in what the SQL does, not in what the validator says.
+    """
+
+    def test_ic_symmetry_against_itself_passes_while_measuring_nothing(
+            self, store, con):
+        result = run(store, con, "ic_symmetry", {
+            "left": "children", "left_period": "period",
+            "right": "children", "right_period": "period",
+        })
+        assert result.verdict is CheckVerdict.PASS
+        assert result.exception_samples == []
+
+    def test_the_same_check_between_two_views_can_still_fail(self, store,
+                                                             con):
+        """The control: the template is not vacuous in general — it is
+        vacuous when handed one view twice."""
+        con.execute("CREATE TABLE mirror (ref VARCHAR, period VARCHAR)")
+        con.execute("INSERT INTO mirror VALUES ('1', '2024-01')")
+        result = run(store, con, "ic_symmetry", {
+            "left": "children", "left_period": "period",
+            "right": "mirror", "right_period": "period",
+        })
+        assert result.verdict is CheckVerdict.FAIL

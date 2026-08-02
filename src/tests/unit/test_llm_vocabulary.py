@@ -21,6 +21,7 @@ from before_we_ai.llm.vocabulary import (
     PredicateName,
     TEMPLATE_PARAMS,
     TemplateName,
+    TWO_SIDED,
     check_template_params,
 )
 from before_we_ai.checks.library import REGISTRY
@@ -176,3 +177,70 @@ def test_check_template_params_value_shapes():
         "journal": "j", "amount": "sum(amount_local)", "group_column": "doc",
     })
     assert any("bare view/column identifier" in e for e in expression)
+
+
+class TestATwoSidedCheckMustHaveTwoSides:
+    """The cheapest false promotion available, and the one nothing else
+    sees: every param individually valid, every view real, every column
+    real — and both sides naming the same rows.
+
+    `ic_symmetry` then compares a view's leg counts to its own, finds no
+    difference and PASSES. A passing domain law elects the candidate that
+    carries it, so a check that measured nothing would have settled a
+    business object. This is also the shape the two-sided-law note in
+    memory.md warned about: the pairing lives in the model's answer, and
+    until now nothing checked that the answer named two things.
+    """
+
+    def _ic(self, **overrides):
+        params = {"left": "de__ic", "left_period": "period",
+                  "right": "us__ic", "right_period": "period"}
+        return check_template_params("ic_symmetry", params | overrides)
+
+    def test_the_same_view_on_both_sides_is_refused(self):
+        errors = self._ic(right="de__ic")
+        assert any("compare rows to themselves" in e for e in errors)
+
+    def test_the_refusal_names_the_params_to_fix(self):
+        errors = self._ic(right="de__ic")
+        assert any("left/right" in e and "left_period/right_period" in e
+                   for e in errors)
+
+    def test_two_different_views_are_fine(self):
+        assert not [e for e in self._ic() if "themselves" in e]
+
+    def test_two_sides_of_one_view_are_legitimate(self):
+        """Not a blanket left != right rule: "these two columns of the same
+        export must agree" is a real check, and rejecting it would trade
+        one false answer for another."""
+        errors = check_template_params("attribute_contradiction", {
+            "left": "t", "left_key": "id", "left_attr": "name_de",
+            "right": "t", "right_key": "id", "right_attr": "name_en",
+        })
+        assert not [e for e in errors if "themselves" in e]
+
+    def test_reconciliation_needs_more_than_a_different_view_name(self):
+        """Same view, same grouping, same measure — three ways of writing
+        one sum, compared to itself."""
+        errors = check_template_params("reconciliation", {
+            "left": "t", "right": "t",
+            "left_group_expr": "doc", "right_group_expr": "doc",
+            "left_measure_expr": "amount", "right_measure_expr": "amount",
+        })
+        assert any("compare rows to themselves" in e for e in errors)
+
+    def test_decode_sides_differ_exactly_when_its_views_do(self):
+        same = check_template_params("decode", {
+            "encoded": "t", "decode": "t", "key": "code", "value": "label"})
+        assert any("themselves" in e for e in same)
+        different = check_template_params("decode", {
+            "encoded": "t", "decode": "lookup", "key": "code",
+            "value": "label"})
+        assert not [e for e in different if "themselves" in e]
+
+    def test_every_two_sided_template_is_a_registry_key(self):
+        for template, (left, right) in TWO_SIDED.items():
+            assert template in REGISTRY
+            allowed = TEMPLATE_PARAMS[template].allowed
+            assert set(left) | set(right) <= allowed, template
+            assert len(left) == len(right), template

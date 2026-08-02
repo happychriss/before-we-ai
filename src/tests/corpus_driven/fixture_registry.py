@@ -1,0 +1,87 @@
+"""Which recorded answer is pinned by which guard — the one list.
+
+The drift guard is only as good as its coverage, and coverage used to be
+asserted by a **prefix**: `test_no_fixture_escapes_the_drift_guard` waved
+through anything called `v3_documents__*` on the grounds that the
+documents file pinned it. It did not. That file's project declares the
+three PDFs its acceptance traps need, so three of the six recorded
+document answers were checked by nobody, and the two `tell` fixtures
+shipped unpinned for the same reason — a statement is not a document, so
+iterating ``store.documents`` never reached them.
+
+A prefix cannot express "and something actually checks it". So the two
+sides now meet on one list: the guards iterate what is declared here, and
+the escape guard asserts the shipped files are exactly the names this
+module produces. A new fixture is then either declared and checked, or
+red — never silently inherited.
+
+This is not a test module. It holds no assertions; it holds the facts
+both test modules have to agree on.
+"""
+
+from pathlib import Path
+
+import yaml
+
+CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
+
+# Every PDF a document fixture was recorded for — the walkthrough's six,
+# not the acceptance file's three. The recorder writes one call per
+# document, so this list and the fixture directory are the same fact
+# twice, and the escape guard is what keeps them that way.
+PDF_SOURCES = [
+    {"name": "management_report", "kind": "pdf",
+     "location": str(CORPUS / "management_report.pdf")},
+    {"name": "buchhaltungsrichtlinie", "kind": "pdf",
+     "location": str(CORPUS / "buchhaltungsrichtlinie.pdf")},
+    {"name": "rabattvertrag", "kind": "pdf",
+     "location": str(CORPUS / "rabattvertrag.pdf")},
+    {"name": "lieferantenkatalog", "kind": "pdf",
+     "location": str(CORPUS / "noise" / "lieferantenkatalog.pdf")},
+    {"name": "pressemitteilung_2022_divested_unit", "kind": "pdf",
+     "location": str(CORPUS / "noise" / "pressemitteilung_2022_divested_unit.pdf")},
+    {"name": "reisekostenrichtlinie", "kind": "pdf",
+     "location": str(CORPUS / "noise" / "reisekostenrichtlinie.pdf")},
+]
+
+STATEMENTS_SPEC = CORPUS / "tell_statements.yaml"
+
+# The contracts whose fixtures are pinned in test_llm_offline_corpus.py.
+GUARDED_IN_THE_LLM_FILE = frozenset({
+    "request__corpus",
+    "v1_hypotheses__corpus",
+    "role_binding__corpus",
+    "v2_bind__corpus_roles",
+    "v2_bind__corpus_claims",
+})
+
+
+def statement_scenarios() -> list[tuple[str, str]]:
+    """The K8 statements, id and text, in the order the corpus lists them."""
+    spec = yaml.safe_load(STATEMENTS_SPEC.read_text(encoding="utf-8"))
+    return [(entry["id"], entry["text"]) for entry in spec["statements"]]
+
+
+def document_fixture(document: str) -> str:
+    return f"v3_documents__corpus__{document}"
+
+
+def statement_fixture(statement_id: str) -> str:
+    return f"v3_documents__corpus_{statement_id.lower()}__statements"
+
+
+def guarded_in_the_documents_file() -> frozenset[str]:
+    """Every fixture test_documents_offline_corpus.py pins, by name.
+
+    Derived from the same two lists its guards iterate, so it cannot claim
+    coverage the guards do not deliver — that was the whole defect.
+    """
+    return frozenset(
+        {document_fixture(source["name"]) for source in PDF_SOURCES}
+        | {statement_fixture(sid) for sid, _ in statement_scenarios()}
+    )
+
+
+def all_guarded() -> frozenset[str]:
+    return GUARDED_IN_THE_LLM_FILE | guarded_in_the_documents_file()
