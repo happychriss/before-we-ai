@@ -12,6 +12,7 @@ import yaml
 
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.core import (
+    ActKind,
     Actor,
     CheckVerdict,
     ClaimStatus,
@@ -25,6 +26,7 @@ from before_we_ai.core import (
 from before_we_ai.core.objects import (
     CheckPlan,
     Claim,
+    KnowledgeAct,
     ClarificationQuestion,
     DataProfile,
     EvidenceRecord,
@@ -41,7 +43,12 @@ from before_we_ai.llm.domain_guide import (
 )
 from before_we_ai.llm.mapping import admissible_templates
 from before_we_ai.readiness import Readiness, evaluate_request, guide_label
-from before_we_ai.stages import BOUNDARY_BEFORE, BOUNDARY_TEXT, STAGES
+from before_we_ai.stages import (
+    BOUNDARY_BEFORE,
+    BOUNDARY_TEXT,
+    BY_NAME,
+    STAGES,
+)
 from before_we_ai.store import ProjectStore, check_integrity
 from before_we_ai.store.layout import CONFIG_FILE
 
@@ -462,6 +469,59 @@ class ReportCopyView:
 
 
 @dataclass(frozen=True)
+class DocumentView:
+    """One document that was read, in a reader's terms.
+
+    No chunk ids, no offsets, no fingerprints: what a validator needs to
+    know is which document was read, how much of it there was, and
+    whether any of it sits somewhere a figure cannot be checked.
+    """
+
+    name: str
+    pages: str  # "3 pages" — the unit a reader counts in
+    passages: str  # "5 passages"
+    origins: tuple[str, ...]  # "1 inside a chart", "1 in a ruled table"
+    caution: str  # "" when nothing about this document needs care
+
+
+@dataclass(frozen=True)
+class DocumentsView:
+    heading: str
+    explanation: RichTextView
+    documents: tuple[DocumentView, ...]
+
+
+@dataclass(frozen=True)
+class DecisionView:
+    """One decision, with who made it and what drove them to it.
+
+    The report's other axis. Reading down the stages tells you what the
+    project knows; reading down this tells you *how it came to*, which is
+    the question a validator actually has — and the one the stage
+    headings answer least well, because a decision made in stage 5 is
+    usually driven by something found in stage 3.
+    """
+
+    actor: str  # "a human" / "the AI" / "a check" / "the system"
+    actor_css: str  # colour by voice, so the pattern is visible before the words
+    marker: str  # ● ○ ◆ ▪ — the same distinction without relying on colour
+    what: str  # what was decided, in business words
+    driver: str  # what drove it — the sentence, the law, the run
+    stage: str  # "0".."6" — where in the flow this sits
+    stage_label: str
+    settles: str  # "" unless this decision changed what is believed
+    link: LinkView | None
+
+
+@dataclass(frozen=True)
+class DecisionLogView:
+    heading: str
+    explanation: RichTextView
+    decisions: tuple[DecisionView, ...]
+    empty: str
+
+
+@dataclass(frozen=True)
 class ReportViewModel:
     project_name: str
     project_path: str
@@ -470,6 +530,8 @@ class ReportViewModel:
     domain_pack: DomainPackView
     requests: tuple[RequestView, ...]
     measurement: MeasurementView
+    documents: DocumentsView
+    decisions: DecisionLogView
     funnel: FunnelView
     elections: tuple[ElectionView, ...]
     open_questions: tuple[QuestionView, ...]
@@ -973,6 +1035,250 @@ def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
     return f"{why} Live trail: {trail}."
 
 
+
+# -- documents (stage 2c) --------------------------------------------------
+
+_ORIGIN_WORDS = {
+    "text": "in running text",
+    "table": "in a ruled table",
+    "chart": "inside a chart",
+}
+
+
+def _build_documents(store: ProjectStore) -> DocumentsView:
+    """What was read, in a reader's terms — never chunk ids or offsets."""
+    documents = []
+    for profile in sorted(store.documents.values(), key=lambda d: d.document):
+        origins = []
+        for kind in ("text", "table", "chart"):
+            count = profile.kinds.get(kind, 0)
+            if count:
+                origins.append(f"{count} {_ORIGIN_WORDS[kind]}")
+        charted = profile.kinds.get("chart", 0)
+        caution = ""
+        if charted:
+            caution = (
+                f"{charted} passage{'s' if charted != 1 else ''} of this "
+                f"document {'sit' if charted != 1 else 'sits'} inside a "
+                "figure. A number printed only in a "
+                "chart cannot be checked against anything else on the page, "
+                "so it is never allowed to corroborate a claim."
+            )
+        documents.append(DocumentView(
+            name=profile.document,
+            pages=f"{profile.pages} page{'s' if profile.pages != 1 else ''}",
+            passages=(f"{profile.chunk_count} passage"
+                      f"{'s' if profile.chunk_count != 1 else ''}"),
+            origins=tuple(origins),
+            caution=caution,
+        ))
+    return DocumentsView(
+        heading="Documents read",
+        explanation=_text(_plain(
+            "Reading a document is measurement, like profiling a column: it "
+            "produces a description and no beliefs. Where each passage sits "
+            "on the page is worked out here, from the page itself, because "
+            "a figure printed inside a chart looks exactly like ordinary "
+            "text once it is extracted — and what a number is allowed to "
+            "corroborate depends on knowing the difference."
+        )),
+        documents=tuple(documents),
+    )
+
+
+# -- the decision log ------------------------------------------------------
+
+_VOICE = {
+    Actor.HUMAN: ("a human", "voice-human", "\u25cf"),
+    Actor.AI: ("the AI", "voice-ai", "\u25cb"),
+    Actor.CHECK: ("a check", "voice-check", "\u25c6"),
+    Actor.SYSTEM: ("the system", "voice-system", "\u25aa"),
+}
+
+_ACT_WORDS = {
+    ActKind.WAIVE: "Decided this is not needed for the answer",
+    ActKind.REQUIRE_AGAIN: "Put this back on the list",
+    ActKind.LINK: "Pointed a required rule at the claim that states it",
+    ActKind.ADD: "Added something the contract had missed",
+    ActKind.CONFIRM: "Vouched for the whole dependency list",
+}
+
+
+def _decision(actor: Actor, what: str, driver: str, stage: str,
+              settles: str = "", link: LinkView | None = None) -> DecisionView:
+    label, css, marker = _VOICE.get(
+        actor, (actor.value, "voice-system", "\u25aa"))
+    return DecisionView(
+        actor=label, actor_css=css, marker=marker, what=what, driver=driver,
+        stage=stage, stage_label=BY_NAME[STAGE_ORDER[stage]].name,
+        settles=settles, link=link,
+    )
+
+
+STAGE_ORDER = {stage.number: stage.name for stage in STAGES}
+
+
+def _anchor_driver(record: EvidenceRecord) -> str:
+    payload = record.payload or {}
+    where = f"{payload.get('source', 'a document')} p.{payload.get('page', '?')}"
+    quote = str(payload.get("quote", "")).strip()
+    origin = _ORIGIN_WORDS.get(str(payload.get("kind", "")), "in the document")
+    short = quote if len(quote) <= 110 else quote[:107] + "\u2026"
+    return f"{where}, {origin}: \u201c{short}\u201d"
+
+
+def _act_stage(act: KnowledgeAct) -> str:
+    """Where an act sits in the flow — which depends on who made it.
+
+    The AI linking a claim it read out of a policy is part of proposing;
+    a human doing the same is part of clarification. Same act, different
+    stage, because the stage spine is organised by whose move it is.
+    """
+    if act.kind is ActKind.ADD:
+        return "1"
+    if act.actor is Actor.AI:
+        return "3"
+    return "5"
+
+
+def _act_driver(act: KnowledgeAct, linked: Claim | None) -> str:
+    """What stood behind an act when nobody wrote a reason down."""
+    if act.kind is ActKind.CONFIRM:
+        return ("read the whole dependency list and vouched for it as it "
+                "stood \u2014 a later change to the domain guide undoes this")
+    if act.kind is ActKind.LINK and linked is not None:
+        return (f"the claim \u201c{linked.statement[:90]}\u201d states this "
+                "rule; the link routes the question, it does not vouch")
+    return "no reason was recorded"
+
+
+def _build_decisions(store: ProjectStore, claims: list[Claim],
+                     facts: dict) -> DecisionLogView:
+    """Every decision that changed what is believed, or that a human made.
+
+    Deliberately not every event. Measurement decides nothing and a
+    proposal decides nothing either, so the seventy-odd claims the model
+    offered appear here as one line rather than seventy — otherwise the
+    handful of moments that actually moved the project would be buried in
+    them, which is the opposite of what this section is for.
+    """
+    by_id = {claim.id: claim for claim in claims}
+    entries: list[tuple[object, DecisionView]] = []
+
+    sources = sorted(store.sources.values(), key=lambda s: (s.created_at, s.id))
+    if sources:
+        named = ", ".join(s.name for s in sources[:4])
+        more = f" and {len(sources) - 4} more" if len(sources) > 4 else ""
+        entries.append((sources[0].created_at, _decision(
+            Actor.HUMAN,
+            f"Declared {len(sources)} source{'s' if len(sources) != 1 else ''} "
+            "as the ground this project stands on",
+            f"{named}{more} \u2014 chosen by a person, never discovered",
+            "0",
+        )))
+
+    anchored = {
+        record.claim_id for record in store.evidence.values()
+        if record.type is EvidenceType.DOCUMENT_ANCHOR and record.claim_id
+    }
+    # Claims read out of a document get their own entry below, naming the
+    # passage. Only the ones the model inferred from measurements are
+    # summarised here, or the summary would credit profiles for something
+    # a policy said.
+    from_profiles = [c for c in claims
+                     if c.created_by is Actor.AI and c.id not in anchored]
+    if from_profiles:
+        entries.append((from_profiles[0].created_at, _decision(
+            Actor.AI,
+            f"Proposed {len(from_profiles)} claim"
+            f"{'s' if len(from_profiles) != 1 else ''} about how the data "
+            "behaves",
+            "measured column statistics and value overlaps \u2014 every one "
+            "of them starts unproven, and the AI cannot change that",
+            "3",
+        )))
+
+    for record in sorted(store.evidence.values(),
+                         key=lambda e: (e.created_at, e.id)):
+        claim = by_id.get(record.claim_id or "")
+        subject = claim.statement if claim else "a claim"
+        short = subject if len(subject) <= 90 else subject[:87] + "\u2026"
+        link = _claim_link(claim, short) if claim else None
+
+        if record.type is EvidenceType.CHECK_RESULT:
+            if record.verdict is CheckVerdict.PASS:
+                what = "A check ran and found nothing to refute it"
+                settles = "now test-supported"
+            elif record.verdict is CheckVerdict.FAIL:
+                what = "A check refuted it"
+                settles = "now contradicted, or unresolved if anything supports it"
+            else:
+                what = "A check ran and could not decide"
+                settles = ""
+            entries.append((record.created_at, _decision(
+                Actor.CHECK, what, _population_text(record), "4",
+                settles=settles, link=link,
+            )))
+        elif record.type is EvidenceType.CONFIRMATION:
+            scope = record.scope.label() if record.scope else ""
+            entries.append((record.created_at, _decision(
+                Actor.HUMAN,
+                "A person vouched for this claim"
+                + (f", for {scope}" if scope else ""),
+                str((record.payload or {}).get("note")
+                    or "answered a clarification question"),
+                "5",
+                settles=("now business-confirmed" if scope else
+                         "counts for nothing \u2014 no scope was stated"),
+                link=link,
+            )))
+        elif record.type is EvidenceType.TESTIMONIAL:
+            said = (record.statement or "").strip()
+            entries.append((record.created_at, _decision(
+                Actor.HUMAN,
+                "A person stated this from their own knowledge",
+                f"\u201c{said}\u201d \u2014 recorded word for word, which "
+                "records that it was said and not that it is true",
+                "5",
+                link=link,
+            )))
+        elif record.type is EvidenceType.DOCUMENT_ANCHOR:
+            entries.append((record.created_at, _decision(
+                Actor.AI,
+                "Read this out of a document and proposed it",
+                _anchor_driver(record), "3",
+                link=link,
+            )))
+
+    for act in sorted(store.acts.values(), key=lambda a: (a.created_at, a.id)):
+        target = act.ref or (act.item.name if act.item else act.answer_type)
+        linked = by_id.get(act.claim_id or "")
+        entries.append((act.created_at, _decision(
+            act.actor,
+            _ACT_WORDS.get(act.kind, act.kind.value)
+            + (f": {target}" if target else ""),
+            act.reason or act.note or _act_driver(act, linked),
+            _act_stage(act),
+            link=(_claim_link(linked, linked.statement[:90])
+                  if linked else None),
+        )))
+
+    entries.sort(key=lambda pair: str(pair[0]))
+    return DecisionLogView(
+        heading="Decisions \u2014 who decided what, and what drove them",
+        explanation=_text(_plain(
+            "The other way to read this page. The sections below are the "
+            "state of knowledge; this is how it got there. Only decisions "
+            "appear \u2014 measuring something decides nothing, and neither "
+            "does proposing it, so the AI's proposals are one line rather "
+            "than one line each. What is left is the handful of moments that "
+            "moved the project, each with the voice that made it and the "
+            "thing that drove it."
+        )),
+        decisions=tuple(view for _when, view in entries),
+        empty="Nothing has been decided yet \u2014 the project has only been declared.",
+    )
+
 def _answer_type_views(declared) -> tuple[AnswerTypeView, ...]:
     """The guide's answer types, in the order it declares them.
 
@@ -1444,9 +1750,24 @@ def _evidence_sentence(record: EvidenceRecord) -> str:
             "as evidence — not rewritten."
         )
     if record.type is EvidenceType.DOCUMENT_ANCHOR:
+        payload = record.payload or {}
+        where = (f"{payload.get('source', 'a document')}, "
+                 f"page {payload.get('page', '?')}")
+        origin = str(payload.get("kind", "text"))
+        if origin == "chart":
+            return (
+                f"Read inside a chart in {where}. A number printed only in a "
+                "figure cannot be checked against anything else on the page, "
+                "so it is recorded and never allowed to support the claim."
+            )
+        if origin == "table":
+            return (
+                f"Read from a ruled table in {where}. It shows where the "
+                "wording comes from; on its own it settles nothing."
+            )
         return (
-            "A passage in a document was located and recorded, with the place "
-            "it was found."
+            f"Read from the running text of {where}. It shows where the "
+            "wording comes from; on its own it settles nothing."
         )
     return (
         "A recorded processing decision. It carries no verdict and promotes "
@@ -1461,8 +1782,26 @@ def _evidence_voice(record: EvidenceRecord) -> QuoteView | None:
         the derived sentence above already said what this record does.
         """
     said = (record.statement or "").strip()
+    payload = record.payload or {}
     if not said and record.type is EvidenceType.DECLARATION:
-        said = str((record.payload or {}).get("reason", "")).strip()
+        said = str(payload.get("reason", "")).strip()
+    if record.type is EvidenceType.DOCUMENT_ANCHOR:
+        # The document's own voice. Shown verbatim because that is the
+        # anchor's entire value: it points at words somebody really wrote,
+        # and a reader can go to the page and find them.
+        quoted = str(payload.get("quote", "")).strip()
+        if not quoted:
+            return None
+        origin = _ORIGIN_WORDS.get(str(payload.get("kind", "")), "in the document")
+        return QuoteView(
+            css="document-said",
+            text=quoted,
+            cite=_text(
+                _plain("— "),
+                _styled(str(payload.get("source", "a document")), "strong"),
+                _plain(f", page {payload.get('page', '?')}, {origin}"),
+            ),
+        )
     if not said:
         return None
     if record.actor is Actor.HUMAN:
@@ -1552,7 +1891,15 @@ def _build_evidence(
         details.append(
             ("source_fingerprints", _json_text(record.source_fingerprints))
         )
-    if record.payload:
+    if record.type is EvidenceType.DOCUMENT_ANCHOR:
+        payload = record.payload or {}
+        details.append(("document", str(payload.get("source", ""))))
+        details.append(("page", str(payload.get("page", ""))))
+        details.append((
+            "where on the page",
+            _ORIGIN_WORDS.get(str(payload.get("kind", "")), "unknown"),
+        ))
+    elif record.payload:
         details.append(("payload", _json_text(record.payload)))
     check_link = None
     check_template = ""
@@ -2870,10 +3217,14 @@ def _report_copy() -> ReportCopyView:
     return ReportCopyView(
         reading_guide=READING_GUIDE,
         process_ghost=_text(
-            _styled("M5 · documents", "strong"),
+            _styled("Documents", "strong"),
             _plain(
-                " — not built. Policies, manuals and contracts become a "
-                "fourth input, anchored back to the passage they came from."
+                " — policies, manuals and contracts are read alongside the "
+                "data. Some rules an answer needs are written down nowhere "
+                "else: a sign convention lives in an accounting policy, not "
+                "in a column. What a document says is proposed like anything "
+                "else, and every proposal points back at the passage it was "
+                "read from, so it can be checked against the page."
             ),
         ),
         request_intro=(
@@ -3030,6 +3381,8 @@ def build_view_model(
         measurement=_build_measurement(
             store, sources, profiles, claims, matrix
         ),
+        documents=_build_documents(store),
+        decisions=_build_decisions(store, claims, facts),
         funnel=_build_funnel(facts),
         elections=_build_elections(
             facts, questions, guide, answered_slots

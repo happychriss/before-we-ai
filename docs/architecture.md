@@ -777,9 +777,24 @@ the third of the three voices and the only one that can settle anything.
 - Stage spine: extraction + indexing is **2c-measure-documents** (measured,
   zero claims); V3 proposals are **3d-propose-documents**; tell/answer beats
   join stage **5** — letters, never new numbers.
-- Report: a documents `*View` in `projection.py` next to `MeasurementView`,
-  anchor-aware `EvidenceView`, and the "M5 · documents" ghost node in the
-  process diagram becomes real.
+- Report: `DocumentsView` renders inside stage 2 in a reader's units —
+  pages and passages, never chunk ids — and flags a document whose figures
+  sit inside charts. `EvidenceView` gives an anchor the document's own
+  voice (the quote, cited to document and page) and readable detail rows
+  instead of payload JSON. The "M5 · documents" ghost node is now a real
+  one.
+- **The decision log** (`DecisionLogView`, owner decision 2026-08-02) is
+  the report's second axis, rendered right after the process diagram. The
+  stage sections say what the project knows; this says how it got there,
+  which is the question a validator actually has — and the one the stage
+  headings answer worst, because a decision taken in stage 5 is usually
+  driven by something found in stage 3. Every entry carries the voice that
+  made it (colour-coded, and marked with a glyph so the colour is never
+  load-bearing), what drove it, where it sits in the flow, and what it
+  settled. Deliberately not every event: measuring decides nothing and
+  proposing decides nothing, so inferred proposals are one line rather
+  than seventy — otherwise the handful of moments that moved the project
+  would be buried in them.
 
 ## Readiness report (`readiness_report/`)
 

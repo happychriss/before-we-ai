@@ -15,6 +15,13 @@
       --pass: #059669;
       --fail: #dc2626;
       --inconclusive: #d97706;
+      /* The three voices, and the tooling that is none of them. Colour
+         carries the pattern at a glance; the marker glyph carries it for
+         anyone who cannot use the colour. */
+      --voice-human: #7c3aed;
+      --voice-ai: #64748b;
+      --voice-check: #059669;
+      --voice-system: #475569;
     }
     * { box-sizing: border-box; }
     body {
@@ -362,4 +369,62 @@
         border-right: 0;
         border-bottom: 1px solid var(--line);
       }
+    }
+
+    /* -- documents read (stage 2c) ------------------------------------ */
+    .documents { margin: 18px 0 8px; }
+    .doc-grid {
+      display: grid; gap: 10px; margin-top: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .doc-card {
+      background: var(--panel-2); border: 1px solid var(--line);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .doc-card.doc-caution { border-left: 3px solid var(--unresolved); }
+    .doc-name { font-weight: 600; word-break: break-word; }
+    .doc-size { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .doc-origins { margin: 8px 0 0; padding-left: 18px; }
+    .doc-origins li { color: var(--muted); }
+    .doc-warning {
+      margin: 8px 0 0; color: var(--text); font-size: 12px;
+      border-top: 1px solid var(--line); padding-top: 8px;
+    }
+
+    /* -- the decision log --------------------------------------------- */
+    .decisions { list-style: none; margin: 12px 0 0; padding: 0; }
+    .decision {
+      display: grid; gap: 4px 14px; padding: 10px 12px; margin-bottom: 8px;
+      grid-template-columns: 130px 1fr auto;
+      background: var(--panel-2); border: 1px solid var(--line);
+      border-left: 3px solid var(--voice-system); border-radius: 8px;
+      align-items: start;
+    }
+    .decision.voice-human { border-left-color: var(--voice-human); }
+    .decision.voice-ai { border-left-color: var(--voice-ai); }
+    .decision.voice-check { border-left-color: var(--voice-check); }
+    .decision.voice-system { border-left-color: var(--voice-system); }
+    .d-who { font-weight: 600; white-space: nowrap; }
+    .d-mark { margin-right: 6px; }
+    .voice-human .d-mark { color: var(--voice-human); }
+    .voice-ai .d-mark { color: var(--voice-ai); }
+    .voice-check .d-mark { color: var(--voice-check); }
+    .voice-system .d-mark { color: var(--voice-system); }
+    .d-what { }
+    .d-driver { color: var(--muted); margin-top: 3px; }
+    .d-label {
+      text-transform: uppercase; font-size: 10px; letter-spacing: .06em;
+      color: var(--muted); margin-right: 6px;
+    }
+    .d-settles { margin-top: 4px; font-size: 12px; color: var(--text); }
+    .d-stage { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    @media (max-width: 720px) {
+      .decision { grid-template-columns: 1fr; }
+      .d-stage { justify-self: start; }
+    }
+
+    /* The document's own words, beside the human's and the machine's. */
+    blockquote.document-said {
+      border-left: 3px solid var(--link);
+      background: var(--panel-2);
     }

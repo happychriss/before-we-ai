@@ -66,7 +66,7 @@ class Mirror:
             return (f"Nothing in “{self.statement}” could be structured into a "
                     "claim, so it is stored as a searchable note and carries "
                     "no weight. Is that right?")
-        heard = "; ".join(self.understood)
+        heard = "; ".join(u.rstrip(".") for u in self.understood)
         if self.needs_scope:
             return (f"Understood as: {heard}. Which companies, periods or "
                     "segments does this hold for? A confirmation without a "
@@ -273,8 +273,19 @@ def tell(root, statement: str, *, guide, by: Actor = Actor.HUMAN,
     )
 
     project = ProjectStore(root)
-    for claim_id in report.claims_created:
-        attest(project, project.claims[claim_id], chunk.text, by=by)
+    if report.claims_created:
+        for claim_id in report.claims_created:
+            attest(project, project.claims[claim_id], chunk.text, by=by)
+    else:
+        # Nothing could be structured from it, and the words are still
+        # evidence: somebody said this, on a date, and the spec stores that
+        # unconditionally. A claim-less record is ordinary here — every
+        # normalization declaration is one — and it keeps a parked
+        # statement visible in the decision log instead of leaving only a
+        # searchable note nobody thinks to search for.
+        project.add_evidence(EvidenceRecord(
+            type=EvidenceType.TESTIMONIAL, actor=by, statement=chunk.text,
+        ))
 
     told = TellReport(
         chunk_id=chunk.id,

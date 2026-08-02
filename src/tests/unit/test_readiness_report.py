@@ -453,7 +453,11 @@ def test_the_process_diagram_carries_this_project_s_live_numbers(tmp_path):
     )
     assert _stage(view, "clarification").counts == (("1", "open question"),)
     assert _stage(view, "readiness").counts == (("—", "no question asked"),)
-    assert _rich_text(view.copy.process_ghost).startswith("M5 · documents — not built")
+    # No longer a ghost: M5 built it, and the diagram says what it does
+    # rather than that it is missing.
+    ghost = _rich_text(view.copy.process_ghost)
+    assert ghost.startswith("Documents — ")
+    assert "not built" not in ghost
 
 
 def test_question_view_model_lists_candidates_and_technical_refs(tmp_path):

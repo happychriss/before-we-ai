@@ -297,3 +297,30 @@ class TestTheReportSaysTheSameThingAsTheLaw:
         sentence = _status_rationale(claim, store.evidence_for(claim))
         assert "1 confirmation" in sentence
         assert "count for nothing" not in sentence
+
+
+class TestAParkedStatementIsStillOnTheRecord:
+    """Somebody said it, on a date. That is a fact whatever came of it.
+
+    Found while reading the decision log: a statement the model could not
+    structure left a searchable note and no evidence at all, so it vanished
+    from every surface a person actually reads. The spec stores the words
+    unconditionally, and a claim-less record is ordinary here — every
+    normalization declaration is one.
+    """
+
+    def test_the_words_are_evidence_even_with_no_claim(self, project, guide):
+        tell(project, "Things have been difficult lately.", guide=guide,
+             client=_ScriptedClient([]))
+        store = ProjectStore(project)
+        testimonials = [e for e in store.evidence.values()
+                        if e.type is EvidenceType.TESTIMONIAL]
+        assert [e.statement for e in testimonials] == [
+            "Things have been difficult lately."]
+        assert testimonials[0].claim_id is None
+
+    def test_it_promotes_nothing_because_there_is_nothing_to_promote(
+            self, project, guide):
+        tell(project, "Things have been difficult lately.", guide=guide,
+             client=_ScriptedClient([]))
+        assert ProjectStore(project).claims == {}

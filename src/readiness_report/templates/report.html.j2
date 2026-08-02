@@ -62,6 +62,48 @@
 {%- for value in values -%}<option value="{{ value }}">{{ value }}</option>{%- endfor -%}
 {%- endmacro -%}
 
+{%- macro documents_read(value) -%}
+<div class="documents">
+  <h3>{{ value.heading }}</h3>
+  <p class="lede">{{ rich(value.explanation) }}</p>
+  {%- if value.documents -%}
+  <div class="doc-grid">
+    {%- for doc in value.documents -%}
+    <div class="doc-card{% if doc.caution %} doc-caution{% endif %}">
+      <div class="doc-name">{{ doc.name }}</div>
+      <div class="doc-size">{{ doc.pages }} · {{ doc.passages }}</div>
+      <ul class="doc-origins">{%- for origin in doc.origins -%}<li>{{ origin }}</li>{%- endfor -%}</ul>
+      {%- if doc.caution %}<p class="doc-warning">{{ doc.caution }}</p>{% endif -%}
+    </div>
+    {%- endfor -%}
+  </div>
+  {%- else -%}
+  <p class="empty">No documents were read for this project.</p>
+  {%- endif -%}
+</div>
+{%- endmacro -%}
+
+{%- macro decision_log(value) -%}
+<p class="lede">{{ rich(value.explanation) }}</p>
+{%- if value.decisions -%}
+<ol class="decisions">
+  {%- for d in value.decisions -%}
+  <li class="decision {{ d.actor_css }}">
+    <div class="d-who"><span class="d-mark" aria-hidden="true">{{ d.marker }}</span>{{ d.actor }}</div>
+    <div class="d-body">
+      <div class="d-what">{{ d.what }}{% if d.link %} — {{ link(d.link) }}{% endif %}</div>
+      <div class="d-driver"><span class="d-label">what drove it</span> {{ d.driver }}</div>
+      {%- if d.settles %}<div class="d-settles">{{ d.settles }}</div>{% endif -%}
+    </div>
+    <div class="d-stage"><a href="#{{ d.stage_label }}">{{ d.stage }} · {{ d.stage_label }}</a></div>
+  </li>
+  {%- endfor -%}
+</ol>
+{%- else -%}
+<p class="empty">{{ value.empty }}</p>
+{%- endif -%}
+{%- endmacro -%}
+
 {%- macro process_diagram(stages, ghost) -%}
 {%- set flow = namespace(first=true) -%}
 <div class="flow">{%- for stage in stages -%}
@@ -303,6 +345,10 @@
         {{ process_diagram(view.stages, view.copy.process_ghost) }}
         <p class="muted">{{ view.copy.reading_guide }}</p>
       </section>
+      <section class="panel" id="decisions">
+        <h2>{{ view.decisions.heading }}</h2>
+        {{ decision_log(view.decisions) }}
+      </section>
       <section class="panel" id="inputs">
         <h2>0 · Inputs — what a human declared</h2>
         {{ domain_pack(view.domain_pack) }}
@@ -319,6 +365,7 @@
         {{ matrix_summary(view.measurement.matrix) }}
         {% if view.measurement.sources %}{% for source in view.measurement.sources %}{{ source_index(source) }}{% endfor %}{% else %}<p class="empty">No sources yet.</p>{% endif %}
         <details><summary>All profiled tables and columns</summary>
+        {{ documents_read(view.documents) }}
         {% if view.measurement.sources %}{% for source in view.measurement.sources %}{{ source_section(source) }}{% endfor %}{% else %}<p class="empty">No sources yet.</p>{% endif %}{% if view.measurement.orphan_tables %}{{ orphan_profiles(view.measurement.orphan_tables) }}{% endif %}
         </details>
       </section>
