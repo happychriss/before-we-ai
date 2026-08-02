@@ -380,6 +380,28 @@ def test_pipeline_is_idempotent(pipeline):
     assert len(_untested_claims(store, None)) == 15
 
 
+def test_a_source_description_never_reaches_a_prompt(pipeline):
+    """`Source.description` is free text a human wrote about a file, and it
+    is exactly the sort of thing somebody would later add to an input
+    builder to be helpful. It must not: descriptions say what a file *is*,
+    which on this corpus would hand the model the answer to what it is
+    being asked to work out. Written as a mutation rather than a grep, so
+    it fails when a builder starts reading it and not only when the word
+    "description" appears somewhere.
+    """
+    store, root = pipeline["store"], pipeline["root"]
+    matrix = load_matrix(root)
+    poison = "THIS-IS-THE-REAL-JOURNAL-DO-NOT-SAY-THIS"
+    for source in list(store.sources.values()):
+        store.sources[source.id] = source.model_copy(
+            update={"description": poison})
+
+    for built in (build_profile_context(store, matrix),
+                  build_role_context(store, matrix, pipeline["roles"]),
+                  build_question_context(DEMO_QUESTION, pipeline["roles"])):
+        assert poison not in built.text
+
+
 def test_built_inputs_leak_no_corpus_hints(pipeline):
     store, root = pipeline["store"], pipeline["root"]
     matrix = load_matrix(root)

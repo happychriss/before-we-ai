@@ -1064,6 +1064,41 @@ reader again and again. A re-run updates the size on the same card. Three
 findings that read alike can differ by two orders of magnitude, which is the
 whole reason a reader needs it.
 
+### "I don't know" — a fourth thing a reader can do (M7)
+
+`statements.defer_question(store, card_id, by=, note=)`, undone by
+`pick_up_question`. The work list ranks by what a question holds up, which
+is right and is also why it never moves: the reader who cannot answer the
+top card meets it again every time they open the page, and the cards behind
+it — which somebody else could answer — stay behind it.
+
+A deferral is a note about a **person**, not about the data, so it is
+recorded on the card (mutable, like the wording and the finding) and
+nothing about the claim it rests on changes: no evidence, no status, no
+band. It sorts to the back of its band and says who gave up and why not;
+the tally adds how many of the urgent half have already defeated somebody,
+because five open blockers read the same whether nobody has started or
+everybody has failed.
+
+**Why it must not unblock.** A waiver says *"the answer does not rest on
+this"* and really does remove an item from `blocking()`. A deferral says
+*"I do not know"*, which is the state the answer was already in. If
+deferring quietly cleared anything, it would be the most tempting button on
+the page and the verdict would start reflecting how tired the reader was.
+`tests/unit/test_deferring_a_question.py` holds that line as its own class.
+
+### `Source.description` — what the file is, in a human's words (M7)
+
+One declared sentence per source, from `before-ai.yaml` and carried onto
+the `Source`. A filename and a row count do not tell a reader whether
+`erp.duckdb` is the production ledger or last year's export somebody kept,
+and that difference decides how much of the report they should believe.
+Declared, never inferred, and **never sent to a model**: a sentence saying
+what a file *is* would hand the model the answer to what it is being asked
+to work out. Guarded by mutation rather than by grep
+(`test_a_source_description_never_reaches_a_prompt`), so it fails when a
+builder starts reading the field and not only when the word appears.
+
 ### Three routes out of a block, and one that is not a route
 
 A verdict that will not clear has to come with a way forward, and the engine

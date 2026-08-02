@@ -149,6 +149,10 @@ class DeclaredSourceView:
     name: str
     kind: str
     location: str
+    # What whoever declared it says this file is. Empty when nobody said,
+    # and shown as such: a source with no sentence beside it is a question
+    # for the reader, not a gap to paper over.
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -248,6 +252,7 @@ class SourceView:
     id: str
     name: str
     kind: str
+    description: str
     details: tuple[tuple[str, str], ...]
     claims: tuple[LinkStatusView, ...]
     tables: tuple[TableView, ...]
@@ -385,6 +390,10 @@ class QuestionView:
     # How many questions rest on the same claims (core.semantics.gap_load).
     # The tie-breaker within a band: settle the claim that unblocks most.
     load: int = 0
+    # "Somebody looked at this and could not answer it." Sorts to the back
+    # of its band and says so; the band itself never moves, because not
+    # knowing is the state the answer was already in.
+    deferred: str = ""
 
 
 @dataclass(frozen=True)
@@ -1554,6 +1563,7 @@ def _build_domain_pack(root: Path, config: dict) -> DomainPackView:
             name=str(source.get("name", "?")),
             kind=str(source.get("kind", "?")),
             location=str(source.get("location", "?")),
+            description=str(source.get("description", "")),
         )
         for source in (config.get("sources") or [])
     )
@@ -1847,6 +1857,7 @@ def _build_measurement(
             id=source.id,
             name=source.name,
             kind=source.kind,
+            description=source.description,
             details=(
                 ("id", source.id),
                 ("kind", source.kind),
@@ -2617,6 +2628,15 @@ _BANDS = (
 )
 
 
+def _deferral_line(card) -> str:
+    """Who could not answer this, and anything they could say about it."""
+    if card.deferred is None:
+        return ""
+    who = "you" if card.deferred.by is Actor.HUMAN else card.deferred.by.value
+    note = f" — {card.deferred.note}" if card.deferred.note else ""
+    return f"marked 'I don't know' by {who}{note}"
+
+
 def _question_bearing(maps) -> dict[str, tuple[int, str, str]]:
     """claim id -> the best band any readiness item puts it in.
 
@@ -2742,6 +2762,18 @@ def _build_question_tally(open_questions: tuple[QuestionView, ...],
         outlook = (
             f"Answering all {urgent} would clear the verdict: nothing else "
             "this answer depends on is unsettled."
+        )
+    # A queue that is stuck reads exactly like a queue nobody has started.
+    # Saying how much of the urgent half has already defeated somebody is
+    # what turns "five questions" into "five questions and two of them need
+    # a different person".
+    stalled = sum(1 for view in open_questions
+                  if view.deferred and view.rank == _BANDS[0][0])
+    if stalled:
+        outlook += (
+            f" {stalled} of the {urgent} {'has' if stalled == 1 else 'have'} "
+            f"already been marked 'I don't know' — those need somebody else, "
+            f"not another look."
         )
     return QuestionTallyView(total=total, bands=bands, urgent=urgent,
                              headline=headline, outlook=outlook)
@@ -2876,6 +2908,7 @@ def _build_questions(
                 mode=mode,
                 lead=lead,
                 rank=rank,
+                deferred=_deferral_line(card),
                 bearing=label,
                 because=because,
                 load=max((load_by_claim.get(cid, 0)
@@ -2898,10 +2931,17 @@ def _build_questions(
                 ),
             )
         )
-    # Band first, then how much rests on it, then the wording so the order
-    # is stable between renders. Nothing is hidden and nothing is dropped:
-    # the list is the same list, put in the order a person would work it.
-    open_views.sort(key=lambda view: (view.rank, -view.load, view.question))
+    # Band first, then whether somebody has already been defeated by it,
+    # then how much rests on it, then the wording so the order is stable
+    # between renders. Nothing is hidden and nothing is dropped: the list is
+    # the same list, put in the order a person would work it.
+    #
+    # A deferral sorts *within* the band and never across one. A blocker
+    # nobody can answer is still a blocker, and letting "I don't know"
+    # push it out of the urgent band would make it the most tempting
+    # button on the page.
+    open_views.sort(key=lambda view: (view.rank, bool(view.deferred),
+                                      -view.load, view.question))
     return tuple(open_views), tuple(answered_views)
 
 

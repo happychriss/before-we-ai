@@ -106,9 +106,14 @@ claim vocabulary.
      `ic_symmetry` law collapsed to one decision — both presentation, so
      they belong to the projection, not the engine. Plus the mockup's tab split (guide
      decision vs answer issue) as a derived field on each question.
-   - **Two small acts the mockup demands**: "I don't know" (a defer act, so
-     a seen-but-undecidable question stops ranking as unseen) and
-     `Source.description` (the human sentence the UI shows per source).
+   - ~~**Two small acts the mockup demands**~~ **DONE 2026-08-02** —
+     `statements.defer_question` / `pick_up_question` and
+     `Source.description`, both in `docs/architecture.md` under their own
+     headings. The line that matters: a deferral moves the order and
+     nothing else, because a button that quietly unblocked would be the
+     most tempting one on the page. The corpus sources now each carry a
+     declared sentence, and a mutation test keeps those sentences out of
+     every prompt.
    - **Document screening that reads tables as tables** (owner decision
      2026-08-02, added mid-M7 — "remember the layout drama"). Plain text
      extraction turns a table into a run of loose words, so a figure that

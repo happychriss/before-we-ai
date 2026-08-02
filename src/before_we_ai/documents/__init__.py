@@ -100,10 +100,12 @@ def read_documents(root: str | Path) -> DocumentsResult:
         }
         source = (
             existing.model_copy(update={"fingerprint": fingerprint,
-                                        "scope": spec.scope})
+                                        "scope": spec.scope,
+                                        "description": spec.description})
             if existing
             else Source(name=spec.name, kind=spec.kind, location=spec.location,
-                        scope=spec.scope, fingerprint=fingerprint)
+                        description=spec.description, scope=spec.scope,
+                        fingerprint=fingerprint)
         )
         store.save_source(source)
         result.source_ids[spec.name] = source.id

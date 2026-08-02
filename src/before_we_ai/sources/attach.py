@@ -29,6 +29,9 @@ class SourceSpec(BaseModel):
     name: str
     kind: str  # duckdb | csv | xlsx | pdf
     location: str
+    # One sentence from whoever declared it, saying what this file is. See
+    # `Source.description`: declared, never inferred.
+    description: str = ""
     # Whose books these are. A declaration, never an inference: no column
     # layout says that a file belongs to entity DE, and guessing it from the
     # source's name would be the kind of wording-dependent magic this

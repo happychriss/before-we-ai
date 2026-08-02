@@ -35,7 +35,9 @@ import duckdb
 
 from before_we_ai.core.enums import Actor, EvidenceType
 from before_we_ai.core.objects import (
+    ClarificationQuestion,
     Claim,
+    Deferral,
     EvidenceRecord,
     MappingClaim,
     Scope,
@@ -196,6 +198,41 @@ def rival_claims(store: ProjectStore,
         if isinstance(claim, MappingClaim):
             by_role[claim.role].append(claim_id)
     return {role: tuple(ids) for role, ids in by_role.items() if len(ids) > 1}
+
+
+def defer_question(store: ProjectStore, card_id: str, *,
+                   by: Actor = Actor.HUMAN, note: str = "") -> ClarificationQuestion:
+    """*I looked at this and I cannot answer it.*
+
+    The work list ranks a question by what it holds up, which is right and
+    is also why it never moves: the reader who cannot answer the top card
+    meets it again every time they open the page, and the cards behind it
+    — which somebody else could answer — stay behind it.
+
+    Deferring is the smallest honest thing that fixes that. It changes
+    **nothing** about the verdict: the item still blocks, the band is
+    unchanged, and the dependency is exactly as unsupported as it was. What
+    it changes is the order and the label — this one has been looked at, by
+    whom, and with whatever they could say about why not.
+
+    The distinction from a waiver is the whole point and is worth being
+    blunt about. A waiver says *"the answer does not rest on this"* and
+    removes it from what blocks; only a human may say that, and they must
+    give a reason. A deferral says *"I do not know"*, which is the state
+    the answer was already in. If deferring quietly unblocked anything, it
+    would be the most tempting button on the page.
+    """
+    card = store.questions[card_id]
+    store.save_question(card.model_copy(
+        update={"deferred": Deferral(by=by, note=note)}))
+    return store.questions[card_id]
+
+
+def pick_up_question(store: ProjectStore, card_id: str) -> ClarificationQuestion:
+    """Undo a deferral — somebody has come back to it after all."""
+    card = store.questions[card_id]
+    store.save_question(card.model_copy(update={"deferred": None}))
+    return store.questions[card_id]
 
 
 def answer_question(store: ProjectStore, card_id: str, *,

@@ -82,6 +82,12 @@ lint runs at load, so a guide that contradicts itself — a field declaring a
 law, a slot its object's law does not have — is caught here rather than
 surfacing later as a strange question.
 
+Each source now carries **one declared sentence** saying what the file is
+— production ledger or last year's export, and that difference decides how
+much of the rest to believe. It is declared, never inferred, and never sent
+to a model: a sentence saying what a file *is* would hand the model the
+answer to what it is being asked to work out.
+
 Good (offline pins): 12 sources (6 data files, 6 documents); 3 business
 objects and 5 fields, lint passed; **2 answer types** (9 and 6 dependencies);
 3 domain laws of 13 templates, the other 10 generic. The step also names the
@@ -394,6 +400,16 @@ broken by how many other questions rest on the same claims — `gap_load`,
 which has been in the codebase since M3 with nothing calling it until now.
 
 Nothing is hidden or dropped. The order is the only thing that changed.
+
+**"I don't know" is a fourth thing you can do with a card**
+(`statements.defer_question`). Try it on one and re-run `report.sh`: the
+card drops to the back of its band, says who gave up on it and why not, and
+the tally adds how many of the urgent half have already defeated somebody
+— five open blockers read the same whether nobody has started or everybody
+has failed. What it deliberately does *not* do is change the band or the
+verdict. That is the difference from waiving: a waiver says "the answer
+does not rest on this" and really unblocks; a deferral says "I do not
+know", which is the state the answer was already in.
 
 ### Stage 5b — what a person knows that no file contains
 

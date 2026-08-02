@@ -769,6 +769,11 @@ def stage_inputs(args) -> None:
     for s in SOURCES:
         print(f"  {s['name']:22s} {s['kind']:7s} "
               f"{Path(s['location']).relative_to(REPO)}")
+        # What the file *is*, in the words of whoever put it there. A
+        # filename and a row count do not tell a reader whether this is the
+        # production ledger or last year's export somebody kept, and that
+        # difference decides how much of the report they should believe.
+        print(f"  {'':22s} {clip(s.get('description') or 'nobody has said what this file is', 66)}")
     print("\n  init_project writes an empty `sources: []`; scan then merges "
           "in whatever\n  is dropped under sources/ — never overwriting, so a "
           "hand-written entry\n  wins. These were declared directly, outside "

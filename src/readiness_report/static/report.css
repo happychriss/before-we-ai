@@ -496,3 +496,7 @@
     .tally .rank-0 { color: var(--bad, #b3261e); border-color: currentColor; }
     .tally .rank-1 { color: var(--warn, #9a6700); border-color: currentColor; }
     .tally .rank-3 { color: var(--muted); }
+
+/* A card somebody has already been defeated by. Muted rather than hidden:
+   it still blocks, it just should not be the first thing you read again. */
+.deferred { color: var(--muted); font-style: italic; }

@@ -100,12 +100,21 @@ class Source(BaseModel):
     from ``before-ai.yaml``. It is what lets a role be elected per entity
     instead of once for the whole landscape — and it is declared rather
     than inferred, because nothing in a file says which entity owns it.
+
+    ``description`` is the other declared thing: one sentence saying what
+    this file *is*, in the words of whoever put it there. A filename and a
+    row count do not tell a reader whether `erp.duckdb` is the production
+    ledger or last year's export somebody kept, and that difference decides
+    how much of the report they should believe. Never inferred and never
+    written by a model: a plausible sentence about a file nobody vouched
+    for is worse than none.
     """
 
     id: str = Field(default_factory=new_id)
     name: str
     kind: str  # e.g. "duckdb", "csv", "xlsx", "pdf", "text"
     location: str
+    description: str = ""
     scope: Scope | None = None
     fingerprint: dict[str, object] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=_now)
@@ -287,6 +296,23 @@ class CheckPlan(BaseModel):
     created_at: datetime = Field(default_factory=_now)
 
 
+class Deferral(BaseModel):
+    """*I looked at this and I cannot answer it.*
+
+    Recorded rather than derived, because it is a statement about a person
+    at a time and nothing in the data implies it. What it deliberately does
+    **not** do is change the verdict: a waiver says "this does not matter
+    here" and removes an item from what blocks the answer; a deferral says
+    "I do not know", which is exactly the state the answer was already in.
+    All it moves is the work list — a question somebody has already stared
+    at should stop sitting at the top of it, and should say who stared.
+    """
+
+    by: Actor
+    note: str = ""  # anything the reader can say about why not
+    at: datetime = Field(default_factory=_now)
+
+
 class ClarificationQuestion(BaseModel):
     """A question drafted to resolve one specific uncertainty.
 
@@ -316,6 +342,10 @@ class ClarificationQuestion(BaseModel):
     scope: Scope | None = None
     claim_ids: list[str] = Field(default_factory=list)
     stale: bool = False
+    #: Set when a human read this card and could not answer it. Mutable
+    #: like the rest of a card — it is a note about the reader, not
+    #: evidence about the data, and it is undone by answering.
+    deferred: Deferral | None = None
     created_at: datetime = Field(default_factory=_now)
 
     def dedup_key(self) -> tuple[str, str]:
