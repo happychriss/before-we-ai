@@ -170,7 +170,7 @@ def test_contracts_ran_clean_offline(pipeline):
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
 
     # And every param we read as something other than what the model wrote
-    # is on the record too. Twelve of them here — the number is the point,
+    # is on the record too. Sixteen of them here — the number is the point,
     # not its size: column normalization had been happening silently since
     # M4, and only the view-param case was ever visible, as a failure. The
     # count moves with the answer; that it is written down does not.
@@ -179,7 +179,7 @@ def test_contracts_ran_clean_offline(pipeline):
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") == "param_normalized"
     ]
-    assert len(corrections) == 12
+    assert len(corrections) == 16
     assert all(c["given"] != c["read_as"] for c in corrections)
     for claim_id in reasons:
         assert store.claims[claim_id].status is ClaimStatus.PROPOSED
