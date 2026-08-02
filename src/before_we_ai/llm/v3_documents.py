@@ -133,8 +133,9 @@ def interpret_documents(
             if not chunks:
                 continue
             report.documents_read.append(profile.document)
-            _read_one(store, project, guide, client, config, logger, report,
-                      profile, chunks, open_items, scenario)
+            read_passages(store, project, guide, client, config, logger,
+                          report, profile.document, profile.source_id,
+                          chunks, open_items, scenario)
     finally:
         con.close()
     return report
@@ -167,14 +168,21 @@ def select_passages(con, document: str, open_items: list[str],
     return selected
 
 
-def _read_one(store, project, guide, client, config, logger, report,
-              profile, chunks, open_items, scenario) -> None:
+def read_passages(store, project, guide, client, config, logger, report,
+                  document: str, source_id: str, chunks, open_items,
+                  scenario: str) -> None:
+    """One V3 call over a set of passages, and what becomes of the answer.
+
+    Shared with ``statements.tell``: a sentence somebody said is a passage
+    like any other, so it earns the same quote validation, the same
+    anchoring and the same refusal to be believed on its own.
+    """
     by_id = {chunk.id: chunk for chunk in chunks}
-    built = build_document_context(profile.document, chunks, open_items)
+    built = build_document_context(document, chunks, open_items)
     result = call_with_retry(
         client,
         contract=CONTRACT,
-        scenario=f"{scenario}__{profile.document}",
+        scenario=f"{scenario}__{document}",
         model=config.models[CONTRACT],
         system=with_schema(V3_SYSTEM, DocumentReading),
         built=built,
@@ -191,7 +199,7 @@ def _read_one(store, project, guide, client, config, logger, report,
     if result.log_ref:
         report.log_refs.append(result.log_ref)
     if result.parsed is None:
-        report.failures.append((profile.document, result.failure or "no answer"))
+        report.failures.append((document, result.failure or "no answer"))
         return
 
     for finding in result.parsed.findings:
@@ -199,12 +207,12 @@ def _read_one(store, project, guide, client, config, logger, report,
         if errors:
             report.skipped.append((finding.chunk_id, "; ".join(errors)))
             continue
-        _record(store, project, guide, report, finding, by_id[finding.chunk_id],
-                profile)
+        _record(store, project, guide, report, finding,
+                by_id[finding.chunk_id], source_id)
 
 
-def _record(store, project, guide, report, finding, chunk, profile) -> None:
-    claim = finding_to_claim(finding, profile.source_id)
+def _record(store, project, guide, report, finding, chunk, source_id) -> None:
+    claim = finding_to_claim(finding, source_id)
     kept = store.add_claim(claim)
     if kept.id == claim.id:
         report.claims_created.append(kept.id)

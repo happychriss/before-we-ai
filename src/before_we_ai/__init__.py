@@ -8,6 +8,23 @@ imported from here.
 
 __version__ = "0.1.0"
 
+from before_we_ai.documents import DocumentsResult, read_documents  # noqa: E402
 from before_we_ai.scan import ScanResult, scan  # noqa: E402
+from before_we_ai.statements import (  # noqa: E402
+    TellReport,
+    answer_question,
+    confirm_claim,
+    tell,
+)
 
-__all__ = ["ScanResult", "scan", "__version__"]
+__all__ = [
+    "DocumentsResult",
+    "ScanResult",
+    "TellReport",
+    "__version__",
+    "answer_question",
+    "confirm_claim",
+    "read_documents",
+    "scan",
+    "tell",
+]

@@ -51,6 +51,7 @@ from before_we_ai.core.semantics import (
 )
 from before_we_ai.core.transitions import (
     PromotionError,
+    confirmation_admissible,
     create_claim,
     escalate_exception,
     resolve_status,
@@ -61,6 +62,7 @@ __all__ = [
     "Actor",
     "AnswerRequest",
     "Claim",
+    "confirmation_admissible",
     "ClaimStatus",
     "DataProfile",
     "ConceptClaim",

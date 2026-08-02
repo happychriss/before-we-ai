@@ -1,6 +1,8 @@
-# Trap classes K1–K7: epistemic failure patterns baked into the finance corpus
+# Trap classes K1–K8: epistemic failure patterns baked into the finance corpus
 # Each class defines a failure mode and the tool-behavior consequence it forces.
-# All quotes and consequences come verbatim from the v2 spec.
+# All quotes and consequences come verbatim from the v2 spec, except K8's,
+# which is derived from the spec's tell/mirror-loop section (added 2026-08-02:
+# expected_verdicts.yaml tagged F28/F29 as K8 while the class did not exist).
 
 trap_classes:
   K1:
@@ -92,7 +94,25 @@ trap_classes:
       marked as such; no silent replacement of old data with new.
       Claims based on poisoned anchors must never be promoted.
 
+  K8:
+    name: "Nutzeraussagen (User statements)"
+    description: >-
+      Background knowledge a person supplies that no column can confirm or refute:
+      a customer-channel restriction nothing in the data records, a fiscal year that
+      differs from the calendar and holds for one entity only. Believing them is as
+      wrong as ignoring them.
+    traps: [F28, F29]
+    tool_consequence: >-
+      A statement is stored verbatim as testimonial evidence, which records that
+      somebody said it and never that it is true: the claim stays proposed. V3
+      structures it into claim candidates under the same quote validation documents
+      get. The mirror loop then reflects the interpretation back including an
+      explicit scope, and a confirmation that names no scope is refused — a statement
+      about one entity, confirmed for the whole group, is a wrong answer with a
+      human's signature on it. A statement nothing can be structured from is parked
+      as a searchable note and carries no weight.
+
 # Blind traps: 2–3 defined by the project owner in the generator's own config,
 # withheld from this spec specifically to test what the M1+ implementation didn't anticipate.
-# They will be tagged with an existing K-class (K1–K7) in expected_verdicts.yaml
+# They will be tagged with an existing K-class (K1–K8) in expected_verdicts.yaml
 # so the validation harness checks them without knowing what they are.

@@ -17,6 +17,7 @@ from before_we_ai.core import (
     ClaimStatus,
     EvidenceType,
     Provenance,
+    confirmation_admissible,
     is_answered,
     resolve_status,
     settling_claims,
@@ -899,9 +900,17 @@ def _headline(fact: ClaimFacts) -> str:
 
 
 def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
-    # Known disagreement with resolve_status: see the WP5 pre-flight findings
-    # in meta/refactor-workorder.md and the M5 follow-up in meta/memory.md.
-    # This wording moves verbatim in WP5a and must not be corrected here.
+    """Why this claim sits where it does, and what its evidence adds up to.
+
+    The counts here must agree with ``resolve_status``, so admissibility
+    is *asked of the law* rather than restated: this function used to
+    count every confirmation and could print "1 confirmation" beneath
+    "nothing stronger than proposed evidence is live yet" — a
+    contradiction with no way for a reader to resolve it. Unreachable
+    until M5 built the operations that create confirmations, and then
+    exactly the mirror loop's teaching moment, so it says the useful
+    thing: the confirmation is there, and it does not count, and why.
+    """
     live = [record for record in evidence if not record.stale]
     check_pass = sum(
         1 for record in live
@@ -913,9 +922,14 @@ def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
         if record.type is EvidenceType.CHECK_RESULT
         and record.verdict is CheckVerdict.FAIL
     )
-    confirmation = sum(
-        1 for record in live if record.type is EvidenceType.CONFIRMATION
+    confirmations = [
+        record for record in live if record.type is EvidenceType.CONFIRMATION
+    ]
+    admissible = sum(
+        1 for record in confirmations
+        if confirmation_admissible(record, claim, evidence)
     )
+    unscoped = len(confirmations) - admissible
     testimonial = sum(
         1 for record in live if record.type is EvidenceType.TESTIMONIAL
     )
@@ -928,9 +942,14 @@ def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
         parts.append(
             f"{check_fail} failing check result{'s' if check_fail != 1 else ''}"
         )
-    if confirmation:
+    if admissible:
         parts.append(
-            f"{confirmation} confirmation{'s' if confirmation != 1 else ''}"
+            f"{admissible} confirmation{'s' if admissible != 1 else ''}"
+        )
+    if unscoped:
+        parts.append(
+            f"{unscoped} confirmation{'s' if unscoped != 1 else ''} that "
+            "state no scope, and therefore count for nothing"
         )
     if testimonial:
         parts.append(
@@ -945,6 +964,10 @@ def _status_rationale(claim: Claim, evidence: list[EvidenceRecord]) -> str:
         why = "At least one admissible human confirmation is live and no failing check overrides it."
     elif claim.status is ClaimStatus.TEST_SUPPORTED:
         why = "At least one passing check is live and no failing check overrides it."
+    elif unscoped:
+        why = ("A human confirmed this, but it rests on someone's statement "
+               "and the confirmation names no scope — so it cannot say who "
+               "the rule holds for, and nothing has been settled.")
     else:
         why = "Nothing stronger than proposed evidence is live yet."
     return f"{why} Live trail: {trail}."

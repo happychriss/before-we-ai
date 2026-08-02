@@ -149,3 +149,22 @@ def test_false_promotion_rate_is_zero_across_all_traps():
         if resolve_status(claim, records) is not ClaimStatus.PROPOSED:
             promoted.append(tid)
     assert promoted == [], f"false promotions: {promoted}"
+
+
+def test_every_trap_category_is_a_class_that_exists():
+    """A verdict tagged with an undefined class is a verdict nobody can read.
+
+    F28 and F29 were tagged K8 while trap_classes.yaml stopped at K7, so
+    the two statement traps pointed at nothing — found 2026-08-02 while
+    building tell.
+    """
+    defined = set(yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "corpus" / "generator_spec"
+         / "trap_classes.yaml").read_text(encoding="utf-8"))["trap_classes"])
+    tagged = set()
+    for trap in TRAPS.values():
+        tagged |= classes(trap)
+    assert tagged <= defined, (
+        f"verdicts reference trap classes that are not defined: "
+        f"{sorted(tagged - defined)}"
+    )

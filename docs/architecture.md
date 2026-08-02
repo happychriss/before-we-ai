@@ -725,16 +725,35 @@ Everything else surfaces, never links:
 Library operations in M5; the Typer CLI verbs wait for M8 with the rest of
 packaging (the walkthrough scripts are the M5 surface).
 
-- `tell(store, statement, by, scope=None)` stores the statement **verbatim**
-  as TESTIMONIAL evidence (author, date); V3 structures it into `proposed`
-  claim candidates; a statement with no structurable claim type is parked as
-  a note (FTS-searchable, never load-bearing). Then the mirror loop: the
-  system mirrors its interpretation back **including the explicit scope**.
-- `answer_question(store, card, answer, by)` / `confirm` produce the scoped
-  CONFIRMATION via `admit_evidence` — the law already built and tested: a
-  confirmation on a testimonial claim without explicit scope raises
-  `PromotionError` (F29's teaching moment), with scope it promotes
-  entity-scoped.
+Built 2026-08-02 in `before_we_ai/statements.py` — "the human's voice",
+the third of the three voices and the only one that can settle anything.
+
+- `tell(root, statement, guide=…, by, scope=None)` records the words
+  **first**, verbatim and searchable, before anything is made of them, so
+  a statement nothing can be structured from is parked rather than lost.
+  Then V3 reads it: a statement is one passage under the same
+  `read_passages` path a PDF gets, which buys it the same quote
+  validation, the same anchoring and the same inability to promote. Each
+  resulting claim carries the TESTIMONIAL, which records *that somebody
+  said this* — a different fact from its being true, and the store keeps
+  them different. What comes back is the `Mirror`: what was understood,
+  and the scope question.
+- `confirm_claim` / `answer_question(store, card, by, scope=None)` produce
+  the scoped CONFIRMATION via `admit_evidence`. A confirmation on a
+  testimonial claim without an explicit scope raises `PromotionError`
+  (F29). Answering a card confirms every claim it rests on **or none** —
+  half an answer would leave a reader believing they had settled
+  something they had not.
+- **`_status_rationale` now reads the law instead of restating it.** It
+  counted every confirmation while `resolve_status` counted only
+  admissible ones, so it could print "1 confirmation" beneath "nothing
+  stronger than proposed evidence is live yet". `confirmation_admissible`
+  became public for exactly this: the one way to be sure the explanation
+  matches the law is to ask the law. The unscoped case now says what it
+  is — a confirmation that "names no scope, and therefore counts for
+  nothing". Reachable only for a store written before the rule existed
+  (`attach_evidence` refuses to create one), which is why it is defensive
+  and still worth being right about.
 - `ProposalStore` gains `anchor()` — the weak-evidence method the facade was
   shaped to accept via its private `__attach` seam. The guardrail's
   `PROMOTING` tuple is untouched; only the allow-list widens.

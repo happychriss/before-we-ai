@@ -108,10 +108,18 @@ def _for_claim(claim: Claim, evidence: list[EvidenceRecord]) -> list[EvidenceRec
     return [e for e in evidence if e.id in ids]
 
 
-def _confirmation_admissible(
+def confirmation_admissible(
     record: EvidenceRecord, claim: Claim, evidence: list[EvidenceRecord]
 ) -> bool:
-    """Mirror-loop rule: confirming a testimonial claim requires explicit scope."""
+    """Mirror-loop rule: confirming a testimonial claim requires explicit scope.
+
+    Public because the readiness report has to say *why* a claim sits
+    where it does, and the one way to be sure the explanation matches the
+    law is to ask the law. It used to count confirmations itself and got
+    it wrong — reporting "1 confirmation" under "nothing stronger than
+    proposed evidence is live yet", which is the exact contradiction a
+    reader cannot resolve.
+    """
     if record.type is not EvidenceType.CONFIRMATION:
         return True
     if not is_testimonial(claim, evidence):
@@ -127,7 +135,7 @@ def admit_evidence(
     Raises PromotionError if the record is inadmissible. ``evidence`` is
     the claim's existing evidence (the new record not yet attached).
     """
-    if not _confirmation_admissible(record, claim, evidence):
+    if not confirmation_admissible(record, claim, evidence):
         raise PromotionError(
             "confirmation of a testimonial claim requires an explicit scope "
             "(mirror-loop): entity, period or segment must be stated"
@@ -154,7 +162,7 @@ def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
     testimonial = any(e.type is EvidenceType.TESTIMONIAL for e in live)
     confirmed = any(
         e.type is EvidenceType.CONFIRMATION
-        and _confirmation_admissible(e, claim, evidence)
+        and confirmation_admissible(e, claim, evidence)
         for e in live
     )
 
