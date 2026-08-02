@@ -111,7 +111,7 @@ current numbers: `docs/seeded-recall.md`. Owner-facing validation walkthrough:
 | — | Readiness report (read-only validation UI, one self-contained HTML) | ✅ built |
 | M6 | Question flow (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked), elections per scope | ✅ built |
 | — | Answer types: the guide declares what a family of question depends on; the model classifies, the engine expands, a human confirms | ✅ built |
-| M5 | Document pipeline + V3 (interpretation with anchor validation), `tell` + mirror loop | ✅ built — awaiting the owner's validation run and a run against real data (`meta/memory.md`) |
+| M5 | Document pipeline + V3 (interpretation with anchor validation), `tell` + mirror loop | ✅ built |
 | M7 | Staleness propagation & replay against a "prod" copy | planned |
 | M8 | Packaging (`pipx install before-we-ai`) + 10-minute quickstart | planned |
 

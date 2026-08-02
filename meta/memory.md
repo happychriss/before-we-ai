@@ -56,13 +56,18 @@
    then follow the `next:` line each stage prints. Every stage rebuilds
    `validation/data/report/index.html` — leave a tab open on it.
    `validation/README.md` says what to look for and the numbers to expect.
-2. **M5 — documents & V3. DONE 2026-08-02 — nothing in it is unbuilt, and
-   nothing found while finishing it is still open.** All four leftovers are
-   closed with tests (see "Found while finishing M5" below); two of them
-   turned out to be covering a live false-promotion path and three
-   unguarded fixtures. What is left is not code: item 1 above, and the
-   spec's `:42` run against real data whose truth the owner knows (stated
-   under decision B below). PDF pipeline,
+2. **M5 — documents & V3. COMPLETE — owner decision 2026-08-02.** Nothing
+   in it is unbuilt and nothing found while finishing it is still open: all
+   four leftovers are closed with tests (see "Found while finishing M5"
+   below), and two of them turned out to be covering a live
+   false-promotion path and three unguarded fixtures.
+
+   The two things that remain are **not M5 scope and do not hold the
+   milestone open** — the owner decided this explicitly rather than
+   letting a built milestone read "next" indefinitely. They are standing
+   validation items, and they are item 1 above and item 3 below. Neither
+   is code; both need the owner, which is exactly why they cannot gate a
+   build milestone. PDF pipeline,
    position anchors, DuckDB FTS, multi-anchor reconciliation, `tell` +
    mirror loop. Acceptance: T8 negatives and a real PDF — every PDF it
    needs is in the frozen corpus (`src/corpus/data/`, including `noise/`).
@@ -117,10 +122,11 @@
      titles and navigation bars: false *refusals*, which is the right way
      round to be wrong.
 
-     Still open from the same spec section (:42, wider than decision B):
-     the milestone's own completion asks for **a run against a real,
-     well-known dataset whose truth the owner knows** — real data, not a
-     real document.
+     The wider half of the same spec section (`:42`) — a run against real
+     *data*, not a real document — is item 3 of this Next list. It moved
+     out of the M5 block when the owner declared the milestone complete:
+     it is a validation item that needs the owner, and it never belonged
+     to the build.
 
    **Built so far (2026-08-02), suite 470 → 580 green:**
    `before_we_ai/documents/` — `extract` (geometry → kind), `chunk`
@@ -244,7 +250,16 @@
    documents: `decodes` account ranges, the AR control account, and
    opening-balances coverage. Read them in the readiness report.
 
-3. **Confirm the answer-type slice against real output.** Built
+3. **Spec `:42` — a run against real data whose truth the owner knows.**
+   The milestone's own completion criterion asks for it, and decision B
+   closed only the real-*document* half (the Bosch annual report). A
+   generated corpus can only ever confirm that the machine does what the
+   generator seeded; real data whose answer the owner already knows is the
+   one test that can say the seeding was not the point. It needs the
+   owner to supply the data and to know the answer, so it does not gate
+   the build — but nothing else substitutes for it either.
+
+4. **Confirm the answer-type slice against real output.** Built
    2026-08-01 (`docs/architecture.md` → "Answer types"); the walkthrough now
    classifies, shows the guide fingerprint and per-item provenance, and
    demonstrates the confirmation lifting the cap. What has *not* happened
@@ -258,7 +273,7 @@
    - **Only a confirmation lapses** when the guide moves, not waivers or
      links. A waiver is about one item; a confirmation is about the list.
 
-4. **Confirm the two report fixes while reading** (done 2026-08-01, worth a
+5. **Confirm the two report fixes while reading** (done 2026-08-01, worth a
    look because both were found by reading and not by testing): section 0
    now lists the guide's answer types with what each one requires — a
    reader cannot judge the classification in section 1 without seeing what
