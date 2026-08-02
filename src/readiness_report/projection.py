@@ -34,6 +34,7 @@ from before_we_ai.core.objects import (
     Scope,
     Source,
 )
+from before_we_ai.core.semantics import gap_load
 from before_we_ai.glossary import GLOSSARY
 from before_we_ai.llm.domain_guide import (
     DomainGuide,
@@ -371,6 +372,17 @@ class QuestionView:
     options: tuple[QuestionOptionView, ...]
     provenance: ProvenanceView
     details: tuple[tuple[str, str], ...]
+    # Why this one is worth answering, and how urgently. A flat list of
+    # twenty-three questions tells a reader nothing about where to start —
+    # and most of them do not bear on the question that was actually asked.
+    # `rank` is the sort key (lower first), `bearing` the badge, `because`
+    # the sentence naming what it holds up.
+    rank: int = 3
+    bearing: str = ""
+    because: str = ""
+    # How many questions rest on the same claims (core.semantics.gap_load).
+    # The tie-breaker within a band: settle the claim that unblocks most.
+    load: int = 0
 
 
 @dataclass(frozen=True)
@@ -474,6 +486,7 @@ class ReportCopyView:
     proposed_intro: RichTextView
     tested_intro: str
     clarification_intro: str
+    clarification_order: str
     readiness_intro: str
     no_request: str
 
@@ -2530,10 +2543,59 @@ def _build_claim(
     )
 
 
+#: The bands a question falls into, best first. The distinction that
+#: matters is the first one: a reader with twenty-three open questions is
+#: not asking "which are hard" but "which of these is between me and my
+#: answer". Everything below `blocks` is real work that this particular
+#: question does not wait for.
+_BANDS = (
+    (0, "blocks the answer",
+     "the answer cannot be produced until this is settled"),
+    (1, "limits the answer",
+     "the answer can be produced, but with this named as a limitation"),
+    (2, "bears on the answer",
+     "it touches what the answer is computed from"),
+    (3, "not on this path",
+     "nothing this question holds up is required by the question that "
+     "was asked"),
+)
+
+
+def _question_bearing(maps) -> dict[str, tuple[int, str, str]]:
+    """claim id -> the best band any readiness item puts it in.
+
+    Derived from the ReadinessMap rather than from the question's wording,
+    because the wording is stored project data and the map is recomputed
+    on every read. A question is urgent for as long as the item resting on
+    it is unsatisfied, and stops being urgent the moment that changes —
+    with nothing to migrate.
+    """
+    bands: dict[str, tuple[int, str, str]] = {}
+    for readiness in maps:
+        blocking = {item.ref for item in readiness.blocking()}
+        limiting = {item.ref for item in readiness.limitations()}
+        for item in readiness.items:
+            if item.ref in blocking:
+                band = _BANDS[0]
+            elif item.ref in limiting:
+                band = _BANDS[1]
+            elif not item.satisfied:
+                band = _BANDS[2]
+            else:
+                continue
+            for claim_id in item.claim_ids:
+                current = bands.get(claim_id)
+                if current is None or band[0] < current[0]:
+                    bands[claim_id] = (band[0], band[1],
+                                       f"{item.ref} — {band[2]}")
+    return bands
+
+
 def _build_questions(
     questions: list[ClarificationQuestion],
     claims: dict[str, Claim],
     guide: GuideShape,
+    bearing: dict[str, tuple[int, str, str]] | None = None,
 ) -> tuple[tuple[QuestionView, ...], tuple[AnsweredQuestionView, ...]]:
     """A question, then the candidates as a list — never as prose.
 
@@ -2546,6 +2608,16 @@ def _build_questions(
         (`decided_by: clarification`) is answered by picking one. A role whose
         law could never be applied is asking for knowledge, not for a pick.
         """
+    bearing = bearing or {}
+    # gap_load is the product's own impact measure and has been built and
+    # tested since M3 with nothing calling it. It ranks unproven claims by
+    # how many questions rest on them; here it breaks ties inside a band,
+    # so of two questions that both block, the one holding up more work
+    # comes first.
+    load_by_claim = {
+        claim.id: count
+        for claim, count in gap_load(claims.values(), questions)
+    }
     open_views = []
     answered_views = []
     for card in questions:
@@ -2630,6 +2702,10 @@ def _build_questions(
                 "something nothing in the data was proposed for."
             )
             option_views = ()
+        rank, label, because = min(
+            (bearing[cid] for cid in card.claim_ids if cid in bearing),
+            default=(_BANDS[3][0], _BANDS[3][1], _BANDS[3][2]),
+        )
         open_views.append(
             QuestionView(
                 id=card.id,
@@ -2637,6 +2713,11 @@ def _build_questions(
                 finding=card.finding,
                 mode=mode,
                 lead=lead,
+                rank=rank,
+                bearing=label,
+                because=because,
+                load=max((load_by_claim.get(cid, 0)
+                          for cid in card.claim_ids), default=0),
                 options=option_views,
                 provenance=ProvenanceView(
                     _reference("questions", card.id),
@@ -2655,6 +2736,10 @@ def _build_questions(
                 ),
             )
         )
+    # Band first, then how much rests on it, then the wording so the order
+    # is stable between renders. Nothing is hidden and nothing is dropped:
+    # the list is the same list, put in the order a person would work it.
+    open_views.sort(key=lambda view: (view.rank, -view.load, view.question))
     return tuple(open_views), tuple(answered_views)
 
 
@@ -3457,6 +3542,14 @@ def _report_copy() -> ReportCopyView:
             "on settles — derived from the\n        same evidence the "
             "readiness map reads, so the two can never disagree."
         ),
+        clarification_order=(
+            "Ordered by what each one holds up, not by when it was asked. "
+            "The\n        badge says whether the question you asked waits "
+            "on this one — most do\n        not, and a flat list hides that. "
+            "Within a band, the question carrying\n        the most other "
+            "work comes first. Nothing is hidden; the order is the\n        "
+            "only thing that changes, and it is recomputed on every render."
+        ),
         readiness_intro=(
             "The frame closes. Every dependency listed in section 0\n"
             "        is traced to its claim and evidence, and the verdict is "
@@ -3515,11 +3608,15 @@ def build_view_model(
         )
         for claim in claims
     )
-    open_questions, answered_questions = _build_questions(
-        questions, store.claims, guide
-    )
+    # The maps come first now: a question's priority is read off them, and
+    # it has to be, because the wording is stored project data while the
+    # map is recomputed on every read. Rank the cards by what they hold up
+    # today, not by what they held up when they were written.
     readiness_guide, readiness_maps = _readiness_maps(
         store, root_path, config
+    )
+    open_questions, answered_questions = _build_questions(
+        questions, store.claims, guide, _question_bearing(readiness_maps)
     )
     answered_slots = _settled_slot_columns(
         root_path, config, store

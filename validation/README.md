@@ -291,6 +291,21 @@ The project now holds **23** open questions in total: these 6, plus **12**
 drafted by the engine in stage 4 where a check failed or was inconclusive,
 plus **5** raised in 3d where a document figure was refused.
 
+**In the report, section 5 is not in the order they were asked.** Twenty-three
+questions that all read alike is not a work list, so each card carries a badge
+saying what it holds up, and the list is sorted by it. On this landscape:
+**5 block the answer, 18 are not on this path** — real findings, every one of
+them, but the question you asked does not wait on any of them.
+
+The band comes off the ReadinessMap, never off the card's wording, and that
+is the whole reason it can be trusted: the wording is stored project data,
+the map is recomputed on every render. Answer a blocking question and the
+badge changes by itself, with nothing to migrate. Within a band the tie is
+broken by how many other questions rest on the same claims — `gap_load`,
+which has been in the codebase since M3 with nothing calling it until now.
+
+Nothing is hidden or dropped. The order is the only thing that changed.
+
 ### Stage 5b — what a person knows that no file contains
 
 `./scripts/5b-tell.sh`

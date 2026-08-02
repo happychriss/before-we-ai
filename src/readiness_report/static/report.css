@@ -464,3 +464,26 @@
       background: var(--panel); border: 1px solid var(--line);
       color: var(--muted);
     }
+
+    /* Which questions the asked question actually waits on.
+       Colour is never load-bearing: the badge says the same thing in
+       words, and the left rule is a second, redundant cue. */
+    .bearing { margin: 0 0 6px; font-size: 12px; line-height: 1.5; }
+    .bearing-badge {
+      display: inline-block; padding: 1px 8px; border-radius: 10px;
+      font-weight: 600; letter-spacing: .02em;
+      background: var(--panel); border: 1px solid var(--line);
+    }
+    .bearing-why { color: var(--muted); }
+    .question-card { border-left: 3px solid var(--line); }
+    .question-card.rank-0 { border-left-color: var(--bad, #b3261e); }
+    .question-card.rank-0 .bearing-badge {
+      color: var(--bad, #b3261e); border-color: currentColor;
+    }
+    .question-card.rank-1 { border-left-color: var(--warn, #9a6700); }
+    .question-card.rank-1 .bearing-badge {
+      color: var(--warn, #9a6700); border-color: currentColor;
+    }
+    .question-card.rank-2 { border-left-color: var(--line); }
+    .question-card.rank-3 { border-left-color: transparent; }
+    .question-card.rank-3 .bearing-badge { color: var(--muted); }
