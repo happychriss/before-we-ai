@@ -102,6 +102,7 @@ def run_check(
         },
         source_fingerprints={view: table_fingerprint(con, view) for view in ctx["views"]},
     )
+    _supersede(store, check, record)
     store.add_evidence(record)
 
     if check.claim_id:
@@ -111,6 +112,27 @@ def run_check(
 
     _draft_question(store, spec, ctx, check, record)
     return record
+
+
+def _supersede(store, check: CheckPlan, record: EvidenceRecord) -> None:
+    """Every earlier run of this plan now describes data that has moved on.
+
+    Evidence is append-only, so an old result is never deleted or edited —
+    it is marked stale, which is the one mutation the store permits, and
+    ``resolve_status`` stops counting it. Without this a re-run left the
+    old FAIL live beside the new PASS and the claim landed on *unresolved*:
+    you fixed the data and the system called the result a conflict. Fixing
+    your data has to be a way forward, not a new kind of stuck.
+
+    The trail keeps both. What changed is which of them is *live* — the
+    reading that describes the data as it is now.
+    """
+    for known in list(store.evidence.values()):
+        if (known.type is EvidenceType.CHECK_RESULT
+                and known.check_plan_id == check.id
+                and known.id != record.id
+                and not known.stale):
+            store.mark_evidence_stale(known.id)
 
 
 def _draft_question(store, spec, ctx, check: CheckPlan, record: EvidenceRecord) -> None:
