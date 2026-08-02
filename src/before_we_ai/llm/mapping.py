@@ -378,7 +378,8 @@ def check_binding(b: CheckPlanProposal, claims_by_id: dict[str, Claim],
             f"predicate {claim.predicate.name if claim.predicate else None!r} "
             f"(admissible: {sorted(allowed) or 'none'})"
         )
-    params = normalize_template_params(b.template, b.params)
+    params, _corrections = normalize_template_params(
+        b.template, b.params, index.views)
     errors += [f"claim {b.claim_id}: {e}"
                for e in check_template_params(b.template, params)]
     for ref in _string_values(params):
@@ -407,16 +408,26 @@ def check_binding(b: CheckPlanProposal, claims_by_id: dict[str, Claim],
     return errors
 
 
-def proposal_to_check_plan(b: CheckPlanProposal, claim: Claim) -> CheckPlan | None:
-    """Deterministic CheckPlanProposal -> CheckPlan; assumes checks passed."""
+def proposal_to_check_plan(b: CheckPlanProposal, claim: Claim,
+                           index: "ProfileIndex | None" = None
+                           ) -> tuple[CheckPlan | None, list[dict]]:
+    """Deterministic CheckPlanProposal -> CheckPlan; assumes checks passed.
+
+    Returns the plan and every correction made on the way, so the caller
+    can record them. A correction that only lived inside this function
+    would be a silent rewrite of what the model asked for.
+    """
     if b.template is None:
-        return None
-    return CheckPlan(
+        return None, []
+    params, corrections = normalize_template_params(
+        b.template, b.params, index.views if index else ())
+    plan = CheckPlan(
         template=b.template,
         claim_id=claim.id,
         roles=[claim.role] if isinstance(claim, MappingClaim) else [],
-        params=_canonical_params(normalize_template_params(b.template, b.params)),
+        params=_canonical_params(params),
     )
+    return plan, corrections
 
 
 # -- V3: document findings ------------------------------------------------

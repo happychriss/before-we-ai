@@ -270,18 +270,24 @@ recording (its corpus fixture is hand-authored and marked as such).
    admitting the concept class at all, not a recall number: it would not have
    flipped F21, whose matcher also needs a revenue link the claim never
    states.
-5. **Decide: normalize `view.column` given for a view param?** Six of the
-   seven V2 skips are one shape error — the model answers
-   `de_erp__gl_postings.account_id` where the param must name a bare *view*,
-   and it cascades across every param of that template. The existing
-   normalizer strips `view.` from *column* params only and anchors on the
-   view param, so it cannot get a foothold when the view param is itself
-   qualified. Mirroring it is deterministic and the VIEW_PARAMS /
-   COLUMN_PARAMS checks stay as backstop — **but** leniency means a
-   possibly-confused binding executes, and a passing verdict promotes: the
-   too-loose-law failure mode in miniature. Decide deliberately. (The seventh
-   skip — `accounts` given as a column instead of literal account numbers —
-   is a real error and should keep failing.)
+5. **Normalize `view.column` given for a view param — DECIDED 2026-08-02,
+   and done: normalize, but record the correction.** The owner took the
+   third option rather than either simple one. The check runs (so a
+   binding the model shaped wrongly is no longer lost), *and* every
+   corrected param is written to the store as a `param_normalized`
+   declaration and rendered at the claim: "the model gave X where a bare
+   name belongs; it was read as Y". Leniency without a trace is the
+   too-loose-law failure — a misunderstood binding runs, passes, promotes,
+   and nothing says we changed it.
+
+   **The number that came out of it is the interesting part: 25
+   corrections on this corpus, not one.** Column normalization had been
+   happening *silently since M4*; only the view-param case was ever
+   visible, and only as a failure. The decision did not add leniency so
+   much as reveal how much was already there.
+
+   Effect on the pins: 42 → 43 check plans, 7 → 6 V2 skips, 32 → 31
+   claims without a check.
 
 ## Open decisions (owner)
 

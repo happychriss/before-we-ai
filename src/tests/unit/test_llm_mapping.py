@@ -2,6 +2,7 @@
 paraphrases dedup, and every path is Actor.AI + proposed."""
 import pytest
 
+from before_we_ai.llm.vocabulary import normalize_template_params
 from before_we_ai.llm.mapping import (
     ProfileIndex,
     proposal_to_check_plan,
@@ -162,7 +163,7 @@ def test_binding_checks_and_maps(tmp_path):
         "child_column": "customer_id", "parent_column": "customer_id",
     })
     assert check_binding(good, claims, index) == []
-    check = proposal_to_check_plan(good, claim)
+    check, _ = proposal_to_check_plan(good, claim)
     assert check.claim_id == claim.id and check.roles == []
 
     assert check_binding(
@@ -212,13 +213,13 @@ def test_binding_checks_and_maps(tmp_path):
         "parent_column": "customer_id",
     })
     assert check_binding(qualified, claims, index) == []
-    normalized = proposal_to_check_plan(qualified, claim)
+    normalized, _ = proposal_to_check_plan(qualified, claim)
     assert normalized.params["child_column"] == "customer_id"
 
     none_binding = CheckPlanProposal(claim_id=claim.id, template=None,
                                 no_template_reason="semantic only")
     assert check_binding(none_binding, claims, index) == []
-    assert proposal_to_check_plan(none_binding, claim) is None
+    assert proposal_to_check_plan(none_binding, claim)[0] is None
 
     no_reason = CheckPlanProposal(claim_id=claim.id, template=None)
     assert any("requires no_template_reason" in e
@@ -243,7 +244,7 @@ def test_role_claim_binds_to_invariants_only(tmp_path):
         "group_column": "customer_id",
     })
     assert check_binding(invariant, claims, index) == []
-    check = proposal_to_check_plan(invariant, role_claim)
+    check, _ = proposal_to_check_plan(invariant, role_claim)
     assert check.roles == ["journal"]
     ordinary = CheckPlanProposal(claim_id=role_claim.id, template="anti_join", params={
         "child": "beta__orders", "parent": "alpha__customers",
@@ -251,3 +252,45 @@ def test_role_claim_binds_to_invariants_only(tmp_path):
     })
     assert any("cannot test predicate 'role_binding'" in e
                for e in check_binding(ordinary, claims, index))
+
+
+def test_a_qualified_view_param_is_read_as_its_view():
+    """Owner decision 2026-08-02. Six of seven V2 skips were this shape:
+    the model answers `view.column` where a bare view belongs, and because
+    the column params anchor on the view param, one mistake takes the whole
+    binding with it."""
+    params, corrections = normalize_template_params(
+        "anti_join",
+        {"child": "de_erp__gl_postings.account_id",
+         "child_column": "account_id",
+         "parent": "de_erp__accounts", "parent_column": "account_id"},
+        known_views={"de_erp__gl_postings", "de_erp__accounts"},
+    )
+    assert params["child"] == "de_erp__gl_postings"
+    assert [c["param"] for c in corrections] == ["child"]
+    assert corrections[0]["given"] == "de_erp__gl_postings.account_id"
+
+
+def test_an_unknown_view_is_left_alone():
+    """Leniency only where the shape error is unambiguous. If the head is
+    no view we know, guessing would be inventing."""
+    params, corrections = normalize_template_params(
+        "anti_join", {"child": "something.else"}, known_views={"de_erp__x"})
+    assert params["child"] == "something.else"
+    assert corrections == []
+
+
+def test_every_correction_is_reported_not_only_applied():
+    """The whole point of the decision: the check runs AND the reader can
+    see that we read something other than what was written."""
+    _params, corrections = normalize_template_params(
+        "duplicate",
+        {"table": "de_erp__invoices",
+         "key_columns": ["de_erp__invoices.document_number"]},
+        known_views={"de_erp__invoices"},
+    )
+    assert corrections == [{
+        "param": "key_columns",
+        "given": ["de_erp__invoices.document_number"],
+        "read_as": ["document_number"],
+    }]

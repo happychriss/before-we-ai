@@ -126,26 +126,45 @@ def test_contracts_ran_clean_offline(pipeline):
     assert len(v1.skipped) == 3  # residual bad items skipped, batch survived
     assert proposals.failure is None and len(proposals.claims_created) == 22
     assert v2.failures == [] and v2.unanswered == []
-    assert len(v2.check_plans_created) == 42
-    assert len(v2.skipped) == 7  # validation-rejected bindings — skipped, not crashed
+    # 43, not 42: the owner's normalization decision (2026-08-02)
+    # turns one qualified view param into a runnable binding, and
+    # records the correction as a declaration so it is not silent.
+    assert len(v2.check_plans_created) == 43
+    assert v2.corrections
+    assert len(v2.skipped) == 6  # validation-rejected bindings — skipped, not crashed
     assert len(v2.semantic_only) == 6  # no admissible template — never sent
     assert len(v2.unbindable) == 19  # honest template=null answers
-    assert len(pipeline["engine"].executed) == 42
+    assert len(pipeline["engine"].executed) == 43
     assert pipeline["engine"].skipped == []
 
     # every claim that ends without a check says why, in the store — the reason
     # must outlive the disposable call log
     store = pipeline["store"]
+    no_check = {"semantic_only", "skipped", "unbindable"}
     reasons = {
         record.claim_id: record.payload
         for record in store.evidence.values()
-        if record.type is EvidenceType.DECLARATION and "decision" in record.payload
+        if record.type is EvidenceType.DECLARATION
+        and record.payload.get("decision") in no_check
     }
-    assert len(reasons) == 32  # 19 unbindable + 6 semantic-only + 7 skipped
+    assert len(reasons) == 31  # 19 unbindable + 6 semantic-only + 6 skipped
     assert sorted(p["decision"] for p in reasons.values()) == (
-        ["semantic_only"] * 6 + ["skipped"] * 7 + ["unbindable"] * 19
+        ["semantic_only"] * 6 + ["skipped"] * 6 + ["unbindable"] * 19
     )
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
+
+    # And every param we read as something other than what the model wrote
+    # is on the record too. Twenty-five of them, which is the number worth
+    # knowing: column normalization had been happening silently all along,
+    # on this corpus alone, and only the view-param case was ever visible —
+    # as a failure.
+    corrections = [
+        record.payload for record in store.evidence.values()
+        if record.type is EvidenceType.DECLARATION
+        and record.payload.get("decision") == "param_normalized"
+    ]
+    assert len(corrections) == 25
+    assert all(c["given"] != c["read_as"] for c in corrections)
     for claim_id in reasons:
         assert store.claims[claim_id].status is ClaimStatus.PROPOSED
 
@@ -275,7 +294,7 @@ def test_pipeline_is_idempotent(pipeline):
     assert proposals.claims_created == [] and proposals.claims_deduped == 22
     # only the honestly unbound claims are still selectable for V2:
     # 19 unbindable + 6 semantic-only + 7 skipped bindings
-    assert len(_untested_claims(store, None)) == 32
+    assert len(_untested_claims(store, None)) == 31
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):

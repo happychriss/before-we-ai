@@ -229,12 +229,47 @@ COLUMN_PARAMS: dict[str, tuple[tuple[str, str], ...]] = {
     "ic_symmetry": (("left_period", "left"), ("right_period", "right")),
 }
 
-def normalize_template_params(template: str, params: dict) -> dict:
-    """Deterministic normalization of an unambiguous formatting variant:
-    a column param qualified with exactly its own view ("view.column")
-    reduces to the bare column. Anything else is left for the checks —
-    lenient in what we accept, strict in what we store."""
+def normalize_template_params(template: str, params: dict,
+                              known_views=()) -> tuple[dict, list[dict]]:
+    """Deterministic normalization of unambiguous formatting variants.
+
+    Two of them, and the second was an owner decision (2026-08-02) rather
+    than a tidy-up:
+
+    * a **column** param qualified with exactly its own view
+      (``view.column``) reduces to the bare column;
+    * a **view** param that names a column of a real view
+      (``de_erp__gl_postings.account_id`` where a view belongs) reduces to
+      that view. Six of the seven V2 skips in the walkthrough are this one
+      shape, and it cascades: the column params anchor on the view param,
+      so a qualified view param leaves them with nothing to strip.
+
+    Leniency here has a cost the owner weighed explicitly. A binding the
+    model may have misunderstood now *runs*, and a passing run promotes —
+    which is the too-loose-law failure in miniature. So every correction is
+    **returned**, and the caller records it: the run happens, and a reader
+    can still see that we read something other than what was written.
+
+    Returns ``(normalized_params, corrections)``.
+    """
     normalized = dict(params)
+    corrections: list[dict] = []
+
+    def correct(param: str, before, after) -> None:
+        normalized[param] = after
+        corrections.append({"param": param, "given": before, "read_as": after})
+
+    # VIEW_PARAMS is the set of param NAMES that must hold a bare view,
+    # shared by every template — not a per-template mapping.
+    views = set(known_views)
+    for view_param in sorted(VIEW_PARAMS & set(normalized)):
+        value = normalized.get(view_param)
+        if not isinstance(value, str) or value in views or "." not in value:
+            continue
+        head = value.split(".", 1)[0]
+        if head in views:
+            correct(view_param, value, head)
+
     for column_param, view_param in COLUMN_PARAMS.get(template, ()):
         view = normalized.get(view_param)
         value = normalized.get(column_param)
@@ -242,13 +277,15 @@ def normalize_template_params(template: str, params: dict) -> dict:
             continue
         prefix = view + "."
         if isinstance(value, str) and value.startswith(prefix):
-            normalized[column_param] = value[len(prefix):]
-        elif isinstance(value, list):
-            normalized[column_param] = [
+            correct(column_param, value, value[len(prefix):])
+        elif isinstance(value, list) and any(
+            isinstance(v, str) and v.startswith(prefix) for v in value
+        ):
+            correct(column_param, list(value), [
                 v[len(prefix):] if isinstance(v, str) and v.startswith(prefix) else v
                 for v in value
-            ]
-    return normalized
+            ])
+    return normalized, corrections
 
 
 # Free-text contract notes rendered into the V2 template docs — the model

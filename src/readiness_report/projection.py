@@ -1250,6 +1250,24 @@ def _build_decisions(store: ProjectStore, claims: list[Claim],
                 link=link,
             )))
 
+    corrected = [
+        record for record in store.evidence.values()
+        if record.type is EvidenceType.DECLARATION
+        and (record.payload or {}).get("decision") == "param_normalized"
+    ]
+    if corrected:
+        params = sorted({str(r.payload.get("param")) for r in corrected})
+        entries.append((min(r.created_at for r in corrected), _decision(
+            Actor.SYSTEM,
+            f"Read {len(corrected)} check parameter"
+            f"{'s' if len(corrected) != 1 else ''} as something other than "
+            "what the model wrote",
+            "an unambiguous shape error (a qualified name where a bare one "
+            f"belongs), in {', '.join(params)} \u2014 the check runs, and "
+            "the correction is on each claim so it can be disagreed with",
+            "3",
+        )))
+
     for act in sorted(store.acts.values(), key=lambda a: (a.created_at, a.id)):
         target = act.ref or (act.item.name if act.item else act.answer_type)
         linked = by_id.get(act.claim_id or "")
@@ -1768,6 +1786,15 @@ def _evidence_sentence(record: EvidenceRecord) -> str:
         return (
             f"Read from the running text of {where}. It shows where the "
             "wording comes from; on its own it settles nothing."
+        )
+    payload = record.payload or {}
+    if payload.get("decision") == "param_normalized":
+        return (
+            f"The model gave {payload.get('given')!r} for the check's "
+            f"{payload.get('param')!r}, where a bare name belongs. It was "
+            f"read as {payload.get('read_as')!r} and the check ran. Recorded "
+            "because a correction nobody can see is a correction nobody can "
+            "disagree with."
         )
     return (
         "A recorded processing decision. It carries no verdict and promotes "

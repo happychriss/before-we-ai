@@ -131,6 +131,9 @@ class V2Report:
     semantic_only: list[str] = field(default_factory=list)  # never sent — no admissible template
     skipped: list[tuple[str, str]] = field(default_factory=list)  # (claim_id, validation reason)
     unanswered: list[str] = field(default_factory=list)  # sent but absent from the answer
+    # (claim_id, param) for every value read as something other than what
+    # the model wrote — visible, never silent.
+    corrections: list[tuple[str, str]] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)  # per-call double failures
     retries: int = 0
     usage: dict[str, int] = field(default_factory=dict)
@@ -163,6 +166,33 @@ def _untested_claims(store: ProposalStore,
         and (claim_ids is None or c.id in claim_ids)
     ]
     return sorted(selected, key=lambda c: c.id)
+
+
+def _declare_correction(store: ProposalStore, claim: Claim,
+                        correction: dict) -> None:
+    """Record that we read a param as something other than what was written.
+
+    Owner decision 2026-08-02: normalize the unambiguous shape errors so
+    the check runs, **and** leave the correction on the record. Leniency
+    without a trace is the too-loose-law failure — a binding the model may
+    have misunderstood runs, passes, and promotes, with nothing anywhere
+    saying we changed it. A declaration promotes nothing and makes the
+    change readable at the claim.
+    """
+    existing = store.evidence_for(claim)
+    if any(
+        record.type is EvidenceType.DECLARATION
+        and record.payload.get("decision") == "param_normalized"
+        and record.payload.get("param") == correction["param"]
+        for record in existing
+    ):
+        return
+    store.declare(claim.id, {
+        "decision": "param_normalized",
+        "param": correction["param"],
+        "given": correction["given"],
+        "read_as": correction["read_as"],
+    })
 
 
 def _declare_no_check(store: ProposalStore, claim: Claim, decision: str,
@@ -263,7 +293,10 @@ def plan_checks(
                                       "; ".join(errors))
                 continue
             claim = labels[binding.claim_id]
-            check = proposal_to_check_plan(binding, claim)
+            check, corrections = proposal_to_check_plan(binding, claim, index)
+            for correction in corrections:
+                _declare_correction(store, claim, correction)
+                report.corrections.append((claim.id, correction["param"]))
             if check is None:
                 report.unbindable.append((claim.id, binding.no_template_reason))
                 _declare_no_check(store, claim, "unbindable",
