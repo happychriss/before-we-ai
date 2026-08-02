@@ -144,43 +144,23 @@
 
    **Still open in M5** (state as of 2026-08-02, second session):
 
-   1. **Kickoff item 3 — built, measured, REVERTED. Blocked on a real
-      defect it uncovered.** (Item 1, `discover(root)`, is done.)
+   1. **Kickoff item 3 — the only M5 work left.** (Item 1,
+      `discover(root)`, is done. Item 3 = role claims may bind to
+      *generic* templates, not only the three domain laws.)
 
-      Item 3 = role claims may bind to *generic* templates, not only to
-      the three domain laws. Owner decided the safety rule on
-      2026-08-02: **a generic check over a role may refute the binding
-      but never establish it.** Orphaned account ids prove a column is
-      not the account; full coverage proves nothing about meaning —
-      measured, all three corpus `account` candidates cover fully, the
-      CSV decoy included, so promoting on a pass would hand one role
-      three test-supported winners. That decision still stands and
-      should be re-applied when this lands.
+      **Owner decided the safety rule 2026-08-02:** a generic check over
+      a role may **refute** the binding but never **establish** it.
+      Orphaned account ids prove a column is not the account; full
+      coverage proves nothing about meaning — measured, all three corpus
+      `account` candidates cover the chart fully, the CSV decoy
+      included, so promoting on a pass would hand one role three
+      test-supported winners. Implement as `establishes: False` on the
+      check evidence payload, written by the runner from
+      `CheckDefinition.domain`, read by `resolve_status`. It was built
+      and tested once and reverted with everything else; rebuild it the
+      same way.
 
-      **Why it is not in the tree.** Widening the menu changes the roles
-      prompt, which forces a re-record of `v2_bind__corpus_roles`, and
-      the new answer **lost trap F27**. Not because of the widening: the
-      model bound the decoy journal to `balance` correctly but wrote
-      `amount: CAST(betrag_eur AS DOUBLE)`, validation rejected the
-      expression, the law never ran, and the decoy came out `proposed`
-      instead of `contradicted`.
-
-      **The defect is ours, and the model was right.** `betrag_eur` in
-      the decoy is **VARCHAR** — the corpus stores its amounts as text.
-      Our contract requires a bare column name, so there is no way to
-      say "sum this text column as a number", and the balance law only
-      ever ran on that candidate because the model happened to write the
-      column bare and DuckDB cast it implicitly. **F27 has been caught by
-      luck, not by design, since M4.**
-
-      Re-recording until the model phrases it the lucky way is exactly
-      the tuning the owner forbade, so the recording was reverted whole.
-
-      **Fix this first, then land item 3:** `_prep_balance` (and its
-      siblings) should canonicalize a numeric-looking VARCHAR amount
-      itself — the model names the column, the mechanics are ours, which
-      is the checkability line in `meta/conventions.md`. Expect it to
-      move balance results wherever an amount column is text.
+      **Do not start it before reading the next section.**
 
    **Done this session (2026-08-02, second):**
    - **Walkthrough re-pinned end to end** — every number above, plus two
@@ -268,6 +248,52 @@
    reader cannot judge the classification in section 1 without seeing what
    was on offer — and its subsections read `0.1 / 0.2 / 0.3` instead of the
    pre-spine `1.1 / 1.2 / 1.3`.
+
+
+## The ping-pong, and what was under it — 2026-08-02
+
+Three re-recordings in a row each fixed one trap and lost another:
+
+| | plans | F27 decoy | F22 intercompany |
+|---|---|---|---|
+| A (baseline) | 50 | caught | caught |
+| B (item 3, wider menu) | 56 | **lost** | caught |
+| C (balance-note fix) | 48 | caught | **lost** |
+
+Treating those as three bugs was the error, and the owner caught it
+before I did. **One cause**, in `V2_ROLES_SYSTEM`: "taking params from
+the claim's binding". `balance` needs one view and never wavered;
+`ic_symmetry` needs left AND right, `subledger_equals_gl` needs a
+subledger AND its ledger. For two of three laws the instruction is
+impossible, and `template=null` sits there as the way out — so **trap
+coverage depended on the model disobeying the prompt.** Fixed: a
+relation may take its missing params from the other claims in the same
+batch, which were always in front of it.
+
+**The lesson, worth more than the fix.** Every recording re-decides
+*every* binding, so a flipped trap somewhere else is not evidence about
+the change you just made. Two rules follow:
+
+- **A flipped trap after a prompt change is a symptom, not a bug.**
+  Ask what the prompt now makes impossible before patching the symptom.
+- **Never re-record to see if it comes out better.** That is the tuning
+  the owner forbade, and it is indistinguishable from debugging unless
+  you can say in advance *which contradiction* the change removes.
+
+`subledger_ar` never binding is **not** part of this: it declines
+because it needs to know which GL accounts are the AR control accounts,
+and nobody has told it. Correct, permanent, and already surfaced as a
+clarification question.
+
+**Still genuinely open (separate):** `CAST(x AS DOUBLE)` in
+`balance.sql.j2` handles `304718.22` but not European `1.234,56` — such
+a column makes the check *error*, not fail. The corpus does not
+exercise it; `documents/figures.py` solves the same problem in Python
+and is the model to follow. Related and also open: the `balance`
+TEMPLATE_NOTE says "a plain column summed by the template" while the
+`reconciliation` note one line above says text columns "must be cast",
+which is what sent the model down the CAST path in recording B. Fix
+both together, in one recording.
 
 ## Declared goal — the GUI milestone (after M5; not scheduled)
 

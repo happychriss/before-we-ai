@@ -82,6 +82,32 @@ must survive this before it ships.
 - **Ground-truth claims live only in tests** (`tests/corpus_driven/`), keyed by
   scenario; the false-promotion gate is exact tested-set equality.
 
+### Re-recording: a flipped trap is a symptom, not a bug
+
+Every recording re-decides *every* binding. So when a prompt change is
+followed by a trap flipping somewhere unrelated, that flip is **not**
+evidence about the change you made — it is a new sample.
+
+Learned the expensive way 2026-08-02: three recordings in a row each fixed
+one trap and lost another, and each loss was patched locally as if it were
+its own bug. The actual cause was one sentence in `V2_ROLES_SYSTEM` that
+made two of the three finance laws impossible to bind, so trap coverage had
+been resting on the model disobeying us.
+
+Two rules:
+
+- **Before patching a flipped trap, ask what the prompt now makes
+  impossible.** The interesting question is never "why did this trap
+  break", it is "what were we asking for that cannot be given".
+- **Never re-record to see whether it comes out better.** That is
+  indistinguishable from tuning to the corpus — which the owner has
+  forbidden — unless you can say *in advance* which contradiction the
+  change removes. If you cannot name it, you are rolling dice.
+
+A corollary worth stating: a trap that passes is not proof the mechanism
+works. Ask whether it passes *by construction* or *by luck*. Both
+`ic_symmetry` and `subledger_equals_gl` were luck for months.
+
 ## Documentation duties (per milestone, before tagging)
 
 - Update `docs/before-ai-concept.md`: fold what the milestone added into the
