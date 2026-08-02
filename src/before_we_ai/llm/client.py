@@ -21,6 +21,7 @@ reported as ``partial``: the caller skips those items and keeps the rest —
 a failed call never crashes a sweep.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -327,6 +328,12 @@ def call_with_retry(
         "provider": client.name,
         "schema": schema.__name__,
         "input_sha256": built.sha256,
+        # The recorded answer answers the *prompt* as well as the input, and
+        # a reworded prompt makes it exactly as stale as a rebuilt input
+        # does. Hashing only one of the two was a hole the fixtures fell
+        # through silently (found 2026-08-02, by mutating a prompt and
+        # watching the drift guard stay green).
+        "system_sha256": hashlib.sha256(system.encode("utf-8")).hexdigest(),
         "trim_notices": built.trim_notices,
         "request": {"system": system, "user": built.text},
         "attempts": attempts,

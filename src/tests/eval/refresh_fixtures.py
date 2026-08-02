@@ -61,6 +61,7 @@ def write_fixture_from_log(log_ref: str, scenario_override: str | None = None) -
         "contract": entry["contract"],
         "scenario": scenario,
         "input_sha256": entry["input_sha256"],
+        "system_sha256": entry["system_sha256"],
         "model": entry["model"],
         "recorded_at": Path(log_ref).name,
         "source_log": log_ref,

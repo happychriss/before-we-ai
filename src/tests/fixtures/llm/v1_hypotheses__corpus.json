@@ -2,6 +2,7 @@
  "contract": "v1_hypotheses",
  "scenario": "corpus",
  "input_sha256": "02ac340a038bc964aa6e17b09d8a71f1c39bfcab23993d1361df9e86d43d3f7f",
+ "system_sha256": "a20b277172f06a0c5860fdc482c462f535ac1412b3635be39a96e63d42c852e4",
  "model": "claude-opus-4-8",
  "recorded_at": "20260731T155002Z_v1_hypotheses_01KYWDWH0JCS6JY9PF88YNBGPX.json",
  "source_log": "/workspace/validation/data/refresh-keep/project/cache/llm_log/20260731T155002Z_v1_hypotheses_01KYWDWH0JCS6JY9PF88YNBGPX.json",

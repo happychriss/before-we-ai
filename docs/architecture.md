@@ -460,7 +460,11 @@ instead of merely detected.
   through `BuiltInput`).
 - **Stub mode**: fixtures keyed contract+scenario (never input hash — a builder
   change must not strand keyless devs); drift guard = offline test comparing
-  fixture `input_sha256` against rebuilt inputs; refresh procedure under
+  fixture `input_sha256` **and `system_sha256`** against the inputs and
+  prompts rebuilt today. Both halves matter and only one existed until
+  2026-08-02: a recorded answer answers a prompt as much as an input, so a
+  reworded prompt made every fixture stale while CI stayed green. A second
+  guard asserts no fixture escapes either check; refresh procedure under
   "Operations" below. GOTCHA (found+fixed ): the recorder must
   take the last **non-repair** attempt — an item-scoped repair answer can
   never stand in for the full batch; and a live repair that *accepted*

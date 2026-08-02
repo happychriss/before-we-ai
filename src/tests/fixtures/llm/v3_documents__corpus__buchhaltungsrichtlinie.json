@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "corpus__buchhaltungsrichtlinie",
+ "input_sha256": "3fe2c1bb196aa62f72f2cf76a1d9699bc177d2050e6a7a8cc5b4d7ee3ee6c2ac",
+ "system_sha256": "82080590552436492864fdb01f57b99b854aefc31eb2b35b225908b4666d8dc9",
+ "model": "claude-opus-4-8",
+ "recorded_at": "hand-authored",
+ "source_log": "none — hand-authored before the first V3 online run, per stub.py; replace it with a recorded answer at the next refresh_fixtures run",
+ "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"buchhaltungsrichtlinie:p1:0\",\n      \"quote\": \"Haben-Betraege werden als negative Zahlen gebucht (Haben-Konvention).\",\n      \"reads_as\": \"definition\",\n      \"statement\": \"Credit amounts are booked as negative numbers.\",\n      \"term\": \"sign convention for income and expense\",\n      \"definition\": \"credit amounts are recorded with a negative sign\",\n      \"answers\": \"sign convention for income and expense\",\n      \"rationale\": \"the policy states the booking convention directly\"\n    },\n    {\n      \"chunk_id\": \"buchhaltungsrichtlinie:p1:0\",\n      \"quote\": \"Umsatzerloese = Konten 4000-4999 abzueglich Erloesschmaelerungen (4800-4899).\",\n      \"reads_as\": \"definition\",\n      \"statement\": \"Revenue is accounts 4000-4999 less contra accounts 4800-4899.\",\n      \"term\": \"which accounts are profit and loss\",\n      \"definition\": \"revenue comprises accounts 4000-4999 less 4800-4899\",\n      \"answers\": \"which accounts are profit and loss\",\n      \"rationale\": \"the policy defines the revenue account range\"\n    }\n  ]\n}\n"
+}

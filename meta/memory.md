@@ -352,4 +352,9 @@ recording (its corpus fixture is hand-authored and marked as such).
 - `docs/spec/` is the owner's authoritative German spec — edit only on an
   explicit owner decision. Everything else is English.
 - Prompt bytes change only with a deliberate fixture re-record; the drift
-  guard is the proof.
+  guard is the proof. **It only became the proof on 2026-08-02** — until
+  then the guard hashed the built input and nothing else, so rewording a
+  system prompt left every fixture stale and CI green. Found by mutating
+  V3_SYSTEM and watching it say nothing. Fixtures now carry
+  `system_sha256` alongside `input_sha256`, both are checked, and a second
+  guard asserts that no fixture escapes either check.

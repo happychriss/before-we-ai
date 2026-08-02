@@ -46,7 +46,7 @@ from before_we_ai.llm.inputs import build_document_context
 from before_we_ai.llm.mapping import check_document_finding, finding_to_claim
 from before_we_ai.llm.prompts import V3_SYSTEM, with_schema
 from before_we_ai.llm.schemas import DocumentReading
-from before_we_ai.readiness import assemble, link_claim
+from before_we_ai.readiness import evaluate_request, link_claim
 from before_we_ai.readiness.evaluate import UnlinkableItem
 from before_we_ai.store.proposals import ProposalStore, QuoteNotFound
 from before_we_ai.store.repository import ProjectStore
@@ -80,15 +80,19 @@ def open_rule_items(store: ProjectStore, guide: DomainGuide) -> list[str]:
     """The rule items no claim has settled yet, across every request.
 
     These are what a document is worth reading *for*: a sign convention
-    or a cut-off rule that no column layout reveals. Sorted, because they
-    go into a prompt.
+    or a cut-off rule that no column layout reveals. Taken from the
+    readiness evaluator rather than counted here, so V3 and the
+    ReadinessMap can never disagree about what is still open. Sorted,
+    because the result goes into a prompt.
     """
     names: set[str] = set()
-    for request in store.requests.values():
-        required = assemble(store, guide, request.id)
-        for item in required.items:
-            if item.kind is KnowledgeKind.RULE and not item.satisfied:
-                names.add(item.name)
+    for request_id in sorted(store.requests):
+        readiness = evaluate_request(store, guide, request_id)
+        if readiness is None:
+            continue
+        for item in readiness.items:
+            if item.item.kind is KnowledgeKind.RULE and not item.satisfied:
+                names.add(item.item.name)
     return sorted(names)
 
 
@@ -245,10 +249,19 @@ def _record(store, project, guide, report, finding, chunk, profile) -> None:
 
 
 def _figure_value(quote: str):
+    """Which number in the quote the finding is actually about.
+
+    The largest one. Not a guess dressed up as a rule: a quoted amount is
+    surrounded by period labels and years, and taking the first number
+    picks the year every time — "Prior year Q1 2023 revenue: EUR
+    3,200,000" is about the revenue, and reading it as being about 2023
+    hid F24's restatement behind a lesser refusal until a corpus run
+    showed it.
+    """
     from before_we_ai.documents.figures import distinct_values
 
     values = distinct_values(quote)
-    return values[0] if values else None
+    return max(values, key=abs) if values else None
 
 
 def _link(store, project, guide, report, ref, claim_id, note) -> None:

@@ -460,3 +460,86 @@ def test_fixtures_match_current_inputs(pipeline):
         build_binding_context(store, claim_label_map(role_claims), docs).sha256
     assert fixture("v2_bind__corpus_claims")["input_sha256"] == \
         build_binding_context(store, claim_label_map(ordinary), docs).sha256
+
+
+@pytest.mark.contract
+def test_fixtures_match_the_prompts_they_answered():
+    """The other half of staleness, and the half that was missing.
+
+    A recorded answer answers a *prompt* as well as an input. Rewording a
+    system prompt makes the fixture exactly as stale as rebuilding its
+    input does — but only the input was ever hashed, so a prompt edit slid
+    through green. Found 2026-08-02 by mutating V3_SYSTEM and watching the
+    drift guard say nothing.
+    """
+    import hashlib
+
+    from before_we_ai.llm.prompts import (
+        MAPPING_SYSTEM,
+        REQUEST_SYSTEM,
+        V1_SYSTEM,
+        V2_ROLES_SYSTEM,
+        V2_SYSTEM,
+        V3_SYSTEM,
+        with_schema,
+    )
+    from before_we_ai.llm.schemas import (
+        AnswerRequestDraft,
+        BindingBatch,
+        DocumentReading,
+        HypothesisBatch,
+        MappingProposalBatch,
+    )
+
+    systems = {
+        "request__corpus": with_schema(REQUEST_SYSTEM, AnswerRequestDraft),
+        "v1_hypotheses__corpus": with_schema(V1_SYSTEM, HypothesisBatch),
+        "role_binding__corpus": with_schema(MAPPING_SYSTEM, MappingProposalBatch),
+        "v2_bind__corpus_roles": with_schema(V2_ROLES_SYSTEM, BindingBatch),
+        "v2_bind__corpus_claims": with_schema(V2_SYSTEM, BindingBatch),
+    }
+    v3 = with_schema(V3_SYSTEM, DocumentReading)
+    for path in sorted(FIXTURES.glob("v3_documents__*.json")):
+        systems[path.stem] = v3
+
+    stale = []
+    for name, system in sorted(systems.items()):
+        recorded = json.loads(
+            (FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
+        current = hashlib.sha256(system.encode("utf-8")).hexdigest()
+        if recorded.get("system_sha256") != current:
+            stale.append(name)
+    assert not stale, (
+        "these fixtures answered a prompt that has since been reworded, so "
+        f"their recorded answers no longer belong to it: {stale}. Refresh "
+        "them; do not edit this test."
+    )
+
+
+# Every fixture is checked by one of the two guards, and this is what says
+# so. Without it, adding a fixture and forgetting to pin it buys a green
+# that nobody earned — the exact silence the drift guard exists to break.
+# (V3's fixtures are checked in test_documents_offline_corpus.py, which
+# needs a project with documents read.)
+_GUARDED_HERE = {
+    "request__corpus",
+    "v1_hypotheses__corpus",
+    "role_binding__corpus",
+    "v2_bind__corpus_roles",
+    "v2_bind__corpus_claims",
+}
+_GUARDED_IN_THE_DOCUMENTS_FILE = "v3_documents__"
+
+
+@pytest.mark.contract
+def test_no_fixture_escapes_the_drift_guard():
+    shipped = {p.stem for p in FIXTURES.glob("*.json")}
+    unguarded = {
+        name for name in shipped
+        if name not in _GUARDED_HERE
+        and not name.startswith(_GUARDED_IN_THE_DOCUMENTS_FILE)
+    }
+    assert not unguarded, (
+        "these fixtures are pinned by no drift guard, so a prompt or builder "
+        f"change would leave them stale and green: {sorted(unguarded)}"
+    )

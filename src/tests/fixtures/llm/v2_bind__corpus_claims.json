@@ -2,6 +2,7 @@
  "contract": "v2_bind",
  "scenario": "corpus_claims",
  "input_sha256": "748e79f9cb0051a77484de2fdb28f1304369d9203cd8c1c124b7c92931cd89a7",
+ "system_sha256": "e6e8914a7c3ad39ff327440e8e38ed7162d15a3aa41a7264f51de606b4d19f30",
  "model": "claude-sonnet-5",
  "recorded_at": "20260731T155403Z_v2_bind_01KYWE3WM3H2WTVYJ5TK7HHHZW.json",
  "source_log": "/workspace/validation/data/refresh-keep/project/cache/llm_log/20260731T155403Z_v2_bind_01KYWE3WM3H2WTVYJ5TK7HHHZW.json",

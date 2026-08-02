@@ -2,6 +2,7 @@
  "contract": "v2_bind",
  "scenario": "corpus_roles",
  "input_sha256": "5840a8b85ef243241c0104769a212cd5015c9f49bb5570e477451cea937b40bb",
+ "system_sha256": "8db06ee7ddd95690286deba275d1e6118e91f5f1b271e9631f3e183e37d78848",
  "model": "claude-opus-4-8",
  "recorded_at": "20260731T155100Z_v2_bind_01KYWDYAB6RJCN85K9E4E1RWD2.json",
  "source_log": "/workspace/validation/data/refresh-keep/project/cache/llm_log/20260731T155100Z_v2_bind_01KYWDYAB6RJCN85K9E4E1RWD2.json",
