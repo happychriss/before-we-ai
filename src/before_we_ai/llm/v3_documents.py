@@ -249,10 +249,14 @@ def _record(store, project, guide, report, finding, chunk, source_id) -> None:
                    else ground_definition(anchors))
 
     for concern in outcome.concerns:
+        # Name the subject first. A question that opens "only
+        # management_report p.1 carries this figure" tells a reader
+        # everything except WHICH figure, and a work list of those is a
+        # work list nobody can triage.
         _ask_question(
             store, report,
-            f"{concern.detail}. Does this passage settle it, and for which "
-            f"scope?",
+            f"\u201c{kept.statement}\u201d \u2014 {concern.detail}. Does "
+            "this passage settle it, and for which scope?",
             kept.id,
         )
     if outcome.may_link and finding.answers:

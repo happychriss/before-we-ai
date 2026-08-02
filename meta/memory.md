@@ -333,6 +333,43 @@ against a leg missing in US — so a DE-scoped request blocks on exactly the
 same items. A report that offers "ask a narrower question" wherever it
 blocks would be offering an escape that often is not one.
 
+## The work list an analyst actually gets — reviewed 2026-08-02
+
+Owner asked how much is still waiting on a person, and whether the
+questions would be clear to a business analyst. Counted on the corpus:
+**84 claims** (37 test-supported, 12 contradicted, 35 proposed), **22 role
+candidates over 8 roles of which 7 are unsettled**, **0 human
+confirmations so far**, **21 open questions**, verdict blocked on 4 items
+with 3 limitations.
+
+Read as a work list rather than as output, it fails on triage. Four
+findings, none of them about correctness:
+
+1. **No magnitude anywhere.** "de_erp__ar_open_items and de_erp__gl_postings
+   do not agree per group" — by how much? One exception in 24 rows and 40%
+   of rows are different decisions, and the exception counts are already
+   on the evidence. Cheapest fix, biggest gain.
+2. **No priority.** 21 questions, flat. Only 4 items block the answer; the
+   other 17 may not bear on this question at all. `gap_load()` exists to
+   rank unproven claims by the questions resting on them and nothing
+   surfaces it.
+3. **Candidates are not in the question.** "Which of the proposed
+   candidates is the 'account'?" never lists them; they are on the card as
+   claim ids. Fine in the report where the card expands, useless in a list.
+4. **Duplicates.** ic_symmetry asks once per direction — de→us and us→de
+   are one decision for a reader, two rows in the list. Also
+   `de_erp__territory_plz` appears as both sides of its own range question,
+   which reads as a bug even where it is not.
+
+What is genuinely good: the role questions carry the guide's definition
+and say *why* no check can settle them ("what the data means is a business
+fact, not an arithmetic one"), which is exactly the sentence an analyst
+needs to know it is their call and not a bug.
+
+Fixed the same day: the four document questions did not name their
+subject — they opened "only management_report p.1 carries this figure"
+without saying which figure. They now lead with the claim.
+
 ## Open decisions (owner)
 
 - **Domain packs live in `before_we_ai/domains/` — decided and done
