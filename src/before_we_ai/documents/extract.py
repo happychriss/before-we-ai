@@ -17,9 +17,14 @@ from dataclasses import dataclass
 
 import pymupdf
 
-TEXT = "text"
-TABLE = "table"
-CHART = "chart"
+from before_we_ai.core.enums import AnchorKind
+
+# The vocabulary lives in core/enums.py with the rest of the fixed
+# vocabulary; these are the plain strings that travel through YAML, DuckDB
+# and prompts, so nothing downstream has to know about the enum.
+TEXT = AnchorKind.TEXT.value
+TABLE = AnchorKind.TABLE.value
+CHART = AnchorKind.CHART.value
 KINDS = (TEXT, TABLE, CHART)
 
 # A stroke thinner than this is a ruling line, not a region of its own.

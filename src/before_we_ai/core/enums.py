@@ -48,6 +48,35 @@ class EvidenceType(str, Enum):
     DECLARATION = "declaration"
 
 
+class AnchorKind(str, Enum):
+    """Where in a document an anchored passage physically sits.
+
+    Derived from page geometry when the document is read, never from what
+    the passage says and never from what a model calls it — a figure boxed
+    inside a chart extracts as ordinary text, so wording cannot tell these
+    apart and only the page can. The multi-anchor rule then refuses to let
+    ``chart`` corroborate anything.
+    """
+
+    TEXT = "text"
+    TABLE = "table"
+    CHART = "chart"
+
+
+class AnchorMatch(str, Enum):
+    """How an anchored value relates to the value it is offered for.
+
+    Computed by reconciliation, not supplied by the model: numbers are
+    parsed out of the quote and compared. ``rounded`` is agreement within
+    presentation rounding; anything looser is a coincidence candidate and
+    never counts toward corroboration, however many of them turn up.
+    """
+
+    EXACT = "exact"
+    ROUNDED = "rounded"
+    COINCIDENTAL_CANDIDATE = "coincidental_candidate"
+
+
 class KnowledgeKind(str, Enum):
     """What a required-knowledge item points at.
 

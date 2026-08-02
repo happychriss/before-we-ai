@@ -8,7 +8,7 @@ evidence kind gets a narrow method that fixes its type and actor.
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from before_we_ai.core.enums import Actor, EvidenceType
+from before_we_ai.core.enums import Actor, AnchorKind, EvidenceType
 from before_we_ai.core.objects import (
     AnswerRequest,
     CheckPlan,
@@ -22,6 +22,10 @@ from before_we_ai.core.objects import (
 )
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.store.repository import ProjectStore
+
+
+class QuoteNotFound(ValueError):
+    """An anchor was offered for text that is not in the chunk it cites."""
 
 
 class ProposalStore:
@@ -104,6 +108,57 @@ class ProposalStore:
 
     def save_required_knowledge(self, required: RequiredKnowledge) -> None:
         self.__store.save_required_knowledge(required)
+
+    def anchor(
+        self,
+        claim_id: str,
+        *,
+        quote: str,
+        chunk_id: str,
+        chunk_text: str,
+        kind: str,
+        source: str,
+        page: int,
+    ) -> EvidenceRecord:
+        """Attach one document anchor: a passage located in a real document.
+
+        Weak evidence by construction — ``resolve_status`` never reads an
+        anchor, so V3 having this method does not touch the promotion
+        boundary. Two things are enforced here rather than trusted:
+
+        **The quote must actually be in the chunk.** A model that invents a
+        sentence and cites a page cannot get that sentence into the store;
+        the record simply cannot be built. Validation belongs at the write,
+        not in a reviewer's diligence.
+
+        **The kind comes from the page, not from the model.** It is checked
+        against the closed vocabulary so a caller cannot smuggle a chart
+        figure in wearing a label of its own invention.
+        """
+        if quote not in chunk_text:
+            raise QuoteNotFound(
+                f"quote is not in chunk {chunk_id!r} — an anchor must point at "
+                f"text that is really there: {quote!r}"
+            )
+        if kind not in {member.value for member in AnchorKind}:
+            raise ValueError(
+                f"unknown anchor kind {kind!r} — it is derived from page "
+                "geometry, not chosen"
+            )
+        record = EvidenceRecord(
+            type=EvidenceType.DOCUMENT_ANCHOR,
+            actor=Actor.AI,
+            claim_id=claim_id,
+            payload={
+                "quote": quote,
+                "chunk_id": chunk_id,
+                "kind": kind,
+                "source": source,
+                "page": page,
+            },
+        )
+        self.__attach(record)
+        return record
 
     def declare(self, claim_id: str, payload: dict[str, object]) -> None:
         """Attach one SYSTEM declaration, which cannot promote its claim."""
