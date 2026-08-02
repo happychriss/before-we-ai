@@ -52,10 +52,31 @@
    then follow the `next:` line each stage prints. Every stage rebuilds
    `validation/data/report/index.html` — leave a tab open on it.
    `validation/README.md` says what to look for and the numbers to expect.
-2. **M5 — documents & V3.** PDF pipeline, position anchors, DuckDB FTS,
-   multi-anchor reconciliation, `tell` + mirror loop. Acceptance: T8
-   negatives and a real PDF — every PDF it needs is in the frozen corpus
-   (`src/corpus/data/`, including `noise/`).
+2. **M5 — documents & V3. IN PROGRESS since 2026-08-02.** PDF pipeline,
+   position anchors, DuckDB FTS, multi-anchor reconciliation, `tell` +
+   mirror loop. Acceptance: T8 negatives and a real PDF — every PDF it
+   needs is in the frozen corpus (`src/corpus/data/`, including `noise/`).
+
+   **Design settled first** (architecture.md → "Documents & V3"): the
+   multi-anchor rule is now defined (the spec only asserted its name);
+   V3 runs **one call per document** with retrieval-selected chunks
+   (fixture machinery compatible); chunking is deterministic and
+   `pymupdf==1.28.0` is pinned exact; FTS is required with a hard error,
+   never a silent fallback (verified offline-capable 2026-08-02 — the
+   extension is baked into the dev image, not the wheel).
+
+   **Decisions taken at kickoff (2026-08-02):**
+   - **All six corpus PDFs become declared sources** (was: only
+     `management_report.pdf`). K3 needs `buchhaltungsrichtlinie.pdf`, F25
+     needs `rabattvertrag.pdf`, and F26's discipline needs the noise PDFs
+     *present and refused* — noise presence is the precision test. The
+     walkthrough pins change with it; re-pin in the same commit.
+   - **The spec's real public PDF is still missing** (Pflichtbestandteil,
+     `fixture-korpus-spezifikation.md:46` — all six corpus PDFs are
+     generator-made). OWNER picks the document (a public annual report is
+     the spec's own example); it enters additively as
+     `src/corpus/data/real/` with hand-annotated expected anchors. Blocks
+     final M5 acceptance, not the build.
 
    **Unblocked, and the sequencing was deliberate:** the refactor ran first
    so M5 builds its document surfaces into `projection.py` and the template
@@ -261,10 +282,11 @@ recording (its corpus fixture is hand-authored and marked as such).
 
 ## Standing constraints
 
-- **The Anthropic API key is reused, not rotated** (owner decision). It is
-  never written to any file, commit or log; live runs read it from
-  `ANTHROPIC_API_KEY` in the shell only, and it is never pasted into a
-  transcript.
+- **The Anthropic API key is reused, not rotated** (owner decision). Since
+  2026-08-02 (owner decision) it lives in `~/.zshenv` — outside the repo,
+  chmod 600 — so every shell exports `ANTHROPIC_API_KEY`. It is never
+  written to any file inside the repo, never committed, never logged, and
+  never pasted into a transcript.
 - `docs/spec/` is the owner's authoritative German spec — edit only on an
   explicit owner decision. Everything else is English.
 - Prompt bytes change only with a deliberate fixture re-record; the drift

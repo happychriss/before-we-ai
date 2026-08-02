@@ -582,6 +582,123 @@ instead of merely detected.
 - No hard token limit — the goal is complete, well-structured context
   (~25k tokens is an orientation, not a cap).
 
+## Documents & V3 (`documents/`, M5)
+
+Design settled 2026-08-02, before code — same discipline as the answer-type
+decisions. The module is `before_we_ai/documents/` (the spec's `docs` module;
+renamed because `docs/` is this repo's documentation directory). The contract
+is **documents** (spec alias V3), frontier tier.
+
+### Pipeline shape
+
+- **Extraction:** PyMuPDF, pinned **exactly** (`pymupdf==1.28.0`) — text
+  extraction is deterministic only for a fixed version, and chunk bytes feed
+  fixture hashes. A bump is therefore the same class of event as a prompt
+  change: deliberate, with a fixture re-record.
+- **Chunking is deterministic by construction:** chunks follow PyMuPDF text
+  blocks in page order, greedily packed to a fixed target size, never split
+  inside a block. Chunk id = `{doc_stem}:p{page}:{seq}` — stable for identical
+  PDF bytes. Each chunk carries its position anchor data: page number and the
+  char span within the page's extracted text.
+- **Index:** DuckDB FTS over the chunk table, in `cache/` (disposable, like
+  the catalog: delete + re-scan ⇒ identical output). Extraction and indexing
+  create ZERO claims — a scanned PDF yields a document profile, nothing else
+  (same law as `scan`).
+- **FTS is required, never silently substituted.** Verified 2026-08-02: the
+  extension is not compiled into the duckdb wheel — it lives in
+  `~/.duckdb/extensions/` (this dev image bakes it; loads and queries fully
+  offline, duckdb 1.5.4). `LOAD fts` failure is a **hard error** naming the
+  one-time fix (`INSTALL fts` with network — the same class of setup step as
+  `pip install`). Rationale: a LIKE/trigram fallback would select different
+  chunks per environment, and retrieval selection feeds V3 input bytes — a
+  silent fallback would break offline replay invisibly.
+- **Retrieval is deterministic:** query strings derive from rule items and
+  open questions (fixed rendering), top-k per query with tie-break (score
+  DESC, chunk id ASC), union capped, then ordered by document position — so
+  a marginal score change reorders nothing downstream.
+
+### V3 call shape — one call per document
+
+The spec's "chunkweise" governs the granularity of **evidence** (every quote
+is validated by string match against its chunk), not the granularity of
+calls. V3 runs **once per document**, with the retrieval-selected chunks in
+the input (bounded count, document order) — the same shape as `plans`' one
+call per batch, and the shape the fixture machinery (`contract__scenario`
+filename, one `input_sha256` pin each) replays without inventing per-chunk
+scenario names. Input: document profile + selected chunks (id, page, text) +
+the rule items and open questions being sought. Output items: anchors,
+concept-claim candidates, links to rule items (`readiness.link_claim` is the
+output seam), clarification questions. **Quote validation:** every quoted
+string must appear verbatim in the chunk it cites, or the item fails semantic
+validation — item-scoped repair applies, same two-tier retry as every
+contract.
+
+### The multi-anchor rule (Mehrfach-Anker-Regel)
+
+The spec asserts the rule's name (T8's "Prüft" column) and the behaviours it
+must produce; this is its definition. Anchors never promote —
+`DOCUMENT_ANCHOR` is weak evidence and `resolve_status` never reads it — so
+the rule governs what **reconciliation may propose** and how V3 must label
+anchors, never status transitions.
+
+Every anchor carries two labels, enforced as closed enums at validation:
+
+- `kind`: `text` | `table` | `chart` — where in the document the figure
+  lives. V3 must classify; a chart-read figure claiming `text` is the F23
+  failure mode.
+- `match`: `exact` | `rounded` | `coincidental_candidate` — how the anchored
+  value relates to the claim's value. `rounded` means agreement within
+  presentation rounding; anything looser is `coincidental_candidate`.
+
+Reconciliation may propose a corroborating link between a claim and a rule
+item only when:
+
+1. **≥ 2 independent anchors** — different (document, page) pairs — of kind
+   `text` or `table` with match `exact` or `rounded` agree, **or**
+2. **1 such anchor + a matching DB aggregate** (an existing CHECK_RESULT on
+   the same claim) agrees.
+
+Everything else surfaces, never links:
+
+- a **single** anchor stays weak evidence, visible in the report trail;
+- `chart`-kind anchors never count toward the threshold — a chart-only
+  figure is flagged low-confidence (F23);
+- `coincidental_candidate` never counts, whatever the quantity — noise
+  documents must be present and refused (F26);
+- two qualifying anchors that **disagree in value** for the same figure are
+  a restatement: marked as a documented finding **and** a clarification
+  question, never silently reconciled to either value (K7/F24).
+
+### Statements & the mirror loop (`tell`, `answer_question`)
+
+Library operations in M5; the Typer CLI verbs wait for M8 with the rest of
+packaging (the walkthrough scripts are the M5 surface).
+
+- `tell(store, statement, by, scope=None)` stores the statement **verbatim**
+  as TESTIMONIAL evidence (author, date); V3 structures it into `proposed`
+  claim candidates; a statement with no structurable claim type is parked as
+  a note (FTS-searchable, never load-bearing). Then the mirror loop: the
+  system mirrors its interpretation back **including the explicit scope**.
+- `answer_question(store, card, answer, by)` / `confirm` produce the scoped
+  CONFIRMATION via `admit_evidence` — the law already built and tested: a
+  confirmation on a testimonial claim without explicit scope raises
+  `PromotionError` (F29's teaching moment), with scope it promotes
+  entity-scoped.
+- `ProposalStore` gains `anchor()` — the weak-evidence method the facade was
+  shaped to accept via its private `__attach` seam. The guardrail's
+  `PROMOTING` tuple is untouched; only the allow-list widens.
+
+### Where things land
+
+- Anchors persist in `evidence/` (append-only store); the chunk index in
+  `cache/`; document profiles in `profiles/`. No new `PROJECT_DIRS` entry.
+- Stage spine: extraction + indexing is **2c-measure-documents** (measured,
+  zero claims); V3 proposals are **3d-propose-documents**; tell/answer beats
+  join stage **5** — letters, never new numbers.
+- Report: a documents `*View` in `projection.py` next to `MeasurementView`,
+  anchor-aware `EvidenceView`, and the "M5 · documents" ghost node in the
+  process diagram becomes real.
+
 ## Readiness report (`readiness_report/`)
 
 ```bash
