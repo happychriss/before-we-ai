@@ -304,6 +304,26 @@ recording (its corpus fixture is hand-authored and marked as such).
   The other half gets its bar when M5 lands. The split is worth more than
   the bar anyway — it says *which kind* of knowledge is missing, which one
   number never could.
+- **Evaluate a real layout analyser for the extraction layer (after M5).**
+  We write no PDF parsing — PyMuPDF does all of it — but the ~40 lines
+  deriving `kind` from geometry are the weakest part of the pipeline, and
+  the hard document already measures exactly how weak: it beats us on the
+  unruled table (H4) and on two-column reading order. Both are layout
+  analysis, and better tools exist.
+
+  Candidates: **`pymupdf4llm`/the layout add-on** (same dependency,
+  PyMuPDF recommends it itself — the suggestion message is switched off in
+  `documents/__init__.py`) and **Docling** (IBM, MIT: layout model, table
+  structure, reading order, bboxes as provenance).
+
+  **Not blocked on taste — blocked on determinism.** Docling ships ML
+  models; CI is fully offline and chunk bytes feed fixture hashes, so a
+  first-run model download would break both. Evaluate against
+  `corpus/data/hard/acme_annual_extract.pdf` as the benchmark; it already
+  pins the six behaviours that decide it. The swap is cheap by
+  construction: everything downstream sees only `Block` (page, text,
+  bbox, kind), so the rule, the figure reader and V3 do not change.
+
 - **Standalone demo dataset** — one correct journal, one attractive wrong
   export, an account master, a sign convention, a non-inferable policy;
   intended as the first user experience. Needs its own recorded V1 / role /
