@@ -137,7 +137,7 @@ def compare(figure: Figure, target: Decimal) -> str:
     """How a written figure relates to the value it is offered for.
 
     ``rounded`` is agreement at the precision the document itself chose:
-    a report saying 2,850,000 for an underlying 2,847,000 has rounded, not
+    a report saying 4,600,000 for an underlying 4,598,231 has rounded, not
     contradicted. A reading that only matches because we guessed a
     grouping convention is a coincidence candidate, never agreement.
     """
