@@ -324,8 +324,17 @@ def confirm_classification(store: ProjectStore, guide: DomainGuide,
 
 def _record(store: ProjectStore, request_id: str, kind: ActKind, actor: Actor,
             guide: DomainGuide, **fields) -> KnowledgeAct:
-    act = KnowledgeAct(request_id=request_id, kind=kind, actor=actor,
-                       guide_fingerprint=guide.fingerprint, **fields)
+    # Both fingerprints on every act, not only on the one that lapses: an
+    # act is the stored history of a derived list, and "what did this look
+    # like when the decision was taken" has to be answerable for a waiver
+    # too. Only `confirm` is *checked* against them.
+    request = store.requests.get(request_id)
+    act = KnowledgeAct(
+        request_id=request_id, kind=kind, actor=actor,
+        guide_fingerprint=guide.fingerprint,
+        request_fingerprint=request.fingerprint() if request else "",
+        **fields,
+    )
     store.save_act(act)
     return act
 

@@ -23,7 +23,7 @@ from before_we_ai.llm.v2_bind import (
     plan_checks,
     propose_mappings,
 )
-from before_we_ai.llm.request import RequestReport, ask
+from before_we_ai.llm.request import RequestReport, UnknownRequest, ask, revise
 from before_we_ai.llm.v3_documents import V3Report, interpret_documents
 
 __all__ = [
@@ -35,7 +35,9 @@ __all__ = [
     "V1Report",
     "V2Report",
     "RequestReport",
+    "UnknownRequest",
     "ask",
+    "revise",
     "plan_checks",
     "build_client",
     "hypothesize",

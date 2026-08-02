@@ -49,6 +49,10 @@ from before_we_ai.store.repository import ProjectStore
 CONTRACT = "request"
 
 
+class UnknownRequest(Exception):
+    """A revision was asked for a request this project does not hold."""
+
+
 @dataclass
 class RequestReport:
     request: AnswerRequest | None = None
@@ -69,8 +73,64 @@ def ask(
     store: ProjectStore | None = None,
     scenario: str = "default",
 ) -> RequestReport:
+    """Classify one question and store it as a new request."""
+    return _classify(root, question, guide=guide, client=client, store=store,
+                     scenario=scenario, revising=None)
+
+
+def revise(
+    root: str | Path,
+    request_id: str,
+    question: str,
+    *,
+    guide: DomainGuide,
+    client: LLMClient | None = None,
+    store: ProjectStore | None = None,
+    scenario: str = "default",
+) -> RequestReport:
+    """Re-ask an existing request with a new wording.
+
+    A question gets edited: a typo, a narrower period, or a different thing
+    entirely. The request keeps its **identity** through that, and the
+    reasons are practical rather than tidy. Every act taken on its list —
+    "this does not matter here", "this claim speaks to that" — is still
+    about this question, and minting a fresh request over a corrected typo
+    would throw all of them away. The clarification questions the pipeline
+    drafted are not addressed to the request at all; they would survive
+    either way.
+
+    What does **not** survive is the confirmation. It said "this list is
+    complete" about a question that is no longer the one being asked, so
+    the request fingerprint moves and `assemble` stops counting it — the
+    same mechanism, and the same wording in the verdict, as a guide that
+    has changed underneath one.
+
+    Re-classification is a real call: a revised question may belong to a
+    different family, and assuming it does not would be the silent
+    under-listing this whole design exists to prevent.
+    """
     root = Path(root)
     store = store or ProjectStore(root)
+    existing = store.requests.get(request_id)
+    if existing is None:
+        raise UnknownRequest(f"no request {request_id} in this project")
+    return _classify(root, question, guide=guide, client=client, store=store,
+                     scenario=scenario, revising=existing)
+
+
+def _classify(
+    root: str | Path,
+    question: str,
+    *,
+    guide: DomainGuide,
+    client: LLMClient | None,
+    store: ProjectStore | None,
+    scenario: str,
+    revising: AnswerRequest | None,
+) -> RequestReport:
+    root = Path(root)
+    store = store or ProjectStore(root)
+    plain = store
     store = ProposalStore(store)
     config = LLMConfig.from_project(root)
     client = client or build_client(config)
@@ -107,6 +167,14 @@ def ask(
         return report
 
     request = draft_to_request(question, result.parsed)
+    if revising is not None:
+        # Same id, next revision, previous wording kept beside it.
+        request = revising.revised(
+            question=request.question,
+            requested_output=request.requested_output,
+            answer_type=request.answer_type,
+            scope=request.scope,
+        )
     items = []
     for proposal in result.parsed.required_knowledge:
         errors = check_knowledge_item(proposal, guide)
@@ -119,8 +187,16 @@ def ask(
     report.request = request
     # Only a delta is stored. When the answer type covers the question there
     # is nothing to store: the list is expanded from the guide on every read.
-    if items:
+    known = plain.knowledge_for(request.id)
+    if items or known is not None:
         required = RequiredKnowledge(request_id=request.id, items=items)
+        if known is not None:
+            # Reuse the identity rather than adding a second delta for one
+            # request: `knowledge_for` returns the first match, so two would
+            # make which one applies a matter of dict order. A revision that
+            # drafts nothing empties the list — visibly, rather than by
+            # deleting the file behind the reader.
+            required = required.model_copy(update={"id": known.id})
         store.save_required_knowledge(required)
-        report.required = required
+        report.required = required if items else None
     return report

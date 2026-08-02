@@ -1354,6 +1354,35 @@ would move the role list, and with it the role-binding and V2 recordings and
 every walkthrough pin — worth doing when a full re-record is due anyway, not
 as a side effect of this.
 
+### Revising a question (M7)
+
+Nobody asks the right question first: they ask one, read what is missing,
+and ask a better one. `llm.request.revise(root, request_id, question)`
+re-classifies and writes the **same** request — `revision` bumps, the
+previous wording moves into `earlier`, the id does not change.
+
+Identity is kept because every act taken on the list ("this does not
+matter here", "this claim speaks to it") is still about this question, and
+minting a fresh request over a corrected typo would throw a human's work
+away. Re-classification is a real call, not an assumption: a revised
+question may belong to a different family, and assuming otherwise is the
+silent under-listing the answer-type design exists to prevent.
+
+Two consequences worth stating:
+
+- **The delta is replaced, never accumulated.** A revision keeps the
+  existing `RequiredKnowledge` id and overwrites its items — emptying them
+  when the new classification needs none. Two delta records for one request
+  would make which of them applies a matter of dict order.
+- **The confirmation lapses, and the verdict says why.** `AnswerRequest.
+  fingerprint()` covers the four things a human read when they signed off:
+  question, requested output, answer type, scope. `Review.lapsed_by` is
+  `"question"` or `"guide"`, because one is a change to a vocabulary
+  everybody shares and the other is a change the reader made themselves a
+  minute ago. Re-asking the *same* question changes no fingerprint and
+  costs nothing — otherwise every idempotent re-run would demand a
+  signature.
+
 **Only a confirmation lapses.** A `confirm` says *"this list is complete"*,
 which stops being true the moment the list changes, so it is ignored once the
 guide fingerprint no longer matches. Every other act is about one item —

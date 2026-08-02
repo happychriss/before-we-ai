@@ -5,6 +5,7 @@ one YAML file per object and ``integrity`` checks that every reference
 resolves. None of these models performs IO.
 """
 
+import hashlib
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -357,7 +358,67 @@ class AnswerRequest(BaseModel):
     # confirms instead of a list they must read item by item.
     answer_type: str | None = None
     scope: Scope = Field(default_factory=Scope)
+    #: Which wording this is. A question gets edited — a typo, a narrower
+    #: period, a different thing entirely — and the request keeps its
+    #: identity through that: the acts taken on its list are still about
+    #: this question, and throwing them away over a corrected typo would
+    #: destroy a human's work. What does not survive is the confirmation
+    #: (see ``fingerprint``).
+    revision: int = 1
+    #: The wordings this one replaced, oldest first. Kept because "Revision
+    #: 3" is only useful next to what revisions 1 and 2 said.
+    earlier: list["EarlierWording"] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_now)
+
+    def fingerprint(self) -> str:
+        """What a human saw when they confirmed this request's list.
+
+        Everything a confirmation is a statement *about*: the question as
+        asked, the contract's restatement of it, the family it was
+        classified to, and the scope it was asked over. Change any of them
+        and the sentence "this list is complete" is about something else,
+        so the confirmation lapses exactly as it does when the guide moves.
+
+        Deliberately the single mechanism: the act also stores which
+        ``answer_type`` it confirmed, and comparing that separately would
+        be the same decision in two places, ready to disagree.
+        """
+        payload = "\n".join([
+            self.question.strip(),
+            self.requested_output.strip(),
+            self.answer_type or "",
+            self.scope.label(),
+        ])
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def revised(self, **fields) -> "AnswerRequest":
+        """This request re-asked: same identity, next revision.
+
+        The previous wording moves into ``earlier`` rather than being
+        overwritten — a reader comparing what they confirmed against what
+        is in front of them now needs both.
+        """
+        previous = EarlierWording(
+            question=self.question,
+            requested_output=self.requested_output,
+            answer_type=self.answer_type,
+            revision=self.revision,
+        )
+        return self.model_copy(update={
+            **fields,
+            "revision": self.revision + 1,
+            "earlier": [*self.earlier, previous],
+        })
+
+
+class EarlierWording(BaseModel):
+    """One superseded wording of a request, kept beside the current one."""
+
+    question: str
+    requested_output: str
+    answer_type: str | None = None
+    revision: int = 1
+    replaced_at: datetime = Field(default_factory=_now)
 
 
 class KnowledgeLink(BaseModel):
@@ -495,15 +556,21 @@ class KnowledgeAct(BaseModel):
     act is never edited — a waiver is undone by a later ``require_again``,
     so the pair stays readable as the history it is.
 
-    ``guide_fingerprint`` is what makes the derivation safe to trust — every
-    act records which guide it was taken against. Only a ``confirm`` lapses
-    when that guide moves, and the distinction is worth stating: a
-    confirmation says *"this list is complete"*, which stops being true the
-    moment the list changes. Every other act is about one item — "this does
-    not matter here", "this claim speaks to it" — and a change elsewhere in
-    the guide leaves that exactly as true as it was. Lapsing them too would
-    destroy a human's work to no one's benefit; the confirmation lapsing is
-    what brings them back in front of a reader anyway.
+    Two fingerprints make the derivation safe to trust, and they cover the
+    two halves a confirmation is a statement about: ``guide_fingerprint``
+    is the vocabulary and the answer type the list was expanded from,
+    ``request_fingerprint`` the question that was asked. Either can move
+    under a human's signature — the guide gains an answer type, or somebody
+    edits the question — and in both cases what was reviewed is not what is
+    on the page now.
+
+    Only a ``confirm`` lapses. A confirmation says *"this list is
+    complete"*, which stops being true the moment the list changes. Every
+    other act is about one item — "this does not matter here", "this claim
+    speaks to it" — and a change elsewhere leaves that exactly as true as
+    it was. Lapsing them too would destroy a human's work to no one's
+    benefit; the confirmation lapsing is what brings them back in front of
+    a reader anyway.
     """
 
     id: str = Field(default_factory=new_id)
@@ -511,6 +578,7 @@ class KnowledgeAct(BaseModel):
     kind: ActKind
     actor: Actor
     guide_fingerprint: str = ""
+    request_fingerprint: str = ""
     ref: str | None = None  # which item — waive / require_again / link
     reason: str = ""  # waive: why it does not matter here
     claim_id: str | None = None  # link

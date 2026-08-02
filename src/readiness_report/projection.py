@@ -441,6 +441,11 @@ class RequestView:
     dependency_heading: str
     items: tuple[RequestItemView, ...]
     provenance: ProvenanceView
+    # "Revision 3" and what revisions 1 and 2 asked. Empty on a question
+    # nobody has edited, which is most of them — a version line on a first
+    # draft is noise, and its absence is the useful signal.
+    revision_line: str = ""
+    earlier: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -3005,9 +3010,33 @@ def _build_requests(
                     _reference("answers", result.request.id),
                     ("asked by a human", "expanded on this render"),
                 ),
+                revision_line=_revision_line(result.request),
+                earlier=tuple(
+                    f"Revision {e.revision}: {e.question}"
+                    + (f" — treated as '{e.answer_type}'" if e.answer_type else "")
+                    for e in result.request.earlier
+                ),
             )
         )
     return tuple(views)
+
+
+def _revision_line(request) -> str:
+    """How many times this question has been re-asked, and what that cost.
+
+    The count alone would read as bookkeeping. What a reader needs beside
+    it is that editing the question kept every other decision and dropped
+    exactly one — otherwise "Revision 3" looks like a reason to distrust
+    the page rather than a record of it being used properly.
+    """
+    if request.revision <= 1:
+        return ""
+    return (
+        f"Revision {request.revision} — the question was re-asked and "
+        "classified again. Everything decided about its dependency list was "
+        "kept; a confirmation of the list was not, because it was given for "
+        "an earlier wording."
+    )
 
 
 def _build_readiness(maps: list) -> tuple[ReadinessView, ...]:

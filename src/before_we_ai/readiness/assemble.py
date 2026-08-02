@@ -48,9 +48,17 @@ class Review:
 
     answer_type: str | None = None
     confirmed: bool = False
-    lapsed: bool = False  # confirmed once, but against a different guide
+    #: Confirmed once, and then something moved under it: "guide" or
+    #: "question". Which one matters to the reader — one is a change to the
+    #: vocabulary everyone shares, the other is a change they made
+    #: themselves — so it is carried rather than collapsed to a boolean.
+    lapsed_by: str = ""
     drafted: int = 0  # items the model drafted for this question alone
     broken: str = ""  # the contract cannot be expanded at all
+
+    @property
+    def lapsed(self) -> bool:
+        return bool(self.lapsed_by)
 
     def note(self) -> str:
         """The clause a verdict carries when the list is not vouched for."""
@@ -58,11 +66,17 @@ class Review:
             return self.broken
         if self.confirmed:
             return ""
-        if self.lapsed:
+        if self.lapsed_by == "guide":
             return (
                 "The dependency list was confirmed against an earlier version "
                 "of the domain guide, and the guide has changed since — what "
                 "was reviewed is not what is listed here."
+            )
+        if self.lapsed_by == "question":
+            return (
+                "The dependency list was confirmed for an earlier wording of "
+                "this question, and the question has been revised since — "
+                "what was reviewed is not what is being asked here."
             )
         if self.answer_type is None:
             return (
@@ -136,18 +150,21 @@ def _drafted(store: ProjectStore,
 
 def _review(store: ProjectStore, guide: DomainGuide, request: AnswerRequest,
             drafted: int, broken: str) -> Review:
-    confirmed = lapsed = False
+    confirmed = False
+    lapsed_by = ""
     for act in store.acts_for(request.id):
         if act.kind is not ActKind.CONFIRM:
             continue
-        if act.answer_type != request.answer_type:
-            continue  # it confirmed a classification that has since changed
-        # A confirmation is a statement about one list. When the guide moves,
-        # the list moves with it, and the statement no longer covers it.
-        confirmed = act.guide_fingerprint == guide.fingerprint
-        lapsed = not confirmed
+        # A confirmation is a statement about one list, and two things
+        # decide what that list says: the guide it was expanded from and
+        # the question it was expanded for. Either moving means the human
+        # vouched for something else.
+        guide_held = act.guide_fingerprint == guide.fingerprint
+        question_held = act.request_fingerprint == request.fingerprint()
+        confirmed = guide_held and question_held
+        lapsed_by = "" if confirmed else ("question" if guide_held else "guide")
     return Review(answer_type=request.answer_type, confirmed=confirmed,
-                  lapsed=lapsed, drafted=drafted, broken=broken)
+                  lapsed_by=lapsed_by, drafted=drafted, broken=broken)
 
 
 def _replay(store: ProjectStore, request: AnswerRequest,

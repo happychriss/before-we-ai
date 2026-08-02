@@ -187,7 +187,7 @@
 {%- endmacro -%}
 
 {%- macro request_card(request) -%}
-<div class='ready-map' id='request-{{ request.id }}'><blockquote class='quote'>{{ request.question }}<cite>— the business question, as it was asked</cite></blockquote><p class='derived'>{{ rich(request.treated_as) }}</p><blockquote class='ai-said'>{{ request.requested_output }}<cite>— the AI, on what the answer must deliver</cite></blockquote><p class='fine'>{{ request.scope_line }}</p><h4 class='fine'>{{ request.dependency_heading }}</h4><ul class='picks'>
+<div class='ready-map' id='request-{{ request.id }}'><blockquote class='quote'>{{ request.question }}<cite>— the business question, as it was asked</cite></blockquote><p class='derived'>{{ rich(request.treated_as) }}</p><blockquote class='ai-said'>{{ request.requested_output }}<cite>— the AI, on what the answer must deliver</cite></blockquote><p class='fine'>{{ request.scope_line }}</p>{% if request.revision_line %}<p class='derived'>{{ request.revision_line }}</p><details class='fine'><summary>earlier wordings</summary><ul>{% for wording in request.earlier %}<li>{{ wording }}</li>{% endfor %}</ul></details>{% endif %}<h4 class='fine'>{{ request.dependency_heading }}</h4><ul class='picks'>
 {%- for item in request.items -%}<li class='{% if item.waived %}waived{% endif %}'><code>{{ item.ref }}</code> <span class='muted'>{{ item.kind }} · {{ item.provenance }}</span>{% if item.waived %}<p class='fine'>Waived: {{ item.waived_because }}</p>{% endif %}{% if item.why %}<blockquote class='ai-said'>{{ item.why }}<cite>{{ item.why_cite }}</cite></blockquote>{% endif %}</li>{%- endfor -%}
 </ul>{{ provenance(request.provenance) }}</div>
 {%- endmacro -%}

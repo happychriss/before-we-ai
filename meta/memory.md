@@ -86,10 +86,15 @@ claim vocabulary.
      total, not a break-out by customer. Adding those fields moves the role
      list and with it the role-binding/V2 recordings and every walkthrough
      pin — do it inside the next full re-record, never as a side effect.
-   - **Request lifecycle**: supersession/revisions (the mockup's
-     "Revision 3"), and a request fingerprint on confirm acts — an edited
-     question must lapse its classification confirmation exactly as a
-     moved guide does.
+   - ~~**Request lifecycle**: revisions + a request fingerprint on confirm
+     acts.~~ **DONE 2026-08-02** — `llm.request.revise()`, design in
+     `docs/architecture.md` → "Revising a question", behaviour in
+     `tests/unit/test_request_revisions.py`. No new recording: revising the
+     P&L question into the receivables one replays the two classifications
+     already on disk. **Decided along the way**: a revision keeps the
+     request's identity (so waivers and links survive an edited typo) and
+     `Review.lapsed_by` distinguishes "guide" from "question", because the
+     reader needs to know whether a shared vocabulary moved or they did.
    - **End-user projection + reference resolver**: a second projection over
      the same store, no-claims vocabulary; ULID → user-space location
      (PDF: source/page/quote — already on every anchor; tables:

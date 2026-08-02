@@ -112,7 +112,7 @@ current numbers: `docs/seeded-recall.md`. Owner-facing validation walkthrough:
 | M6 | Question flow (`AnswerRequest` → `ReadinessMap`: ready / ready_with_limitations / blocked), elections per scope | ✅ built |
 | — | Answer types: the guide declares what a family of question depends on; the model classifies, the engine expands, a human confirms | ✅ built |
 | M5 | Document pipeline + V3 (interpretation with anchor validation), `tell` + mirror loop | ✅ built |
-| M7 | Consumer-ready engine: staleness flagging & replay ✅, second answer type ✅, request revisions, end-user projection with jump-to resolver, document screening that reads tables as tables, guide-builder integration | **in progress** — scope in `meta/memory.md` |
+| M7 | Consumer-ready engine: staleness flagging & replay ✅, second answer type ✅, request revisions ✅, end-user projection with jump-to resolver, document screening that reads tables as tables, guide-builder integration | **in progress** — scope in `meta/memory.md` |
 | M8 | End-user GUI on the M7 projection (+ packaging & quickstart); acceptance includes the spec `:42` run against real data, through the UI | planned |
 | M9 | Computing the answer: V4 SQL generation + Assumption Capture (one milestone — capture has nothing to parse without generation) | planned |
 
