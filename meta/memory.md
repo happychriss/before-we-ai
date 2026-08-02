@@ -289,6 +289,46 @@ recording (its corpus fixture is hand-authored and marked as such).
    Effect on the pins: 42 → 43 check plans, 7 → 6 V2 skips, 32 → 31
    claims without a check.
 
+## The unblock path — measured 2026-08-02, and it has one hole
+
+Owner question: "I can read that it blocks, but what do I *do*?" Measured
+rather than assumed. Going backwards from a blocker, there are three
+routes, and the engine already distinguishes which one applies — the
+`because` sentence says either "a human has to answer, or a check has to
+run" or "this is not a missing answer but a wrong one — the data itself
+has to change."
+
+**Route 1, you answer.** Writes one `EvidenceRecord` (CONFIRMATION, human,
+scoped) into `evidence/`; the chosen claim gains the id and its persisted
+status is recomputed. **Nothing re-runs** — the ReadinessMap is derived on
+every read, so the next render simply shows it.
+
+**Route 2, you waive.** Writes one `KnowledgeAct` into `answers/` and
+changes no other object at all: the dependency list is never stored, it is
+re-assembled from the guide plus the acts on every read. Verified: waiving
+`intercompany` drops it out of `blocking()` and leaves it visible, struck
+through, with the reason beside it.
+
+**Route 3, you fix the data — and this one does not close.** `scan` picks
+up the new fingerprint and `run_ready` re-executes every plan, but
+**nothing marks the old evidence stale**: `mark_evidence_stale` exists in
+the repository and no product code calls it. Measured: a second
+`run_ready` appended 49 more check results (49 → 98) and marked none
+stale. So the old FAIL and the new PASS are both live, and
+`resolve_status` returns **unresolved** (conflict), not test-supported.
+
+That is M7 (Staleness & Replay), and it is the route the `intercompany`
+blocker actually points at. **Consequence for the planned "what would
+unblock this" chapter: it must not offer route 3 as though it closed.**
+Until M7, the honest wording is that fixing the data lets the check run
+again but the contradiction stays visible until staleness lands.
+
+Also measured, against expectation: **narrowing the question does not
+help here.** `ic_symmetry` is inherently cross-entity — the DE table books
+against a leg missing in US — so a DE-scoped request blocks on exactly the
+same items. A report that offers "ask a narrower question" wherever it
+blocks would be offering an escape that often is not one.
+
 ## Open decisions (owner)
 
 - **Domain packs live in `before_we_ai/domains/` — decided and done
