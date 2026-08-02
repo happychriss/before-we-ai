@@ -506,9 +506,23 @@ without saying which figure. They now lead with the claim.
 
 ## Defects the green suite was blind to — 2026-08-02
 
-Four, all found by re-pinning or by reading output rather than by testing,
+Five, all found by re-pinning or by reading output rather than by testing,
 and each blind for the same shape of reason: **the suite only ever
 exercised the one path.**
+
+-1. **`--only-drifted` did not reach the upstream recorder.** Its help
+   text promises "write a fixture only where the one on disk no longer
+   answers its input or its prompt"; `main()` threaded it into
+   `_record_downstream` and called `_record_upstream` without it. So a
+   change to a V2-only prompt still swapped the request, V1 and role
+   answers for fresh samples — 54 claims became 52, 22 candidates became
+   23, and every pinned number in the walkthrough moved with them. Found
+   by running it: the intended one-template note change came back as a
+   whole-baseline diff. **A resampled baseline hides exactly what the
+   re-record was meant to show.** Fixed; `_record_upstream` takes the
+   flag and reports "unchanged" like the downstream one. Use
+   `--downstream-only` when the change is downstream-only — it is cheaper
+   and says so in the output.
 
 0. **`answer_question` confirmed every claim on the card.** Right for a
    `tell` card — its claims all come from the one statement, and settling
@@ -561,15 +575,18 @@ Small, real, and none of them blocking. Listed because each was found by
 reading output rather than by testing, and none has a test that would
 catch it coming back.
 
-- **`reconciliation` still asks the model to cast.** Its TEMPLATE_NOTE
-  says "text-typed numeric columns must be cast in the expression, e.g.
-  CAST(col AS DOUBLE)" — true for that template, because its measure
-  params really are row-level expressions. But `balance` and
-  `subledger_equals_gl` now read the number themselves (`amount_expr`),
-  so the three notes no longer describe one consistent contract. That
-  inconsistency is exactly what produced the F27 loss in recording B.
-  **Either give `reconciliation` the same treatment or say plainly in
-  its note why it differs.** Prompt bytes → one recording.
+- ~~**`reconciliation` still asks the model to cast.**~~ **CLOSED
+  2026-08-02.** The note now says why it differs: a measure there may be
+  any row-level arithmetic, so the template cannot know which column
+  carries the number and cannot convert it — unlike `balance` and
+  `subledger_equals_gl`, which take a bare column and read it themselves.
+  Re-recorded V2 only (`--downstream-only --only-drifted --skip-v3`).
+  **The delta was one claim**: a `range_mapping` moved from `unbindable`
+  to `skipped` (the model named `territory_plz`, not a view) — so 11
+  unbindable / 5 skipped, re-pinned in the suite and the walkthrough. The
+  three `accounts`-as-string skips on `subledger_equals_gl` are the same
+  three as before the change, which is how we know the note did not cause
+  them. Seeded-Recall **unchanged at 14/25**, F27 and F22 both still HIT.
 
 - **A two-sided law is still modelled as a one-sided claim.** A
   `MappingClaim` binds one candidate to one view; `ic_symmetry` and

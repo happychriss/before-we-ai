@@ -132,7 +132,8 @@ def main() -> None:
     if args.downstream_only:
         print("keeping the recorded request/V1/role answers")
     else:
-        _record_upstream(workdir, client, roles)
+        _record_upstream(workdir, client, roles,
+                         only_drifted=args.only_drifted)
 
     _record_downstream(workdir, client, roles,
                        only_drifted=args.only_drifted, skip_v3=args.skip_v3)
@@ -140,7 +141,22 @@ def main() -> None:
         shutil.rmtree(workdir)
 
 
-def _record_upstream(workdir: Path, client, roles) -> None:
+def _recorded(written: Path | None) -> str:
+    return (written.name if written
+            else "unchanged — the recorded answer still fits its input")
+
+
+def _record_upstream(workdir: Path, client, roles,
+                     only_drifted: bool = False) -> None:
+    """The three calls the rest of the pipeline is measured against.
+
+    ``only_drifted`` reaches here too, and has to. It did not until
+    2026-08-02: the flag was threaded into the downstream recorder only, so
+    a change to a V2-only prompt still swapped the request, V1 and role
+    answers for fresh samples — and every pinned number in the walkthrough
+    moved with them. The point of re-recording is to see what the *change*
+    did; a resampled baseline hides exactly that.
+    """
     root = build_corpus_project(workdir / "project", offline=False)
     store = ProjectStore(root)
 
@@ -156,7 +172,8 @@ def _record_upstream(workdir: Path, client, roles) -> None:
     print(f"  answer type {drafted.request.answer_type!r}, {delta} delta "
           f"item{'s' if delta != 1 else ''}, {len(drafted.skipped)} skipped, "
           f"usage {drafted.usage}")
-    print("  fixture:", write_fixture_from_log(drafted.log_ref).name)
+    print("  fixture:", _recorded(write_fixture_from_log(
+        drafted.log_ref, only_drifted=only_drifted)))
 
     print("V1 hypotheses (frontier) ...")
     v1 = hypothesize(root, client=client, store=store, scenario="corpus")
@@ -164,7 +181,8 @@ def _record_upstream(workdir: Path, client, roles) -> None:
         raise SystemExit(f"V1 failed twice: {v1.failure} (log: {v1.log_ref})")
     print(f"  {len(v1.claims_created)} claims, {len(v1.skipped)} skipped, "
           f"usage {v1.usage}")
-    print("  fixture:", write_fixture_from_log(v1.log_ref).name)
+    print("  fixture:", _recorded(write_fixture_from_log(
+        v1.log_ref, only_drifted=only_drifted)))
 
     print("role-binding proposals (frontier) ...")
     proposals = propose_mappings(root, roles=roles, client=client,
@@ -173,7 +191,8 @@ def _record_upstream(workdir: Path, client, roles) -> None:
         raise SystemExit(f"role proposals failed twice: {proposals.failure}")
     print(f"  {len(proposals.claims_created)} candidates, "
           f"{len(proposals.skipped)} skipped, usage {proposals.usage}")
-    print("  fixture:", write_fixture_from_log(proposals.log_ref).name)
+    print("  fixture:", _recorded(write_fixture_from_log(
+        proposals.log_ref, only_drifted=only_drifted)))
 
     shutil.rmtree(root)
 
@@ -207,9 +226,8 @@ def _record_downstream(workdir: Path, client, roles, only_drifted: bool = False,
     print(f"  {len(v2.check_plans_created)} checks, {len(v2.unbindable)} unbindable, "
           f"{len(v2.semantic_only)} semantic-only, usage {v2.usage}")
     for log_ref in v2.log_refs:
-        written = write_fixture_from_log(log_ref, only_drifted=only_drifted)
-        print("  fixture:", written.name if written
-              else "unchanged — the recorded answer still fits its input")
+        print("  fixture:", _recorded(
+            write_fixture_from_log(log_ref, only_drifted=only_drifted)))
 
     if skip_v3:
         print("skipping V3 (--skip-v3): its fixtures are pinned in "
@@ -232,9 +250,8 @@ def _record_downstream(workdir: Path, client, roles, only_drifted: bool = False,
           f"{len(v3.links)} links, {len(v3.skipped)} refused, "
           f"usage {v3.usage}")
     for log_ref in v3.log_refs:
-        written = write_fixture_from_log(log_ref, only_drifted=only_drifted)
-        print("  fixture:", written.name if written
-              else "unchanged — the recorded answer still fits its input")
+        print("  fixture:", _recorded(
+            write_fixture_from_log(log_ref, only_drifted=only_drifted)))
 
     _record_statements(root, client, roles, only_drifted)
     _closing_note()

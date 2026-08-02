@@ -185,9 +185,9 @@ the invariant checks will decide.
 ### Stage 3c — check plans
 
 Look at: template mix; the three honest rejection buckets.
-Good (offline pins): **54 check plans**, **12 unbindable** (model answered
+Good (offline pins): **54 check plans**, **11 unbindable** (model answered
 `template=null`, with its reason), **6 semantic-only** (no admissible check
-definition exists — the semantic-equivalence class lives here), **4 skipped**
+definition exists — the semantic-equivalence class lives here), **5 skipped**
 (validation rejected the model's binding — e.g. `accounts` given as a string
 where the contract requires a list). Nothing disappears silently: each of
 those **22** claims carries a DECLARATION in the store with the verbatim
@@ -461,8 +461,8 @@ lapsed, and nothing in `data/project/` changed — the list was never stored.
   **0 inputs** (the three declared domain inputs), **1 request** (the question
   verbatim, the classification with its guide fingerprint, and every dependency
   with where it came from), **2 measured** (sources, column profiles, candidate
-  overlaps), **3 proposed** (the funnel: 76 proposed → 54 planned / 12
-  unbindable / 6 semantic-only / 4 skipped → 54 judged → the derived statuses,
+  overlaps), **3 proposed** (the funnel: 76 proposed → 54 planned / 11
+  unbindable / 6 semantic-only / 5 skipped → 54 judged → the derived statuses,
   every number a filter), **4 tested** (the role elections — each object with
   its fields nested beneath it: the winner, each loser with the domain law that
   felled it, and for a slot field the column its object's passing law
@@ -507,7 +507,7 @@ DuckDB client takes an exclusive lock, and ours then fails with
 
 ## Expected behaviors that are NOT bugs
 
-- One V1 hypothesis and four V2 bindings are skipped on every offline
+- One V1 hypothesis and five V2 bindings are skipped on every offline
   replay — the recorded answers kept a few bad items; skips are per-item and
   visible in the logs (`outcome: partial`). The V1 one is **not** a defect in
   the answer: `account_range_group` exists in both the DE and the US chart of

@@ -351,9 +351,13 @@ def normalize_template_params(template: str, params: dict,
 TEMPLATE_NOTES: dict[str, str] = {
     "reconciliation": ("group/measure params are row-level SQL expressions "
                        "over the named view; the template applies SUM itself "
-                       "— never pre-aggregate. Check the column types in the "
-                       "view schemas: text-typed numeric columns must be cast "
-                       "in the expression, e.g. CAST(col AS DOUBLE)"),
+                       "— never pre-aggregate. This one differs from balance "
+                       "and subledger_equals_gl on purpose: a measure here "
+                       "may be any row-level arithmetic, so the template "
+                       "cannot know which column carries the number and "
+                       "cannot convert it for you. Check the column types in "
+                       "the view schemas: text-typed numeric columns must be "
+                       "cast in the expression, e.g. CAST(col AS DOUBLE)"),
     "balance": ("amount is a BARE COLUMN NAME, never an expression — the "
                 "template reads it as a number and sums it itself, so a "
                 "text-typed amount column needs no cast from you; "

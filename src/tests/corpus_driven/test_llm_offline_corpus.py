@@ -152,9 +152,17 @@ def test_contracts_ran_clean_offline(pipeline):
     # removed the shape errors that normalization was cleaning up after —
     # it went 16 -> 0. The machinery stays (unit-tested in
     # test_llm_mapping.py) because the next landscape will need it.
-    assert len(v2.skipped) == 4  # validation-rejected bindings — skipped, not crashed
+    # Re-pinned 2026-08-02 after the `reconciliation` note said why it
+    # differs from the two templates that read the number themselves. Only
+    # V2 was re-recorded (`--downstream-only`), so this delta is V2's alone:
+    # one `range_mapping` claim moved from `unbindable` to `skipped`, the
+    # model having named `territory_plz` — not a view — where it previously
+    # answered template=null. Slightly worse and caught either way; the
+    # three `accounts`-as-string skips on `subledger_equals_gl` are the
+    # same three as before, so the note did not cause them.
+    assert len(v2.skipped) == 5  # validation-rejected bindings — skipped, not crashed
     assert len(v2.semantic_only) == 6  # no admissible template — never sent
-    assert len(v2.unbindable) == 12  # honest template=null answers
+    assert len(v2.unbindable) == 11  # honest template=null answers
     assert len(pipeline["engine"].executed) == 54
     assert pipeline["engine"].skipped == []
 
@@ -168,9 +176,9 @@ def test_contracts_ran_clean_offline(pipeline):
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") in no_check
     }
-    assert len(reasons) == 22  # 12 unbindable + 6 semantic-only + 4 skipped
+    assert len(reasons) == 22  # 11 unbindable + 6 semantic-only + 5 skipped
     assert sorted(p["decision"] for p in reasons.values()) == (
-        ["semantic_only"] * 6 + ["skipped"] * 4 + ["unbindable"] * 12
+        ["semantic_only"] * 6 + ["skipped"] * 5 + ["unbindable"] * 11
     )
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
 
