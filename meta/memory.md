@@ -57,26 +57,68 @@
    mirror loop. Acceptance: T8 negatives and a real PDF — every PDF it
    needs is in the frozen corpus (`src/corpus/data/`, including `noise/`).
 
-   **Design settled first** (architecture.md → "Documents & V3"): the
-   multi-anchor rule is now defined (the spec only asserted its name);
-   V3 runs **one call per document** with retrieval-selected chunks
-   (fixture machinery compatible); chunking is deterministic and
-   `pymupdf==1.28.0` is pinned exact; FTS is required with a hard error,
-   never a silent fallback (verified offline-capable 2026-08-02 — the
-   extension is baked into the dev image, not the wheel).
+   **Design settled first** (architecture.md → "Documents & V3"), then
+   built. Four things the design doc got wrong and the code corrected —
+   each recorded there, listed here because they are the shape of the
+   milestone:
+   - **`kind` and `match` are derived, not asked for.** The plan had V3
+     classify an anchor as text/table/chart. The corpus killed it: F23's
+     chart figure extracts as ordinary text, so asking would rest the
+     whole rule on the model's word about something it cannot see. Kind
+     comes from page geometry (PyMuPDF `find_tables()` + drawing
+     clusters), match from reconciliation parsing the quote.
+   - **Value corroboration ≠ definitional grounding.** The multi-anchor
+     rule as first written required two independent anchors before
+     anything could link — which would have made K3 impossible, since the
+     accounting policy is the only document stating the sign convention.
+     The threshold governs figures; a policy sentence links on its own,
+     and costs nothing because a link is not evidence (the claim stays
+     `proposed`).
+   - **Retrieval bounds, it does not filter.** A document that fits under
+     the passage cap is sent whole. Keyword-selecting passages silently
+     drops the paragraph that answers a differently-phrased question.
+   - **Documents have one owner.** `scan()` used to fingerprint PDFs too;
+     both stages then wrote one Source in two fingerprint shapes, and
+     staleness compares fingerprints. `scan()` now skips documents.
 
    **Decisions taken at kickoff (2026-08-02):**
-   - **All six corpus PDFs become declared sources** (was: only
-     `management_report.pdf`). K3 needs `buchhaltungsrichtlinie.pdf`, F25
-     needs `rabattvertrag.pdf`, and F26's discipline needs the noise PDFs
-     *present and refused* — noise presence is the precision test. The
-     walkthrough pins change with it; re-pin in the same commit.
+   - **All six corpus PDFs are declared sources — DONE** (was: only
+     `management_report.pdf`). Noise presence is the precision test.
+     Walkthrough pins still need re-recording (below).
    - **The spec's real public PDF is still missing** (Pflichtbestandteil,
      `fixture-korpus-spezifikation.md:46` — all six corpus PDFs are
      generator-made). OWNER picks the document (a public annual report is
      the spec's own example); it enters additively as
      `src/corpus/data/real/` with hand-annotated expected anchors. Blocks
      final M5 acceptance, not the build.
+
+   **Built so far (2026-08-02), suite 470 → 580 green:**
+   `before_we_ai/documents/` — `extract` (geometry → kind), `chunk`
+   (deterministic, kind-pure, stable ids), `index` (DuckDB FTS, hard error
+   if the extension is missing), `figures` (reads numbers without
+   inventing agreement — an ambiguous literal like `500.000` reports both
+   readings and never counts), `reconcile` (the multi-anchor rule) ·
+   `read_documents(root)`, the stage-2c twin of `scan` — profiles, zero
+   claims, zero evidence · `DocumentProfile` sharing `profiles/` with
+   `DataProfile` via the `object_type` discriminator ·
+   `ProposalStore.anchor()` with the quote string-matched at the write, so
+   a hallucinated citation cannot be stored at all · `AnchorKind` /
+   `AnchorMatch` in `core/enums.py` · contract **V3** (`llm/v3_documents`,
+   `interpret_documents`) — one call per document, findings become
+   proposed claims + anchors, refusals become clarification questions.
+
+   **Still open in M5:**
+   1. Hand-authored V3 corpus fixtures + wiring into
+      `test_llm_offline_corpus.py`; **then** widen the guardrail
+      allow-list (`test_llm_guardrail.py`) to admit DOCUMENT_ANCHOR/AI —
+      deliberately not widened yet, because nothing writes anchors in that
+      fixture until V3 runs there.
+   2. Walkthrough scripts `2c-measure-documents` and `3d-propose-documents`;
+      re-pin `validation/README.md` end to end (source count 7 → 12).
+   3. `tell` + `answer_question` + the `_status_rationale` fix (item below).
+   4. Report surfaces: documents `*View` in `projection.py`, anchor-aware
+      `EvidenceView`, the "M5 · documents" ghost node becomes real.
+   5. Kickoff batch 1–4 + the live re-record session; acceptance run.
 
    **Unblocked, and the sequencing was deliberate:** the refactor ran first
    so M5 builds its document surfaces into `projection.py` and the template
