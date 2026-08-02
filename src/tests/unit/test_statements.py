@@ -234,6 +234,111 @@ class TestAnsweringAQuestion:
             answer_question(store, card.id)
 
 
+class TestACardThatOffersAChoice:
+    """The other kind of card, and the one this function was never called
+    on. A role card lists rival bindings — "Which of the proposed
+    candidates is the 'account'?" — and exactly one of them can play the
+    role. Confirming them all would put the human's signature on bindings
+    they had just been asked to choose between, and the ReadinessMap would
+    then elect whichever sorted first.
+
+    Nothing reached this yet: stage 5a raises the cards and the CLI that
+    answers them is M8. It is fixed before it is reachable, because the
+    convenient moment to get it wrong is when someone is wiring the CLI.
+    """
+
+    def _role_card(self, store, role="account", columns=("a.x", "b.x", "c.x")):
+        from before_we_ai.core.objects import ClarificationQuestion, MappingClaim
+
+        claims = []
+        for column in columns:
+            claim = MappingClaim(
+                statement=f"role '{role}' is played by {column}",
+                created_by=Actor.AI, role=role,
+                binding={"column": column, "table": column.split(".")[0]},
+            )
+            store.save_claim(claim)
+            claims.append(claim)
+        card = ClarificationQuestion(
+            question=f"Which of the proposed candidates is the '{role}'?",
+            claim_ids=[c.id for c in claims])
+        store.save_question(card)
+        return card, claims
+
+    def test_it_refuses_to_be_answered_without_a_pick(self, project):
+        store = ProjectStore(project)
+        card, _ = self._role_card(store)
+        with pytest.raises(ValueError, match="offers a choice"):
+            answer_question(store, card.id)
+        after = ProjectStore(project)
+        assert not [e for e in after.evidence.values()
+                    if e.type is EvidenceType.CONFIRMATION]
+
+    def test_the_refusal_says_how_many_and_for_which_role(self, project):
+        store = ProjectStore(project)
+        card, _ = self._role_card(store)
+        with pytest.raises(ValueError, match="account: 3 candidates"):
+            answer_question(store, card.id)
+
+    def test_a_pick_settles_that_one_and_leaves_the_losers_proposed(
+            self, project):
+        """Not refuting the losers is deliberate: the human said which one
+        plays the role, not that the others are false."""
+        store = ProjectStore(project)
+        card, claims = self._role_card(store)
+        answer_question(store, card.id, pick=claims[1].id)
+
+        after = ProjectStore(project)
+        assert after.claims[claims[1].id].status is ClaimStatus.BUSINESS_CONFIRMED
+        assert [after.claims[c.id].status for c in (claims[0], claims[2])] == \
+            [ClaimStatus.PROPOSED, ClaimStatus.PROPOSED]
+
+    def test_a_pick_from_another_card_is_refused(self, project):
+        store = ProjectStore(project)
+        card, _ = self._role_card(store)
+        other, others = self._role_card(store, role="period",
+                                        columns=("a.p", "b.p"))
+        with pytest.raises(ValueError, match="not one of the candidates"):
+            answer_question(store, card.id, pick=others[0].id)
+
+    def test_two_bindings_for_different_roles_are_not_rivals(self, project):
+        """Rivalry is same-role, not same-card. Two claims naming different
+        roles say two compatible things and settle together."""
+        from before_we_ai.core.objects import ClarificationQuestion, MappingClaim
+
+        store = ProjectStore(project)
+        claims = []
+        for role in ("account", "period"):
+            claim = MappingClaim(statement=f"role '{role}' is played by t.{role}",
+                                 created_by=Actor.AI, role=role,
+                                 binding={"column": f"t.{role}", "table": "t"})
+            store.save_claim(claim)
+            claims.append(claim)
+        card = ClarificationQuestion(question="Both of these?",
+                                     claim_ids=[c.id for c in claims])
+        store.save_question(card)
+
+        answer_question(store, card.id)
+        after = ProjectStore(project)
+        assert all(after.claims[c.id].status is ClaimStatus.BUSINESS_CONFIRMED
+                   for c in claims)
+
+    def test_a_pick_on_a_card_offering_no_choice_is_refused(self, project,
+                                                            guide):
+        """Half an answer to a card whose claims settle together."""
+        from before_we_ai.core.objects import ClarificationQuestion
+
+        report = tell(project, F29, guide=guide,
+                      client=_structures(F29, "fiscal year", "May to April"))
+        store = ProjectStore(project)
+        card = ClarificationQuestion(question="Which entity?",
+                                     claim_ids=report.claims_created)
+        store.save_question(card)
+        with pytest.raises(ValueError, match="offers no choice"):
+            answer_question(store, card.id, pick=report.claims_created[0],
+                            scope=Scope(entity="US"))
+
+
 class TestTheReportSaysTheSameThingAsTheLaw:
     """The bug M5 made reachable, and the reason it was worth waiting for.
 

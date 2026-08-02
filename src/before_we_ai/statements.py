@@ -26,13 +26,20 @@ structures into no claim is not lost — it is parked, findable, and
 carrying no weight, which is what the spec asks for.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Sequence
 
 import duckdb
 
 from before_we_ai.core.enums import Actor, EvidenceType
-from before_we_ai.core.objects import Claim, EvidenceRecord, Scope
+from before_we_ai.core.objects import (
+    Claim,
+    EvidenceRecord,
+    MappingClaim,
+    Scope,
+)
 from before_we_ai.core.transitions import admit_evidence, attach_evidence
 from before_we_ai.documents.chunk import Chunk
 from before_we_ai.documents.index import build_chunk_index, load_chunks
@@ -173,7 +180,26 @@ def confirm_claim(store: ProjectStore, claim_id: str, *,
     return record
 
 
+def rival_claims(store: ProjectStore,
+                 claim_ids: Sequence[str]) -> dict[str, tuple[str, ...]]:
+    """role -> the claims on this card competing to play it.
+
+    Two mapping claims naming the same role are alternatives: a role is
+    played by one thing, so at most one of them can be true. That is a
+    property of the claims themselves, readable without the domain guide —
+    which matters, because this module must not need one to know whether
+    it is being asked to confirm a set or to make a choice.
+    """
+    by_role: dict[str, list[str]] = defaultdict(list)
+    for claim_id in claim_ids:
+        claim = store.claims[claim_id]
+        if isinstance(claim, MappingClaim):
+            by_role[claim.role].append(claim_id)
+    return {role: tuple(ids) for role, ids in by_role.items() if len(ids) > 1}
+
+
 def answer_question(store: ProjectStore, card_id: str, *,
+                    pick: str | None = None,
                     by: Actor = Actor.HUMAN, scope: Scope | None = None,
                     note: str = "") -> list[EvidenceRecord]:
     """A human answers a clarification question, settling what it rests on.
@@ -183,6 +209,23 @@ def answer_question(store: ProjectStore, card_id: str, *,
     question rather than several. If any of them refuses the confirmation,
     the whole answer is refused: half an answer would leave the reader
     believing they had settled something they had not.
+
+    **Unless the card is a choice.** "Which of the proposed candidates is
+    the 'account'?" lists three bindings for one role, and exactly one of
+    them can be right. Confirming all three was the reading this function
+    shipped with — it was only ever called on ``tell`` cards, where every
+    claim comes from the one statement and settling them together is the
+    whole point, so nothing caught it. On a role card it would have put a
+    human's signature on two bindings they had just been asked to choose
+    between, and ``ReadinessMap`` would then have elected whichever came
+    first. A wrong answer with a signature on it is the failure this
+    product exists to prevent, so a card offering rivals refuses to be
+    answered without ``pick``.
+
+    Confirming the pick says nothing about the losers: they stay
+    ``proposed``. The human said which one plays the role, not that the
+    others are false, and recording a refutation nobody stated would be
+    inventing agreement.
     """
     card = store.questions[card_id]
     if not card.claim_ids:
@@ -190,7 +233,34 @@ def answer_question(store: ProjectStore, card_id: str, *,
             f"question {card_id} rests on no claim, so answering it would "
             "settle nothing"
         )
-    for claim_id in card.claim_ids:
+    rivals = rival_claims(store, card.claim_ids)
+    contested = {claim_id for group in rivals.values() for claim_id in group}
+
+    if pick is not None and pick not in card.claim_ids:
+        raise ValueError(
+            f"claim {pick} is not one of the candidates on question "
+            f"{card_id}, so picking it would answer a different question"
+        )
+    if rivals and pick is None:
+        offered = "; ".join(
+            f"{role}: {len(ids)} candidates" for role, ids in sorted(rivals.items())
+        )
+        raise ValueError(
+            f"question {card_id} offers a choice ({offered}) — a role is "
+            "played by one thing, so answering it means naming which one. "
+            "Pass pick=<claim id>."
+        )
+    if pick is not None and not rivals:
+        raise ValueError(
+            f"question {card_id} offers no choice: its claims settle "
+            "together or not at all, so a pick would confirm less than the "
+            "answer covers"
+        )
+
+    # the pick, plus everything on the card that was never contested
+    targets = [claim_id for claim_id in card.claim_ids
+               if claim_id == pick or claim_id not in contested]
+    for claim_id in targets:
         claim = store.claims[claim_id]
         admit_evidence(
             claim,
@@ -200,7 +270,7 @@ def answer_question(store: ProjectStore, card_id: str, *,
         )
     return [
         confirm_claim(store, claim_id, by=by, scope=scope, note=note)
-        for claim_id in card.claim_ids
+        for claim_id in targets
     ]
 
 

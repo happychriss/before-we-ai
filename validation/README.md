@@ -304,11 +304,29 @@ The project now holds **22** open questions in total: these 6, plus **11**
 drafted by the engine in stage 4 where a check failed or was inconclusive,
 plus **5** raised in 3d where a document figure was refused.
 
-**In the report, section 5 is not in the order they were asked.** Twenty-three
+**In the report, section 5 is not in the order they were asked.** Twenty-two
 questions that all read alike is not a work list, so each card carries a badge
 saying what it holds up, and the list is sorted by it. On this landscape:
 **5 block the answer, 17 are not on this path** — real findings, every one of
 them, but the question you asked does not wait on any of them.
+
+Above the list, the same split is counted, and it says what working the
+urgent half would actually buy:
+
+> **5 of these 22 hold up the answer; the other 17 do not.** Answering all 5
+> would not clear the verdict: 'intercompany' was refuted by a check, so a
+> confirmation collides with that evidence instead of settling it. Section 6
+> names the route that does apply. 3 dependencies would remain as named
+> limitations, and no question on this list covers them.
+
+**Read that second sentence carefully — it is the honest answer to "so if I
+answer these five, am I done?"** No. Both intercompany candidates failed
+`ic_symmetry`, and a human confirming a candidate a check contradicted does
+not settle it: the claim lands on `unresolved`, conflict wins. And the three
+accounting conventions are limitations, not blockers, so they never appear
+on this list at all — you could work section 5 to the end and never touch
+them. The sentence is derived from the same ReadinessMap as the badges, and
+it promises a cleared verdict only when nothing is left to qualify it.
 
 The band comes off the ReadinessMap, never off the card's wording, and that
 is the whole reason it can be trusted: the wording is stored project data,

@@ -506,8 +506,24 @@ without saying which figure. They now lead with the claim.
 
 ## Defects the green suite was blind to — 2026-08-02
 
-Three, all found by re-pinning rather than by testing, and each blind for
-the same shape of reason: **the suite only ever exercised the one path.**
+Four, all found by re-pinning or by reading output rather than by testing,
+and each blind for the same shape of reason: **the suite only ever
+exercised the one path.**
+
+0. **`answer_question` confirmed every claim on the card.** Right for a
+   `tell` card — its claims all come from the one statement, and settling
+   them together is what made it one question. Wrong for a role card:
+   "Which of the proposed candidates is the 'account'?" lists three rival
+   bindings, and confirming all three would put a human's signature on
+   bindings they had just been asked to choose between, after which the
+   ReadinessMap elects whichever sorts first. Blind because the only
+   caller in the tests was `tell`, and stage 5a raises role cards without
+   ever answering one. Fixed before it was reachable — the CLI that would
+   have reached it is M8. `rival_claims()` reads rivalry off the claims
+   (two `MappingClaim`s naming one role) rather than off the guide, so
+   this module still needs no domain knowledge; a card with rivals now
+   refuses without `pick`. The losers stay `proposed`: the human said
+   which one plays the role, not that the others are false.
 
 1. **`import before_we_ai.readiness` failed outright.** M5 had
    `v3_documents` reach back into `readiness` at module scope, so the
