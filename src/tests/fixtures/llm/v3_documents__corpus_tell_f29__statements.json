@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "corpus_tell_f29__statements",
+ "input_sha256": "d769426c4fbd30a0bab6d7dedb2c1c344dfb6a82aa0aaf713ac003caed0ef1ff",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T125856Z_v3_documents_01KZ18WNXHC28FN0ZCK063F43D.json",
+ "source_log": "/tmp/refresh-3deu3zwv/project/cache/llm_log/20260802T125856Z_v3_documents_01KZ18WNXHC28FN0ZCK063F43D.json",
+ "response_text": "{\"findings\":[{\"chunk_id\":\"statements:p1:1\",\"quote\":\"Geschaeftsjahr laeuft Mai bis April.\",\"reads_as\":\"definition\",\"statement\":\"The fiscal year runs from May to April.\",\"rationale\":\"States the fiscal year period, though not directly one of the listed questions.\",\"term\":\"Geschaeftsjahr\",\"definition\":\"laeuft Mai bis April\",\"answers\":null,\"value\":null}]}"
+}

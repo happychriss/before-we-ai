@@ -64,7 +64,13 @@ from before_we_ai.readiness import (  # noqa: E402
     guide_label,
 )
 from before_we_ai.sources import open_catalog  # noqa: E402
+from before_we_ai.statements import tell  # noqa: E402
 from before_we_ai.store import ProjectStore  # noqa: E402
+
+# The corpus' own K8 statements, read from the frozen file rather than
+# retyped here — a walkthrough that quotes its inputs from memory is a
+# walkthrough that can drift from them silently.
+TELL_STATEMENTS = REPO / "src" / "corpus" / "data" / "tell_statements.yaml"
 
 
 def section(title: str) -> None:
@@ -516,7 +522,7 @@ def stage_test(args) -> None:
     print(f"\nfull detail: {PROJECT}/evidence/  ·  exception sets: "
           f"{PROJECT}/cache/check_runs/")
     print()
-    collect("5-clarify.sh")
+    collect("5a-clarify.sh")
 
 
 def stage_clarify(args) -> None:
@@ -554,7 +560,79 @@ def stage_clarify(args) -> None:
         print(f"  - {clip(card.question, 100)}")
     print(f"\nfull detail: {PROJECT}/questions/")
     print()
+    collect("5b-tell.sh")
+
+
+def stage_tell(args) -> None:
+    """Stage 5b — what a person knows that no file contains.
+
+    The other half of clarification. 5a asks the questions the data
+    raises; this takes the answers a person volunteers before being
+    asked, and it is the only stage where a human puts *content* in.
+
+    The order inside `tell` is the whole design: the words are stored
+    verbatim first, then V3 reads them exactly as it reads a PDF — same
+    quote validation, same anchoring, same inability to promote. So a
+    statement nothing can be structured from is parked, never lost, and
+    a statement that does yield a claim yields a *proposed* one carrying
+    a testimonial: somebody said this, which is not the same as it being
+    true.
+    """
+    import yaml
+
+    store = need_project()
+    roles = load_domain_guide(DOMAIN_GUIDE_FILE)
+    spec = yaml.safe_load(TELL_STATEMENTS.read_text(encoding="utf-8"))
+    inputs(
+        f"the statements a person volunteered: "
+        f"{TELL_STATEMENTS.relative_to(REPO)} (corpus class K8)",
+        "the rule items still open — the same list 3d showed the documents,\n"
+        "  so a person and a policy are read against the same question",
+        "the domain guide, for the vocabulary the statement is read in",
+        "answers: recorded fixtures, one per statement "
+        "(v3_documents__corpus_<id>__statements)",
+    )
+
+    section("what was said, and what the system made of it")
+    for entry in spec["statements"]:
+        scenario = f"{SCENARIO}_{entry['id'].lower()}"
+        report = tell(PROJECT, entry["text"], guide=roles,
+                      store=ProjectStore(PROJECT), scenario=scenario)
+        print(f"\n  {entry['id']} — a person says:")
+        print(f"    “{entry['text']}”")
+        if report.failure:
+            print(f"    !! the contract failed: {report.failure}")
+            continue
+        mirror = report.mirror
+        if mirror.parked:
+            print("    nothing could be structured from it — stored verbatim "
+                  "as a searchable note,")
+            print("    carrying no weight. It stays visible in the decision "
+                  "log rather than")
+            print("    surviving only as a note nobody thinks to search for.")
+        for claim_id in report.claims_created:
+            claim = ProjectStore(PROJECT).claims[claim_id]
+            print(f"    [{claim.status.value}] {clip(claim.statement, 66)}")
+        print("\n    the mirror — what it now asks the person who spoke:")
+        for line in _wrap(mirror.question(), 66):
+            print(f"      {line}")
+
+    section("why none of this promoted anything")
+    print("  A testimonial records that somebody said a thing, not that the")
+    print("  thing is true — so every claim above is still `proposed`. The")
+    print("  scope question is the mirror loop, and it is not politeness:")
+    print("  `confirm_claim` REFUSES a testimonial-backed claim without an")
+    print("  explicit scope, because 'this is how it works' without saying")
+    print("  for whom is the assumption this product exists to stop.")
+    print(f"\nfull detail: {PROJECT}/evidence/  ·  {PROJECT}/questions/")
+    print()
     collect("6-readiness.sh")
+
+
+def _wrap(text: str, width: int) -> list[str]:
+    import textwrap
+
+    return textwrap.wrap(text, width) or [""]
 
 
 def stage_request(args) -> None:
@@ -740,7 +818,7 @@ def main() -> None:
     parser.add_argument("stage", choices=[
         "request", "inputs", "scan", "matrix", "documents", "hypotheses",
         "mappings", "plans", "read-documents", "test", "clarify",
-        "readiness", "report"])
+        "tell", "readiness", "report"])
     parser.add_argument("--online", action="store_true",
                         help="scan only: configure real model calls "
                              "(needs ANTHROPIC_API_KEY for stages 3-5)")
@@ -759,6 +837,7 @@ def main() -> None:
         "read-documents": stage_read_documents,
         "test": stage_test,
         "clarify": stage_clarify,
+        "tell": stage_tell,
         "readiness": stage_readiness,
         "report": stage_report,
     }[args.stage](args)

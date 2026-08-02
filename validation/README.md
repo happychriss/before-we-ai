@@ -34,7 +34,7 @@ letters rather than new numbers.
 | 2 | Measured | `2a-measure-scan.sh` · `2b-measure-matrix.sh` · `2c-measure-documents.sh` |
 | 3 | Proposed | `3a-propose-hypotheses.sh` · `3b-propose-mappings.sh` · `3c-propose-plans.sh` · `3d-propose-documents.sh` |
 | 4 | Tested | `4-test.sh` |
-| 5 | Clarification | `5-clarify.sh` |
+| 5 | Clarification | `5a-clarify.sh` · `5b-tell.sh` |
 | **6** | Readiness | `6-readiness.sh` |
 
 **Every stage rebuilds the report when it finishes.** Paths are fixed, so
@@ -290,6 +290,42 @@ grouping column.
 The project now holds **23** open questions in total: these 6, plus **12**
 drafted by the engine in stage 4 where a check failed or was inconclusive,
 plus **5** raised in 3d where a document figure was refused.
+
+### Stage 5b — what a person knows that no file contains
+
+`./scripts/5b-tell.sh`
+
+The other half of clarification. 5a asks the questions the *data* raises;
+this takes what a person volunteers before being asked — the corpus' K8
+statements, read from `src/corpus/data/tell_statements.yaml`.
+
+Look at: the order things happen in, because it is the whole design. The
+words are stored **verbatim first**, then V3 reads them exactly as it reads
+a PDF: same contract, same quote validation, same anchoring, same inability
+to promote. A person is not a privileged source; they are another document.
+
+Good (offline pins): **two statements, one claim, two testimonials**.
+
+- **F28** — *"Wir beliefern nur Apotheken und Grosshaendler."* Nothing could
+  be structured from it, so it is **parked**: stored verbatim as a
+  searchable note, carrying no weight, and still visible in the decision
+  log. That is the interesting outcome, not a failure — the alternative is
+  a system that quietly drops what it cannot parse.
+- **F29** — *"Geschaeftsjahr laeuft Mai bis April."* Yields one claim, *"The
+  fiscal year runs from May to April"*, and it is **`proposed`**.
+
+Then read the mirror, which is what the stage exists for:
+
+> Understood as: The fiscal year runs from May to April. Which companies,
+> periods or segments does this hold for? **A confirmation without a scope
+> cannot be accepted.**
+
+That refusal is a law, not a manner. `confirm_claim` rejects a
+testimonial-backed claim with no explicit scope, because "this is how it
+works" without saying *for whom* is precisely the assumption this product
+exists to stop. A testimonial records that somebody said a thing — never
+that the thing is true — so the claim stays `proposed` and the verdict in
+stage 6 does not move.
 
 ### Stage 6 — the verdict
 

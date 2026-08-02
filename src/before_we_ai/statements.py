@@ -229,6 +229,9 @@ class TellReport:
     questions: list[str] = field(default_factory=list)
     skipped: list[tuple[str, str]] = field(default_factory=list)
     failure: str | None = None
+    # Where the verbatim call landed, so a recording session can turn this
+    # into a fixture and the walkthrough can point a reader at the bytes.
+    log_refs: list[str] = field(default_factory=list)
 
 
 def tell(root, statement: str, *, guide, by: Actor = Actor.HUMAN,
@@ -294,6 +297,7 @@ def tell(root, statement: str, *, guide, by: Actor = Actor.HUMAN,
         questions=list(report.questions),
         skipped=list(report.skipped),
         failure=report.failures[0][1] if report.failures else None,
+        log_refs=list(report.log_refs),
     )
     told.testimonials = [
         e.id for e in project.evidence.values()

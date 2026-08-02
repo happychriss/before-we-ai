@@ -39,6 +39,10 @@ from before_we_ai.store import ProjectStore
 # the drift guard rebuilds the request input from it.
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
+# The corpus' K8 statements — the same file the walkthrough's 5b beat reads.
+TELL_STATEMENTS = (Path(__file__).resolve().parents[2]
+                   / "corpus" / "data" / "tell_statements.yaml")
+
 
 def still_answers_its_input(entry: dict, scenario: str) -> bool:
     """True when the fixture on disk already answers exactly this call.
@@ -231,7 +235,39 @@ def _record_downstream(workdir: Path, client, roles, only_drifted: bool = False,
         written = write_fixture_from_log(log_ref, only_drifted=only_drifted)
         print("  fixture:", written.name if written
               else "unchanged — the recorded answer still fits its input")
+
+    _record_statements(root, client, roles, only_drifted)
     _closing_note()
+
+
+def _record_statements(root: Path, client, roles, only_drifted: bool) -> None:
+    """The K8 statements — a person's knowledge, read like a document.
+
+    Last, and after V3, because `tell` sends the rule items still open and
+    that list is only right once everything that could settle one has run.
+    One call per statement, and each gets its own scenario: the fixture key
+    is contract + scenario + document, and every statement is the same
+    "document", so a shared scenario would have them overwrite each other.
+    """
+    import yaml
+
+    from before_we_ai.statements import tell
+    from before_we_ai.store import ProjectStore
+
+    spec = yaml.safe_load(TELL_STATEMENTS.read_text(encoding="utf-8"))
+    print("tell statements (frontier) ...")
+    for entry in spec["statements"]:
+        report = tell(root, entry["text"], guide=roles, client=client,
+                      store=ProjectStore(root),
+                      scenario=f"corpus_{entry['id'].lower()}")
+        if report.failure:
+            raise SystemExit(f"tell failed for {entry['id']}: {report.failure}")
+        print(f"  {entry['id']}: {len(report.claims_created)} claim(s), "
+              f"parked={report.mirror.parked}")
+        for log_ref in report.log_refs:
+            written = write_fixture_from_log(log_ref, only_drifted=only_drifted)
+            print("  fixture:", written.name if written
+                  else "unchanged — the recorded answer still fits its input")
 
 
 def _closing_note() -> None:

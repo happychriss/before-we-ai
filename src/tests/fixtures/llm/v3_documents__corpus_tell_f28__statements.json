@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "corpus_tell_f28__statements",
+ "input_sha256": "021e64ac9ada3b2dd4d4bc9e2deb148920647e81fa843b652d08aced244c011c",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T125850Z_v3_documents_01KZ18WGFYKJADSSTR6WXP7K1G.json",
+ "source_log": "/tmp/refresh-3deu3zwv/project/cache/llm_log/20260802T125850Z_v3_documents_01KZ18WGFYKJADSSTR6WXP7K1G.json",
+ "response_text": "{\"findings\": []}"
+}

@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from before_we_ai.core import ClaimStatus, EvidenceType
+from before_we_ai.core import Actor, ClaimStatus, EvidenceType
 from before_we_ai.documents import read_documents
 from before_we_ai.domains import packaged
 from before_we_ai.llm import ask, interpret_documents, load_domain_guide
@@ -241,3 +241,55 @@ def test_fixtures_match_current_inputs(read):
             )
     finally:
         con.close()
+
+
+# The K8 statements ride the same contract as the documents, so they need
+# the same guard. They very nearly did not get one: the escape guard in
+# test_llm_offline_corpus.py waves through anything called
+# `v3_documents__*` on the grounds that this file pins it — and this file
+# pinned the six PDFs by iterating `store.documents`, which a statement is
+# not. Two fixtures were therefore green and unpinned.
+STATEMENTS_SPEC = (Path(__file__).resolve().parents[2]
+                   / "corpus" / "data" / "tell_statements.yaml")
+
+
+def _statement_scenarios() -> list[tuple[str, str]]:
+    spec = yaml.safe_load(STATEMENTS_SPEC.read_text(encoding="utf-8"))
+    return [(e["id"], e["text"]) for e in spec["statements"]]
+
+
+@pytest.mark.contract
+@pytest.mark.parametrize("statement_id,text", _statement_scenarios())
+def test_statement_fixtures_answer_the_input_built_today(read, statement_id,
+                                                         text):
+    """A person's sentence is read exactly like a page of a policy."""
+    import json
+
+    from before_we_ai.llm.inputs import build_document_context
+    from before_we_ai.llm.v3_documents import open_rule_items
+    from before_we_ai.statements import STATEMENTS, record_statement
+
+    root, guide, _report, store = read
+    # A scratch copy: recording the chunk writes to the store, and the
+    # module-scoped project is shared with every other test in this file.
+    scratch = ProjectStore(root)
+    chunk = record_statement(scratch, text, by=Actor.HUMAN)
+    try:
+        built = build_document_context(STATEMENTS, [chunk],
+                                       open_rule_items(scratch, guide))
+        path = FIXTURES / (f"v3_documents__corpus_{statement_id.lower()}"
+                           f"__statements.json")
+        assert path.is_file(), f"no recorded answer for {statement_id}"
+        recorded = json.loads(path.read_text(encoding="utf-8"))
+        assert recorded["input_sha256"] == built.sha256, (
+            f"{path.name} answered a different input than the one built today"
+        )
+    finally:
+        _forget_chunk(root, chunk.id)
+
+
+def _forget_chunk(root, chunk_id: str) -> None:
+    """Undo the scratch write so the shared project is as it was."""
+    for path in (root / "evidence").glob("*.yaml"):
+        if chunk_id in path.read_text(encoding="utf-8"):
+            path.unlink()
