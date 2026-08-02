@@ -46,17 +46,54 @@
 
 ## Next
 
-1. **Owner validation run using only the readiness report.** Deferred twice,
-   and the reason to do it is now evidence rather than principle: reading real
-   output has found four things the whole green suite did not — a grammar slip
-   in a derived sentence, three dead fields, two report surfaces disagreeing
-   about one store, and the unconfirmed required-knowledge list below.
+**Consolidated 2026-08-02 (owner decision): two milestones to the GUI, not
+one.** M7 prepares the engine for a consumer; M8 builds the end-user GUI on
+top of it. Deliberately not merged: a milestone needs one acceptance it can
+fail, and a combined one would gate our engine work on the guide builder
+(another workstream) and the GUI on both. The readiness report stays as the
+debugging/understanding surface; the GUI is end-user facing and speaks no
+claim vocabulary.
 
-   Run it: `cd validation && ./scripts/reset.sh && ./scripts/0-inputs.sh`,
-   then follow the `next:` line each stage prints. Every stage rebuilds
-   `validation/data/report/index.html` — leave a tab open on it.
-   `validation/README.md` says what to look for and the numbers to expect.
-2. **M5 — documents & V3. COMPLETE — owner decision 2026-08-02.** Nothing
+1. **M7 — consumer-ready engine.** Everything the GUI needs, proven before
+   the first UI commit. Scope:
+   - **Staleness, both halves** (flagging + replay). `source_fingerprints`
+     is written on every check result and read by nobody; document anchors
+     have the same gap (a quote can go silently untrue). Acceptance per
+     spec :69: mutate the corpus by seed → flags propagate into question
+     cards → rerun clears them.
+   - **Second answer type** (receivables — `subledger_ar` sits ready).
+     One type makes classification vacuous and "not on this path" untestable.
+   - **Request lifecycle**: supersession/revisions (the mockup's
+     "Revision 3"), and a request fingerprint on confirm acts — an edited
+     question must lapse its classification confirmation exactly as a
+     moved guide does.
+   - **End-user projection + reference resolver**: a second projection over
+     the same store, no-claims vocabulary; ULID → user-space location
+     (PDF: source/page/quote — already on every anchor; tables:
+     source/sheet/column — encoded in every binding). Cell-level provenance
+     through the Excel normalization is explicitly OUT (UI phase, if ever).
+   - **Two small acts the mockup demands**: "I don't know" (a defer act, so
+     a seen-but-undecidable question stops ranking as unseen) and
+     `Source.description` (the human sentence the UI shows per source).
+   - **Guide-builder integration**: their output loads through the existing
+     guide seam (schema, lint, fingerprint, confirmation lapse). Integration
+     item only — their code stays theirs.
+
+2. **M8 — the end-user GUI.** Consumes the M7 projection and the operation
+   verbs, nothing else — no reads past the seam. The blocked→ready loop
+   clickable end to end; jump-to via the resolver; packaging + quickstart
+   ride along. **Acceptance includes the spec `:42` run**: real data whose
+   truth the owner knows, exercised through the finished UI (owner decision
+   2026-08-02 — deferred from M5 to here, deliberately).
+
+3. **After M8, unchanged**: computing the answer (V4 SQL generation +
+   Assumption Capture) stays one milestone of its own — see "Declared
+   goal" below.
+
+**Closed 2026-08-02:** the owner validation run happened (Next item 1 since
+M4, deferred twice) — no findings recorded; the two read-along confirmations
+(answer-type slice, report fixes) are covered by the same read.
+4. **M5 — documents & V3. COMPLETE — owner decision 2026-08-02.** Nothing
    in it is unbuilt and nothing found while finishing it is still open: all
    four leftovers are closed with tests (see "Found while finishing M5"
    below), and two of them turned out to be covering a live
@@ -250,16 +287,12 @@
    documents: `decodes` account ranges, the AR control account, and
    opening-balances coverage. Read them in the readiness report.
 
-3. **Spec `:42` — a run against real data whose truth the owner knows.**
-   The milestone's own completion criterion asks for it, and decision B
-   closed only the real-*document* half (the Bosch annual report). A
-   generated corpus can only ever confirm that the machine does what the
-   generator seeded; real data whose answer the owner already knows is the
-   one test that can say the seeding was not the point. It needs the
-   owner to supply the data and to know the answer, so it does not gate
-   the build — but nothing else substitutes for it either.
+5. **Spec `:42` — MOVED 2026-08-02 into M8's acceptance** (owner
+   decision; see item 2 above). The argument stands unchanged — a generated
+   corpus can only confirm the machine does what the generator seeded — it
+   is simply exercised through the finished UI instead of before it.
 
-4. **Confirm the answer-type slice against real output.** Built
+6. **Confirm the answer-type slice against real output.** Built
    2026-08-01 (`docs/architecture.md` → "Answer types"); the walkthrough now
    classifies, shows the guide fingerprint and per-item provenance, and
    demonstrates the confirmation lifting the cap. What has *not* happened
@@ -273,7 +306,7 @@
    - **Only a confirmation lapses** when the guide moves, not waivers or
      links. A waiver is about one item; a confirmation is about the list.
 
-5. **Confirm the two report fixes while reading** (done 2026-08-01, worth a
+7. **Confirm the two report fixes while reading** (done 2026-08-01, worth a
    look because both were found by reading and not by testing): section 0
    now lists the guide's answer types with what each one requires — a
    reader cannot judge the classification in section 1 without seeing what
@@ -326,7 +359,11 @@ TEMPLATE_NOTE says "a plain column summed by the template" while the
 which is what sent the model down the CAST path in recording B. Fix
 both together, in one recording.
 
-## Declared goal — the GUI milestone (after M5; not scheduled)
+## Declared goal — computing the answer (after M8; not scheduled)
+
+> Scheduling note 2026-08-02: the *interaction* half of the GUI goal below
+> is now scheduled as M7+M8 (Next, items 1–2). What this section keeps is
+> the part that stays its own milestone: V4 + Assumption Capture.
 
 Owner statement 2026-08-01: a small product for **one question to one
 answer**, with a GUI — ask the question, load documents, run, answer the
