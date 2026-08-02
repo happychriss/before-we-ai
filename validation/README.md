@@ -31,8 +31,8 @@ letters rather than new numbers.
 |---|-------|--------|
 | 0 | Inputs | `0-inputs.sh` |
 | **1** | Request | `1-request.sh` |
-| 2 | Measured | `2a-measure-scan.sh` · `2b-measure-matrix.sh` |
-| 3 | Proposed | `3a-propose-hypotheses.sh` · `3b-propose-mappings.sh` · `3c-propose-plans.sh` |
+| 2 | Measured | `2a-measure-scan.sh` · `2b-measure-matrix.sh` · `2c-measure-documents.sh` |
+| 3 | Proposed | `3a-propose-hypotheses.sh` · `3b-propose-mappings.sh` · `3c-propose-plans.sh` · `3d-propose-documents.sh` |
 | 4 | Tested | `4-test.sh` |
 | 5 | Clarification | `5-clarify.sh` |
 | **6** | Readiness | `6-readiness.sh` |
@@ -72,7 +72,7 @@ lint runs at load, so a guide that contradicts itself — a field declaring a
 law, a slot its object's law does not have — is caught here rather than
 surfacing later as a strange question.
 
-Good (offline pins): 7 sources; 3 business objects and 5 fields, lint passed;
+Good (offline pins): 12 sources (6 data files, 6 documents); 3 business objects and 5 fields, lint passed;
 3 domain laws of 13 templates, the other 10 generic. The step also names the
 corpus files *not* listed, so their absence is a visible decision rather than
 an oversight.
@@ -119,9 +119,11 @@ Three things to look at:
 
 ### Stage 2a — scan
 
-Look at: the **source list** (7 sources — this is what drives everything
+Look at: the **source list** (12 sources — this is what drives everything
 downstream), the views with row counts, the normalization declarations.
-Good: all 7 sources became `<source>__<table>` views; 260 column profiles;
+Good: all 6 data sources became `<source>__<table>` views; 260 column profiles;
+the 6 documents are not scanned here — they belong to 2c, so that one source
+has one owner writing one shape of fingerprint;
 every normalization is a visible SYSTEM declaration; **claim count is 0** —
 the scan never infers.
 
@@ -141,6 +143,24 @@ Good: the real finance joins (accounts, document refs across de_erp / us_erp /
 buchungen_report / the Excel files) score high — and some coincidental
 overlaps are in the list too. That is by design: the matrix measures, never
 judges; filtering happens later via checks.
+
+### Stage 2c — documents
+
+`./scripts/2c-measure-documents.sh`
+
+Look at: how much was read, and **where the passages sit on the page**. This
+is worked out from the page geometry, never from the words — a figure printed
+inside a chart extracts as ordinary text, and what a number is allowed to
+corroborate later depends entirely on knowing the difference.
+
+Good (offline pins): **6 documents, 6 pages, 10 passages** — 8 in running
+text, 1 in a ruled table, **1 inside a chart**. The chart passage is the
+management report's Q3 figure, and the run says so out loud, because it is
+the one to watch in 3d.
+
+**Claims created: 0.** Reading a document is measurement, exactly like
+profiling a column. What the text says is proposed one stage later, where
+nothing can promote itself.
 
 ### Stage 3a — hypotheses
 
@@ -170,6 +190,35 @@ those **32** claims carries a DECLARATION in the store with the verbatim
 reason, so the readiness report shows *why* it was never tested — read them, they
 are the sharpest evidence of what the domain pack is still missing (several
 say, in effect: "the rule is in a document I cannot see" → M5).
+
+### Stage 3d — what the documents say
+
+`./scripts/3d-propose-documents.sh`
+
+Look at: every proposal beside **the words it was read from**, then what was
+linked and what was refused. Some rules an answer needs are written down
+nowhere else — a sign convention lives in an accounting policy, not in a
+column — so this is where the three unsupported rule items finally get a
+candidate.
+
+Good (offline pins): **6 documents read, 6 claims proposed, 6 anchors, 0
+deduped**. Two links: `sign convention for income and expense` and `which
+accounts are profit and loss`, both to claims read out of the accounting
+policy. Three refusals, each with its own reason and each leaving a question:
+
+- the Q3 figure **appears only inside a chart** — nothing on the page
+  supports it (F23);
+- the prior-year line **gives more than one figure for the same thing**, so
+  which applies is a decision and not a calculation (F24/K7);
+- the divested-unit figure is **alone on its page with no check behind it**
+  (F26). The press release was read and refused, not kept out of the
+  project — refusing a document nobody opened would prove nothing.
+
+**Claims promoted: 0.** A link routes the question; the claim still has to
+earn its status. Watch this in section 6: the two linked items move from
+"nothing in this project is linked to it" to "1 candidate is proposed and
+none is settled", and they are still **not satisfied**. A policy is a very
+good reason to believe something, and still not a measurement.
 
 ### Stage 4 — test
 
@@ -216,8 +265,9 @@ run grouped by `period`, and `doc_ref` still has to be asked — a journal
 balances per document AND per period, so a passing law never identifies the
 grouping column.
 
-The project now holds **13** open questions in total: these 6 plus 7 drafted
-by the engine in stage 4 where a check failed or was inconclusive.
+The project now holds **16** open questions in total: these 6, plus 7 drafted
+by the engine in stage 4 where a check failed or was inconclusive, plus **3**
+raised in 3d where a document figure was refused.
 
 ### Stage 6 — the verdict
 

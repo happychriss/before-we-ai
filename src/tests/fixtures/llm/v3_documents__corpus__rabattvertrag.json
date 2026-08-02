@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "corpus__rabattvertrag",
+ "input_sha256": "8df12030ff72dbd3aeb83e28aabe86ceeac0cb105a2721f54c4312c39cb3042e",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
+ "model": "claude-opus-4-8",
+ "recorded_at": "hand-authored",
+ "source_log": "none — hand-authored before the first V3 online run, per stub.py; replace it with a recorded answer at the next refresh_fixtures run",
+ "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"rabattvertrag:p1:0\",\n      \"quote\": \"Jahresvolumen > EUR 500.000 je Kundengruppe -> 2% Retroaktivrabatt.\",\n      \"reads_as\": \"definition\",\n      \"statement\": \"Customer groups above EUR 500,000 annual volume earn a 2% retroactive rebate.\",\n      \"term\": \"retroactive rebate\",\n      \"definition\": \"2% on annual volume above EUR 500,000 per customer group\",\n      \"value\": null,\n      \"answers\": null,\n      \"rationale\": \"the contract states the threshold and the rate\"\n    }\n  ]\n}\n"
+}

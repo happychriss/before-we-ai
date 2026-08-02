@@ -26,6 +26,8 @@ SCENARIO = "corpus"  # shared with fixtures and the eval tools
 # byte-identical to DEMO_QUESTION in the offline corpus suite and in
 # tests/eval/refresh_fixtures.py — the drift guard rebuilds its input from it
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
+_ORIGIN = {"text": "in running text", "table": "in a ruled table",
+           "chart": "inside a chart"}
 
 sys.path.insert(0, str(REPO))  # validation.support — owner-facing, not test code
 from validation.support import corpus as corpus_support  # noqa: E402
@@ -38,10 +40,11 @@ from validation.support.corpus import (  # noqa: E402
 def _corpus_file() -> str:
     return corpus_support.__file__
 
-from before_we_ai import scan  # noqa: E402
+from before_we_ai import read_documents, scan  # noqa: E402
 from before_we_ai.engine import run_ready  # noqa: E402
 from before_we_ai.llm import (  # noqa: E402
     ask,
+    interpret_documents,
     plan_checks,
     hypothesize,
     load_domain_guide,
@@ -49,8 +52,9 @@ from before_we_ai.llm import (  # noqa: E402
     resolve_mappings,
 )
 from before_we_ai.llm.domain_guide import settled_slots  # noqa: E402
+from before_we_ai.llm.v3_documents import open_rule_items  # noqa: E402
 from before_we_ai.checks.library import REGISTRY  # noqa: E402
-from before_we_ai.core import Actor  # noqa: E402
+from before_we_ai.core import Actor, ClaimStatus, EvidenceType  # noqa: E402
 from before_we_ai.core.objects import MappingClaim  # noqa: E402
 from before_we_ai.profile.candidates import load_matrix  # noqa: E402
 from before_we_ai.readiness import (  # noqa: E402
@@ -220,7 +224,115 @@ def stage_matrix(args) -> None:
               f"{c['containment']:>6} {c['jaccard']:>6}")
     print(f"\nfull table: {PROJECT}/profiles/candidate_matrix.md "
           f"(+ .json, per-column profiles alongside)")
+    collect("2c-measure-documents.sh")
+
+
+
+def stage_documents(args) -> None:
+    """2c — read the declared documents. Measurement, so: no claims."""
+    need_project()
+    inputs(
+        "the documents declared in before-ai.yaml (kind: pdf) — the files "
+        "themselves,\n  read page by page",
+        f"document profiles land beside the column ones: "
+        f"{(PROJECT / 'profiles').relative_to(REPO)}/",
+        f"the passage index is disposable cache: "
+        f"{(PROJECT / 'cache' / 'analysis.duckdb').relative_to(REPO)}",
+    )
+    result = read_documents(PROJECT)
+    section("documents read — what is in them, not what they mean")
+    if not result.profiles_written:
+        print("  no documents declared for this project")
+        collect("3a-propose-hypotheses.sh")
+        return
+    print(f"  documents: {result.profiles_written}   pages: {result.pages}   "
+          f"passages: {result.chunks}")
+    print("\n  where the passages sit on the page (worked out from the page "
+          "itself,\n  never from what the text says):")
+    for kind in ("text", "table", "chart"):
+        count = result.kinds.get(kind, 0)
+        if count:
+            print(f"    {count:>3} {_ORIGIN[kind]}")
+    store = ProjectStore(PROJECT)
+    section("per document")
+    for profile in sorted(store.documents.values(), key=lambda d: d.document):
+        origins = ", ".join(
+            f"{n} {_ORIGIN[k]}" for k, n in sorted(profile.kinds.items()) if n
+        )
+        noun = "passage " if profile.chunk_count == 1 else "passages"
+        print(f"  {profile.document:44s} {profile.pages:>2} p  "
+              f"{profile.chunk_count:>3} {noun}   {origins}")
+    charted = result.kinds.get("chart", 0)
+    if charted:
+        verb = "sit" if charted != 1 else "sits"
+        print(f"\n  {charted} passage{'s' if charted != 1 else ''} {verb} "
+              "inside a figure. A number printed only in a\n  chart cannot be checked "
+              "against anything else on the page, so it is never\n  allowed to "
+              "corroborate a claim — watch for that in stage 3d.")
+    print(f"\n  claims created: {len(store.claims)} — reading a document is "
+          "measurement.\n  What it says is proposed one stage later, where "
+          "nothing can promote itself.")
     collect("3a-propose-hypotheses.sh")
+
+
+def stage_read_documents(args) -> None:
+    """3d — V3 reads the passages and proposes what it finds."""
+    store = need_project()
+    guide = load_domain_guide(DOMAIN_GUIDE_FILE)
+    open_items = open_rule_items(store, guide)
+    inputs(
+        "the passages from 2c, one call per document — a document that fits "
+        "is sent\n  whole; retrieval bounds the input, it never filters it",
+        "the rule items still open, so the model knows what is being looked "
+        "for:\n    " + ("\n    ".join(open_items) or "(none)"),
+        f"the domain guide: {DOMAIN_GUIDE_FILE}",
+    )
+    report = interpret_documents(PROJECT, guide=guide, store=store,
+                                 scenario=SCENARIO)
+    section("what the documents were read to say")
+    print(f"  documents read: {len(report.documents_read)}   "
+          f"claims proposed: {len(report.claims_created)}   "
+          f"anchors: {report.anchors}   deduped: {report.claims_deduped}")
+    for document, reason in report.failures:
+        print(f"  CALL FAILED for {document}: {clip(reason)}")
+    for chunk_id, reason in report.skipped:
+        print(f"  refused: {chunk_id}\n           -> {clip(reason)}")
+    for note in report.narrowed:
+        print(f"  NOTE: {note}")
+
+    after = ProjectStore(PROJECT)
+    section("every proposal, and the words it was read from")
+    for record in sorted(after.evidence.values(),
+                         key=lambda e: (e.created_at, e.id)):
+        if record.type is not EvidenceType.DOCUMENT_ANCHOR:
+            continue
+        payload = record.payload or {}
+        claim = after.claims.get(record.claim_id or "")
+        print(f"  {clip(claim.statement if claim else '?', 70)}")
+        print(f"    read from {payload.get('source')} p.{payload.get('page')}, "
+              f"{_ORIGIN.get(str(payload.get('kind')), '?')}")
+        print(f"    \u201c{clip(str(payload.get('quote', '')), 76)}\u201d")
+
+    section("what was linked, and what was refused")
+    if report.links:
+        for ref, claim_id in report.links:
+            claim = after.claims.get(claim_id)
+            print(f"  linked: {ref}")
+            print(f"    -> {clip(claim.statement if claim else claim_id, 70)}")
+            print("       the link routes the question; the claim still has "
+                  "to earn its status")
+    else:
+        print("  nothing was linked")
+    if report.questions:
+        print()
+        for question in report.questions:
+            print(f"  refused, and asked instead:\n    {clip(question, 76)}")
+
+    promoted = [c for c in after.claims.values()
+                if c.status is not ClaimStatus.PROPOSED]
+    print(f"\n  claims this stage promoted: {len(promoted)} — documents "
+          "propose, they never settle.")
+    collect("4-test.sh")
 
 
 def _print_call_report(report, store: ProjectStore) -> None:
@@ -353,7 +465,7 @@ def stage_plans(args) -> None:
         for cid in report.semantic_only:
             print(f"  {clip(store.claims[cid].statement, 85)}")
     print(f"\nfull detail: {PROJECT}/checks/")
-    collect("4-test.sh")
+    collect("3d-propose-documents.sh")
 
 
 def stage_test(args) -> None:
@@ -626,8 +738,9 @@ def stage_report(args) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=[
-        "request", "inputs", "scan", "matrix", "hypotheses", "mappings",
-        "plans", "test", "clarify", "readiness", "report"])
+        "request", "inputs", "scan", "matrix", "documents", "hypotheses",
+        "mappings", "plans", "read-documents", "test", "clarify",
+        "readiness", "report"])
     parser.add_argument("--online", action="store_true",
                         help="scan only: configure real model calls "
                              "(needs ANTHROPIC_API_KEY for stages 3-5)")
@@ -639,9 +752,11 @@ def main() -> None:
         "inputs": stage_inputs,
         "scan": stage_scan,
         "matrix": stage_matrix,
+        "documents": stage_documents,
         "hypotheses": stage_hypotheses,
         "mappings": stage_mappings,
         "plans": stage_plans,
+        "read-documents": stage_read_documents,
         "test": stage_test,
         "clarify": stage_clarify,
         "readiness": stage_readiness,

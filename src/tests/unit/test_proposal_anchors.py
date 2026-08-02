@@ -98,3 +98,29 @@ def test_the_facade_still_hides_general_evidence_writing(tmp_path):
     assert not hasattr(facade, "add_evidence")
     assert not hasattr(facade, "mark_evidence_stale")
     assert not hasattr(facade, "attach_evidence")
+
+
+def test_reading_the_same_passage_twice_appends_nothing(proposals):
+    """Ingestion dedups its declarations; documents must do the same.
+
+    Found by re-running the walkthrough's document stage after an earlier
+    run had crashed part-way: the surviving anchors were written again, and
+    the trail then claimed a passage had been found twice. Corroboration is
+    counted in anchors, so that is not cosmetic.
+    """
+    facade, store, claim = proposals
+    first = _anchor(facade, claim)
+    second = _anchor(facade, claim)
+
+    assert first.id == second.id
+    assert len([e for e in store.evidence.values()
+                if e.type is EvidenceType.DOCUMENT_ANCHOR]) == 1
+
+
+def test_a_different_passage_is_still_a_second_anchor(proposals):
+    facade, store, claim = proposals
+    _anchor(facade, claim)
+    _anchor(facade, claim, quote="Revenue is 4000-4999.",
+            chunk_id="policy:p1:1")
+    assert len([e for e in store.evidence.values()
+                if e.type is EvidenceType.DOCUMENT_ANCHOR]) == 2

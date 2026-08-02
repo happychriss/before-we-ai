@@ -107,18 +107,28 @@
    `interpret_documents`) — one call per document, findings become
    proposed claims + anchors, refusals become clarification questions.
 
+   **Also built:** `statements.py` (`tell`, `confirm_claim`,
+   `answer_question`, the `Mirror`) · the `_status_rationale` fix, by making
+   `confirmation_admissible` public so the report asks the law instead of
+   restating it · the report's **decision log** (owner decision: its own
+   chapter after the process diagram, plus inline hints) · documents and
+   anchors rendered for a reader · walkthrough stages `2c-measure-documents`
+   and `3d-propose-documents`, six hand-authored V3 fixtures, README re-pinned
+   · the **hard document** (`corpus/data/hard/`, not the spec's real public
+   PDF — that stays open) · `system_sha256` closing the prompt half of the
+   drift guard.
+
    **Still open in M5:**
-   1. Hand-authored V3 corpus fixtures + wiring into
-      `test_llm_offline_corpus.py`; **then** widen the guardrail
-      allow-list (`test_llm_guardrail.py`) to admit DOCUMENT_ANCHOR/AI —
-      deliberately not widened yet, because nothing writes anchors in that
-      fixture until V3 runs there.
-   2. Walkthrough scripts `2c-measure-documents` and `3d-propose-documents`;
-      re-pin `validation/README.md` end to end (source count 7 → 12).
-   3. `tell` + `answer_question` + the `_status_rationale` fix (item below).
-   4. Report surfaces: documents `*View` in `projection.py`, anchor-aware
-      `EvidenceView`, the "M5 · documents" ghost node becomes real.
-   5. Kickoff batch 1–4 + the live re-record session; acceptance run.
+   1. Widen the guardrail allow-list (`test_llm_guardrail.py`) to admit
+      DOCUMENT_ANCHOR/AI **when V3 joins that fixture** — its project does
+      not read documents yet, so widening now would permit what nothing does.
+   2. A `tell` beat in walkthrough stage 5 (F28/F29). **Note the fragility:**
+      `tell` calls V3 with scenario `…__statements`, and that input carries
+      the *currently open* rule items — so its fixture depends on where in
+      the run it is recorded. Fine for a fixed walkthrough, worth knowing
+      before the live session.
+   3. Kickoff batch 1–4 + the live re-record session; acceptance run.
+   4. Owner decision B (the real public PDF) whenever it comes.
 
    **Unblocked, and the sequencing was deliberate:** the refactor ran first
    so M5 builds its document surfaces into `projection.py` and the template

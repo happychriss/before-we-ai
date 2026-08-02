@@ -145,17 +145,28 @@ class ProposalStore:
                 f"unknown anchor kind {kind!r} — it is derived from page "
                 "geometry, not chosen"
             )
+        payload = {
+            "quote": quote,
+            "chunk_id": chunk_id,
+            "kind": kind,
+            "source": source,
+            "page": page,
+        }
+        # Reading a document twice must append nothing — the same rule
+        # ingestion follows for its declarations. A stage that duplicates
+        # its own evidence on a re-run makes the trail lie about how much
+        # a passage was found, and the count is what corroboration is
+        # measured in.
+        existing = self.__store.evidence_for(self.__store.claims[claim_id])
+        for known in existing:
+            if (known.type is EvidenceType.DOCUMENT_ANCHOR
+                    and known.payload == payload):
+                return known
         record = EvidenceRecord(
             type=EvidenceType.DOCUMENT_ANCHOR,
             actor=Actor.AI,
             claim_id=claim_id,
-            payload={
-                "quote": quote,
-                "chunk_id": chunk_id,
-                "kind": kind,
-                "source": source,
-                "page": page,
-            },
+            payload=payload,
         )
         self.__attach(record)
         return record
