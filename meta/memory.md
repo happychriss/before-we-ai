@@ -12,9 +12,11 @@
   question depends on; the model classifies, the engine expands, a human
   confirms) · **the outer-layer refactor** (all seven work packages) · **M5 documents & V3** (PDF pipeline, anchors,
   multi-anchor reconciliation, `tell` + mirror loop; complete 2026-08-02,
-  all four finish-line leftovers closed with tests) · **M7.1 staleness**
-  (flagging + replay; the store now notices when its data moves —
-  `docs/architecture.md` → "Staleness").
+  all four finish-line leftovers closed with tests) · **M7 so far**:
+  staleness (7.1), a second answer type (7.2), request revisions (7.3),
+  the defer act + source descriptions (7.5) — each with its own heading in
+  `docs/architecture.md`. **M7 still open: 7.4 end-user projection +
+  resolver, 7.6 guide-builder integration, 7.7 document screening.**
 - **The road ahead is consolidated** (owner decision 2026-08-02): M7
   makes the engine consumer-ready, M8 builds the end-user GUI on the M7
   projection, M9 computes the answer (V4 + Assumption Capture). Scope per
@@ -54,6 +56,11 @@
   declares **2 answer types** and its fingerprint is `c22ad2e5a8e0`; every
   other pin above survived that change untouched, which is the blast radius
   the guide's shape was designed to have.
+- **Where to start reading after a compaction:** this file, then
+  `docs/architecture.md` for the M7 sections named above. The one thing
+  that is *not* written down anywhere else: the next piece of work is
+  **M7.4**, the end-user projection, and it is the piece M8 sits directly
+  on top of. Everything it was blocked on (staleness, revisions) is done.
 
 ## Next
 
