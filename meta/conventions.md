@@ -42,6 +42,31 @@ about how to work.
   corpus-trap hints in a prompt — that would be teaching to the test and would
   invalidate Seeded-Recall and the blind traps.
 
+## What the model may assert: can we check it?
+
+The dividing line is **not** "does the model touch it" — that rule is too
+blunt and costs real capability. It is *can the answer be verified against
+something we already hold*.
+
+- `kind` (text / table / chart) is unknowable from the text: a chart
+  figure extracts as ordinary prose, so a model asserting it could only be
+  believed. **Derived from page geometry, never asked for.**
+- `value` (which number a sentence is about) is a reading, and a reading
+  is checkable: the named literal must appear in the quote and parse as a
+  number. **Asked for, and verified.**
+
+The failure mode this replaced is the tempting one: rather than ask, the
+engine *guessed* — largest number in the quote, and before that the first.
+Both were tuned until the corpus passed and both are wrong on ordinary
+sentences ("earnings per share of 4.12 on 8,312,504 shares"). An unchecked
+guess by us is not safer than a checked answer from the model; it is the
+same trust, moved somewhere nobody reviews it.
+
+**Test heuristics by mutation.** Invert one, disable one, and see what
+turns red. If a safety property depends on it, it is not a heuristic — it
+is a law sitting in the wrong place. Anything tuned against the corpus
+must survive this before it ships.
+
 ## Corpus & validation style
 
 - **Sources stay heterogeneous and dirty** (native DuckDB/xlsx/csv/PDF, never
