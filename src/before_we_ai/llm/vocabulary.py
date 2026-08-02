@@ -202,6 +202,10 @@ _AGGREGATES = ("sum(", "count(", "avg(", "min(", "max(")
 _IDENTIFIER = re.compile(r"\w+")
 
 # Param names that must name a catalog view.
+# The one predicate that makes a hypothesis a concept claim. A
+# hypothesis's kind is derived from this and never asked for.
+CONCEPT_PREDICATE = "concept_definition"
+
 VIEW_PARAMS = frozenset({"child", "parent", "table", "left", "right",
                          "encoded", "decode", "ranges", "journal", "subledger"})
 
@@ -228,6 +232,23 @@ COLUMN_PARAMS: dict[str, tuple[tuple[str, str], ...]] = {
                             ("account", "journal")),
     "ic_symmetry": (("left_period", "left"), ("right_period", "right")),
 }
+
+def _required(template: str) -> frozenset:
+    contract = TEMPLATE_PARAMS.get(template)
+    return contract.required if contract else frozenset()
+
+
+def _view_heads(value, views: set) -> list[str]:
+    """The known views named by a (possibly qualified) param value."""
+    candidates = value if isinstance(value, list) else [value]
+    heads = []
+    for item in candidates:
+        if isinstance(item, str) and "." in item:
+            head = item.split(".", 1)[0]
+            if head in views:
+                heads.append(head)
+    return heads
+
 
 def normalize_template_params(template: str, params: dict,
                               known_views=()) -> tuple[dict, list[dict]]:
@@ -262,6 +283,28 @@ def normalize_template_params(template: str, params: dict,
     # VIEW_PARAMS is the set of param NAMES that must hold a bare view,
     # shared by every template — not a per-template mapping.
     views = set(known_views)
+
+    # An absent view param, recovered from the columns that name it. The
+    # model writes `amount: de_erp__gl_postings.amount_local_currency` and
+    # then leaves `journal` out — and because the column normalization
+    # anchors on the view param, one omission takes every column with it.
+    # The information is unambiguously there: the qualified columns name
+    # the view. Recovering it is deterministic and **requires unanimity**;
+    # where the columns disagree about which view they sit on, that is a
+    # confusion to report, not a majority to follow (owner decision
+    # 2026-08-02, the second of two — flexibility, with every case on the
+    # record).
+    for column_param, view_param in COLUMN_PARAMS.get(template, ()):
+        if normalized.get(view_param) or view_param not in _required(template):
+            continue
+        named = {
+            head for param, owner in COLUMN_PARAMS.get(template, ())
+            if owner == view_param
+            for head in _view_heads(normalized.get(param), views)
+        }
+        if len(named) == 1:
+            correct(view_param, None, named.pop())
+
     for view_param in sorted(VIEW_PARAMS & set(normalized)):
         value = normalized.get(view_param)
         if not isinstance(value, str) or value in views or "." not in value:

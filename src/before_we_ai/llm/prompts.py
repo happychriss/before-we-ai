@@ -15,6 +15,7 @@ import json
 
 from pydantic import BaseModel
 
+from before_we_ai.checks.library import REGISTRY
 from before_we_ai.llm.vocabulary import PREDICATES, TEMPLATE_NOTES, TEMPLATE_PARAMS
 
 _JSON_RULES = (
@@ -43,15 +44,30 @@ def render_predicate_docs() -> str:
 
 
 def render_template_docs() -> str:
-    """Generic documentation of the check definitions, for the V2 prompt."""
+    """Documentation of the check definitions, for the V2 prompt.
+
+    Each entry says whether it is a generic data check or a **domain law**,
+    because the two are different kinds of thing and the model was being
+    asked to choose between them blind. A domain law is a conservation law
+    of its domain: it is what elects the occupant of a business object, so
+    binding one is a stronger move than binding a generic check, and worth
+    being deliberate about. What is domain-specific must always be
+    enumerable — that is the rule the tag makes visible here.
+    """
     lines = [
         "## Check definitions",
         "Each template is a falsification attempt rendered as SQL. "
-        "Params reference views and columns by their catalog names.",
+        "Params reference views and columns by their catalog names. A "
+        "template marked [domain law: X] encodes a conservation law of "
+        "domain X and decides which candidate occupies a business object; "
+        "the rest are generic data checks that hold in any domain.",
     ]
     for name in sorted(TEMPLATE_PARAMS):
         contract = TEMPLATE_PARAMS[name]
-        parts = [f"required [{', '.join(sorted(contract.required))}]"]
+        definition = REGISTRY.get(name)
+        domain = getattr(definition, "domain", None) if definition else None
+        parts = [f"[domain law: {domain}]"] if domain else []
+        parts.append(f"required [{', '.join(sorted(contract.required))}]")
         if contract.exactly_one_of:
             for group in contract.exactly_one_of:
                 parts.append(f"exactly one of [{', '.join(sorted(group))}]")
@@ -90,8 +106,8 @@ V1_SYSTEM = (
     "meanings, or value shapes indicate they express the same concept "
     "without sharing values (predicate semantic_equivalent).\n"
     "- Name business concepts that the landscape implies but does not "
-    "define (kind=concept, predicate concept_definition) when a "
-    "definition is genuinely in question.\n"
+    "define (predicate concept_definition, with the term it defines) when "
+    "a definition is genuinely in question.\n"
     "- Reference columns strictly as view.column exactly as they appear "
     "in the profiles.\n"
     "- One rule per hypothesis; keep statements to one sentence; put the "

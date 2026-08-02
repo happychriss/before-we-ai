@@ -121,20 +121,32 @@ def test_contracts_ran_clean_offline(pipeline):
     assert v4.request.answer_type == "profit_and_loss_by_dimension"
     assert v4.required is None
     assert v1.failure is None
-    assert len(v1.claims_created) == 52
-    assert v1.claims_deduped == 0
-    assert len(v1.skipped) == 3  # residual bad items skipped, batch survived
+    assert len(v1.claims_created) == 53
+    # One of the 54 restated a rule another already made; claim_key
+    # collapses them, which is the dedup working rather than a loss.
+    assert v1.claims_deduped == 1
+    # Two, and they are a different error from the three that used to be
+    # here. Those were concept hypotheses whose omitted `kind` contradicted
+    # their own predicate — kickoff item 4 made that unwritable, and the
+    # live run skipped none. These two are rules whose column references
+    # resolve to nothing, which is a real defect in the answer; the live
+    # call repaired them and the offline replay cannot, exactly as the
+    # recorder documents.
+    assert len(v1.skipped) == 2
+    assert all("grounded in no known view or column" in reason
+               for _statement, reason in v1.skipped)
     assert proposals.failure is None and len(proposals.claims_created) == 22
     assert v2.failures == [] and v2.unanswered == []
-    # 43, not 42: the owner's normalization decision (2026-08-02)
-    # turns one qualified view param into a runnable binding, and
-    # records the correction as a declaration so it is not silent.
-    assert len(v2.check_plans_created) == 43
+    # 49 on the first fully live recording. The owner's two normalization
+    # decisions (2026-08-02) recover bindings that used to be lost to
+    # shape errors, and every recovery is recorded as a declaration rather
+    # than applied silently.
+    assert len(v2.check_plans_created) == 49
     assert v2.corrections
-    assert len(v2.skipped) == 6  # validation-rejected bindings — skipped, not crashed
+    assert len(v2.skipped) == 1  # validation-rejected bindings — skipped, not crashed
     assert len(v2.semantic_only) == 6  # no admissible template — never sent
     assert len(v2.unbindable) == 19  # honest template=null answers
-    assert len(pipeline["engine"].executed) == 43
+    assert len(pipeline["engine"].executed) == 49
     assert pipeline["engine"].skipped == []
 
     # every claim that ends without a check says why, in the store — the reason
@@ -147,23 +159,23 @@ def test_contracts_ran_clean_offline(pipeline):
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") in no_check
     }
-    assert len(reasons) == 31  # 19 unbindable + 6 semantic-only + 6 skipped
+    assert len(reasons) == 26  # 19 unbindable + 6 semantic-only + 1 skipped
     assert sorted(p["decision"] for p in reasons.values()) == (
-        ["semantic_only"] * 6 + ["skipped"] * 6 + ["unbindable"] * 19
+        ["semantic_only"] * 6 + ["skipped"] * 1 + ["unbindable"] * 19
     )
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
 
     # And every param we read as something other than what the model wrote
-    # is on the record too. Twenty-five of them, which is the number worth
-    # knowing: column normalization had been happening silently all along,
-    # on this corpus alone, and only the view-param case was ever visible —
-    # as a failure.
+    # is on the record too. Eleven of them here — the number is the point,
+    # not its size: column normalization had been happening silently since
+    # M4, and only the view-param case was ever visible, as a failure. The
+    # count moves with the answer; that it is written down does not.
     corrections = [
         record.payload for record in store.evidence.values()
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") == "param_normalized"
     ]
-    assert len(corrections) == 25
+    assert len(corrections) == 11
     assert all(c["given"] != c["read_as"] for c in corrections)
     for claim_id in reasons:
         assert store.claims[claim_id].status is ClaimStatus.PROPOSED
@@ -174,7 +186,7 @@ def test_llm_path_cannot_promote(pipeline):
     proposed claim or a check; status changes came from check evidence only."""
     store = pipeline["store"]
     ai_claims = [c for c in store.claims.values() if c.created_by is Actor.AI]
-    assert len(ai_claims) == 74  # 52 hypotheses + 22 role candidates
+    assert len(ai_claims) == 75  # 53 hypotheses + 22 role candidates
     for evidence in store.evidence.values():
         assert evidence.actor is not Actor.AI
     # promotions happened, but only through check evidence
@@ -208,7 +220,12 @@ def test_verdicts_land_on_the_corpus_ground_truth(pipeline):
     assert us_gl.status is ClaimStatus.CONTRADICTED  # F22 missing IC leg
     ic = [c for c in store.claims.values()
           if isinstance(c, MappingClaim) and c.role == "intercompany"]
-    assert ic and all(c.status is ClaimStatus.PROPOSED for c in ic)  # unbound this recording
+    # Both refuted, and both is right: F22 removes one leg of a US posting,
+    # and a missing leg breaks the symmetry of the *pair* — the DE side of
+    # it is just as unbalanced as the US side. Earlier recordings never got
+    # ic_symmetry bound at all and left these merely proposed; this one
+    # ran the law, which is the stronger result.
+    assert ic and all(c.status is ClaimStatus.CONTRADICTED for c in ic)
     # claims V2 could not bind stay proposed — visible, never promoted
     unbound_ids = {cid for cid, _ in pipeline["v2"].unbindable}
     assert all(store.claims[cid].status is ClaimStatus.PROPOSED
@@ -238,8 +255,12 @@ def test_every_unsettled_role_becomes_a_clarification_not_a_silent_discard(pipel
     ic = by_role["intercompany"]
     # never bound: the law never got to speak, so the question asks what is
     # missing rather than which candidate lost
-    assert "What is missing before the 'intercompany' can be tested?" in ic.question
-    assert "could be put to the ic_symmetry law at all" in ic.question
+    # The wording depends on WHY the role is unsettled, and this recording
+    # settled that differently: every intercompany candidate was put to the
+    # law and every one failed, so the card asks which source is
+    # authoritative rather than what is missing.
+    assert "Which source is the authoritative 'intercompany'?" in ic.question
+    assert "was put to the ic_symmetry law, and every one of them failed" in ic.question
     assert len(ic.claim_ids) == 2  # both candidates attached
     assert ("What is missing before the 'subledger_ar' can be tested?"
             in by_role["subledger_ar"].question)
@@ -288,13 +309,13 @@ def test_pipeline_is_idempotent(pipeline):
     claims; bound claims drop out of the V2 selection entirely."""
     root, store = pipeline["root"], pipeline["store"]
     again = hypothesize(root, store=store, scenario="corpus")
-    assert again.claims_created == [] and again.claims_deduped == 52
+    assert again.claims_created == [] and again.claims_deduped == 54
     proposals = propose_mappings(root, roles=pipeline["roles"], store=store,
                                       scenario="corpus")
     assert proposals.claims_created == [] and proposals.claims_deduped == 22
     # only the honestly unbound claims are still selectable for V2:
-    # 19 unbindable + 6 semantic-only + 7 skipped bindings
-    assert len(_untested_claims(store, None)) == 31
+    # 19 unbindable + 6 semantic-only + 1 skipped binding
+    assert len(_untested_claims(store, None)) == 26
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):
@@ -417,14 +438,26 @@ def test_demo_6_answering_the_clarifications_narrows_instead_of_blocking(pipelin
     result = evaluate_request(store, pipeline["roles"],
                               pipeline["v4"].request.id)
 
-    assert result.verdict is Readiness.READY_WITH_LIMITATIONS
-    assert result.blocking() == []
+    # Re-pinned 2026-08-02 against the first fully live recording, and the
+    # change is the model's answer rather than ours. Both `intercompany`
+    # candidates were REFUTED by the ic_symmetry law (F22 is a deliberate
+    # break in the US postings), and a human confirming a candidate the law
+    # contradicted does not settle it — conflict wins. So the verdict does
+    # not narrow all the way: the three conventions are limitations as
+    # before, and intercompany is a genuine blocker.
+    #
+    # That is the machinery being right, and it is also a question worth
+    # asking separately: the corpus intends DE intercompany to be sound and
+    # only US to be broken, so a per-entity election ought to seat DE. See
+    # meta/memory.md.
+    assert result.verdict is Readiness.BLOCKED
+    assert [i.ref for i in result.blocking()] == ["intercompany"]
     assert sorted(i.ref for i in result.limitations()) == [
         "month cut-off for late postings",
         "sign convention for income and expense",
         "which accounts are profit and loss",
     ]
-    assert "what they mean is not settled" in result.reason()
+    assert "'intercompany' is unsupported, and the figures are computed from it" in result.reason()
     # and the promotions came from the human, never from the AI
     for item in result.items:
         for claim_id in item.claim_ids:

@@ -95,24 +95,21 @@ def test_check_hypothesis_reports_semantic_errors(tmp_path):
                for e in bad_ref)
     bad_column = check_hypothesis(_hypothesis(columns=["gamma__x.y"]), index)
     assert any("not in the profiles" in e for e in bad_column)
-    mismatch = check_hypothesis(_hypothesis(predicate="concept_definition",
-                                            params={}, columns=[]), index)
-    assert any("does not fit" in e for e in mismatch)
-    incomplete = check_hypothesis(_hypothesis(
-        kind="concept", predicate="concept_definition", params={}, columns=[],
-        term="revenue",  # definition missing
-    ), index)
-    assert any("requires term and definition" in e for e in incomplete)
-    bad_kind = check_hypothesis(_hypothesis(kind="guess"), index)
-    assert any("kind must be 'rule' or 'concept'" in e for e in bad_kind)
+    # kind is derived from the predicate now, so it cannot disagree with it
+    # and there is nothing left to check about the pair. What survives is
+    # the one thing only the model can supply.
+    nameless = check_hypothesis(_hypothesis(
+        predicate="concept_definition", params={}, columns=[]), index)
+    assert any("must name the term it defines" in e for e in nameless)
 
 
 def test_concept_hypothesis_becomes_a_concept_claim(tmp_path):
     _, index = _index(tmp_path)
     h = _hypothesis(
-        kind="concept", predicate="concept_definition", params={}, columns=[],
+        predicate="concept_definition", params={}, columns=[],
         term="active customer", definition="a customer with at least one order",
     )
+    assert h.kind == "concept"  # derived, not supplied
     assert check_hypothesis(h, index) == []
     claim = hypothesis_to_claim(h, index)
     assert isinstance(claim, ConceptClaim)
@@ -294,3 +291,58 @@ def test_every_correction_is_reported_not_only_applied():
         "given": ["de_erp__invoices.document_number"],
         "read_as": ["document_number"],
     }]
+
+
+def test_a_missing_view_param_is_recovered_from_the_columns_that_name_it():
+    """Owner decision 2026-08-02, the second of two: flexibility, recorded.
+
+    The model writes `amount: de_erp__gl_postings.amount_local_currency`
+    and omits `journal` entirely. Because the column normalization anchors
+    on the view param, one omission used to take every column with it and
+    all three balance bindings were lost — with them the journal election,
+    and with that the verdict.
+    """
+    params, corrections = normalize_template_params(
+        "balance",
+        {"amount": "de_erp__gl_postings.amount_local_currency",
+         "group_column": "de_erp__gl_postings.period"},
+        known_views={"de_erp__gl_postings", "us_erp__gl_postings"},
+    )
+    assert params == {"amount": "amount_local_currency",
+                      "group_column": "period",
+                      "journal": "de_erp__gl_postings"}
+    supplied = [c for c in corrections if c["param"] == "journal"]
+    assert supplied == [{"param": "journal", "given": None,
+                         "read_as": "de_erp__gl_postings"}]
+
+
+def test_columns_that_disagree_are_a_confusion_not_a_majority():
+    """The line that keeps the recovery honest. Two views named, so the
+    model does not know which table it meant — and neither do we."""
+    params, corrections = normalize_template_params(
+        "balance",
+        {"amount": "de_erp__gl_postings.amount_local_currency",
+         "group_column": "us_erp__gl_postings.period"},
+        known_views={"de_erp__gl_postings", "us_erp__gl_postings"},
+    )
+    assert "journal" not in params
+    assert corrections == []
+
+
+def test_nothing_is_recovered_from_unqualified_columns():
+    """Bare columns name no view, so there is nothing to recover from."""
+    params, _ = normalize_template_params(
+        "balance", {"amount": "amount_local_currency", "group_column": "period"},
+        known_views={"de_erp__gl_postings"})
+    assert "journal" not in params
+
+
+def test_a_view_param_the_model_supplied_is_never_overwritten():
+    params, corrections = normalize_template_params(
+        "balance",
+        {"journal": "us_erp__gl_postings",
+         "amount": "us_erp__gl_postings.amount_local_currency"},
+        known_views={"de_erp__gl_postings", "us_erp__gl_postings"},
+    )
+    assert params["journal"] == "us_erp__gl_postings"
+    assert [c["param"] for c in corrections] == ["amount"]

@@ -23,7 +23,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from validation.support.corpus import FIXTURES, DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
 
-from before_we_ai.llm import ask, hypothesize, load_domain_guide, propose_mappings
+from before_we_ai.documents import read_documents
+from before_we_ai.llm import (
+    ask,
+    hypothesize,
+    interpret_documents,
+    load_domain_guide,
+    propose_mappings,
+)
 from before_we_ai.llm.client import AnthropicClient
 from before_we_ai.llm.v2_bind import plan_checks
 from before_we_ai.store import ProjectStore
@@ -74,13 +81,32 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--keep", metavar="DIR",
                         help="build the project here and keep it (default: temp)")
+    parser.add_argument(
+        "--downstream-only", action="store_true",
+        help="keep the recorded request/V1/role answers and re-record only "
+             "what depends on them (V2, V3). The upstream fixtures are "
+             "self-consistent on their own; it is the downstream ones that "
+             "go out of alignment, so this is the cheap fix for the usual "
+             "case.")
     args = parser.parse_args()
 
     workdir = Path(args.keep) if args.keep else Path(tempfile.mkdtemp(prefix="refresh-"))
-    root = build_corpus_project(workdir / "project", offline=False)
     client = AnthropicClient()
-    store = ProjectStore(root)
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
+
+    if args.downstream_only:
+        print("keeping the recorded request/V1/role answers")
+    else:
+        _record_upstream(workdir, client, roles)
+
+    _record_downstream(workdir, client, roles)
+    if not args.keep:
+        shutil.rmtree(workdir)
+
+
+def _record_upstream(workdir: Path, client, roles) -> None:
+    root = build_corpus_project(workdir / "project", offline=False)
+    store = ProjectStore(root)
 
     print("request (frontier) ...")
     drafted = ask(root, DEMO_QUESTION, guide=roles, client=client, store=store,
@@ -88,8 +114,12 @@ def main() -> None:
     if drafted.failure:
         raise SystemExit(f"request failed twice: {drafted.failure} "
                          f"(log: {drafted.log_ref})")
-    print(f"  {len(drafted.required.items)} required-knowledge items, "
-          f"{len(drafted.skipped)} skipped, usage {drafted.usage}")
+    # No delta is the good answer: it means the guide's answer type already
+    # carries what this question depends on.
+    delta = len(drafted.required.items) if drafted.required else 0
+    print(f"  answer type {drafted.request.answer_type!r}, {delta} delta "
+          f"item{'s' if delta != 1 else ''}, {len(drafted.skipped)} skipped, "
+          f"usage {drafted.usage}")
     print("  fixture:", write_fixture_from_log(drafted.log_ref).name)
 
     print("V1 hypotheses (frontier) ...")
@@ -109,6 +139,30 @@ def main() -> None:
           f"{len(proposals.skipped)} skipped, usage {proposals.usage}")
     print("  fixture:", write_fixture_from_log(proposals.log_ref).name)
 
+    shutil.rmtree(root)
+
+
+def _record_downstream(workdir: Path, client, roles) -> None:
+    """Record against the state the OFFLINE replay produces, not the
+    state the live run happens to be in.
+
+    They differ whenever an upstream call needed an item-scoped repair:
+    the repair is spliced live, while the replay re-runs the semantic
+    checks on the full recorded batch instead, and the claim set comes
+    out different. Every downstream input is built from that claim set,
+    so a V2 fixture recorded against the live store answers an input the
+    replay can never rebuild — which is the drift the guard then reports
+    for ever, with no way to fix it but this.
+    """
+    print("replaying the recorded answers offline, to record the rest "
+          "against what CI will see ...")
+    root = build_corpus_project(workdir / "project", offline=True)
+    store = ProjectStore(root)
+    ask(root, DEMO_QUESTION, guide=roles, store=store, scenario="corpus")
+    hypothesize(root, store=store, scenario="corpus")
+    propose_mappings(root, roles=roles, store=store, scenario="corpus")
+    store = ProjectStore(root)
+
     print("V2 check binding ...")
     v2 = plan_checks(root, client=client, store=store, scenario="corpus")
     if v2.failures:
@@ -118,8 +172,21 @@ def main() -> None:
     for log_ref in v2.log_refs:
         print("  fixture:", write_fixture_from_log(log_ref).name)
 
-    if not args.keep:
-        shutil.rmtree(workdir)
+    # V3 last: it asks what rule items are still open, and that answer is
+    # only right once the stages above have run. One call per document, so
+    # one fixture per document — six of them on this corpus.
+    print("V3 documents (frontier) ...")
+    read_documents(root)
+    v3 = interpret_documents(root, guide=roles, client=client,
+                             store=ProjectStore(root), scenario="corpus")
+    if v3.failures:
+        raise SystemExit(f"V3 failed for {[d for d, _ in v3.failures]}")
+    print(f"  {len(v3.documents_read)} documents, "
+          f"{len(v3.claims_created)} claims, {v3.anchors} anchors, "
+          f"{len(v3.links)} links, {len(v3.skipped)} refused, "
+          f"usage {v3.usage}")
+    for log_ref in v3.log_refs:
+        print("  fixture:", write_fixture_from_log(log_ref).name)
     print("\nFixtures refreshed. Run the offline suite (python -m pytest -q) —")
     print("the drift guard and the pinned pipeline assertions will tell you")
     print("what the new answers changed; review and commit the diff.")

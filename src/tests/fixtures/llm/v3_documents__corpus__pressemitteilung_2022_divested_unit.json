@@ -4,7 +4,7 @@
  "input_sha256": "ee684fe2c3a51109cc517eb27ff8bdbacf42ce2db6466470478b42f4db73d39c",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",
- "recorded_at": "hand-authored",
- "source_log": "none — hand-authored before the first V3 online run, per stub.py; replace it with a recorded answer at the next refresh_fixtures run",
- "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"pressemitteilung_2022_divested_unit:p1:0\",\n      \"quote\": \"Mit dem Verkauf unserer Industriesparte erzielte die Gruppe einen Erloes von EUR 8.450.000.\",\n      \"reads_as\": \"figure\",\n      \"statement\": \"The group realised EUR 8,450,000 from selling its industrial division.\",\n      \"term\": null,\n      \"definition\": null,\n      \"answers\": null,\n      \"rationale\": \"a revenue-shaped figure stated in the release\",\n      \"value\": \"8.450.000\"\n    }\n  ]\n}\n"
+ "recorded_at": "20260802T105257Z_v3_documents_01KZ11P0QJ54ARC9SJEQDWYCZ7.json",
+ "source_log": "/tmp/refresh-1go1t1w6/project/cache/llm_log/20260802T105257Z_v3_documents_01KZ11P0QJ54ARC9SJEQDWYCZ7.json",
+ "response_text": "{\"findings\": [{\"chunk_id\": \"pressemitteilung_2022_divested_unit:p1:0\", \"quote\": \"Mit dem Verkauf unserer Industriesparte erzielte die Gruppe einen Erloes von EUR 8.450.000.\", \"reads_as\": \"figure\", \"statement\": \"The group achieved proceeds of EUR 8,450,000 from the sale of its industrial division.\", \"rationale\": \"States a specific figure for sale proceeds.\", \"value\": \"8.450.000\", \"answers\": null}]}"
 }

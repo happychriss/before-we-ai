@@ -1789,6 +1789,14 @@ def _evidence_sentence(record: EvidenceRecord) -> str:
         )
     payload = record.payload or {}
     if payload.get("decision") == "param_normalized":
+        if payload.get("given") is None:
+            return (
+                f"The check's {payload.get('param')!r} was missing, and every "
+                f"column the model named sat on {payload.get('read_as')!r}, so "
+                "that is what it was read as. Supplied here, not by the model, "
+                "and only because the columns agreed — where they disagree "
+                "nothing is guessed."
+            )
         return (
             f"The model gave {payload.get('given')!r} for the check's "
             f"{payload.get('param')!r}, where a bare name belongs. It was "

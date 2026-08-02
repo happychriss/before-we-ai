@@ -95,7 +95,9 @@ def test_cross_field_rules_are_semantic_not_schema():
     """Item-level cross-field consistency must NOT fail schema validation —
     a schema failure kills the whole batch, and one item may never sink it
     (learned from the first real run). The rules live in mapping.check_*."""
-    incomplete_concept = Hypothesis.model_validate(_hypothesis(kind="concept"))
+    incomplete_concept = Hypothesis.model_validate(
+        _hypothesis(predicate="concept_definition"))
+    assert incomplete_concept.kind == "concept"  # derived from the predicate
     assert incomplete_concept.term is None  # schema-valid; semantically skipped
     no_reason = CheckPlanProposal.model_validate({"claim_id": "c1", "template": None})
     assert no_reason.no_template_reason is None

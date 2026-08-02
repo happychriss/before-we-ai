@@ -18,7 +18,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from before_we_ai.llm.vocabulary import PredicateName, TemplateName
+from before_we_ai.llm.vocabulary import (
+    CONCEPT_PREDICATE,
+    PredicateName,
+    TemplateName,
+)
 
 ParamValue = str | int | float | bool | list[str] | list[dict[str, str]]
 
@@ -35,7 +39,18 @@ class HypothesisScope(BaseModel):
 
 
 class Hypothesis(BaseModel):
-    """One proposed rule about the data landscape (V1)."""
+    """One proposed rule about the data landscape (V1).
+
+    There is no ``kind`` field, and its absence is the point. It used to be
+    asked for, and it is a pure function of the predicate — a hypothesis is
+    about a concept exactly when its predicate is ``concept_definition``.
+    Asking for something derivable gave the model a way to contradict
+    itself, and it took it: every concept hypothesis in the first real run
+    omitted the field, the ``"rule"`` default then disagreed with the
+    predicate, and each one was skipped over a value nobody needed to
+    supply. One retry could not help, because the answer was not wrong —
+    the question was.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -43,13 +58,17 @@ class Hypothesis(BaseModel):
     predicate: PredicateName
     params: dict[str, ParamValue] = {}
     columns: list[str] = []  # "view.column" references grounding the rule
-    kind: str = "rule"  # "rule" | "concept"
     term: str | None = None  # concept only
     definition: str | None = None  # concept only
     scope: HypothesisScope | None = None
     valid_from: str | None = None
     valid_to: str | None = None
     rationale: str  # why the profiles suggest this — logged, never stored on the claim
+
+    @property
+    def kind(self) -> str:
+        """Derived, never asked for: concept iff the predicate says so."""
+        return "concept" if self.predicate == CONCEPT_PREDICATE else "rule"
 
 
 class HypothesisBatch(BaseModel):

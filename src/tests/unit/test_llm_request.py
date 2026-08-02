@@ -314,15 +314,18 @@ class TestClassification:
 
 
 def test_the_shipped_fixture_matches_the_shipped_guide():
-    """The hand-authored corpus fixture is only as good as its input hash;
-    the drift guard in the corpus suite owns that. Here: it is well-formed
-    and honest about not having been recorded live yet."""
+    """The corpus fixture is only as good as its input hash; the drift
+    guard in the corpus suite owns that. Here: it is well-formed, and it
+    is a real recording — this contract answered a live model for the
+    first time on 2026-08-02, so the hand-authored placeholder is gone and
+    must not come back without someone saying why."""
     from pathlib import Path
 
     path = (Path(__file__).resolve().parents[1] / "fixtures" / "llm"
             / "request__corpus.json")
     entry = json.loads(path.read_text(encoding="utf-8"))
-    assert entry["recorded_at"] == "hand-authored"
+    assert entry["recorded_at"] != "hand-authored"
+    assert entry["source_log"].endswith(".json")
     guide = load_domain_guide(packaged("finance"))
     draft = AnswerRequestDraft.model_validate_json(entry["response_text"])
     assert check_classification(draft, guide) is None

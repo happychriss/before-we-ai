@@ -193,10 +193,16 @@ def test_no_figure_was_ever_linked_to_a_rule_item(read):
     """Every link in this run came from a policy sentence, none from a
     number — which is the multi-anchor rule doing its job."""
     _root, _guide, report, store = read
+    from before_we_ai.core.objects import ConceptClaim
+
+    # The property, not the wording: a link may only come from a policy
+    # sentence stating a rule, never from a figure. Pinning the sentences
+    # themselves would make this test about how the model phrases things,
+    # which is exactly what it must not depend on.
     linked_claims = {claim_id for _ref, claim_id in report.links}
+    assert linked_claims
     for claim_id in linked_claims:
-        assert store.claims[claim_id].statement.startswith(
-            ("Credit amounts", "Revenue is"))
+        assert isinstance(store.claims[claim_id], ConceptClaim)
 
 
 # The V3 half of THE drift guard. Contract lane as well as acceptance, so a

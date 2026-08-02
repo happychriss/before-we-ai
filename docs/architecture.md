@@ -443,6 +443,36 @@ instead of merely detected.
   raised. Outcomes: ok / retried_ok / repaired_ok / partial / failed.
   LESSON (first real runs): schemas stay purely structural — every item-level
   or cross-field rule lives in the semantic layer, or one bad item kills 60.
+### Shape errors we correct, and the record we leave (V2)
+
+Owner decisions, 2026-08-02, taken in two steps and in the same spirit:
+**have some flexibility, and document these cases.** A binding the model
+shaped wrongly used to be lost entirely; now the unambiguous shapes are
+read as intended and every correction is written to the store as a
+`param_normalized` declaration and rendered at the claim. Leniency without
+a trace is the too-loose-law failure in miniature — a binding the model may
+have misunderstood runs, passes, and promotes, with nothing saying we
+changed it.
+
+The complete list of what is corrected, and each one's refusal:
+
+| written | read as | refused when |
+|---------|---------|--------------|
+| a **column** param qualified with its own view (`v.c`) | the bare column `c` | the prefix is not that param's view |
+| a **view** param naming a column (`v.c` where a view belongs) | the view `v` | the head is not a view we know |
+| a **required view param that is absent** | the view every qualified column of that param names | the columns name more than one view, or none |
+
+The third is the widest and carries the sharpest limit: **unanimity, or
+nothing**. Where the columns disagree about which table they sit on, the
+model did not know what it meant and neither do we, so the binding fails
+as before. That case has its own test
+(`test_columns_that_disagree_are_a_confusion_not_a_majority`).
+
+What the corpus showed when the corrections became visible is worth
+keeping: column normalization had been happening **silently since M4**.
+Only the view-param case was ever apparent, and only as a failure. The
+decision revealed far more existing leniency than it added.
+
 - **Model output is untrusted input**: planning-time checks cover param value
   shapes (lists, int-able accounts), bare identifiers vs `*_expr`/`*where`,
   no pre-aggregation in expressions (templates SUM for themselves), and

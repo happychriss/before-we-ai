@@ -4,7 +4,7 @@
  "input_sha256": "8df12030ff72dbd3aeb83e28aabe86ceeac0cb105a2721f54c4312c39cb3042e",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",
- "recorded_at": "hand-authored",
- "source_log": "none — hand-authored before the first V3 online run, per stub.py; replace it with a recorded answer at the next refresh_fixtures run",
- "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"rabattvertrag:p1:0\",\n      \"quote\": \"Jahresvolumen > EUR 500.000 je Kundengruppe -> 2% Retroaktivrabatt.\",\n      \"reads_as\": \"definition\",\n      \"statement\": \"Customer groups above EUR 500,000 annual volume earn a 2% retroactive rebate.\",\n      \"term\": \"retroactive rebate\",\n      \"definition\": \"2% on annual volume above EUR 500,000 per customer group\",\n      \"value\": null,\n      \"answers\": null,\n      \"rationale\": \"the contract states the threshold and the rate\"\n    }\n  ]\n}\n"
+ "recorded_at": "20260802T105301Z_v3_documents_01KZ11P42JJDVCVC9AN6TWWEWM.json",
+ "source_log": "/tmp/refresh-1go1t1w6/project/cache/llm_log/20260802T105301Z_v3_documents_01KZ11P42JJDVCVC9AN6TWWEWM.json",
+ "response_text": "{\"findings\": [{\"chunk_id\": \"rabattvertrag:p1:0\", \"quote\": \"Jahresvolumen > EUR 500.000 je Kundengruppe -> 2% Retroaktivrabatt.\", \"reads_as\": \"figure\", \"statement\": \"An annual volume exceeding EUR 500.000 per customer group yields a 2% retroactive rebate.\", \"rationale\": \"States the volume threshold figure.\", \"value\": \"500.000\"}]}"
 }

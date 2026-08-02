@@ -122,20 +122,12 @@ def _string_values(value) -> list[str]:
 def check_hypothesis(h: Hypothesis, index: ProfileIndex) -> list[str]:
     errors = []
     spec = PREDICATES[h.predicate]
-    if h.kind not in ("rule", "concept"):
+    # kind is derived from the predicate, so it can no longer disagree with
+    # it. What is left to check is that a concept says what it defines.
+    if h.kind == "concept" and not (h.term or "").strip():
         errors.append(
-            f"hypothesis {h.statement!r}: kind must be 'rule' or 'concept', "
-            f"got {h.kind!r}"
-        )
-    if (h.kind == "concept") != (h.predicate == "concept_definition"):
-        errors.append(
-            f"hypothesis {h.statement!r}: kind {h.kind!r} does not fit "
-            f"predicate {h.predicate!r} (concepts use concept_definition)"
-        )
-    if h.kind == "concept" and not (h.term and h.definition):
-        errors.append(
-            f"hypothesis {h.statement!r}: a concept hypothesis requires "
-            "term and definition"
+            f"hypothesis {h.statement!r}: a concept hypothesis must name the "
+            "term it defines"
         )
     keys = set(h.params)
     for missing in sorted(spec.required_params - keys):
@@ -184,7 +176,11 @@ def hypothesis_to_claim(h: Hypothesis, index: ProfileIndex) -> Claim:
             validity=validity,
             source_ids=source_ids,
             term=h.term,
-            definition=h.definition,
+            # A model that names the term and then writes the definition as
+            # its statement has said the same thing twice, not left something
+            # out. Falling back costs nothing and rescues an otherwise
+            # complete hypothesis.
+            definition=(h.definition or h.statement).strip(),
         )
     return create_claim(
         h.statement,
@@ -498,7 +494,7 @@ def _check_stated_value(f: DocumentFinding) -> list[str]:
     3,200,000" — but a reading can be checked, and an unchecked one would
     be a free hand to point an anchor at any number it liked.
     """
-    from before_we_ai.documents.figures import read_figure
+    from before_we_ai.documents.figures import read_figures
 
     value = (f.value or "").strip()
     if not value:
@@ -507,8 +503,18 @@ def _check_stated_value(f: DocumentFinding) -> list[str]:
     if value not in f.quote:
         return [f"passage {f.chunk_id}: {value!r} is not in the quote it is "
                 "taken from — name the number as the document writes it"]
-    if not read_figure(value).readings:
-        return [f"passage {f.chunk_id}: {value!r} cannot be read as a number"]
+    # One number, not one *bare* number. A real run names "EUR 2,847,000",
+    # which is how the document writes it and how a person would point at
+    # it; demanding bare digits would be a formatting rule with nothing
+    # epistemic behind it. What must hold is that the span names exactly
+    # one figure — "from 1.2m to 3.4m" names two, and then we do not know
+    # which one the finding is about, which is the whole reason this field
+    # exists.
+    figures = [fig for fig in read_figures(value) if fig.readings]
+    if len(figures) != 1:
+        return [f"passage {f.chunk_id}: {value!r} names "
+                f"{'no number' if not figures else 'more than one number'} — "
+                "'value' must point at exactly one figure"]
     return []
 
 

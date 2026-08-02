@@ -106,13 +106,34 @@ class TestFindingShape:
                      value="9,999,999"), chunks, set())
         assert any("is not in the quote" in e for e in errors)
 
-    def test_a_named_number_that_is_no_number_is_refused(self):
+    def test_a_named_span_holding_no_number_is_refused(self):
         chunks = {"policy:p1:0": _Chunk("policy:p1:0", "Revenue was strong.")}
         errors = check_document_finding(
             _finding(reads_as="figure", term=None, definition=None,
                      quote="Revenue was strong.", value="strong"),
             chunks, set())
-        assert any("cannot be read as a number" in e for e in errors)
+        assert any("names no number" in e for e in errors)
+
+    def test_the_currency_may_come_along(self):
+        """A real run names "EUR 2,847,000" — how the document writes it,
+        and how a person would point at it. Demanding bare digits would be
+        a formatting rule with nothing epistemic behind it."""
+        text = "Q3 revenue was EUR 2,847,000."
+        chunks = {"policy:p1:0": _Chunk("policy:p1:0", text)}
+        assert check_document_finding(
+            _finding(reads_as="figure", term=None, definition=None,
+                     quote=text, value="EUR 2,847,000"), chunks, set()) == []
+
+    def test_a_span_naming_two_numbers_is_refused(self):
+        """Which one the finding is about is the whole reason the field
+        exists, so a span that names two settles nothing."""
+        text = "Revenue rose from 1,200,000 to 3,400,000."
+        chunks = {"policy:p1:0": _Chunk("policy:p1:0", text)}
+        errors = check_document_finding(
+            _finding(reads_as="figure", term=None, definition=None,
+                     quote=text, value="from 1,200,000 to 3,400,000"),
+            chunks, set())
+        assert any("more than one number" in e for e in errors)
 
     def test_the_named_number_may_be_any_of_the_ones_in_the_quote(self):
         """Which one a sentence is about is a reading, not a computation:

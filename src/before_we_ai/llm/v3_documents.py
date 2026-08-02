@@ -36,7 +36,7 @@ import duckdb
 
 from before_we_ai.core.enums import Actor, KnowledgeKind
 from before_we_ai.core.objects import ClarificationQuestion
-from before_we_ai.documents.figures import read_figure
+from before_we_ai.documents.figures import read_figures
 from before_we_ai.documents.index import load_chunks, retrieve
 from before_we_ai.documents.reconcile import corroborate, ground_definition
 from before_we_ai.llm.call_log import CallLogger
@@ -244,7 +244,7 @@ def _record(store, project, guide, report, finding, chunk, source_id) -> None:
         # The model named the figure and the semantic check confirmed it is
         # in the quote; an ambiguous literal still yields no single value,
         # and then nothing can corroborate it, which is correct.
-        stated = read_figure(finding.value or "").value
+        stated = _stated_value(finding.value or "")
         outcome = (corroborate(anchors, stated) if stated is not None
                    else ground_definition(anchors))
 
@@ -258,6 +258,17 @@ def _record(store, project, guide, report, finding, chunk, source_id) -> None:
     if outcome.may_link and finding.answers:
         _link(store, project, guide, report, finding.answers, kept.id,
               outcome.reason)
+
+
+def _stated_value(value: str):
+    """The one figure the model pointed at, or None if it is ambiguous.
+
+    The semantic check has already established there is exactly one; an
+    ambiguous literal inside it (``500.000``) still yields nothing, and
+    then nothing can corroborate it, which is correct.
+    """
+    figures = [f for f in read_figures(value) if f.readings]
+    return figures[0].value if figures else None
 
 
 def _link(store, project, guide, report, ref, claim_id, note) -> None:
