@@ -22,6 +22,7 @@ from before_we_ai.core.objects import EvidenceRecord, Source
 from before_we_ai.profile.candidates import build_matrix, write_matrix
 from before_we_ai.profile.columns import profile_view
 from before_we_ai.sources.attach import build_catalog, load_specs
+from before_we_ai.sources.discover import DiscoveryResult, discover
 from before_we_ai.store.repository import ProjectStore
 
 
@@ -34,13 +35,23 @@ class ScanResult:
     candidates: int = 0
     matrix_path: Path | None = None
     warnings: list[str] = field(default_factory=list)
+    #: What walking `sources/` added to the config before this scan read
+    #: it. Carried on the result rather than logged, because a source
+    #: that appeared without anyone declaring it is exactly the kind of
+    #: thing a reader must be told about.
+    discovered: DiscoveryResult = field(default_factory=DiscoveryResult)
 
 
 def scan(root: str | Path) -> ScanResult:
     root = Path(root)
     store = ProjectStore(root)
+    # "Drop files, press scan" becomes literally true here: walk the
+    # drop directory first, merge what is new into the config, and only
+    # then read it. Merge never overwrites, so a hand-authored entry is
+    # safe and re-running adds nothing twice.
+    discovered = discover(root)
     specs = load_specs(root)
-    result = ScanResult()
+    result = ScanResult(discovered=discovered)
 
     (root / "cache").mkdir(exist_ok=True)
     con = duckdb.connect(str(root / "cache" / "analysis.duckdb"))

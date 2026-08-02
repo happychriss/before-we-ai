@@ -24,3 +24,31 @@ from pathlib import Path
 def packaged(name: str) -> Path:
     """The path of a shipped domain pack, e.g. ``packaged("finance")``."""
     return Path(str(files(__package__) / f"{name}.yaml"))
+
+
+def available() -> list[str]:
+    """Every shipped pack, by the name a config may use."""
+    return sorted(p.stem for p in Path(str(files(__package__))).glob("*.yaml"))
+
+
+def resolve_guide(declared: str, root: Path | None = None) -> Path:
+    """What ``llm.domain_guide_file`` points at — a pack name or a path.
+
+    A bare name (``finance``) means the pack we ship; anything with a
+    separator or a suffix is the customer's own file, resolved against
+    their project. **A real file always wins**: if a project happens to
+    contain `finance` on disk, that is theirs and we do not shadow it.
+
+    The two are deliberately not the same kind of thing. A shipped pack is
+    our vocabulary, versioned with the code; a project guide is the
+    customer's data, and `discover(root)` hands a new project one of ours
+    to start from precisely so they can then make it their own.
+    """
+    path = Path(declared)
+    candidate = path if path.is_absolute() or root is None else root / path
+    if candidate.is_file():
+        return candidate
+    if path.suffix or len(path.parts) > 1:
+        return candidate  # meant as a path; let the caller report it missing
+    bundled = packaged(declared)
+    return bundled if bundled.is_file() else candidate

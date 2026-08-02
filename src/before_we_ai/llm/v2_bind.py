@@ -21,6 +21,7 @@ from pathlib import Path
 
 from before_we_ai.llm.call_log import CallLogger
 from before_we_ai.llm.client import BatchRepair, LLMClient, LLMResult, call_with_retry
+from before_we_ai.domains import resolve_guide
 from before_we_ai.llm.config import LLMConfig, build_client
 from before_we_ai.llm.inputs import (
     build_binding_context,
@@ -84,7 +85,8 @@ def propose_mappings(
                 "no domain guide: pass roles= or set llm.domain_guide_file "
                 "in before-ai.yaml"
             )
-        roles = load_domain_guide(root / config.domain_guide_file)
+        roles = load_domain_guide(
+            resolve_guide(config.domain_guide_file, root))
 
     built = build_role_context(store, load_matrix(root), roles)
     index = ProfileIndex(store)

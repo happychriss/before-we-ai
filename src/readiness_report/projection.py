@@ -35,6 +35,7 @@ from before_we_ai.core.objects import (
     Source,
 )
 from before_we_ai.core.semantics import gap_load
+from before_we_ai.domains import resolve_guide
 from before_we_ai.glossary import GLOSSARY
 from before_we_ai.llm.domain_guide import (
     DomainGuide,
@@ -801,8 +802,10 @@ def _guide_path(root: Path, config: dict) -> Path | None:
     declared = (config.get("llm") or {}).get("domain_guide_file")
     if not declared:
         return None
-    path = Path(declared)
-    return path if path.is_absolute() else root / path
+    # A bare name is one of the packs we ship; anything else is the
+    # customer's own file. `resolve_guide` owns that distinction so the
+    # report and V2 can never disagree about which guide is in play.
+    return resolve_guide(declared, root)
 
 
 def _load_guide_shape(root: Path, config: dict) -> GuideShape:
