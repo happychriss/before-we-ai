@@ -56,7 +56,13 @@
    then follow the `next:` line each stage prints. Every stage rebuilds
    `validation/data/report/index.html` — leave a tab open on it.
    `validation/README.md` says what to look for and the numbers to expect.
-2. **M5 — documents & V3. FEATURE-COMPLETE 2026-08-02.** PDF pipeline,
+2. **M5 — documents & V3. DONE 2026-08-02 — nothing in it is unbuilt, and
+   nothing found while finishing it is still open.** All four leftovers are
+   closed with tests (see "Found while finishing M5" below); two of them
+   turned out to be covering a live false-promotion path and three
+   unguarded fixtures. What is left is not code: item 1 above, and the
+   spec's `:42` run against real data whose truth the owner knows (stated
+   under decision B below). PDF pipeline,
    position anchors, DuckDB FTS, multi-anchor reconciliation, `tell` +
    mirror loop. Acceptance: T8 negatives and a real PDF — every PDF it
    needs is in the frozen corpus (`src/corpus/data/`, including `noise/`).
