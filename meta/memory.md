@@ -361,6 +361,27 @@ findings, none of them about correctness:
    `de_erp__territory_plz` appears as both sides of its own range question,
    which reads as a bug even where it is not.
 
+**Where each fix lands — this is not all one layer, and the difference
+decides who may make the change.** A clarification question is not a view:
+its wording is authored by the engine and **stored** in `questions/` as a
+`ClarificationQuestion` (three authors: `engine/runner.py::_draft_question`,
+`llm/domain_guide.py` for role cards, `llm/v3_documents.py` for document
+refusals). Editing that wording rewrites project data, and old cards keep
+their old text — it is a re-record-shaped change, not a re-render.
+
+- **(1) magnitude** — belongs in the stored question. The exception counts
+  are on the evidence at the moment the card is written, so the sentence
+  can carry them; nothing downstream can add them later without going back
+  to the evidence.
+- **(2) priority** — pure presentation. `gap_load()` is a derivation over
+  claims and cards; nothing is stored, so this is the report/UI layer
+  alone.
+- **(3) candidates in the question** — presentation. The card already
+  holds the candidates as `claim_ids`; a list view can expand them.
+- **(4) duplicates** — presentation, per owner 2026-08-02. Two directions
+  of one law are one decision for a reader; collapse them in the UI rather
+  than suppressing a card the engine was right to write.
+
 What is genuinely good: the role questions carry the guide's definition
 and say *why* no check can settle them ("what the data means is a business
 fact, not an arithmetic one"), which is exactly the sentence an analyst
