@@ -48,6 +48,11 @@ GLOSSARY: list[tuple[str, str]] = [
      "call; its result is stored as evidence"),
     ("evidence", "an append-only record: check result, human confirmation, "
      "verbatim testimonial, document anchor, or declaration"),
+    ("stale", "marks a piece of evidence that no longer describes the data: "
+     "either a later run replaced it, or what it read has changed since. "
+     "Stale evidence stops counting towards any status — set when the "
+     "sources are read again, never un-set, because freshness is earned by "
+     "producing a new reading, not by editing an old one"),
     ("domain law", "a conservation law of one domain, written as code and "
      "shipped with that domain's pack — decides which candidate wins a "
      "business object, and settles its slot fields with the columns the "

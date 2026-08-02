@@ -13,7 +13,9 @@
   confirms) · **the outer-layer refactor** (`meta/refactor-workorder.md`,
   all seven PRs) · **M5 documents & V3** (PDF pipeline, anchors,
   multi-anchor reconciliation, `tell` + mirror loop; complete 2026-08-02,
-  all four finish-line leftovers closed with tests).
+  all four finish-line leftovers closed with tests) · **M7.1 staleness**
+  (flagging + replay; the store now notices when its data moves —
+  `docs/architecture.md` → "Staleness").
 - **The road ahead is consolidated** (owner decision 2026-08-02): M7
   makes the engine consumer-ready, M8 builds the end-user GUI on the M7
   projection, M9 computes the answer (V4 + Assumption Capture). Scope per
@@ -63,15 +65,15 @@ claim vocabulary.
 
 1. **M7 — consumer-ready engine.** Everything the GUI needs, proven before
    the first UI commit. Scope:
-   - **Staleness, both halves** (flagging + replay). `source_fingerprints`
-     is written on every check result and read by nobody; document anchors
-     have the same gap (a quote can go silently untrue). Acceptance per
-     spec :69: mutate the corpus by seed → flags propagate into question
-     cards → rerun clears them. Known friction to resolve on the way:
-     the offline walkthrough's `3c` refuses to run twice (replay answers
-     are keyed to the first run's claim labels) — live rebinding has no
-     such limit, and M7's rerun loop is where the difference must become
-     explicit instead of folklore.
+   - ~~**Staleness, both halves** (flagging + replay).~~ **DONE
+     2026-08-02** — `before_we_ai/staleness.py`, design in
+     `docs/architecture.md` → "Staleness". Acceptance per spec :69 runs in
+     `tests/corpus_driven/test_staleness_replay.py`. What it cost that the
+     plan did not foresee: `table_fingerprint` was blind to a value edited
+     in place (row count / schema / max date all unchanged), so it gained a
+     `content_hash`; and the 3c friction turned out not to be a bug to fix
+     but a rule to state — measuring and judging stages are re-runnable,
+     offline *proposal* stages are not, and 3c now says so when it refuses.
    - **Second answer type** (receivables — `subledger_ar` sits ready).
      One type makes classification vacuous and "not on this path" untestable.
    - **Request lifecycle**: supersession/revisions (the mockup's
@@ -92,6 +94,18 @@ claim vocabulary.
    - **Two small acts the mockup demands**: "I don't know" (a defer act, so
      a seen-but-undecidable question stops ranking as unseen) and
      `Source.description` (the human sentence the UI shows per source).
+   - **Document screening that reads tables as tables** (owner decision
+     2026-08-02, added mid-M7 — "remember the layout drama"). Plain text
+     extraction turns a table into a run of loose words, so a figure that
+     lives in a cell is either not a passage a quote can anchor to, or
+     anchors to a line that means something else. Evaluate pymupdf4llm /
+     Docling, decide one, and make table passages first-class: structure
+     carried on the chunk, quote validation that works against it, the
+     three anchor kinds actually distinguishable. **Constraints**: offline,
+     pinned, and *deterministic chunk ids* — offline replay, the drift
+     guard and the staleness chunk digests all rest on identical bytes
+     giving identical chunks. Acceptance: the corpus table figures become
+     anchorable and F23 (chart-only) still refuses.
    - **Guide-builder integration**: their output loads through the existing
      guide seam (schema, lint, fingerprint, confirmation lapse). Integration
      item only — their code stays theirs.
@@ -113,8 +127,10 @@ claim vocabulary.
    - `scripts/` ops tools + Typer CLI verbs → **M8** (they ride packaging;
      `with-api-key.sh` exists already);
    - spec `:42` real-data run → **M8 acceptance** (owner decision);
-   - layout-analyser evaluation (pymupdf4llm / Docling) → unscheduled,
-     after M8 at the earliest — extraction quality, not epistemics;
+   - layout-analyser evaluation (pymupdf4llm / Docling) → **M7** (owner
+     decision 2026-08-02, moved here from unscheduled: extraction quality
+     turns out to gate what can be anchored at all, so it is not merely
+     downstream polish);
    - Seeded-Recall metric split → unscheduled; eval-script only, do it
      with the next recording session rather than as its own errand;
    - acceptance-kit holds/violated fixtures for the three finance laws →

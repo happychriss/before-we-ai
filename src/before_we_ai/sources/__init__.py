@@ -10,7 +10,13 @@ from before_we_ai.sources.attach import SourceSpec, build_catalog, load_specs, o
 from before_we_ai.sources.discover import DiscoveryResult, discover
 from before_we_ai.sources.canonical import canonical_sql_expr, canonicalize, canonical_text
 from before_we_ai.sources.excel import read_workbook, sheet_to_parquet
-from before_we_ai.sources.fingerprint import file_fingerprint, schema_hash, table_fingerprint
+from before_we_ai.sources.fingerprint import (
+    content_hash,
+    file_fingerprint,
+    schema_hash,
+    table_fingerprint,
+    text_fingerprint,
+)
 
 __all__ = [
     "DiscoveryResult",
@@ -20,6 +26,7 @@ __all__ = [
     "canonical_sql_expr",
     "canonical_text",
     "canonicalize",
+    "content_hash",
     "file_fingerprint",
     "load_specs",
     "open_catalog",
@@ -27,4 +34,5 @@ __all__ = [
     "schema_hash",
     "sheet_to_parquet",
     "table_fingerprint",
+    "text_fingerprint",
 ]

@@ -50,6 +50,7 @@ from before_we_ai.readiness import (
     evaluate_request,
     guide_label,
 )
+from before_we_ai.staleness import current_stamps, why_stale
 from before_we_ai.stages import (
     BOUNDARY_BEFORE,
     BOUNDARY_TEXT,
@@ -1662,6 +1663,23 @@ def _build_domain_pack(root: Path, config: dict) -> DomainPackView:
     )
 
 
+def _stale_reasons(store: ProjectStore) -> dict[str, str]:
+    """One sentence per stale record, derived once for the whole report.
+
+    "stale: true" is a fact about our bookkeeping; *why* is the fact about
+    the reader's data. The two are told apart in `staleness.why_stale` —
+    a later run replaced this reading, or the data it read moved — and
+    neither is stored, so the report is where the distinction has to be
+    made legible.
+    """
+    stamps = current_stamps(store.sources.values())
+    return {
+        record.id: why_stale(record, store, stamps)
+        for record in store.evidence.values()
+        if record.stale
+    }
+
+
 def _declarations_by_key(
     records: Iterable[EvidenceRecord],
 ) -> dict[tuple[str, str, str], list[EvidenceRecord]]:
@@ -2069,6 +2087,7 @@ def _build_evidence(
     claims: dict[str, Claim],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
     checks: dict[str, CheckPlan],
+    stale_reasons: dict[str, str],
 ) -> EvidenceView:
     details = [
         ("id", record.id),
@@ -2077,6 +2096,8 @@ def _build_evidence(
         ("created_at", record.created_at.isoformat()),
         ("stale", str(record.stale).lower()),
     ]
+    if record.stale and stale_reasons.get(record.id):
+        details.append(("why stale", stale_reasons[record.id]))
     if record.claim_id:
         linked = claims.get(record.claim_id)
         details.append(
@@ -2391,6 +2412,7 @@ def _build_claim(
     reverse_derived: dict[str, list[Claim]],
     declarations_by_key: dict[tuple[str, str, str], list[EvidenceRecord]],
     rationale: str | None,
+    stale_reasons: dict[str, str],
 ) -> ClaimView:
     claim = fact.claim
     predicate = claim.predicate.name if claim.predicate else ""
@@ -2470,6 +2492,7 @@ def _build_claim(
             store.claims,
             declarations_by_key,
             store.checks,
+            stale_reasons,
         )
         for record in fact.evidence
     )
@@ -2838,7 +2861,13 @@ def _build_questions(
             QuestionView(
                 id=card.id,
                 question=card.question,
-                finding=card.finding,
+                # A size is a measurement, and a measurement of data that
+                # has since moved must not be shown as if it still held.
+                # The card keeps its number — the reader is told what the
+                # number is worth.
+                finding=(f"{card.finding} — measured before the data moved; "
+                         "nobody has re-run the check since"
+                         if card.stale and card.finding else card.finding),
                 mode=mode,
                 lead=lead,
                 rank=rank,
@@ -3724,6 +3753,7 @@ def build_view_model(
     reverse_depends, reverse_derived = _reverse_claim_links(claims)
     declarations = _declarations_by_key(store.evidence.values())
     rationales = _rationales(root_path, claims, guide.owner)
+    stale_reasons = _stale_reasons(store)
     claim_views = tuple(
         _build_claim(
             facts[claim.id],
@@ -3733,6 +3763,7 @@ def build_view_model(
             reverse_derived,
             declarations,
             rationales.get(claim.id),
+            stale_reasons,
         )
         for claim in claims
     )

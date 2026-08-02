@@ -21,6 +21,7 @@ from before_we_ai.core.objects import (
     Source,
 )
 from before_we_ai.core.transitions import attach_evidence
+from before_we_ai.sources.fingerprint import text_fingerprint
 from before_we_ai.store.repository import ProjectStore
 
 
@@ -157,9 +158,15 @@ class ProposalStore:
         # its own evidence on a re-run makes the trail lie about how much
         # a passage was found, and the count is what corroboration is
         # measured in.
+        #
+        # A *stale* twin is not a duplicate. It is a reading of a passage
+        # that has since changed, and finding the quote again in the
+        # changed passage is a new finding — the one thing that lets a
+        # document survive an edit without a human re-reading it.
         existing = self.__store.evidence_for(self.__store.claims[claim_id])
         for known in existing:
             if (known.type is EvidenceType.DOCUMENT_ANCHOR
+                    and not known.stale
                     and known.payload == payload):
                 return known
         record = EvidenceRecord(
@@ -167,9 +174,23 @@ class ProposalStore:
             actor=Actor.AI,
             claim_id=claim_id,
             payload=payload,
+            source_fingerprints=self.__chunk_stamp(source, chunk_id, chunk_text),
         )
         self.__attach(record)
         return record
+
+    def __chunk_stamp(self, source: str, chunk_id: str, chunk_text: str) -> dict:
+        """What this anchor was read from, so staleness can tell it moved.
+
+        The passage, not the file: an anchor's claim is that a quote sits
+        in *this* passage, so editing page seven must leave a quote from
+        page two alone. Written here rather than by the caller, for the
+        same reason the quote is validated here — a stamp the model layer
+        could forget is a stamp that silently stops being written, and
+        then a rewritten policy never lapses.
+        """
+        return {source: {"kind": "chunk", "chunk_id": chunk_id,
+                         "sha256": text_fingerprint(chunk_text)}}
 
     def declare(self, claim_id: str, payload: dict[str, object]) -> None:
         """Attach one SYSTEM declaration, which cannot promote its claim."""

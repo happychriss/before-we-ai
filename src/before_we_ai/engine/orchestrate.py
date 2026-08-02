@@ -19,6 +19,7 @@ import duckdb
 
 from before_we_ai.core.objects import EvidenceRecord
 from before_we_ai.core.scheduler import ready_for_check, topological_order
+from before_we_ai.staleness import StalenessReport, refresh_questions
 from before_we_ai.store.repository import ProjectStore
 
 from before_we_ai.engine.runner import run_check
@@ -28,6 +29,9 @@ from before_we_ai.engine.runner import run_check
 class RunReport:
     executed: list[EvidenceRecord] = field(default_factory=list)
     skipped: list[tuple[str, str]] = field(default_factory=list)  # (check_plan_id, reason)
+    #: What this sweep settled about freshness — which question cards it
+    #: put a live reading back under, and which readings it outran.
+    stale: StalenessReport = field(default_factory=StalenessReport)
 
 
 def run_ready(
@@ -56,4 +60,13 @@ def run_ready(
             report.skipped.append(
                 (check.id, f"execution error ({type(exc).__name__}): {exc}")
             )
+
+    # The other half of staleness: flagging tells a reader their answer
+    # rests on data that moved, and this is where taking their data
+    # seriously pays off. A sweep is the only thing that can put a live
+    # reading back under a question card, so the card's flag is settled
+    # here — in both directions. Only the cards: the fingerprint half
+    # belongs to the seams that re-read the sources (see
+    # `staleness.refresh_questions`).
+    report.stale = refresh_questions(store)
     return report

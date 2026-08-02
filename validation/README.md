@@ -53,10 +53,19 @@ prompts. An output you cannot trace back to its input is an assertion, not
 evidence; for LLM steps the exact bytes sent are in the call log with their
 sha256 (`llm-log.sh <#>`).
 
-Rerunning `3a` and `3b` is safe (claim-key dedup catches everything), and `5`
-is idempotent. `3c` refuses to run twice: the offline replay answers are keyed
-to the first run's claim labels, so a re-bind would misapply them — run
-`reset.sh` and walk through again instead.
+**What may be re-run, and why the line falls where it does.** The stages that
+*measure* (`2a`, `2c`) and the one that *judges* (`4`) are re-runnable by
+design — that is the staleness loop: change a source file, re-scan, and the
+readings taken against the old data stop counting; run `4` again and they are
+settled against the data as it now is. Rerunning `3a` and `3b` is safe too
+(claim-key dedup catches everything), and `5` is idempotent.
+
+`3c` refuses to run twice, and the reason is worth knowing: offline, a
+recording answers the one input it was recorded for, and after binding the
+unbound set has shifted, so the recorded answers would land on the wrong
+claims. That is a property of *replay*, not of the engine — run online and
+`3c` binds whatever is unbound at the time. For a fresh offline pass:
+`reset.sh` and walk through again.
 
 ### Stage 0 — the declared inputs
 
@@ -121,7 +130,18 @@ Three things to look at:
 ### Stage 2a — scan
 
 Look at: the **source list** (12 sources — this is what drives everything
-downstream), the views with row counts, the normalization declarations.
+downstream), **what moved under us since the last read**, the views with row
+counts, the normalization declarations.
+
+On a first run the staleness section says "nothing", and it says it out loud
+rather than staying silent — a line that only appears when something is wrong
+teaches you to skim past the place where it would have appeared. Edit one of
+the source files and re-run this stage to see the other half: each reading
+that no longer describes the data is named with the reason ("values in
+`de_erp__gl_postings` have changed since this ran"), the claims that rested on
+them fall back to what the remaining evidence supports, and the question cards
+that carried a measurement admit it is out of date. Stage 4 settles them
+again.
 Good: all 6 data sources became `<source>__<table>` views; 260 column profiles;
 the 6 documents are not scanned here — they belong to 2c, so that one source
 has one owner writing one shape of fingerprint;
@@ -165,6 +185,15 @@ the one to watch in 3d.
 **Claims created: 0.** Reading a document is measurement, exactly like
 profiling a column. What the text says is proposed one stage later, where
 nothing can promote itself.
+
+Re-reading a *changed* document does two things here. Every anchor whose
+passage was rewritten is flagged — per passage, not per file, so editing page
+seven leaves a quote from page two alone. Then each flagged anchor gets one
+deterministic second look: if the exact quote is still there, it is anchored
+again without a model call ("N quote(s) survived the edit word for word"). A
+quote that is gone keeps its flag, and the claim visibly loses its
+documentary support — which is the point, because a quote can go silently
+untrue and nothing else in the system would notice.
 
 ### Stage 3a — hypotheses
 

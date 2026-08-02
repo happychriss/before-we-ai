@@ -168,6 +168,33 @@ def _offline() -> bool:
 # ---------------------------------------------------------------- stages
 
 
+def _staleness(report) -> None:
+    """What re-reading the sources cost the readings taken before it.
+
+    Printed on a first run too, saying plainly that there was nothing to
+    outrun. A line that only appears when something is wrong teaches a
+    reader to skim past the place where it would have appeared.
+    """
+    section("what moved under us since the last read")
+    if not report.flagged:
+        print("  nothing — every reading on record still describes the data "
+              "it was taken from")
+        return
+    print(f"  {len(report.flagged)} reading(s) no longer describe the data:")
+    for _record_id, reason in report.flagged[:5]:
+        print(f"    {reason}")
+    if len(report.flagged) > 5:
+        print(f"    … and {len(report.flagged) - 5} more")
+    if report.claims_rederived:
+        print(f"  {len(report.claims_rederived)} claim(s) fell back to what "
+              "the remaining evidence supports")
+    if report.questions_flagged:
+        print(f"  {len(report.questions_flagged)} question card(s) now say "
+              "their finding is out of date")
+    print("  run the checks again (stage 4) to settle them against the data "
+          "as it is now")
+
+
 def stage_scan(args) -> None:
     """Stage 2a — the data describes itself. No model involved."""
     need_project()
@@ -176,8 +203,10 @@ def stage_scan(args) -> None:
         f"{(PROJECT / 'before-ai.yaml').relative_to(REPO)}",
         "NO LLM: ingestion, canonicalization and profiling are deterministic",
     )
-    scan(PROJECT)
+    result = scan(PROJECT)
     store = ProjectStore(PROJECT)
+
+    _staleness(result.stale)
 
     section("views in the catalog (cache/analysis.duckdb)")
     con = open_catalog(PROJECT)
@@ -246,6 +275,10 @@ def stage_documents(args) -> None:
         f"{(PROJECT / 'cache' / 'analysis.duckdb').relative_to(REPO)}",
     )
     result = read_documents(PROJECT)
+    _staleness(result.stale)
+    if result.revalidated:
+        print(f"  {result.revalidated} quote(s) survived the edit word for word "
+              "and were anchored again")
     section("documents read — what is in them, not what they mean")
     if not result.profiles_written:
         print("  no documents declared for this project")
@@ -416,11 +449,19 @@ def stage_mappings(args) -> None:
 def stage_plans(args) -> None:
     store = need_project()
     if store.checks:
-        # Offline fixture answers are keyed to the FIRST run's claim labels;
-        # after binding, the unbound set (and so the labels) shifts and the
-        # recorded answers would land on the wrong claims.
-        sys.exit(f"{len(store.checks)} checks already exist — binding ran. "
-                 "For a fresh pass run 0-reset.sh and start over.")
+        # The rule, stated once so it stops being folklore: the stages that
+        # only measure or judge (2a, 2c, 4) are re-runnable by design —
+        # staleness depends on it. The stages that *propose* are not, when
+        # they are replayed offline: a recording answers the input it was
+        # recorded for, and after binding the unbound set has shifted, so
+        # the recorded answers would land on the wrong claims. This is a
+        # property of replay, not of the engine — run online and 3c binds
+        # whatever is unbound at the time.
+        sys.exit(f"{len(store.checks)} checks already exist — binding ran.\n"
+                 "Offline, a proposal stage runs once: its recorded answers "
+                 "belong to that\none input. Measurement and checks (2a, 2c, "
+                 "4) may be re-run as often as you\nlike — that is the "
+                 "staleness loop. For a fresh pass: reset.sh and start over.")
     unbound = [c for c in store.claims.values() if c.created_by is Actor.AI]
     n_roles = sum(isinstance(c, MappingClaim) for c in unbound)
     inputs(

@@ -277,17 +277,26 @@ sql:        (kept verbatim on the record)
 ```
 
 Evidence is never edited or deleted; the one permitted mutation is marking
-a record stale when the source data changed underneath it. Five evidence
-types exist: check result, document anchor, confirmation, testimonial,
-declaration — and only check results and human confirmations can ever
-promote a claim.
+a record **stale** when the source data changed underneath it
+[`staleness.py`]. Every reading carries a fingerprint of what it read, and
+the next time the sources are read those fingerprints are compared: a
+reading that no longer describes the data stops counting towards any
+status, and the claims that rested on it fall back to what is left. The
+flag is never taken off — you get freshness back by running the check
+again, not by editing the old record. Five evidence types exist: check
+result, document anchor, confirmation, testimonial, declaration — and only
+check results and human confirmations can ever promote a claim.
+
+What a *person* said is exempt. A testimonial does not expire because a
+table changed, and a business confirmation does not expire at all from
+data moving: moving data is not an argument.
 
 ---
 
 ## Evidence changes what the system may believe
 
 The evidence is used to reassess the claim — this is **status
-resolution** [`resolve_status` in `model/transitions.py`], and it is the
+resolution** [`resolve_status` in `core/transitions.py`], and it is the
 epistemic heart of the machine:
 
 - check supports the claim → **test-supported**
@@ -306,7 +315,7 @@ A check never directly proves a mapping and never creates the answer. It
 produces evidence; the evidence changes what the system is allowed to
 believe. Status is *derived* from the evidence list, never hand-set — and
 structurally, the AI cannot author promoting evidence (a validator in
-`model/objects.py` forbids it). That is why the false-promotion rate is
+`core/objects.py` forbids it). That is why the false-promotion rate is
 zero by construction, not by luck.
 
 In the corpus this decided the journal election: the real general ledger
@@ -479,9 +488,13 @@ Every run is measured against it:
 
 ## What comes next?
 
-- **M5 — documents**: read the policy PDFs, back figures with source
-  anchors; the poisoned figures in the divested-unit press release must
-  not get through. It is also what the three unsupported *rules* in the
-  readiness map above are waiting for — a sign convention lives in a
-  policy, not in a column.
-- M7 staleness propagation, M8 packaging.
+Documents (M5) and staleness (M7) are built — the walkthrough above runs
+them. What is still ahead:
+
+- **M7, the rest**: a second answer type, revisions of a question that has
+  already been asked, a projection that speaks the reader's words instead
+  of ours, and document screening that reads a table as a table rather
+  than as a run of loose words.
+- **M8** — the end-user surface on top of that projection, plus packaging.
+- **M9** — computing the answer itself: generating the SQL, and capturing
+  every assumption it had to make.

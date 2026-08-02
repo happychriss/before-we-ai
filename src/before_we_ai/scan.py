@@ -10,6 +10,12 @@ measurement, and measurement cannot promote anything.
 Idempotent: re-scanning refreshes profiles and matrix in place (stable
 IDs per source/table/column) and appends declarations only for decisions
 not already on record for the same source fingerprint.
+
+Re-scanning is also when the store learns that its data moved: the fresh
+fingerprints are compared against every record that was read from the old
+ones, and what no longer describes the data is marked stale
+(`before_we_ai.staleness`). Measurement still creates no claims — but it
+is allowed to notice that an earlier reading has been outrun.
 """
 
 from dataclasses import dataclass, field
@@ -23,6 +29,7 @@ from before_we_ai.profile.candidates import build_matrix, write_matrix
 from before_we_ai.profile.columns import profile_view
 from before_we_ai.sources.attach import build_catalog, load_specs
 from before_we_ai.sources.discover import DiscoveryResult, discover
+from before_we_ai.staleness import StalenessReport, refresh
 from before_we_ai.store.repository import ProjectStore
 
 
@@ -35,6 +42,11 @@ class ScanResult:
     candidates: int = 0
     matrix_path: Path | None = None
     warnings: list[str] = field(default_factory=list)
+    #: Records whose data moved under them, flagged by this scan. Reported
+    #: rather than silent: a scan that quietly demotes half the claims is
+    #: the kind of surprise a reader has to be told about at the moment it
+    #: happens, not discover in the verdict three stages later.
+    stale: StalenessReport = field(default_factory=StalenessReport)
     #: What walking `sources/` added to the config before this scan read
     #: it. Carried on the result rather than logged, because a source
     #: that appeared without anyone declaring it is exactly the kind of
@@ -114,4 +126,10 @@ def scan(root: str | Path) -> ScanResult:
         result.warnings = list(matrix["warnings"])
     finally:
         con.close()
+
+    # The sources have just been re-fingerprinted, which makes this the one
+    # moment the store can tell that its data moved. Anything read against
+    # the old data stops counting here — before any later stage reads a
+    # status and believes it.
+    result.stale = refresh(store)
     return result

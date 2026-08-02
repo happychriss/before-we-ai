@@ -29,8 +29,10 @@ from before_we_ai.documents.index import (
     retrieve,
     search,
 )
+from before_we_ai.documents.revalidate import revalidate_anchors
 from before_we_ai.sources.attach import load_specs
-from before_we_ai.sources.fingerprint import file_fingerprint
+from before_we_ai.sources.fingerprint import file_fingerprint, text_fingerprint
+from before_we_ai.staleness import StalenessReport, refresh
 from before_we_ai.store.repository import ProjectStore
 
 # The library prints a one-off suggestion to install its layout add-on the
@@ -47,6 +49,7 @@ __all__ = [
     "load_chunks",
     "read_documents",
     "retrieve",
+    "revalidate_anchors",
     "search",
 ]
 
@@ -58,6 +61,13 @@ class DocumentsResult:
     pages: int = 0
     profiles_written: int = 0
     kinds: dict[str, int] = field(default_factory=dict)
+    #: Anchors whose passage changed under them — the document twin of a
+    #: check whose table moved. Reported for the same reason: the reader
+    #: hears it when it happens.
+    stale: StalenessReport = field(default_factory=StalenessReport)
+    #: Stale anchors whose quote is still there, word for word, and which
+    #: this read therefore re-anchored (see `revalidate_anchors`).
+    revalidated: int = 0
 
 
 def read_documents(root: str | Path) -> DocumentsResult:
@@ -78,9 +88,15 @@ def read_documents(root: str | Path) -> DocumentsResult:
         existing = sources_by_name.get(spec.name)
         # Same outer shape as a scanned source ("file" plus what was found
         # inside it), so staleness sees one kind of thing either way.
+        #
+        # A digest per chunk, not a length: an anchor's claim is that a
+        # quote sits in *this* passage, and the passage is what has to be
+        # compared. Editing page seven must not stale a quote from page
+        # two, and rewriting a sentence to the same length must not pass
+        # for unchanged.
         fingerprint = {
             "file": file_fingerprint(path),
-            "chunks": {chunk.id: len(chunk.text) for chunk in chunks},
+            "chunks": {chunk.id: text_fingerprint(chunk.text) for chunk in chunks},
         }
         source = (
             existing.model_copy(update={"fingerprint": fingerprint,
@@ -120,4 +136,11 @@ def read_documents(root: str | Path) -> DocumentsResult:
         result.chunks = build_chunk_index(con, all_chunks)
     finally:
         con.close()
+
+    # Re-reading is the moment a changed document can be noticed, and the
+    # moment a quote that survived the change can be picked back up. Order
+    # matters: flag first against the passages as they now are, then offer
+    # every flagged anchor the chance to prove itself still true.
+    result.stale = refresh(store)
+    result.revalidated = len(revalidate_anchors(store, all_chunks))
     return result

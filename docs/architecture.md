@@ -385,7 +385,8 @@ instead of merely detected.
 - **Tolerances**: defaults per CheckDefinition; overrides ONLY via `before-ai.yaml`
   `tolerances:` (scalar normalized to `{absolute: v}`).
 - **Evidence contract per run**: check_plan_id + rendered exceptions-SQL + summary
-  in payload, source_fingerprints per view, samples ≤20, full exception set →
+  in payload, source_fingerprints per view (read by *Staleness* below),
+  samples ≤20, full exception set →
   `cache/check_runs/<evidence_id>.parquet`. CheckPlan persisted before its
   evidence; integrity checks the references. A `CheckRun` is deliberately NOT a
   persisted object of its own — the check_result evidence record already carries
@@ -400,6 +401,71 @@ instead of merely detected.
 - Normalization is part of the claim: T1 passes canonical, fails with
   `canonical: false` (raw CAST). decode template checks functional dependency,
   not string equality.
+
+## Staleness — when the data moves under a conclusion (`staleness.py`, M7)
+
+The failure this closes: a check passed on Tuesday, somebody corrects a
+posting on Wednesday, and nothing in the store notices. Status still
+test-supported, verdict still ready, evidence still quoting a run over rows
+that are gone. `resolve_status` has always ignored stale evidence — what was
+missing was anybody setting the flag for a reason other than supersession.
+
+- **The stamps** (`sources/fingerprint.py`): every record that rests on data
+  carries what it read. Check results carry a table fingerprint per view,
+  normalization declarations the file digest, document anchors the digest of
+  the *passage* the quote was found in. Testimonials and confirmations carry
+  nothing and are excluded by name in `RESTS_ON_DATA` — deliberately, not by
+  the accident of an empty dict. What a human said stays said when a table
+  changes: a testimonial expires only through a contradicting check (spec
+  :57), a business confirmation not even then.
+- **`content_hash` exists because the other three fields lie by omission.**
+  Row count, schema hash and max date all miss a value edited in place —
+  the ordinary shape of a correction. `bit_xor(md5_number(row::VARCHAR))`:
+  one pass, no sort, and MD5 rather than DuckDB's `hash` so a DuckDB upgrade
+  does not make the whole store look stale. Stated blind spot: XOR cancels
+  two *identical* rows, so deleting an exact duplicate pair moves only
+  `row_count` — which is compared alongside it.
+- **Where it runs.** At the seams that re-read the sources: `scan()` and
+  `read_documents()`, which is the only moment a store that does not watch
+  the filesystem can honestly notice. `run_ready` calls the question-card
+  half only (`refresh_questions`) — a sweep reads the data directly and may
+  well run ahead of the Source records, so judging fingerprints there would
+  flag the sweep's own fresh results.
+- **Stale is one-way.** Evidence is append-only; the single permitted
+  mutation sets the flag and nothing clears it. Freshness is regained by
+  producing a new reading — re-run the check, re-anchor the quote — not by
+  editing an old record. Data moving back to where it was does not
+  rehabilitate a reading nobody took again.
+- **Why the flag says nothing about *why*.** Two causes share it: a later run
+  replaced this reading, or the data moved. `why_stale` derives which,
+  from the trail and the fingerprints, so the record itself stays immutable
+  and the report can still name the table that moved.
+- **What propagates.** Flagging re-derives the cached status of every claim
+  touching a flagged record — the scheduler reads that cache to gate
+  dependent checks, so leaving it behind would run a check on a prerequisite
+  that is no longer supported. Question cards go stale when *every* check
+  result behind their claims is stale, and clear again when a sweep puts a
+  live one back; a card with no check behind it (a question about meaning)
+  is never touched, because data moving is not an answer to it.
+- **Documents: revalidation instead of a model call**
+  (`documents/revalidate.py`). Most edits leave most of a document alone.
+  Every flagged anchor gets one deterministic second look — is this exact
+  quote still in this passage? — and if so a fresh anchor is appended. No
+  model is involved and none may be: this decides whether a string is
+  present, never what it means. A quote that is gone keeps its flag, and the
+  claim visibly loses its documentary support.
+- **Acceptance** (spec :69, `tests/corpus_driven/test_staleness_replay.py`):
+  a seeded correction to a copy of the corpus journal → the passing Z4
+  reading is flagged and the binding falls back → the re-run contradicts it
+  and drafts a card → the correction is reversed → the card says its number
+  is out of date → the re-run clears it. The frozen corpus is never edited;
+  the project works on a copy, and a second test proves it.
+- **Re-runnability, stated once** (it was folklore): measuring and judging
+  stages are re-runnable by design and the loop above depends on it.
+  *Proposal* stages replayed offline are not — a recording answers the input
+  it was recorded for, and after binding the unbound set has shifted. That is
+  a property of replay, not of the engine; online, 3c binds whatever is
+  unbound at the time. The walkthrough's 3c says so when it refuses.
 
 ## LLM contracts (`llm/`)
 
