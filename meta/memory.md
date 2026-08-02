@@ -144,15 +144,43 @@
 
    **Still open in M5** (state as of 2026-08-02, second session):
 
-   1. **Kickoff batch items 1 and 3 — THE ONLY M5 WORK LEFT.**
-      `discover(root)` sources discovery + bundled guides, and mapping
-      claims binding to *generic* templates where a real data property
-      exists (`account` via anti_join against the chart of accounts).
-      Items 2, 4 and 5 landed with the live recording; item 3 was
-      deliberately left out of that session rather than rushed into it.
-      Neither changes prompt bytes on its own, so neither needs a
-      re-record — but item 3 puts more claims in front of V2, which
-      does. Budget one live V2 call, exactly as the `decodes` fix did.
+   1. **Kickoff item 3 — built, measured, REVERTED. Blocked on a real
+      defect it uncovered.** (Item 1, `discover(root)`, is done.)
+
+      Item 3 = role claims may bind to *generic* templates, not only to
+      the three domain laws. Owner decided the safety rule on
+      2026-08-02: **a generic check over a role may refute the binding
+      but never establish it.** Orphaned account ids prove a column is
+      not the account; full coverage proves nothing about meaning —
+      measured, all three corpus `account` candidates cover fully, the
+      CSV decoy included, so promoting on a pass would hand one role
+      three test-supported winners. That decision still stands and
+      should be re-applied when this lands.
+
+      **Why it is not in the tree.** Widening the menu changes the roles
+      prompt, which forces a re-record of `v2_bind__corpus_roles`, and
+      the new answer **lost trap F27**. Not because of the widening: the
+      model bound the decoy journal to `balance` correctly but wrote
+      `amount: CAST(betrag_eur AS DOUBLE)`, validation rejected the
+      expression, the law never ran, and the decoy came out `proposed`
+      instead of `contradicted`.
+
+      **The defect is ours, and the model was right.** `betrag_eur` in
+      the decoy is **VARCHAR** — the corpus stores its amounts as text.
+      Our contract requires a bare column name, so there is no way to
+      say "sum this text column as a number", and the balance law only
+      ever ran on that candidate because the model happened to write the
+      column bare and DuckDB cast it implicitly. **F27 has been caught by
+      luck, not by design, since M4.**
+
+      Re-recording until the model phrases it the lucky way is exactly
+      the tuning the owner forbade, so the recording was reverted whole.
+
+      **Fix this first, then land item 3:** `_prep_balance` (and its
+      siblings) should canonicalize a numeric-looking VARCHAR amount
+      itself — the model names the column, the mechanics are ours, which
+      is the checkability line in `meta/conventions.md`. Expect it to
+      move balance results wherever an amount column is text.
 
    **Done this session (2026-08-02, second):**
    - **Walkthrough re-pinned end to end** — every number above, plus two
