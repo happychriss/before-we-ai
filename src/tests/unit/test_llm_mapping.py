@@ -2,7 +2,13 @@
 paraphrases dedup, and every path is Actor.AI + proposed."""
 import pytest
 
-from before_we_ai.llm.vocabulary import normalize_template_params
+from before_we_ai.llm.prompts import render_template_docs
+from before_we_ai.llm.vocabulary import (
+    TEMPLATE_PARAMS,
+    VALUE_PARAMS,
+    check_template_params,
+    normalize_template_params,
+)
 from before_we_ai.llm.mapping import (
     ProfileIndex,
     proposal_to_check_plan,
@@ -406,3 +412,96 @@ def test_a_view_param_the_model_supplied_is_never_overwritten():
     )
     assert params["journal"] == "us_erp__gl_postings"
     assert [c["param"] for c in corrections] == ["amount"]
+
+
+class TestWhenTheContractItselfMisleads:
+    """The V2 template docs used to close with one sentence: *param values
+    are bare view/column identifiers unless the param name says expression
+    or filter*. Three params hold data rather than names, and none of them
+    is called `*_expr` or `*where` — so by our own rule they had to be
+    identifiers, and the model wrote
+    `accounts: "de_erp__chart_of_accounts"`.
+
+    Four of the five rejected bindings on the corpus were that sentence,
+    including all three `subledger_equals_gl` ones, which is why the only
+    law that can settle a receivables object had never run. Found by the
+    owner reading the store, 2026-08-02.
+
+    Two changes came out of it and both are tested here: the docs now say
+    per param what it holds, and a lone element written without its
+    brackets is read as the one-item list it can only have meant.
+    """
+
+    def test_the_docs_say_what_a_value_param_holds(self):
+        docs = render_template_docs()
+        line = next(l for l in docs.splitlines()
+                    if l.startswith("- subledger_equals_gl"))
+        assert "VALUES: accounts is" in line
+        assert "NOT the chart-of-accounts view" in line
+
+    def test_the_closing_rule_no_longer_claims_to_cover_them(self):
+        """The sentence that caused it. It may still state the default —
+        it may not state it as if there were no exceptions."""
+        closing = render_template_docs().splitlines()[-1]
+        assert "EXCEPT" in closing and "VALUES" in closing
+
+    def test_every_value_param_is_documented_on_every_template_that_takes_it(self):
+        """A param explained on one template and silent on another is the
+        same defect again, one template further along."""
+        docs = render_template_docs()
+        for template, contract in TEMPLATE_PARAMS.items():
+            line = next(l for l in docs.splitlines()
+                        if l.startswith(f"- {template}:"))
+            for param in VALUE_PARAMS:
+                if param in contract.allowed:
+                    assert f"VALUES: {param} is" in line, (template, param)
+
+    def test_a_lone_account_number_is_read_as_a_one_item_list(self):
+        params, corrections = normalize_template_params(
+            "subledger_equals_gl", {"accounts": "1200"},
+            known_views={"de_erp__gl_postings"},
+        )
+        assert params["accounts"] == ["1200"]
+        assert corrections == [{"param": "accounts", "given": "1200",
+                                "read_as": ["1200"]}]
+
+    def test_a_lone_pair_object_is_read_as_a_one_item_list(self):
+        pair = {"part_expr": "substr(code, 1, 2)", "decode_column": "region"}
+        params, _ = normalize_template_params("decode", {"pairs": pair})
+        assert params["pairs"] == [pair]
+
+    def test_a_bare_string_where_objects_belong_is_still_a_confusion(self):
+        """The line that keeps the leniency honest. Wrapping by "it isn't a
+        list" would turn nonsense into well-formed-looking nonsense; the
+        wrap happens only when the value is of the type the list holds."""
+        params, corrections = normalize_template_params(
+            "decode", {"pairs": "region_code"})
+        assert params["pairs"] == "region_code"
+        assert corrections == []
+        assert any("must be a list" in e for e in
+                   check_template_params("decode", params))
+
+    def test_a_view_name_in_accounts_is_refused_and_says_why(self):
+        """The actual corpus answer. Wrapping makes it a well-formed list
+        of one bad element, and the element check is what catches it —
+        naming the value, so a reader can see the model gave a table where
+        numbers belong."""
+        params, _ = normalize_template_params(
+            "subledger_equals_gl", {"accounts": "de_erp__chart_of_accounts"},
+            known_views={"de_erp__chart_of_accounts"},
+        )
+        errors = check_template_params("subledger_equals_gl", params)
+        assert any("must contain account numbers" in e for e in errors)
+        assert any("de_erp__chart_of_accounts" in e for e in errors)
+
+    def test_a_lone_column_still_gets_its_view_prefix_stripped(self):
+        """Order matters: the wrap runs first, so the list branch of the
+        column correction can reach a scalar that was written qualified."""
+        params, corrections = normalize_template_params(
+            "duplicate",
+            {"table": "de_erp__invoices",
+             "key_columns": "de_erp__invoices.document_number"},
+            known_views={"de_erp__invoices"},
+        )
+        assert params["key_columns"] == ["document_number"]
+        assert [c["param"] for c in corrections] == ["key_columns", "key_columns"]

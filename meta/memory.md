@@ -45,10 +45,10 @@
 - **Walkthrough pins** (offline; `validation/README.md` carries them per
   stage; re-pinned end to end 2026-08-02 after the live re-record): 12 sources
   (6 data, 6 documents) · 260 column profiles · 6 pages / 10 passages, 1 inside
-  a chart · 54 hypotheses / 1 deduped / 1 skipped · 22 candidates · 54 plans /
-  11 unbindable / 6 semantic-only / 5 skipped · **0 param normalizations** ·
-  9 document claims / 9 anchors / 2 links / 5 refusals · 54 executed,
-  42 pass / 12 fail · 6 role questions, 22 open in total · 2 statements told
+  a chart · 54 hypotheses / 1 deduped / 1 skipped · 22 candidates · 61 plans /
+  9 unbindable / 6 semantic-only / **0 skipped** · 4 param normalizations ·
+  9 document claims / 9 anchors / 2 links / 5 refusals · 61 executed,
+  46 pass / 15 fail · 6 role questions, 24 open in total · 2 statements told
   (1 parked, 1 claim) · 9 required-knowledge items · verdict **blocked**,
   naming `journal.entity`, `journal.period`, `journal.account`,
   `intercompany`. Seeded-Recall unmoved at 14/25. Since M7.2 the guide
@@ -628,9 +628,30 @@ without saying which figure. They now lead with the claim.
 
 ## Defects the green suite was blind to — 2026-08-02
 
-Five, all found by re-pinning or by reading output rather than by testing,
+Six, all found by re-pinning or by reading output rather than by testing,
 and each blind for the same shape of reason: **the suite only ever
 exercised the one path.**
+
+-2. **The contract itself was the bug, and the refusal message hid it.**
+   The owner asked a plain question — "do we cover total subledger AR to
+   GL?" — and the answer turned out to be *the check exists, is correct,
+   and had never run*. All three `subledger_equals_gl` bindings were
+   rejected with "param 'accounts' must be a list, got str", which is
+   accurate and useless: the value was `de_erp__chart_of_accounts`, a
+   table name, because the template docs closed with "param values are
+   bare view/column identifiers unless the param name says expression or
+   filter" and `accounts` says neither. The model did what we asked. Four
+   of the five rejected bindings were that one sentence.
+   **What was blind about it:** every test asserted the *count* of skips
+   and the *presence* of a reason; none read a reason and asked whether it
+   made sense. A skip is not a failure to the suite, so five of them
+   passed every gate for weeks. Fixed with `VALUE_PARAMS` (each such param
+   says what it holds, on every template that takes it) plus a
+   normalization that reads a lone element as a one-item list; rejected
+   bindings 5 → 0, plans 54 → 61, and `subledger_ar` finally gets a
+   verdict. Full write-up: `docs/architecture.md` → "When the contract
+   itself is the bug". **The habit worth keeping: when a model's output
+   looks stupid, read what we asked for first.**
 
 -1. **`--only-drifted` did not reach the upstream recorder.** Its help
    text promises "write a fixture only where the one on disk no longer
@@ -708,9 +729,13 @@ larger than the note that raised them.
   **The delta was one claim**: a `range_mapping` moved from `unbindable`
   to `skipped` (the model named `territory_plz`, not a view) — so 11
   unbindable / 5 skipped, re-pinned in the suite and the walkthrough. The
-  three `accounts`-as-string skips on `subledger_equals_gl` are the same
-  three as before the change, which is how we know the note did not cause
-  them. Seeded-Recall **unchanged at 14/25**, F27 and F22 both still HIT.
+  three `accounts` skips on `subledger_equals_gl` are the same three as
+  before the change, which is how we know the note did not cause them.
+  Seeded-Recall **unchanged at 14/25**, F27 and F22 both still HIT.
+  *(Those three skips were closed later the same day — see "the contract
+  itself was the bug" below. The diagnosis in this entry was wrong about
+  their cause: the model had not written a malformed account number, it
+  had written a table name, because we told it to.)*
 
 - **A two-sided law is still modelled as a one-sided claim.**
   **CLOSED as far as it matters, 2026-08-02** — and the note was hiding

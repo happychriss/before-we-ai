@@ -223,15 +223,24 @@ the invariant checks will decide.
 ### Stage 3c — check plans
 
 Look at: template mix; the three honest rejection buckets.
-Good (offline pins): **54 check plans**, **11 unbindable** (model answered
+Good (offline pins): **61 check plans**, **9 unbindable** (model answered
 `template=null`, with its reason), **6 semantic-only** (no admissible check
-definition exists — the semantic-equivalence class lives here), **5 skipped**
-(validation rejected the model's binding — e.g. `accounts` given as a string
-where the contract requires a list). Nothing disappears silently: each of
-those **22** claims carries a DECLARATION in the store with the verbatim
+definition exists — the semantic-equivalence class lives here), **0 skipped**
+(no binding was rejected by validation). Nothing disappears silently: each of
+those **15** claims carries a DECLARATION in the store with the verbatim
 reason, so the readiness report shows *why* it was never tested — read them, they
-are the sharpest evidence of what the domain pack is still missing (several
-say, in effect: "the rule is in a document I cannot see" → M5).
+are the sharpest evidence of what the domain pack is still missing.
+
+The skipped bucket was **5** until 2026-08-02, and emptying it was a
+correction to *us*, not to the model. The template docs ended with "param
+values are bare view/column identifiers unless the param name says
+expression or filter"; `accounts`, `expected` and `pairs` hold data and are
+named neither way, so by our own rule they had to be identifiers. The model
+duly wrote `accounts: "de_erp__chart_of_accounts"`. Four of the five
+rejections were that one sentence — including all three
+`subledger_equals_gl` bindings, which is why the AR-to-GL reconciliation had
+never run once. Worth remembering when a model output looks stupid: read
+what we asked for first.
 
 ### Stage 3d — what the documents say
 
@@ -278,13 +287,23 @@ good reason to believe something, and still not a measurement.
 
 Look at: executed/skipped, verdict mix, role verdicts, the false-promotion
 audit line.
-Good (offline pins): **54 executed, 0 skipped**; verdicts **42 pass, 12 fail**;
+Good (offline pins): **61 executed, 0 skipped**; verdicts **46 pass, 15 fail**;
 journal role: `de_erp__gl_postings` **test-supported**, `buchungen_report`
 **contradicted** (the decoy loses — trap F27), `us_erp__gl_postings`
 **contradicted** (honest — the data has a missing intercompany leg, trap F22);
-audit **CLEAN**. Resulting AI-claim statuses: 38 test-supported, 35 proposed,
-12 contradicted. (Stage 5b adds one more `proposed` claim out of the told
-statement, so the report's totals read 36 once you get that far.)
+audit **CLEAN**. Resulting AI-claim statuses: 38 test-supported, 32 proposed,
+15 contradicted. (Stage 5b adds one more `proposed` claim out of the told
+statement, so the report's totals read 33 once you get that far.)
+
+The three extra contradictions are `subledger_ar`'s two candidates and one
+more — the AR-to-GL law running for the first time. The AR open items exceed
+GL account 1200 by **23,311.43** on 8.26m, which is the corpus' seeded F20
+(cash received but not yet applied). Detecting it is the right answer at the
+default tolerance of a cent; a business that considers that gap normal says
+so in `before-ai.yaml` under `tolerances:`, which is the only override
+channel there is. What the system must not do is elect a candidate whose
+reconciliation it never checked — and until 2026-08-02 that is exactly what
+it could not avoid, because the law had never run.
 
 **Watch the three `account` candidates.** Each one now gets an anti_join
 against the chart of accounts, each one **passes**, and all three stay
@@ -338,20 +357,21 @@ run grouped by `period`, and `doc_ref` still has to be asked — a journal
 balances per document AND per period, so a passing law never identifies the
 grouping column.
 
-The project now holds **22** open questions in total: these 6, plus **11**
+The project now holds **24** open questions in total: these 6, plus **13**
 drafted by the engine in stage 4 where a check failed or was inconclusive,
 plus **5** raised in 3d where a document figure was refused.
 
-**In the report, section 5 is not in the order they were asked.** Twenty-two
-questions that all read alike is not a work list, so each card carries a badge
-saying what it holds up, and the list is sorted by it. On this landscape:
-**5 block the answer, 17 are not on this path** — real findings, every one of
-them, but the question you asked does not wait on any of them.
+**In the report, section 5 is not in the order they were asked.**
+Twenty-four questions that all read alike is not a work list, so each card
+carries a badge saying what it holds up, and the list is sorted by it. On
+this landscape: **5 block the answer, 19 are not on this path** — real
+findings, every one of them, but the question you asked does not wait on any
+of them.
 
 Above the list, the same split is counted, and it says what working the
 urgent half would actually buy:
 
-> **5 of these 22 hold up the answer; the other 17 do not.** Answering all 5
+> **5 of these 24 hold up the answer; the other 19 do not.** Answering all 5
 > would not clear the verdict: 'intercompany' was refuted by a check, so a
 > confirmation collides with that evidence instead of settling it. Section 6
 > names the route that does apply. 3 dependencies would remain as named
@@ -499,8 +519,8 @@ lapsed, and nothing in `data/project/` changed — the list was never stored.
   **0 inputs** (the three declared domain inputs), **1 request** (the question
   verbatim, the classification with its guide fingerprint, and every dependency
   with where it came from), **2 measured** (sources, column profiles, candidate
-  overlaps), **3 proposed** (the funnel: 76 proposed → 54 planned / 11
-  unbindable / 6 semantic-only / 5 skipped → 54 judged → the derived statuses,
+  overlaps), **3 proposed** (the funnel: 76 proposed → 61 planned / 9
+  unbindable / 6 semantic-only / 0 skipped → 61 judged → the derived statuses,
   every number a filter), **4 tested** (the role elections — each object with
   its fields nested beneath it: the winner, each loser with the domain law that
   felled it, and for a slot field the column its object's passing law

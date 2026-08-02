@@ -16,7 +16,12 @@ import json
 from pydantic import BaseModel
 
 from before_we_ai.checks.library import REGISTRY
-from before_we_ai.llm.vocabulary import PREDICATES, TEMPLATE_NOTES, TEMPLATE_PARAMS
+from before_we_ai.llm.vocabulary import (
+    PREDICATES,
+    TEMPLATE_NOTES,
+    TEMPLATE_PARAMS,
+    VALUE_PARAMS,
+)
 
 _JSON_RULES = (
     "Respond with a single JSON object that validates against this JSON "
@@ -75,10 +80,17 @@ def render_template_docs() -> str:
             parts.append(f"optional [{', '.join(sorted(contract.optional))}]")
         if name in TEMPLATE_NOTES:
             parts.append(f"NOTE: {TEMPLATE_NOTES[name]}")
+        # The exceptions to the closing rule, stated on the template that has
+        # them. A global "unless the param name says so" cannot cover a param
+        # whose name says nothing — and `accounts` reads like a table.
+        for param, meaning in VALUE_PARAMS.items():
+            if param in contract.allowed:
+                parts.append(f"VALUES: {param} is {meaning}")
         lines.append(f"- {name}: " + "; ".join(parts))
     lines.append(
-        "Param values are bare view/column identifiers unless the param name "
-        "says expression (*_expr) or filter (*where)."
+        "Param values are bare view/column identifiers, EXCEPT where a "
+        "template above marks a param VALUES (it holds data, not names) and "
+        "except params whose name says expression (*_expr) or filter (*where)."
     )
     return "\n".join(lines)
 

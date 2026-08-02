@@ -209,6 +209,57 @@ TEMPLATE_PARAMS: dict[str, TemplateParams] = {
 # crash the engine sweep, so the shape is part of the binding contract.
 _LIST_PARAMS = ("key_columns", "expected", "accounts", "pairs")
 
+# What each list param's elements ARE, which is what lets a *lone element*
+# be told apart from a value of the wrong shape entirely. One item written
+# without its brackets is unambiguous — `accounts: "1200"` can only mean the
+# one account — and reading it as intended is the same deterministic
+# leniency the view/column corrections already apply.
+#
+# The distinction earns its keep on `pairs`, whose elements are objects: a
+# lone `{part_expr, decode_column}` is one pair and wraps, a bare string is
+# not a pair at all and is refused as before. Wrapping by type rather than
+# by "it isn't a list" is what stops a nonsense value from being promoted
+# into a well-formed-looking one.
+_LIST_ELEMENT: dict[str, tuple[type, ...]] = {
+    "key_columns": (str,),
+    "expected": (str, int, float),
+    "accounts": (str, int),
+    "pairs": (dict,),
+}
+
+# Params whose values are DATA rather than identifiers, each said in the
+# words the model reads (rendered per template into the V2 docs).
+#
+# Found by the owner reading the store, 2026-08-02, and the fault was ours.
+# The template docs ended with one global sentence — "param values are bare
+# view/column identifiers unless the param name says expression or filter"
+# — and these three are neither `*_expr` nor `*where`, so by our own stated
+# rule they had to be identifiers. The model complied exactly:
+# `accounts: "de_erp__chart_of_accounts"` and
+# `expected: "de_erp__chart_of_accounts.account_range_group"`. That is four
+# of the five rejected bindings on the corpus, including all three
+# `subledger_equals_gl` ones — so the only law that can settle a
+# receivables object never ran, and the reason was a sentence of ours that
+# was wrong for three params out of forty.
+#
+# Stated per param, not as prose in a note, because a rule with exceptions
+# has to enumerate them where the exception is used.
+VALUE_PARAMS: dict[str, str] = {
+    "accounts": (
+        "the account NUMBERS that make up the general-ledger side, as a list "
+        "of integers, e.g. [1200] — NOT the chart-of-accounts view. Which "
+        "numbers those are is domain knowledge; if the profiles do not tell "
+        "you, answer template: null and say so"
+    ),
+    "expected": (
+        "the VALUES that must all appear in unit_column, as a list, e.g. "
+        "[\"DE\", \"US\"] — NOT the column or view they live in"
+    ),
+    "pairs": (
+        "a list of {part_expr, decode_column} objects, not identifiers"
+    ),
+}
+
 # The templates aggregate for themselves (e.g. reconciliation wraps every
 # measure in SUM); an expression param carrying its own aggregate renders
 # into nested aggregates and crashes the sweep.
@@ -299,8 +350,8 @@ def normalize_template_params(template: str, params: dict,
                               known_views=()) -> tuple[dict, list[dict]]:
     """Deterministic normalization of unambiguous formatting variants.
 
-    Two of them, and the second was an owner decision (2026-08-02) rather
-    than a tidy-up:
+    Three of them, each an owner decision (2026-08-02) rather than a
+    tidy-up:
 
     * a **column** param qualified with exactly its own view
       (``view.column``) reduces to the bare column;
@@ -309,6 +360,10 @@ def normalize_template_params(template: str, params: dict,
       that view. Six of the seven V2 skips in the walkthrough are this one
       shape, and it cascades: the column params anchor on the view param,
       so a qualified view param leaves them with nothing to strip.
+    * a **list param given one element** (``accounts: "1200"``) becomes the
+      one-item list it can only have meant — but only when the value is of
+      the type that list holds, so a bare string where objects belong is
+      still a confusion and still refused.
 
     Leniency here has a cost the owner weighed explicitly. A binding the
     model may have misunderstood now *runs*, and a passing run promotes —
@@ -328,6 +383,24 @@ def normalize_template_params(template: str, params: dict,
     # VIEW_PARAMS is the set of param NAMES that must hold a bare view,
     # shared by every template — not a per-template mapping.
     views = set(known_views)
+
+    # A lone element where a list belongs. First, because the corrections
+    # below have a list branch, and a scalar written as `view.column` needs
+    # to be a list before that branch can reach it.
+    #
+    # This one was found by the owner reading the store, not by a test:
+    # `accounts: "1200"` cost all three `subledger_equals_gl` bindings on
+    # the corpus, so the AR-to-GL reconciliation — the only law that can
+    # settle the receivables object at all — never ran once. Nothing was
+    # wrong with the binding; one pair of brackets was missing from it.
+    for param in _LIST_PARAMS:
+        value = normalized.get(param)
+        if param not in normalized or isinstance(value, list):
+            continue
+        elements = _LIST_ELEMENT[param]
+        if isinstance(value, bool) or not isinstance(value, elements):
+            continue  # not a lone element either — refused downstream
+        correct(param, value, [value])
 
     # An absent view param, recovered from the columns that name it. The
     # model writes `amount: de_erp__gl_postings.amount_local_currency` and
@@ -395,7 +468,11 @@ TEMPLATE_NOTES: dict[str, str] = {
     "subledger_equals_gl": ("subledger_amount and journal_amount are BARE "
                             "COLUMN NAMES, never expressions — the template "
                             "reads each as a number and sums it itself, so a "
-                            "text-typed amount column needs no cast from you"),
+                            "text-typed amount column needs no cast from you. "
+                            "`account` and `accounts` are different kinds of "
+                            "thing and easy to swap: `account` is the COLUMN "
+                            "on the journal carrying the account identifier, "
+                            "`accounts` the account numbers to filter it to"),
 }
 
 

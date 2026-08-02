@@ -527,12 +527,55 @@ The complete list of what is corrected, and each one's refusal:
 | a **column** param qualified with its own view (`v.c`) | the bare column `c` | the prefix is not that param's view |
 | a **view** param naming a column (`v.c` where a view belongs) | the view `v` | the head is not a view we know |
 | a **required view param that is absent** | the view every qualified column of that param names | the columns name more than one view, or none |
+| a **list param given one element** (`accounts: "1200"`) | the one-item list `["1200"]` | the value is not of the type that list holds (a bare string where `pairs` wants objects) |
 
 The third is the widest and carries the sharpest limit: **unanimity, or
 nothing**. Where the columns disagree about which table they sit on, the
 model did not know what it meant and neither do we, so the binding fails
 as before. That case has its own test
 (`test_columns_that_disagree_are_a_confusion_not_a_majority`).
+
+The fourth wraps **by element type**, not by "it isn't a list". Wrapping
+anything would turn a nonsense value into a well-formed-looking one, and
+`pairs` is the param that shows why: its elements are objects, so a lone
+`{part_expr, decode_column}` is one pair and a bare string is not a pair
+at all.
+
+### When the contract itself is the bug (2026-08-02)
+
+Found by the owner reading the store, and worth recording as a class rather
+than an incident. The V2 template docs ended with:
+
+> Param values are bare view/column identifiers unless the param name says
+> expression (*_expr) or filter (*where).
+
+Three params hold **data**, not names — `accounts` (account numbers),
+`expected` (the values that must be present), `pairs` (objects) — and none
+of them is called `*_expr` or `*where`. By our own stated rule they had to
+be identifiers, and the model complied exactly:
+`accounts: "de_erp__chart_of_accounts"`,
+`expected: "de_erp__chart_of_accounts.account_range_group"`.
+
+That was **four of the five rejected bindings** on the corpus, including all
+three `subledger_equals_gl` ones — so the only law that can settle a
+receivables object had never run, and the readiness report said "what is
+missing before subledger_ar can be tested?" about a gap we had created. The
+fix is `VALUE_PARAMS`: each such param states what it holds, rendered onto
+every template that takes it, and the closing sentence now names its own
+exceptions. Rejected bindings went 5 → 0, check plans 54 → 61.
+
+Two things generalise:
+
+- **A rule with exceptions has to enumerate them where the exception is
+  used.** A global sentence plus three silent exceptions is not a contract,
+  it is a trap — and the model is the one who springs it.
+- **When a model's output looks stupid, read what we asked for first.** The
+  refusal messages were accurate and useless: "param 'accounts' must be a
+  list, got str" describes the symptom of an instruction that told it to
+  write a table name. `test_llm_mapping.py::TestWhenTheContractItselfMisleads`
+  pins both halves, including that every value param is documented on every
+  template that takes it — the same defect one template further along would
+  otherwise be invisible.
 
 What the corpus showed when the corrections became visible is worth
 keeping: column normalization had been happening **silently since M4**.

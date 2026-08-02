@@ -155,29 +155,35 @@ def test_contracts_ran_clean_offline(pipeline):
                for _statement, reason in v1.skipped)
     assert proposals.failure is None and len(proposals.claims_created) == 22
     assert v2.failures == [] and v2.unanswered == []
-    # 54 since kickoff item 3 widened what a role may be tested by: the
-    # three `account` candidates now get an anti_join against the chart of
-    # accounts. They all PASS and none of them promotes — that is the
-    # refutation-only rule, asserted in test_transitions.py.
-    assert len(v2.check_plans_created) == 54
+    # 61 since the template docs stopped telling the model that every param
+    # is an identifier (see below): seven bindings that used to be rejected
+    # or answered `template: null` now bind, `subledger_equals_gl` among
+    # them. Before that, kickoff item 3 had widened what a role may be
+    # tested by — the three `account` candidates get an anti_join against
+    # the chart of accounts, all PASS, and none of them promotes, which is
+    # the refutation-only rule asserted in test_transitions.py.
+    assert len(v2.check_plans_created) == 61
     # No assertion that corrections *happened*: this recording needed
     # none, which is the point rather than a gap. Telling the model
     # "BARE COLUMN NAME, the template reads it as a number itself"
     # removed the shape errors that normalization was cleaning up after —
     # it went 16 -> 0. The machinery stays (unit-tested in
     # test_llm_mapping.py) because the next landscape will need it.
-    # Re-pinned 2026-08-02 after the `reconciliation` note said why it
-    # differs from the two templates that read the number themselves. Only
-    # V2 was re-recorded (`--downstream-only`), so this delta is V2's alone:
-    # one `range_mapping` claim moved from `unbindable` to `skipped`, the
-    # model having named `territory_plz` — not a view — where it previously
-    # answered template=null. Slightly worse and caught either way; the
-    # three `accounts`-as-string skips on `subledger_equals_gl` are the
-    # same three as before, so the note did not cause them.
-    assert len(v2.skipped) == 5  # validation-rejected bindings — skipped, not crashed
+    # **Zero rejected bindings**, down from five, and the fix was ours
+    # rather than the model's. The template docs closed with "param values
+    # are bare view/column identifiers unless the param name says
+    # expression or filter" — and `accounts`, `expected` and `pairs` are
+    # none of those, so by our own rule they had to be identifiers. The
+    # model complied: `accounts: "de_erp__chart_of_accounts"`,
+    # `expected: "de_erp__chart_of_accounts.account_range_group"`. Four of
+    # the five rejections were that one sentence, including all three
+    # `subledger_equals_gl` bindings — so the only law that can settle a
+    # receivables object had never run once. `VALUE_PARAMS` now says per
+    # param what it holds, and the model writes `accounts: ["1200"]`.
+    assert len(v2.skipped) == 0  # validation-rejected bindings
     assert len(v2.semantic_only) == 6  # no admissible template — never sent
-    assert len(v2.unbindable) == 11  # honest template=null answers
-    assert len(pipeline["engine"].executed) == 54
+    assert len(v2.unbindable) == 9  # honest template=null answers
+    assert len(pipeline["engine"].executed) == 61
     assert pipeline["engine"].skipped == []
 
     # every claim that ends without a check says why, in the store — the reason
@@ -190,25 +196,30 @@ def test_contracts_ran_clean_offline(pipeline):
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") in no_check
     }
-    assert len(reasons) == 22  # 11 unbindable + 6 semantic-only + 5 skipped
+    assert len(reasons) == 15  # 9 unbindable + 6 semantic-only + 0 skipped
     assert sorted(p["decision"] for p in reasons.values()) == (
-        ["semantic_only"] * 6 + ["skipped"] * 5 + ["unbindable"] * 11
+        ["semantic_only"] * 6 + ["unbindable"] * 9
     )
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
 
     # And every param we read as something other than what the model wrote
-    # is on the record too. **Zero here**, and that is the interesting
-    # number: normalization had been quietly cleaning up after a contract
-    # description that told the model to cast text columns and then
-    # rejected the cast. With the instruction fixed the model writes
-    # bare names and there is nothing to correct. The count moves with
-    # the answer; that it is written down does not.
+    # is on the record too. Four in this recording, all the same shape: a
+    # view param given as one of its columns (`child:
+    # de_erp__ar_open_items.customer_id`). Those bindings run, and a reader
+    # can still see we read something other than what was written — which
+    # is the whole reason corrections are declared rather than silent.
+    #
+    # It was zero in the previous recording and that is not a regression:
+    # zero was measured over a set of bindings four of which were being
+    # rejected outright. Correcting a binding that used to be thrown away
+    # is the improvement, not a new leniency.
     corrections = [
         record.payload for record in store.evidence.values()
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") == "param_normalized"
     ]
-    assert len(corrections) == 0
+    assert len(corrections) == 4
+    assert {c["param"] for c in corrections} <= {"child", "parent", "left", "right"}
     assert all(c["given"] != c["read_as"] for c in corrections)
     for claim_id in reasons:
         assert store.claims[claim_id].status is ClaimStatus.PROPOSED
@@ -295,8 +306,16 @@ def test_every_unsettled_role_becomes_a_clarification_not_a_silent_discard(pipel
     assert "Which source is the authoritative 'intercompany'?" in ic.question
     assert "was put to the ic_symmetry law, and every one of them failed" in ic.question
     assert len(ic.claim_ids) == 2  # both candidates attached
-    assert ("What is missing before the 'subledger_ar' can be tested?"
-            in by_role["subledger_ar"].question)
+    # And the same is now true of subledger_ar, which used to ask what was
+    # missing for a reason that turned out to be ours: all three of its
+    # bindings were rejected because the template docs said every param
+    # holds an identifier, so the law never ran. It runs, both candidates
+    # fail it, and the card asks the question that is actually open.
+    sub = by_role["subledger_ar"]
+    assert "Which source is the authoritative 'subledger_ar'?" in sub.question
+    assert ("was put to the subledger_equals_gl law, and every one of them "
+            "failed" in sub.question)
+    assert len(sub.claim_ids) == 2
     for role in ("account", "doc_ref", "entity", "period"):
         card = by_role[role]
         assert f"Which of the proposed candidates is the '{role}'?" in card.question
@@ -335,7 +354,10 @@ def test_call_logs_are_complete(pipeline):
             assert entry["attempts"][-1]["validation_errors"]  # skips are visible
     # the recorded V1 and V2-claims answers keep a few bad items even after
     # their retry — replayed as "partial", same items skipped every run
-    assert sorted(outcomes) == ["ok", "ok", "ok", "partial", "partial", "partial"]
+    # One batch fewer is "partial": the V2 role batch used to have items
+    # rejected by validation and now has none (see the VALUE_PARAMS note in
+    # test_contracts_ran_clean_offline).
+    assert sorted(outcomes) == ["ok", "ok", "ok", "ok", "ok", "partial"]
 
 
 def test_pipeline_is_idempotent(pipeline):
@@ -349,7 +371,8 @@ def test_pipeline_is_idempotent(pipeline):
     assert proposals.claims_created == [] and proposals.claims_deduped == 22
     # only the honestly unbound claims are still selectable for V2:
     # 12 unbindable + 6 semantic-only + 4 skipped bindings
-    assert len(_untested_claims(store, None)) == 22
+    # 15, down from 22: seven claims that had no check now have one.
+    assert len(_untested_claims(store, None)) == 15
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):
@@ -473,7 +496,13 @@ def test_the_reader_is_told_how_to_get_unblocked(pipeline):
         "You answer", "The data has to change"}
 
     data = next(r for r in unblock.routes if r.heading == "The data has to change")
-    assert data.items == ("intercompany",)
+    # Two roles now, not one. `subledger_ar` joined the refuted list the
+    # moment its law could run at all: the AR open items exceed GL account
+    # 1200 by 23,311.43 on 8.26m — the corpus' F20, unapplied cash, seeded
+    # on purpose. Detecting it is the correct answer at the default
+    # tolerance; a project that considers that gap normal says so in
+    # `before-ai.yaml`, which is the only override channel there is.
+    assert data.items == ("intercompany", "subledger_ar")
     # "US does not work", readable without digging: the period and the
     # missing leg, lifted out of the check's exception samples.
     where = " ".join(data.where)
