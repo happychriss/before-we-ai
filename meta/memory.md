@@ -34,11 +34,12 @@
   down): False-Promotion **0** (non-negotiable at every commit) ·
   Seeded-Recall **14–15/25** · prompt-leakage scan CLEAN.
 - **Walkthrough pins** (offline; `validation/README.md` carries them per
-  stage): 52 hypotheses / 0 deduped / 3 skipped · 22 candidates · 42 plans /
-  19 unbindable / 6 semantic-only / 7 skipped · 42 executed, 35 pass / 7 fail ·
-  6 role questions, 13 open in total · 9 required-knowledge items · verdict
-  **blocked**, naming `journal.entity`, `journal.period`, `journal.account`,
-  `intercompany`.
+  stage): 12 sources (6 data, 6 documents) · 6 pages / 10 passages, 1 inside a
+  chart · 52 hypotheses / 0 deduped / 3 skipped · 22 candidates · 42 plans /
+  19 unbindable / 6 semantic-only / 7 skipped · 6 document claims / 6 anchors /
+  2 links / 3 refusals · 42 executed, 35 pass / 7 fail · 6 role questions,
+  16 open in total · 9 required-knowledge items · verdict **blocked**, naming
+  `journal.entity`, `journal.period`, `journal.account`, `intercompany`.
 
 ## Next
 
