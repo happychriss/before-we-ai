@@ -279,3 +279,22 @@ sources:
     description: Pre-scripted domain statements to be played via `tell` mechanism during validation runs
     filename: tell_statements.yaml
     traps: [F28, F29]
+
+  # G. Hard document (added 2026-08-02 with M5, additive — the frozen corpus
+  # forbids editing, not appending). NOT the spec's real public PDF: that
+  # Pflichtbestandteil is still open, because a generator only writes the
+  # traps it already knows about. This one collects how published reports
+  # actually go wrong, and exists to be difficult.
+  G1_hard_annual_extract:
+    format: pdf_file
+    description: >-
+      Multi-page annual-report extract with layout and typography traps:
+      a "EUR thousands" column heading away from its figures, thin-space
+      digit grouping, an accounting negative in parentheses, a
+      whitespace-aligned table with no ruling lines, a bordered pull-quote
+      that is not a chart, a footnote restating a figure printed elsewhere,
+      a hyphenated word break, running headers and footers, two-column
+      body text, and a real chart whose figure exists nowhere else.
+    filename: acme_annual_extract.pdf
+    built_by: corpus/build_hard_document.py
+    traps: [H1, H2, H3, H4, H5, H6, H7, H8, H9]

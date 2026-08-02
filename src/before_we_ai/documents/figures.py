@@ -17,13 +17,28 @@ from decimal import Decimal, InvalidOperation
 
 from before_we_ai.core.enums import AnchorMatch
 
+# Typesetters group digits with a thin or non-breaking space, and
+# published reports are full of it: "8 312 504". Left unhandled it does
+# not read as a wrong number, it reads as three numbers, which is worse.
+_SPACES = "    "
+
+# Accounting prints a loss in parentheses rather than with a minus sign.
+_PARENTHESISED = re.compile(rf"\(\s*\d[\d.,{_SPACES}]*\d\s*\)")
+
 # A run of digits with optional grouping separators and an optional
 # fractional tail. Currency words and symbols around it are not our
 # business — the number is. The lookarounds keep labels out: the 3 in
 # "Q3" is a quarter, not a figure, and reading it as one would let any
 # heading full of period labels look like a document full of numbers.
-_LITERAL = re.compile(r"(?<![A-Za-z\d])-?\d[\d.,]*\d(?![A-Za-z])"
-                      r"|(?<![A-Za-z\d])-?\d(?![A-Za-z])")
+# Space grouping is matched first and only in strict groups of three, so
+# "12 items" stays two things and "8 312 504" becomes one.
+_LITERAL = re.compile(
+    rf"(?<![A-Za-z\d])-?\d{{1,3}}(?:[{_SPACES}]\d{{3}})+(?![\d{_SPACES}]*[A-Za-z])"
+    r"|(?<![A-Za-z\d])-?\d[\d.,]*\d(?![A-Za-z])"
+    r"|(?<![A-Za-z\d])-?\d(?![A-Za-z])"
+)
+
+_SPACE_GROUPED = re.compile(rf"^-?\d{{1,3}}(?:[{_SPACES}]\d{{3}})+$")
 
 
 @dataclass(frozen=True)
@@ -68,18 +83,41 @@ def _read(literal: str, separator: str, decimal_point: str) -> Decimal | None:
         return None
 
 
-def read_figure(literal: str) -> Figure:
-    readings = []
-    for separator, decimal_point in ((",", "."), (".", ",")):
-        value = _read(literal, separator, decimal_point)
-        if value is not None and value not in readings:
-            readings.append(value)
-    return Figure(literal=literal, readings=tuple(readings))
+def read_figure(literal: str, *, negative: bool = False) -> Figure:
+    """One literal as written. ``negative`` carries an accounting bracket."""
+    if _SPACE_GROUPED.match(literal):
+        # Space grouping has only one reading — no writing convention uses
+        # a space for the decimal point.
+        body = re.sub(rf"[{_SPACES}]", "", literal)
+        readings = [Decimal(body)]
+    else:
+        readings = []
+        for separator, decimal_point in ((",", "."), (".", ",")):
+            value = _read(literal, separator, decimal_point)
+            if value is not None and value not in readings:
+                readings.append(value)
+    if negative:
+        readings = [-value for value in readings]
+    return Figure(literal=f"({literal})" if negative else literal,
+                  readings=tuple(readings))
 
 
 def read_figures(text: str) -> list[Figure]:
-    """Every numeric literal in a quote, in the order it is written."""
-    return [read_figure(match.group()) for match in _LITERAL.finditer(text)]
+    """Every numeric literal in a quote, in the order it is written.
+
+    A figure in parentheses is a negative one — the accounting convention,
+    and the difference between a cost and a credit.
+    """
+    bracketed = {}
+    for match in _PARENTHESISED.finditer(text):
+        inner = match.group().strip("()").strip()
+        bracketed[match.start() + match.group().index(inner)] = inner
+
+    figures = []
+    for match in _LITERAL.finditer(text):
+        figures.append(read_figure(match.group(),
+                                   negative=match.start() in bracketed))
+    return figures
 
 
 def _significant_digits(value: Decimal) -> int:
@@ -140,24 +178,19 @@ def distinct_values(quote: str) -> list[Decimal]:
     return values
 
 
-def _magnitude(value: Decimal) -> int:
-    return value.adjusted()
-
-
-def restated_values(quote: str) -> list[Decimal]:
-    """Values a quote offers for *the same* figure, when it offers several.
+def restated_values(quote: str, target: Decimal) -> list[Decimal]:
+    """Values a quote offers for *the same* figure as ``target``.
 
     This is how a restatement announces itself in prose: "EUR 3,200,000
     (restated from EUR 3,050,000)". Two numbers in one sentence prove
-    nothing on their own — a sentence about Q1 2023 has a quarter and a
-    year in it too — so the test is same *magnitude*: figures of the same
-    size, competing for one slot. Empty when the quote states one value,
-    or several that are plainly about different things.
+    nothing on their own, so the test is magnitude — figures the same size
+    as the one being checked, competing for one slot.
+
+    Asking it relative to a target rather than in the abstract is what
+    keeps years out. An annual report's every sentence has a 2024 and a
+    2025 in it; asked in the abstract, that pair looks exactly like a
+    restatement, and the hard document caught it doing so. Asked against a
+    seven-figure amount, a four-figure year cannot qualify.
     """
-    by_magnitude: dict[int, list[Decimal]] = {}
-    for value in distinct_values(quote):
-        by_magnitude.setdefault(_magnitude(value), []).append(value)
-    competing = [group for group in by_magnitude.values() if len(group) > 1]
-    if not competing:
-        return []
-    return max(competing, key=len)
+    same = [v for v in distinct_values(quote) if v.adjusted() == target.adjusted()]
+    return same if len(same) > 1 else []

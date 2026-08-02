@@ -106,17 +106,30 @@ def test_ambiguous_literals_are_not_offered_as_stated_values():
 def test_a_restatement_offers_two_figures_for_one_slot():
     """F24's shape — this is what marks the quote as needing a human."""
     assert restated_values(
-        "Prior year Q1 2023 revenue: EUR 3,200,000 (restated from EUR 3,050,000)."
+        "Prior year Q1 2023 revenue: EUR 3,200,000 (restated from EUR 3,050,000).",
+        Decimal("3200000"),
     ) == [Decimal("3200000"), Decimal("3050000")]
 
 
 def test_a_year_beside_an_amount_is_not_a_restatement():
     """Two numbers in a sentence prove nothing; two of a size do."""
-    assert restated_values("In 2024 revenue was EUR 8,312,504.") == []
+    assert restated_values("In 2024 revenue was EUR 8,312,504.",
+                           Decimal("8312504")) == []
+
+
+def test_a_pair_of_years_is_not_a_restatement_of_an_amount():
+    """The hard document caught this: an annual report puts 2024 and 2025
+    in every sentence, and asked in the abstract that pair looks exactly
+    like a figure restated."""
+    assert restated_values(
+        "Revenue grew from 2024 to 2025, reaching EUR 8,312,504.",
+        Decimal("8312504"),
+    ) == []
 
 
 def test_a_clean_citation_restates_nothing():
-    assert restated_values("Q3 revenue was EUR 2,847,000.") == []
+    assert restated_values("Q3 revenue was EUR 2,847,000.",
+                           Decimal("2847000")) == []
 
 
 def test_rounding_respects_the_precision_the_document_chose():

@@ -161,9 +161,9 @@ def corroborate(records: list[EvidenceRecord], target: Decimal, *,
     places = {a.place for a in counting}
     concerns: list[Concern] = []
 
-    restated = [a for a in assessed if len(restated_values(a.quote)) > 1]
+    restated = [a for a in assessed if restated_values(a.quote, target)]
     for anchor in restated:
-        values = ", ".join(str(v) for v in restated_values(anchor.quote))
+        values = ", ".join(str(v) for v in restated_values(anchor.quote, target))
         concerns.append(Concern(
             RESTATEMENT,
             f"{anchor.source} p.{anchor.page} gives more than one figure for "
