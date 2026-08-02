@@ -361,6 +361,11 @@ class QuestionOptionView:
 class QuestionView:
     id: str
     question: str
+    # How big the finding is. Not part of the question's wording — that is
+    # its identity — but shown right beside it, because a reader deciding
+    # what to look at first needs to know whether "they do not agree" is
+    # one row in twenty-four or two in five.
+    finding: str
     mode: str
     lead: str
     options: tuple[QuestionOptionView, ...]
@@ -2629,6 +2634,7 @@ def _build_questions(
             QuestionView(
                 id=card.id,
                 question=card.question,
+                finding=card.finding,
                 mode=mode,
                 lead=lead,
                 options=option_views,

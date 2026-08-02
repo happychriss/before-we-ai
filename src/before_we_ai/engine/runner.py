@@ -144,9 +144,28 @@ def _draft_question(store, spec, ctx, check: CheckPlan, record: EvidenceRecord) 
     )
     card = ClarificationQuestion(
         question=text,
+        finding=_scale(record),
         scope=record.scope,
         claim_ids=[check.claim_id] if check.claim_id else [],
     )
-    if store.find_question(card):
+    known = store.find_question(card)
+    if known:
+        # Same question, possibly a different size. The card stays the same
+        # card — re-asking it under a new id would put one decision in
+        # front of the reader twice.
+        if known.finding != card.finding:
+            store.save_question(known.model_copy(
+                update={"finding": card.finding}))
         return
     store.save_question(card)
+
+
+def _scale(record: EvidenceRecord) -> str:
+    """How big the finding is, so a reader can decide what to look at first."""
+    if record.exception_count is None or record.population is None:
+        return ""
+    plural = "s" if record.exception_count != 1 else ""
+    scale = (f"{record.exception_count:,} exception{plural} "
+             f"in {record.population:,} rows")
+    rate = record.exception_rate()
+    return f"{scale} ({rate:.1%})" if rate else scale

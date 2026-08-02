@@ -126,3 +126,44 @@ def test_a_second_plan_on_the_same_claim_is_not_superseded(project):
     store = ProjectStore(store.root)
     live = [e for e in _results(store) if not e.stale]
     assert len({e.check_plan_id for e in live}) == 2
+
+
+class TestTheQuestionCarriesItsSize:
+    """"They do not agree" is one row in twenty-four or two in five, and
+    those are different decisions. A question a reader cannot triage is a
+    question that sits in the list."""
+
+    def test_a_failed_check_says_how_big_the_problem_is(self, project):
+        store, con, _claim_id = project
+        run_ready(store, con)
+        store = ProjectStore(store.root)
+        card = next(iter(store.questions.values()))
+        assert card.finding == "1 exception in 3 rows (33.3%)"
+
+    def test_the_size_is_not_part_of_the_question_s_identity(self, project):
+        """The trap this avoids. dedup_key() is the wording, so a count
+        inside it would mint a fresh card every time the number moved and
+        put one decision in front of the reader again and again."""
+        store, con, _claim_id = project
+        run_ready(store, con)
+        store = ProjectStore(store.root)
+        card = next(iter(store.questions.values()))
+        assert card.finding not in card.question
+        assert card.dedup_key() == (card.question, "")
+
+    def test_a_rerun_updates_the_size_on_the_same_card(self, project):
+        """Same decision, new measurement — not a second question."""
+        store, con, _claim_id = project
+        run_ready(store, con)
+        store = ProjectStore(store.root)
+        before = next(iter(store.questions.values()))
+
+        con.execute("INSERT INTO postings VALUES ('b')")  # a second duplicate
+        store = ProjectStore(store.root)
+        run_ready(store, con)
+
+        store = ProjectStore(store.root)
+        assert len(store.questions) == 1
+        after = next(iter(store.questions.values()))
+        assert after.id == before.id
+        assert after.finding != before.finding

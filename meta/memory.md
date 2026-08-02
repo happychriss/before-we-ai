@@ -369,10 +369,13 @@ its wording is authored by the engine and **stored** in `questions/` as a
 refusals). Editing that wording rewrites project data, and old cards keep
 their old text — it is a re-record-shaped change, not a re-render.
 
-- **(1) magnitude** — belongs in the stored question. The exception counts
-  are on the evidence at the moment the card is written, so the sentence
-  can carry them; nothing downstream can add them later without going back
-  to the evidence.
+- **(1) magnitude — DONE 2026-08-02.** On the card as `finding`, not
+  inside `question`: the wording is the dedup key, so a count in it would
+  mint a fresh card every time the number moved and put one decision in
+  front of the reader again and again. A re-run updates the size on the
+  same card. What it buys, on the corpus: AR vs GL is **98.6%**,
+  intercompany **4.2%**, invoices vs orders **2.4%** — three sentences
+  that read alike and mean entirely different things.
 - **(2) priority** — pure presentation. `gap_load()` is a derivation over
   claims and cards; nothing is stored, so this is the report/UI layer
   alone.

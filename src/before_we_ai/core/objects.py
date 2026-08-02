@@ -300,6 +300,18 @@ class ClarificationQuestion(BaseModel):
 
     id: str = Field(default_factory=new_id)
     question: str
+    # How big the problem is, in the words of the run that found it: "1
+    # exception in 24 rows". Deliberately NOT part of ``question`` — the
+    # wording is the dedup key, so a count inside it would mint a fresh
+    # card every time the number moved, and the same decision would face
+    # the reader again and again wearing a new id. Kept beside the
+    # question instead, where a list can show it and a re-run can update
+    # it without splitting the card.
+    #
+    # It is here because a question without a magnitude cannot be triaged:
+    # "the two do not agree" is one exception in twenty-four or forty per
+    # cent of the rows, and those are different decisions.
+    finding: str = ""
     scope: Scope | None = None
     claim_ids: list[str] = Field(default_factory=list)
     stale: bool = False

@@ -456,3 +456,11 @@
       color: var(--muted); margin-bottom: 4px;
     }
     .route-where ul { margin: 0; padding-left: 18px; }
+
+    /* How big the finding is, beside the question rather than inside it. */
+    .finding {
+      display: inline-block; margin: 0 0 8px; padding: 2px 8px;
+      border-radius: 10px; font-size: 12px;
+      background: var(--panel); border: 1px solid var(--line);
+      color: var(--muted);
+    }

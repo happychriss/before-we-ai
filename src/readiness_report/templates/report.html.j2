@@ -233,7 +233,7 @@
 {%- endmacro -%}
 
 {%- macro question(card) -%}
-<div class="question-card" id="question-{{ card.id }}"><h3>{{ card.question }}</h3>{% if card.mode == 'bindings' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ binding(option) }} {{ link(option.link) }}</li>{%- endfor -%}</ul>{% elif card.mode == 'claims' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ link(option.link) }} {{ status_badge(option.status) }}</li>{%- endfor -%}</ul>{% else %}<p class='empty'>{{ card.lead }}</p>{% endif %}{{ provenance(card.provenance) }}{{ technical(card.details) }}</div>
+<div class="question-card" id="question-{{ card.id }}"><h3>{{ card.question }}</h3>{% if card.finding %}<p class="finding">{{ card.finding }}</p>{% endif %}{% if card.mode == 'bindings' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ binding(option) }} {{ link(option.link) }}</li>{%- endfor -%}</ul>{% elif card.mode == 'claims' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ link(option.link) }} {{ status_badge(option.status) }}</li>{%- endfor -%}</ul>{% else %}<p class='empty'>{{ card.lead }}</p>{% endif %}{{ provenance(card.provenance) }}{{ technical(card.details) }}</div>
 {%- endmacro -%}
 
 {%- macro answered_question(card) -%}
