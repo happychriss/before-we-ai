@@ -34,12 +34,15 @@
   down): False-Promotion **0** (non-negotiable at every commit) ·
   Seeded-Recall **14–15/25** · prompt-leakage scan CLEAN.
 - **Walkthrough pins** (offline; `validation/README.md` carries them per
-  stage): 12 sources (6 data, 6 documents) · 6 pages / 10 passages, 1 inside a
-  chart · 52 hypotheses / 0 deduped / 3 skipped · 22 candidates · 42 plans /
-  19 unbindable / 6 semantic-only / 7 skipped · 6 document claims / 6 anchors /
-  2 links / 3 refusals · 42 executed, 35 pass / 7 fail · 6 role questions,
-  16 open in total · 9 required-knowledge items · verdict **blocked**, naming
-  `journal.entity`, `journal.period`, `journal.account`, `intercompany`.
+  stage; re-pinned end to end 2026-08-02 after the live re-record): 12 sources
+  (6 data, 6 documents) · 260 column profiles · 6 pages / 10 passages, 1 inside
+  a chart · 54 hypotheses / 1 deduped / 1 skipped · 22 candidates · 50 plans /
+  18 unbindable / 6 semantic-only / 2 skipped · 9 document claims / 9 anchors /
+  2 links / 5 refusals · 50 executed, 37 pass / 13 fail · 6 role questions,
+  23 open in total (5 blocking, 18 not on this path) · 2 statements told
+  (1 parked, 1 claim) · 9 required-knowledge items · verdict **blocked**,
+  naming `journal.entity`, `journal.period`, `journal.account`,
+  `intercompany`. Seeded-Recall unmoved at 14/25.
 
 ## Next
 
@@ -139,27 +142,40 @@
    PDF — that stays open) · `system_sha256` closing the prompt half of the
    drift guard.
 
-   **Still open in M5** (state as of 2026-08-02, end of session):
+   **Still open in M5** (state as of 2026-08-02, second session):
 
-   1. **Re-pin the walkthrough.** The live recording changed every number
-      the walkthrough prints, and only the *test* pins were updated. Run
-      `cd validation && ./scripts/reset.sh` through `6-readiness.sh` and
-      correct `validation/README.md` — it currently promises the old
-      counts (52 hypotheses, 42 plans, 22 candidates …). **Do this first:
-      the README is what the owner validates against, and it is wrong.**
-   2. **A `tell` beat in walkthrough stage 5** (F28/F29). Fragility to know
-      first: `tell` calls V3 with scenario `…__statements`, and that input
-      carries the *currently open* rule items, so its fixture depends on
-      where in the run it is recorded.
-   3. **Kickoff batch items 1 and 3** — `discover(root)` sources discovery
-      + bundled guides, and mapping claims binding to generic templates
-      where a real data property exists. Items 2, 4 and 5 landed with the
-      live recording; item 3 was deliberately left out of that session
-      rather than rushed into it.
-   4. **M5 acceptance run** (`meta/conventions.md` acceptance duties), then
-      the milestone can be called done.
+   1. **Kickoff batch items 1 and 3 — THE ONLY M5 WORK LEFT.**
+      `discover(root)` sources discovery + bundled guides, and mapping
+      claims binding to *generic* templates where a real data property
+      exists (`account` via anti_join against the chart of accounts).
+      Items 2, 4 and 5 landed with the live recording; item 3 was
+      deliberately left out of that session rather than rushed into it.
+      Neither changes prompt bytes on its own, so neither needs a
+      re-record — but item 3 puts more claims in front of V2, which
+      does. Budget one live V2 call, exactly as the `decodes` fix did.
 
-   **Done this session and worth not re-doing:** the guardrail now covers
+   **Done this session (2026-08-02, second):**
+   - **Walkthrough re-pinned end to end** — every number above, plus two
+     *qualitative* corrections the old README got wrong: answering the
+     mapping questions no longer clears to `ready_with_limitations` (it
+     stays blocked on `intercompany`, which no answer can move), and 3d
+     refuses five figures rather than three.
+   - **Stage 5b, the `tell` beat** (`5-clarify.sh` → `5a-clarify.sh` +
+     `5b-tell.sh`). Two fixtures recorded live. **Each statement needs its
+     own scenario** — the fixture key is contract + scenario + document and
+     every statement is the same "document", so one scenario would have
+     them overwrite each other.
+   - **Question priority — owner work-list point 2, the "real lever".**
+     Every card carries a band (blocks / limits / bears on / not on this
+     path), section 5 sorts by it, `gap_load` breaks ties. Derived from
+     the ReadinessMap, never stored — see the note under "Derived, never
+     stored" below.
+   - **M5 acceptance run: green.** T8 negatives, K3, F28/F29 against the
+     *recorded* answers, False-Promotion 0. 732 tests.
+   - **Three real defects found by doing this, none of which the suite saw:**
+     see "Defects the green suite was blind to" below.
+
+   **Done in the first 2026-08-02 session:** the guardrail now covers
    V3 · decision B closed (the Bosch report, `corpus/data/real/`) · the
    live re-record (every fixture is a real answer; request and V3 for the
    first time) · staleness superseding · the unblock chapter · question
@@ -390,17 +406,29 @@ their old text — it is a re-record-shaped change, not a re-render.
   same card. What it buys, on the corpus: AR vs GL is **98.6%**,
   intercompany **4.2%**, invoices vs orders **2.4%** — three sentences
   that read alike and mean entirely different things.
-- **(2) priority — NEXT, and the real lever.** `gap_load()` has been built
-  and tested since M3 and is called by nothing: a grep finds two hits,
-  both the `__init__` that exports it. It ranks unproven claims by how
-  many questions rest on them. Surfacing it turns 21 flat questions into
-  "these four block your answer, seventeen can wait". Pure presentation —
-  a derivation over claims and cards, nothing stored.
-- **(3) candidates in the question** — presentation. The card already
-  holds the candidates as `claim_ids`; a list view can expand them.
-- **(4) duplicates** — presentation, per owner 2026-08-02. Two directions
-  of one law are one decision for a reader; collapse them in the UI rather
-  than suppressing a card the engine was right to write.
+- **(2) priority — DONE 2026-08-02.** Every card carries a band (blocks
+  the answer / limits / bears on / not on this path); section 5 sorts by
+  it; `gap_load()` — built since M3, called by nothing until now — breaks
+  ties inside a band. On the corpus: **5 block, 18 are not on this path**.
+
+  **The band is derived from the ReadinessMap and deliberately not
+  stored.** A priority written beside the wording would be stale the
+  moment a claim settled and would need migrating; a derived one changes
+  by itself and cannot disagree with the verdict, because it is read off
+  the same object the verdict is. Structural items block, rule items
+  limit — the distinction `ReadinessItem.structural` already draws.
+- **(3) candidates in the question** — presentation, still open. The card
+  already holds the candidates as `claim_ids`; a list view can expand
+  them. Note this is *already* done inside the report (`mode='bindings'`
+  renders them as picks); what is missing is the compact list view.
+- **(4) duplicates** — presentation, per owner 2026-08-02, still open.
+  Two directions of one law are one decision for a reader; collapse them
+  in the UI rather than suppressing a card the engine was right to write.
+  **Sharper now that priority exists:** the two `ic_symmetry` directions
+  land in *different bands* (one blocks, one does not, because only one
+  direction's claim is a role candidate). Two near-identical questions
+  sorted far apart reads worse than two adjacent ones — so collapsing
+  them matters more than it did.
 
 What is genuinely good: the role questions carry the guide's definition
 and say *why* no check can settle them ("what the data means is a business
@@ -410,6 +438,41 @@ needs to know it is their call and not a bug.
 Fixed the same day: the four document questions did not name their
 subject — they opened "only management_report p.1 carries this figure"
 without saying which figure. They now lead with the claim.
+
+## Defects the green suite was blind to — 2026-08-02
+
+Three, all found by re-pinning rather than by testing, and each blind for
+the same shape of reason: **the suite only ever exercised the one path.**
+
+1. **`import before_we_ai.readiness` failed outright.** M5 had
+   `v3_documents` reach back into `readiness` at module scope, so the
+   package could not be imported first. Every test imported `llm` first,
+   so 715 tests passed over it. Fixed by lazy imports; `tests/unit/
+   test_import_order.py` now imports each package first in its own
+   interpreter. **Any new cross-package import is a candidate for this.**
+
+2. **`decodes` hypotheses were rejected for columns that exist.** The
+   grounding lookup matched only `view.column` or a bare view, and
+   `decodes` declares no table param — so an unqualified name is the only
+   thing the model *can* write, and rejecting it claimed a real column did
+   not exist. A bare name now grounds where exactly one view carries it;
+   where two do it still grounds nothing, which is why one corpus skip
+   survives (`account_range_group` is in both charts of accounts).
+
+3. **Two fixtures shipped pinned by nothing.** The escape guard waves
+   through anything named `v3_documents__*` on the grounds that
+   `test_documents_offline_corpus.py` pins it — and that file pinned the
+   six PDFs by iterating `store.documents`, which a statement is not.
+   **The escape guard's allow-by-prefix rule is the weak spot**: adding a
+   fixture under an existing prefix inherits a guarantee nobody checked.
+
+The recorder learned precision from this: `--only-drifted` writes a
+fixture only where the one on disk no longer answers its input or its
+prompt, and `--skip-v3` leaves the document fixtures alone. The
+`decodes` re-record touched one fixture and left seven; the `tell`
+recording touched two and left eight. Before, both would have replaced
+everything wholesale — and a replaced fixture moves the corpus baseline
+that every pinned number is measured against.
 
 ## Open decisions (owner)
 
