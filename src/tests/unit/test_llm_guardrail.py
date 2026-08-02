@@ -19,9 +19,11 @@ from validation.support.corpus import (  # noqa: E402
     build_corpus_project,
 )
 
+from before_we_ai.documents import read_documents
 from before_we_ai.llm import (
     ask,
     hypothesize,
+    interpret_documents,
     load_domain_guide,
     plan_checks,
     propose_mappings,
@@ -40,8 +42,8 @@ DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month
 # Everything a promotion needs an author for. Stated as the rule, not as
 # today's snapshot: the allow-list below says what the LLM stages happen to
 # write now, and this says what they may never write however that changes.
-# M5's V3 will add DOCUMENT_ANCHOR to the first list and must not touch this
-# one — an anchor is read by nothing and promotes nothing
+# M5's V3 duly added DOCUMENT_ANCHOR to the first list and left this one
+# alone — an anchor is read by nothing and promotes nothing
 # (`core/transitions.py::resolve_status`).
 PROMOTING = (EvidenceType.CHECK_RESULT, EvidenceType.CONFIRMATION,
              EvidenceType.TESTIMONIAL)
@@ -78,10 +80,22 @@ def llm_stage_evidence(tmp_path_factory):
     hypothesize(root, store=store, scenario="corpus")
     propose_mappings(root, roles=guide, store=store, scenario="corpus")
     plan_checks(root, store=store, scenario="corpus")
+    # V3 is an LLM stage that writes evidence, so it belongs under the
+    # guardrail like the rest. It joined 2026-08-02 — until then the
+    # allow-list below was narrower than the stages it guarded, which is
+    # the quiet kind of gap: the test was green about something it never
+    # looked at.
+    read_documents(root)
+    interpret_documents(root, guide=guide, store=ProjectStore(root),
+                        scenario="corpus")
 
+    # Re-read from disk: the stages above were handed fresh stores, so the
+    # one opened at the top of this fixture has long stopped being the
+    # truth. Reading the in-memory copy is how this guardrail managed to
+    # look at a project that no longer existed.
     return [
         record
-        for evidence_id, record in store.evidence.items()
+        for evidence_id, record in ProjectStore(root).evidence.items()
         if evidence_id not in evidence_before
     ]
 
@@ -119,18 +133,39 @@ def test_llm_stages_author_nothing_that_could_promote(llm_stage_evidence):
     )
 
 
-def test_llm_stages_write_only_system_declarations(llm_stage_evidence):
+# What the model-facing stages are permitted to write today. Widened once,
+# by M5, for V3's document anchors: an anchor is weak evidence that
+# `resolve_status` never reads, so admitting it does not touch the boundary
+# above. Every entry here has to be argued for on those terms.
+ALLOWED = {
+    (EvidenceType.DECLARATION, Actor.SYSTEM),
+    (EvidenceType.DOCUMENT_ANCHOR, Actor.AI),
+}
+
+
+def test_llm_stages_write_only_what_they_are_allowed_to(llm_stage_evidence):
     """Today's list, deliberately narrow so a change has to be noticed.
 
     An allow-list fails loudly when a stage starts writing something new,
     which is exactly when a human should look. Widen it only together with
     the milestone that earns it — and never at the cost of the test above.
     """
-    assert all(
-        record.type is EvidenceType.DECLARATION
-        and record.actor is Actor.SYSTEM
-        for record in llm_stage_evidence
+    written = {(r.type, r.actor) for r in llm_stage_evidence}
+    assert written <= ALLOWED, (
+        "an LLM stage wrote something no stage is permitted to write: "
+        f"{sorted((t.value, a.value) for t, a in written - ALLOWED)}"
     )
+
+
+def test_v3_really_is_under_this_guardrail(llm_stage_evidence):
+    """The allow-list only means something if the stage it names ran.
+
+    Without this, adding DOCUMENT_ANCHOR to the list would be a permission
+    granted to nobody, and the day V3 stopped writing anchors nothing would
+    say so.
+    """
+    assert any(r.type is EvidenceType.DOCUMENT_ANCHOR
+               for r in llm_stage_evidence)
 
 
 def test_proposal_store_hides_general_evidence_writes(tmp_path):
