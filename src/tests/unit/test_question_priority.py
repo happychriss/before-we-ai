@@ -17,9 +17,11 @@ not.
 import pytest
 
 from before_we_ai.core import Actor, ClaimStatus
+from before_we_ai.readiness import Ground
 from before_we_ai.core.objects import ClarificationQuestion, Claim
 from readiness_report.projection import (
     GuideShape,
+    _build_question_tally,
     _build_questions,
     _question_bearing,
 )
@@ -28,11 +30,13 @@ pytestmark = pytest.mark.unit
 
 
 class _Item:
-    def __init__(self, ref, claim_ids, satisfied=False, structural=True):
+    def __init__(self, ref, claim_ids, satisfied=False, structural=True,
+                 ground=Ground.UNDECIDED):
         self._ref = ref
         self.claim_ids = tuple(claim_ids)
         self.satisfied = satisfied
         self.structural = structural
+        self.ground = ground
 
     @property
     def ref(self):
@@ -142,4 +146,86 @@ class TestTheOrderAReaderGets:
                             [_Map([_Item("journal.entity", [blocker.id])])])
         assert views[0].because.strip()
         assert views[0].bearing.strip()
+
+
+class TestTheTallyAboveTheList:
+    """The owner's follow-up finding: the section header counts questions,
+    and a reader under a blocked verdict reads that count as the price of
+    an answer. Two things have to be said above the list — how many of them
+    are actually in the way, and whether answering those would clear it.
+
+    The second is the one that can lie, so it is the one under test: it may
+    promise a cleared verdict only when nothing is left to qualify it.
+    """
+
+    def _tally(self, cards, maps, claims=None):
+        claims = claims or []
+        by_id = {c.id: c for c in claims}
+        open_views, _ = _build_questions(
+            cards, by_id, GuideShape(), _question_bearing(maps))
+        return _build_question_tally(open_views, cards, maps)
+
+    def test_it_counts_each_band_separately(self):
+        blocker, bystander = _claim("blocks"), _claim("bystander")
+        cards = [_card("blocking", [blocker.id]),
+                 _card("a finding", [bystander.id]),
+                 _card("another finding", [bystander.id])]
+        maps = [_Map([_Item("journal.entity", [blocker.id])])]
+        tally = self._tally(cards, maps, [blocker, bystander])
+        assert tally.total == 3 and tally.urgent == 1
+        assert tally.bands == ((1, 0, "blocks the answer"),
+                               (2, 3, "not on this path"))
+        assert "1 of these 3" in tally.headline
+        assert "the other 2 do not" in tally.headline
+
+    def test_answering_clears_it_when_nothing_else_is_unsettled(self):
+        blocker = _claim("blocks")
+        maps = [_Map([_Item("journal.entity", [blocker.id])])]
+        tally = self._tally([_card("q", [blocker.id])], maps, [blocker])
+        assert "would clear the verdict" in tally.outlook
+
+    def test_a_refuted_blocker_is_not_waiting_on_an_answer(self):
+        """The failure mode this exists to prevent. Every candidate was
+        tested and refuted, so a human confirming one collides with the
+        check rather than settling it — the verdict does not move, and
+        promising otherwise would be the product telling the reader
+        something untrue."""
+        refuted = _claim("refuted")
+        maps = [_Map([_Item("intercompany", [refuted.id],
+                            ground=Ground.ALL_CONTRADICTED)])]
+        tally = self._tally([_card("q", [refuted.id])], maps, [refuted])
+        assert "would not clear the verdict" in tally.outlook
+        assert "'intercompany'" in tally.outlook
+        assert "Section 6" in tally.outlook
+
+    def test_remaining_limitations_are_named_as_such(self):
+        blocker, rule = _claim("blocks"), _claim("rule")
+        maps = [_Map([_Item("journal.entity", [blocker.id]),
+                      _Item("sign convention", [rule.id], structural=False)])]
+        cards = [_card("q", [blocker.id]), _card("rule question", [rule.id])]
+        tally = self._tally(cards, maps, [blocker, rule])
+        assert "figures computable" in tally.outlook
+        assert "1 dependency would remain as a named limitation" in tally.outlook
+        # this one *is* covered by a card, so no orphan clause
+        assert "no question on this list" not in tally.outlook
+
+    def test_a_limitation_no_card_covers_is_called_out(self):
+        """A rule nobody proposed a claim for has no question either. A
+        reader could work section 5 to the end and never touch it."""
+        blocker = _claim("blocks")
+        maps = [_Map([_Item("journal.entity", [blocker.id]),
+                      _Item("month cut-off", [], structural=False)])]
+        tally = self._tally([_card("q", [blocker.id])], maps, [blocker])
+        assert "no question on this list covers it" in tally.outlook
+
+    def test_nothing_urgent_says_so_plainly(self):
+        bystander = _claim("bystander")
+        tally = self._tally([_card("a finding", [bystander.id])],
+                            [_Map([])], [bystander])
+        assert tally.urgent == 0
+        assert "No open question holds up the answer" in tally.headline
+
+    def test_an_empty_list_says_nothing_at_all(self):
+        tally = self._tally([], [_Map([])])
+        assert tally.total == 0 and tally.outlook == ""
 

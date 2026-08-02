@@ -677,11 +677,22 @@ catch it coming back.
   package that is only partly on disk, so a fresh `pip install -e .`
   may break; the running editable install does not notice, which is why
   the suite stays green.
-- **The Anthropic API key is reused, not rotated** (owner decision). Since
-  2026-08-02 (owner decision) it lives in `~/.zshenv` — outside the repo,
-  chmod 600 — so every shell exports `ANTHROPIC_API_KEY`. It is never
-  written to any file inside the repo, never committed, never logged, and
-  never pasted into a transcript.
+- **The Anthropic API key is reused, not rotated** (owner decision). It
+  lives in `~/.config/before-we-ai/api-key` — outside the repo, chmod 600 —
+  and reaches a process **only** through `scripts/with-api-key.sh`, which
+  exports it for one command via `exec`. It is never written to any file
+  inside the repo, never committed, never logged, and never pasted into a
+  transcript.
+  **Never put it back into `~/.zshenv` or any shell startup file, and never
+  `export` it in a shell you keep working in.** It sat in `~/.zshenv` from
+  2026-08-02 07:10 to 16:21, and every zsh loads that file — including the
+  one Claude Code starts in. Claude Code takes `ANTHROPIC_API_KEY` from the
+  environment and bills the *assistant session* to it, so a 1M-context Opus
+  chat was charged to the key the owner had funded for a handful of
+  recordings. The owner found it on the bill, not in a log. The recordings
+  were never the expensive part. Rule: scope a credential by the **process**
+  that may spend it, not by what it was intended for — and when setting a
+  credential up, say out loud who else in the room can now see it.
 - `docs/spec/` is the owner's authoritative German spec — edit only on an
   explicit owner decision. Everything else is English.
 - Prompt bytes change only with a deliberate fixture re-record; the drift

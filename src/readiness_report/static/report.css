@@ -487,3 +487,12 @@
     .question-card.rank-2 { border-left-color: var(--line); }
     .question-card.rank-3 { border-left-color: transparent; }
     .question-card.rank-3 .bearing-badge { color: var(--muted); }
+
+    /* The same split, counted, above the list — so "22 open questions"
+       under a blocked verdict is never read as the price of an answer. */
+    .tally { margin: 0 0 14px; font-size: 12px; }
+    .tally-bands { margin: 0 0 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .tally-line { margin: 0; line-height: 1.5; }
+    .tally .rank-0 { color: var(--bad, #b3261e); border-color: currentColor; }
+    .tally .rank-1 { color: var(--warn, #9a6700); border-color: currentColor; }
+    .tally .rank-3 { color: var(--muted); }

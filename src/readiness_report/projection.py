@@ -396,6 +396,30 @@ class AnsweredQuestionView:
 
 
 @dataclass(frozen=True)
+class QuestionTallyView:
+    """How the to-do list divides — and what working it would actually buy.
+
+    Section 5 opened with a single count, and a single count invites the
+    wrong inference twice over: a reader seeing twenty-two open questions
+    under a blocked verdict reads all twenty-two as the price of an answer,
+    and then reads answering the urgent ones as paying it. Most are not on
+    the path at all, and a candidate a check *refuted* is not waiting on a
+    person — no answer settles it.
+
+    Both facts are derived already (`_question_bearing` for the bands,
+    the same Ground split `_build_unblock` routes on); this states them
+    where the list is actually read, instead of leaving the reader to
+    reconcile section 5 with section 6 themselves.
+    """
+
+    total: int
+    bands: tuple[tuple[int, int, str], ...] = ()  # count, rank, band label
+    urgent: int = 0
+    headline: str = ""
+    outlook: str = ""
+
+
+@dataclass(frozen=True)
 class RequestItemView:
     ref: str
     kind: str
@@ -598,6 +622,7 @@ class ReportViewModel:
     funnel: FunnelView
     elections: tuple[ElectionView, ...]
     open_questions: tuple[QuestionView, ...]
+    question_tally: QuestionTallyView
     answered_questions: tuple[AnsweredQuestionView, ...]
     readiness: tuple[ReadinessView, ...]
     claims: tuple[ClaimView, ...]
@@ -2594,6 +2619,106 @@ def _question_bearing(maps) -> dict[str, tuple[int, str, str]]:
     return bands
 
 
+def _quoted(refs: Iterable[str]) -> str:
+    values = [f"'{ref}'" for ref in refs]
+    if len(values) <= 1:
+        return "".join(values)
+    return f"{', '.join(values[:-1])} and {values[-1]}"
+
+
+def _build_question_tally(open_questions: tuple[QuestionView, ...],
+                          questions: list[ClarificationQuestion],
+                          readiness_maps: list) -> QuestionTallyView:
+    """Count the list by band, then say what clearing the urgent part leaves.
+
+    The outlook is derived from the same ReadinessMap the bands are, and it
+    is deliberately pessimistic in exactly one direction: it promises a
+    cleared verdict only when nothing is left to qualify it. Over-promising
+    here is the failure mode that matters — a reader who works the list and
+    finds the verdict unmoved has been told something untrue by the product,
+    which is the one thing it may not do.
+    """
+    total = len(open_questions)
+    counts: dict[int, int] = defaultdict(int)
+    for view in open_questions:
+        counts[view.rank] += 1
+    bands = tuple(
+        (counts[rank], rank, label)
+        for rank, label, _ in _BANDS if counts[rank]
+    )
+    urgent = counts[_BANDS[0][0]]
+    if not urgent:
+        return QuestionTallyView(
+            total=total, bands=bands, urgent=0,
+            headline=(
+                "No open question holds up the answer that was asked."
+                if total else "No open questions."
+            ),
+            outlook=(
+                "Every one of these was raised about the landscape, not "
+                "about the path to this answer. Section 6 says what the "
+                "verdict rests on."
+            ) if total else "",
+        )
+
+    blocking = [item for readiness in readiness_maps if readiness
+                for item in readiness.blocking()]
+    limits = [item for readiness in readiness_maps if readiness
+              for item in readiness.limitations()]
+    refuted = [item.ref for item in blocking
+               if item.ground is Ground.ALL_CONTRADICTED]
+
+    headline = (
+        f"{urgent} of these {total} hold up the answer"
+        f"{f'; the other {total - urgent} do not' if total > urgent else ''}."
+    )
+
+    if refuted:
+        one = len(refuted) == 1
+        outlook = (
+            f"Answering all {urgent} would not clear the verdict: "
+            f"{_quoted(refuted)} {'was' if one else 'were'} refuted by a "
+            f"check, so a confirmation collides with that evidence instead "
+            f"of settling it. Section 6 names the route that does apply."
+        )
+    else:
+        outlook = (
+            f"Answering all {urgent} would make the figures computable."
+        )
+    if limits:
+        # A limitation nothing on this list covers is the second way the
+        # count misleads: the reader would work section 5 to the end and
+        # still not have touched it.
+        open_ids = {view.id for view in open_questions}
+        on_list = {claim_id for card in questions if card.id in open_ids
+                   for claim_id in card.claim_ids}
+        uncovered = [item for item in limits
+                     if not set(item.claim_ids) & on_list]
+        one = len(limits) == 1
+        clause = (
+            f" {len(limits)} dependenc{'y' if one else 'ies'} would remain "
+            f"as {'a ' if one else ''}named limitation{'' if one else 's'}"
+        )
+        if len(uncovered) == len(limits):
+            clause += (
+                f", and no question on this list covers "
+                f"{'it' if one else 'them'}"
+            )
+        elif uncovered:
+            clause += (
+                f", and {len(uncovered)} of them are covered by no question "
+                "on this list"
+            )
+        outlook += f"{clause}."
+    elif not refuted:
+        outlook = (
+            f"Answering all {urgent} would clear the verdict: nothing else "
+            "this answer depends on is unsettled."
+        )
+    return QuestionTallyView(total=total, bands=bands, urgent=urgent,
+                             headline=headline, outlook=outlook)
+
+
 def _build_questions(
     questions: list[ClarificationQuestion],
     claims: dict[str, Claim],
@@ -3682,6 +3807,9 @@ def build_view_model(
             facts, questions, guide, answered_slots
         ),
         open_questions=open_questions,
+        question_tally=_build_question_tally(
+            open_questions, questions, readiness_maps
+        ),
         answered_questions=answered_questions,
         readiness=_build_readiness(readiness_maps),
         claims=claim_views,

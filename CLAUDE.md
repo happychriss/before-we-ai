@@ -28,8 +28,9 @@ but never restate it:
 - `meta/` — how we work, not what we build: `project-setup.md` (workflow),
   `conventions.md` (project rules), `memory.md` (live state and open points —
   forward-looking only; move durable facts into docs/), environment notes
-- `scripts/` — (reserved, added later) self-contained ops scripts: start the
-  process, readiness report, cleanup of stale processes; runnable directly after login
+- `scripts/` — self-contained ops scripts, runnable directly after login:
+  `with-api-key.sh` (the only way the Anthropic key reaches a process);
+  start the process, readiness report, cleanup of stale processes to follow
 - `validation/` — owner-facing validation walkthrough: `README.md` (the test
   steps) + `scripts/` (runnable stage & report tools); `data/` is generated
   and git-ignored

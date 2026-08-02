@@ -232,6 +232,10 @@
 {%- if option.binding_kind == 'column' -%}{{ column_link(option.binding) }}{%- elif option.binding_kind == 'table' -%}{{ table_link(option.binding) }}{%- else -%}<code>{{ option.binding }}</code>{%- endif -%}
 {%- endmacro -%}
 
+{%- macro question_tally(tally) -%}
+{%- if tally.total -%}<div class="tally"><p class="tally-bands">{%- for count, rank, label in tally.bands -%}<span class="bearing-badge rank-{{ rank }}"><strong>{{ count }}</strong> {{ label }}</span>{%- endfor -%}</p><p class="tally-line"><strong>{{ tally.headline }}</strong> <span class="bearing-why">{{ tally.outlook }}</span></p></div>{%- endif -%}
+{%- endmacro -%}
+
 {%- macro question(card) -%}
 <div class="question-card rank-{{ card.rank }}" id="question-{{ card.id }}"><h3>{{ card.question }}</h3><p class="bearing"><span class="bearing-badge">{{ card.bearing }}</span> <span class="bearing-why">{{ card.because }}</span></p>{% if card.finding %}<p class="finding">{{ card.finding }}</p>{% endif %}{% if card.mode == 'bindings' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ binding(option) }} {{ link(option.link) }}</li>{%- endfor -%}</ul>{% elif card.mode == 'claims' %}<p class='muted'>{{ card.lead }}</p><ul class='picks'>{%- for option in card.options -%}<li>{{ link(option.link) }} {{ status_badge(option.status) }}</li>{%- endfor -%}</ul>{% else %}<p class='empty'>{{ card.lead }}</p>{% endif %}{{ provenance(card.provenance) }}{{ technical(card.details) }}</div>
 {%- endmacro -%}
@@ -411,6 +415,7 @@
         <h2>5 · Clarification — what only a human can answer ({{ view.open_questions | length }})</h2>
         <p class="muted">{{ view.copy.clarification_intro }}</p>
         <p class="muted">{{ view.copy.clarification_order }}</p>
+        {{ question_tally(view.question_tally) }}
         {% if view.open_questions %}{% for card in view.open_questions %}{{ question(card) }}{% endfor %}{% else %}<p class="empty">No open questions.</p>{% endif %}
         {% if view.answered_questions %}<details><summary>Answered questions ({{ view.answered_questions | length }}) — kept, because what settled them is part of the record</summary>{% for card in view.answered_questions %}{{ answered_question(card) }}{% endfor %}</details>{% endif %}
       </section>

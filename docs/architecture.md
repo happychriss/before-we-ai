@@ -1341,13 +1341,21 @@ presentable dataset needs one live recording session. **Open** — see
   yields identical output with stable profile IDs. Truth lives only in the
   YAML dirs.
 - **Fixture refresh** (only when prompts/input builders change and the drift
-  guard goes red): from `src/`, with `ANTHROPIC_API_KEY` exported in the
-  shell (never in a file), run `python tests/eval/refresh_fixtures.py` — it
+  guard goes red): from `src/`, run it through
+  `scripts/with-api-key.sh python tests/eval/refresh_fixtures.py` — it
   refuses to record from a `failed` call and warns on `partial`; then review
   the fixture diff, re-pin counts in
   `tests/corpus_driven/test_llm_offline_corpus.py`, and re-run
   `python tests/eval/seeded_recall.py` (report the delta vs the last
   published number honestly, including "unchanged").
+- **The key is never exported into a shell you keep working in.** It lives
+  in `~/.config/before-we-ai/api-key` (chmod 600, outside the repo) and
+  `scripts/with-api-key.sh` hands it to one command via `exec`. It used to
+  sit in `~/.zshenv`, which every zsh loads — including the one Claude Code
+  starts in, so the assistant session was billed to the owner's key
+  alongside the recordings it was meant for (found 2026-08-02, by the bill).
+  A credential scoped to "the product's LLM calls" has to be scoped by the
+  *process*, not by intent.
 - **Owner validation walkthrough**: `validation/README.md` +
   `validation/scripts/` (numbered stages, offline by default; `report.sh`
   renders the readiness report, `llm-log.sh` the verbatim call log).

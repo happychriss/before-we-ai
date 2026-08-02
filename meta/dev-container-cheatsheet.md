@@ -64,24 +64,32 @@ Add `GH_TOKEN=ghp_...` to `.env` on the host and restart the container.
 
 ## Anthropic API Key
 
-Claude stores your API key in its own config after the first login. It persists in the
-`claude-home` named volume — so you only enter it once, ever (unless you nuke the volume).
+> **Do not give the project's API key to Claude Code itself.** The key
+> exists to pay for *the product's* LLM calls (fixture recordings, evals).
+> Claude Code billed to that key charges the whole assistant conversation
+> to it — on 2026-08-02 a long Opus session cost many times what the
+> recordings it was funded for did. Log in with `/login` (subscription)
+> and check with `/status`. Where the key does live, and how a recording
+> gets it: `meta/memory.md` + `scripts/with-api-key.sh`.
+
+Claude stores your credentials in its own config after the first login. They persist in the
+`claude-home` named volume — so you only log in once, ever (unless you nuke the volume).
 
 ### First time setup (inside the container)
 ```bash
 claude
-# Claude will prompt: "Enter your Anthropic API key:"
-# Paste sk-ant-... and hit Enter — it's saved, never asked again
+/login          # browser flow, subscription — NOT the API key
+/status         # confirm which auth is active before doing any work
 ```
 
-The key is stored in `/home/ubuntu/.claude/` and survives container rebuilds.
+Credentials are stored in `/home/ubuntu/.claude/` and survive container rebuilds.
 
-### If Claude asks for the key again
+### If Claude asks for credentials again
 This only happens if the `claude-home` volume was deleted (e.g. `docker compose down -v`).
-Just paste the key again when prompted — it'll be saved for next time.
+Run `/login` again — not the API key, however convenient the prompt makes it look.
 
 ### If you ran `docker compose down -v` by accident
-That wipes the volume including Claude's memory, settings and key. Re-enter the key on next
+That wipes the volume including Claude's memory, settings and credentials. Run `/login` on next
 `claude` start. Everything else (your code in `/workspace`) is fine — that's the host bind-mount.
 
 ---
