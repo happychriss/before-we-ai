@@ -51,7 +51,10 @@
   42 pass / 12 fail · 6 role questions, 22 open in total · 2 statements told
   (1 parked, 1 claim) · 9 required-knowledge items · verdict **blocked**,
   naming `journal.entity`, `journal.period`, `journal.account`,
-  `intercompany`. Seeded-Recall unmoved at 14/25.
+  `intercompany`. Seeded-Recall unmoved at 14/25. Since M7.2 the guide
+  declares **2 answer types** and its fingerprint is `c22ad2e5a8e0`; every
+  other pin above survived that change untouched, which is the blast radius
+  the guide's shape was designed to have.
 
 ## Next
 
@@ -74,8 +77,16 @@ claim vocabulary.
      `content_hash`; and the 3c friction turned out not to be a bug to fix
      but a rule to state — measuring and judging stages are re-runnable,
      offline *proposal* stages are not, and 3c now says so when it refuses.
-   - **Second answer type** (receivables — `subledger_ar` sits ready).
-     One type makes classification vacuous and "not on this path" untestable.
+   - ~~**Second answer type** (receivables).~~ **DONE 2026-08-02** —
+     `open_receivables` in `domains/finance.yaml`, design note in
+     `docs/architecture.md` → "Answer types", behaviour pinned in
+     `test_llm_offline_corpus.py::TestTwoFamiliesInOneLandscape`. Two live
+     calls, recorded through `--only request` (a new flag: `--only-drifted`
+     protects the fixture, not the wallet). **Left open on purpose**: the
+     guide declares no fields under `subledger_ar`, so the type promises a
+     total, not a break-out by customer. Adding those fields moves the role
+     list and with it the role-binding/V2 recordings and every walkthrough
+     pin — do it inside the next full re-record, never as a side effect.
    - **Request lifecycle**: supersession/revisions (the mockup's
      "Revision 3"), and a request fingerprint on confirm acts — an edited
      question must lapse its classification confirmation exactly as a

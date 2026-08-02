@@ -47,14 +47,36 @@ PDF_SOURCES = [
 
 STATEMENTS_SPEC = CORPUS / "tell_statements.yaml"
 
+# The questions the pipeline is recorded against, and the scenario each one
+# is filed under. One home for them: the recorder asks them, the drift guard
+# rebuilds their inputs, and the two used to be separate constants held
+# byte-identical by a comment asking nicely.
+#
+# Two of them, and that is the point. With one answer type declared,
+# classification had nothing to get wrong — every question landed on the only
+# entry there was. The second question is deliberately a near neighbour: also
+# about money in the ledger, naming no table, sharing three of its
+# dependencies with the first.
+REQUEST_SCENARIOS: list[tuple[str, str]] = [
+    ("corpus", "Can these files reliably produce actual P&L by entity and month?"),
+    ("corpus_receivables", "What is still outstanding from our customers?"),
+]
+
 # The contracts whose fixtures are pinned in test_llm_offline_corpus.py.
-GUARDED_IN_THE_LLM_FILE = frozenset({
-    "request__corpus",
-    "v1_hypotheses__corpus",
-    "role_binding__corpus",
-    "v2_bind__corpus_roles",
-    "v2_bind__corpus_claims",
-})
+GUARDED_IN_THE_LLM_FILE = frozenset(
+    {f"request__{scenario}" for scenario, _ in REQUEST_SCENARIOS}
+    | {
+        "v1_hypotheses__corpus",
+        "role_binding__corpus",
+        "v2_bind__corpus_roles",
+        "v2_bind__corpus_claims",
+    }
+)
+
+
+def question(scenario: str) -> str:
+    """The question one request scenario was recorded for."""
+    return next(text for name, text in REQUEST_SCENARIOS if name == scenario)
 
 
 def statement_scenarios() -> list[tuple[str, str]]:

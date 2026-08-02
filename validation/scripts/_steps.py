@@ -714,8 +714,13 @@ def stage_request(args) -> None:
     print(f"  requested output: {report.request.requested_output}")
     scope = report.request.scope
     print(f"  scope: {scope.label() or 'the whole landscape (the question named none)'}")
+    others = [name for name in roles.answer_types
+              if name != report.request.answer_type]
     print(f"  treated as: {report.request.answer_type or 'no declared answer type'}"
           f"   (guide {guide_label(roles)})")
+    if others:
+        print(f"  not: {', '.join(others)} — the guide declares "
+              f"{len(roles.answer_types)}, and this was a choice")
 
     built = assemble(store, roles, report.request)
     section(f"what this answer depends on ({len(built.items)} items) — and "
@@ -787,6 +792,15 @@ def stage_inputs(args) -> None:
         for fname, field in spec.fields.items():
             path = field.decided_by + (f" -> {field.fills}" if field.fills else "")
             print(f"    {fname:14s} {path}")
+
+    section(f"answer types this guide declares ({len(roles.answer_types)})")
+    for name, spec in roles.answer_types.items():
+        print(f"  {name:32s} {len(spec.requires)} dependencies")
+        print(f"    {clip(spec.definition, 68)}")
+    print("\n  Stage 1 classifies the question to one of these, and the engine\n"
+          "  expands *that* list. Which is why there has to be more than one:\n"
+          "  with a single type the classification could not be wrong, and\n"
+          "  'that is not on this path' described nothing.")
 
     laws = {n: s for n, s in REGISTRY.items() if s.domain}
     section(f"domain laws shipped for this domain ({len(laws)} of "

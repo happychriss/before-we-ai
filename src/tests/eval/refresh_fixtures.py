@@ -20,7 +20,9 @@ from pathlib import Path
 
 # The corpus project construction is owner-facing support, not test code
 # (validation/support/) — this tool is run as a script, so it says where.
+# `src/` goes on the path too, for the one list of recorded questions.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from validation.support.corpus import FIXTURES, DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
 
 from before_we_ai.documents import read_documents
@@ -35,9 +37,12 @@ from before_we_ai.llm.client import AnthropicClient
 from before_we_ai.llm.v2_bind import plan_checks
 from before_we_ai.store import ProjectStore
 
-# Must stay byte-identical to DEMO_QUESTION in the offline corpus suite —
-# the drift guard rebuilds the request input from it.
-DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
+# The questions, and the scenario each is filed under, come from the one
+# list the drift guard rebuilds its inputs from — they used to be a second
+# copy here, kept identical by a comment asking nicely.
+from tests.corpus_driven.fixture_registry import REQUEST_SCENARIOS, question  # noqa: E402
+
+DEMO_QUESTION = question("corpus")
 
 # The corpus' K8 statements — the same file the walkthrough's 5b beat reads.
 TELL_STATEMENTS = (Path(__file__).resolve().parents[2]
@@ -123,6 +128,14 @@ def main() -> None:
         help="do not record the document contract. V3's inputs depend on "
              "which rule items are still open, so they survive most "
              "upstream changes — six calls not worth making blind.")
+    parser.add_argument(
+        "--only", action="append", choices=["request", "v1", "roles"],
+        metavar="CONTRACT",
+        help="record only these upstream contracts (repeatable). "
+             "`--only-drifted` protects the fixture but not the wallet: the "
+             "call is made either way. When a change touches one prompt — a "
+             "new answer type moves the request input and nothing else — "
+             "this is what stops the other two from being paid for.")
     args = parser.parse_args()
 
     workdir = Path(args.keep) if args.keep else Path(tempfile.mkdtemp(prefix="refresh-"))
@@ -133,7 +146,16 @@ def main() -> None:
         print("keeping the recorded request/V1/role answers")
     else:
         _record_upstream(workdir, client, roles,
-                         only_drifted=args.only_drifted)
+                         only_drifted=args.only_drifted,
+                         only=set(args.only or ["request", "v1", "roles"]))
+
+    if args.only:
+        print("\n--only was given, so the downstream contracts were not "
+              "recorded. Run the offline suite: if the drift guard is quiet, "
+              "they still answer their inputs.")
+        if not args.keep:
+            shutil.rmtree(workdir)
+        return
 
     _record_downstream(workdir, client, roles,
                        only_drifted=args.only_drifted, skip_v3=args.skip_v3)
@@ -147,7 +169,8 @@ def _recorded(written: Path | None) -> str:
 
 
 def _record_upstream(workdir: Path, client, roles,
-                     only_drifted: bool = False) -> None:
+                     only_drifted: bool = False,
+                     only: set[str] | None = None) -> None:
     """The three calls the rest of the pipeline is measured against.
 
     ``only_drifted`` reaches here too, and has to. It did not until
@@ -157,32 +180,43 @@ def _record_upstream(workdir: Path, client, roles,
     moved with them. The point of re-recording is to see what the *change*
     did; a resampled baseline hides exactly that.
     """
+    only = only or {"request", "v1", "roles"}
     root = build_corpus_project(workdir / "project", offline=False)
     store = ProjectStore(root)
 
-    print("request (frontier) ...")
-    drafted = ask(root, DEMO_QUESTION, guide=roles, client=client, store=store,
-             scenario="corpus")
-    if drafted.failure:
-        raise SystemExit(f"request failed twice: {drafted.failure} "
-                         f"(log: {drafted.log_ref})")
-    # No delta is the good answer: it means the guide's answer type already
-    # carries what this question depends on.
-    delta = len(drafted.required.items) if drafted.required else 0
-    print(f"  answer type {drafted.request.answer_type!r}, {delta} delta "
-          f"item{'s' if delta != 1 else ''}, {len(drafted.skipped)} skipped, "
-          f"usage {drafted.usage}")
-    print("  fixture:", _recorded(write_fixture_from_log(
-        drafted.log_ref, only_drifted=only_drifted)))
+    if "request" in only:
+        # One call per question, because the classification IS the answer and
+        # two questions are two of them. The scenario keys them apart in the
+        # fixture directory exactly as it does for the tell statements.
+        for scenario, text in REQUEST_SCENARIOS:
+            print(f"request/{scenario} (frontier) ...")
+            drafted = ask(root, text, guide=roles, client=client,
+                          store=store, scenario=scenario)
+            if drafted.failure:
+                raise SystemExit(f"request failed twice: {drafted.failure} "
+                                 f"(log: {drafted.log_ref})")
+            # No delta is the good answer: it means the guide's answer type
+            # already carries what this question depends on.
+            delta = len(drafted.required.items) if drafted.required else 0
+            print(f"  answer type {drafted.request.answer_type!r}, {delta} "
+                  f"delta item{'s' if delta != 1 else ''}, "
+                  f"{len(drafted.skipped)} skipped, usage {drafted.usage}")
+            print("  fixture:", _recorded(write_fixture_from_log(
+                drafted.log_ref, only_drifted=only_drifted)))
 
-    print("V1 hypotheses (frontier) ...")
-    v1 = hypothesize(root, client=client, store=store, scenario="corpus")
-    if v1.failure:
-        raise SystemExit(f"V1 failed twice: {v1.failure} (log: {v1.log_ref})")
-    print(f"  {len(v1.claims_created)} claims, {len(v1.skipped)} skipped, "
-          f"usage {v1.usage}")
-    print("  fixture:", _recorded(write_fixture_from_log(
-        v1.log_ref, only_drifted=only_drifted)))
+    if "v1" in only:
+        print("V1 hypotheses (frontier) ...")
+        v1 = hypothesize(root, client=client, store=store, scenario="corpus")
+        if v1.failure:
+            raise SystemExit(f"V1 failed twice: {v1.failure} (log: {v1.log_ref})")
+        print(f"  {len(v1.claims_created)} claims, {len(v1.skipped)} skipped, "
+              f"usage {v1.usage}")
+        print("  fixture:", _recorded(write_fixture_from_log(
+            v1.log_ref, only_drifted=only_drifted)))
+
+    if "roles" not in only:
+        shutil.rmtree(root)
+        return
 
     print("role-binding proposals (frontier) ...")
     proposals = propose_mappings(root, roles=roles, client=client,

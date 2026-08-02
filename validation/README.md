@@ -82,7 +82,8 @@ lint runs at load, so a guide that contradicts itself — a field declaring a
 law, a slot its object's law does not have — is caught here rather than
 surfacing later as a strange question.
 
-Good (offline pins): 12 sources (6 data files, 6 documents); 3 business objects and 5 fields, lint passed;
+Good (offline pins): 12 sources (6 data files, 6 documents); 3 business
+objects and 5 fields, lint passed; **2 answer types** (9 and 6 dependencies);
 3 domain laws of 13 templates, the other 10 generic. The step also names the
 corpus files *not* listed, so their absence is a visible decision rather than
 an oversight.
@@ -109,22 +110,30 @@ The contract reads the question, the domain vocabulary and the answer types —
 *definitions only, no profiles*. Whether the data can serve the question is the
 rest of the pipeline's job; answering it here would be the model deciding.
 
-Good (offline pins): treated as **`profit_and_loss_by_dimension`**, **0** delta
-items drafted, 0 skipped — the question is fully covered by the type, so the
-contract stores no list of its own. The expansion is **9** items: the journal,
-four of its fields, the intercompany object, and three business rules the
-vocabulary does not contain (which accounts are P&L, the sign convention, the
-month cut-off). Every one reads `[contract]`.
+Good (offline pins): treated as **`profit_and_loss_by_dimension`** — and the
+run says which type it did *not* pick, because the guide declares **two** and
+this was a choice. **0** delta items drafted, 0 skipped: the question is fully
+covered by the type, so the contract stores no list of its own. The expansion
+is **9** items: the journal, four of its fields, the intercompany object, and
+three business rules the vocabulary does not contain (which accounts are P&L,
+the sign convention, the month cut-off). Every one reads `[contract]`.
 
 Three things to look at:
 
-- **The guide fingerprint** next to the classification (`guide 0ac5f94b7b63`).
+- **The guide fingerprint** next to the classification (`guide c22ad2e5a8e0`).
   Every human decision about this list records it, so a confirmation given
-  against one version of the guide cannot go on vouching for another.
+  against one version of the guide cannot go on vouching for another. It
+  moved when the second answer type was added — which is the mechanism, not
+  a nuisance.
 - **What is not on the list**: `subledger_ar`. Open receivables do not enter a
   profit and loss, so this question does not require them. That absence is the
   question bounding discovery, made visible — the whole reason the frame
-  exists.
+  exists. Ask the *other* question of the very same landscape ("What is still
+  outstanding from our customers?") and `subledger_ar` is the first thing in
+  the way while `journal.entity`, `journal.period` and `intercompany` drop off
+  entirely. Same files, same evidence, different verdict about what is
+  missing — pinned in
+  `tests/corpus_driven/test_llm_offline_corpus.py::TestTwoFamiliesInOneLandscape`.
 - **Nobody has confirmed the classification yet.** Stage 6 will say so.
 
 ### Stage 2a — scan

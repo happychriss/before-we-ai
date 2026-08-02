@@ -1,0 +1,10 @@
+{
+ "contract": "request",
+ "scenario": "corpus_receivables",
+ "input_sha256": "1d6d1875f329b444d70c77258c6e2c283541573db93bbfdf00805453090c4b80",
+ "system_sha256": "dd04dd9a08a579c5b55ea6fb5005dbe2d5472b8d1dab8f9e8b6ab0782d7569f1",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T190700Z_request_01KZ1XYMCS0P0X30TQSBQKR9D6.json",
+ "source_log": "/tmp/refresh-wath5bra/project/cache/llm_log/20260802T190700Z_request_01KZ1XYMCS0P0X30TQSBQKR9D6.json",
+ "response_text": "{\"answer_type\": \"open_receivables\", \"rationale\": \"The question asks what customers still owe — outstanding receivable items at a point in time. This maps directly to the open_receivables answer type, which delivers the outstanding receivable items and their total tied to the ledger. The type's requirements already carry the subledger, journal, the receivables account rule and the open-item rule; nothing extra is needed.\", \"requested_output\": \"The receivable items still outstanding from customers, with their total once reconciled to the ledger control account.\"}"
+}

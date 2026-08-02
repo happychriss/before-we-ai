@@ -120,3 +120,35 @@ answer_types:
           Per-entity actuals include intercompany traffic; whether the
           requested figures are gross or net of it changes each entity's
           result.
+  open_receivables:
+    definition: >-
+      What is still owed to the business: the receivable items outstanding at
+      a point in time, and what they total once they tie to the ledger.
+    requires:
+      - object: subledger_ar
+        why: >-
+          The open items are the answer. If the wrong table plays this part,
+          the total is a number about something else.
+      - object: journal
+        why: >-
+          A subledger is only worth reading once it ties to the ledger of
+          record. Without the journal there is nothing to tie it to, and an
+          unreconciled receivables list is a claim, not a figure.
+      - field: journal.account
+        why: >-
+          The tie runs through one control account. Without the account on
+          each posting, the ledger side of the comparison cannot be isolated.
+      - field: journal.amount_local
+        why: >-
+          The amount that is compared against the subledger's. Reading the
+          wrong column compares two unrelated numbers and calls the
+          difference a discrepancy.
+      - rule: which account carries receivables
+        why: >-
+          Nothing in the column layout says which account is the receivables
+          control account. Pick the wrong one and the reconciliation fails
+          against an account that was never supposed to match.
+      - rule: when a receivable counts as open
+        why: >-
+          Cash received but not yet applied, disputed items and credit notes
+          are each either open or not by policy. The rows cannot say which.

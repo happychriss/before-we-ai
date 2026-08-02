@@ -1231,6 +1231,31 @@ analysis: `docs/draft-thoughts/dependency-contract-proposal-for-review.md`).
    asks where an answer type came from — a hand-written guide, a starter
    pack, or one day a guide builder that proposes one from documents.
 
+**Two types, because one could not be wrong** (M7). The finance guide shipped
+with a single answer type, and that made the whole seam untestable: every
+question landed on the only entry there was, the classification could not
+misfire, and "that is not on this path" described nothing. `open_receivables`
+is the second — deliberately a near neighbour (also about money in the
+ledger, naming no table) and sharing three of its six dependencies with the
+P&L type. Both questions are recorded against the live model with both types
+in front of it, and the P&L answer did **not** move when the competitor
+appeared, which is the half of that recording worth having.
+
+What it buys, on one landscape and one set of evidence: the P&L question is
+blocked by `journal.entity`, `journal.period`, `journal.account` and
+`intercompany`; the receivables question by `subledger_ar` and
+`journal.account`. The entity and period fields, the intercompany object and
+the three P&L rules are simply not on the receivables path — and
+`subledger_ar`, a side issue for the first question, is the first thing in
+the way for the second. Urgency is a property of what is being asked, which
+is the claim the whole design rests on and could not previously be shown.
+
+The guide has no fields under `subledger_ar`, so `open_receivables` deliberately
+promises a total rather than a break-out by customer. Adding those fields
+would move the role list, and with it the role-binding and V2 recordings and
+every walkthrough pin — worth doing when a full re-record is due anyway, not
+as a side effect of this.
+
 **Only a confirmation lapses.** A `confirm` says *"this list is complete"*,
 which stops being true the moment the list changes, so it is ignored once the
 guide fingerprint no longer matches. Every other act is about one item —

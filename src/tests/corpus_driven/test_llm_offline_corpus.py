@@ -46,10 +46,15 @@ from before_we_ai.core import (
 from before_we_ai.core.objects import MappingClaim
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.profile.candidates import load_matrix
-from before_we_ai.readiness import Ground, Readiness, evaluate_request
+from before_we_ai.readiness import (
+    Ground,
+    Readiness,
+    confirm_classification,
+    evaluate_request,
+)
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, init_project
-from fixture_registry import all_guarded
+from fixture_registry import REQUEST_SCENARIOS, all_guarded, question
 
 pytestmark = pytest.mark.acceptance
 
@@ -75,7 +80,10 @@ LEAK_TOKENS = ("trap", "decoy", "BLIND_", "expected_verdicts", "F27", "Seeded")
 
 # The question the whole pipeline is answering for. Generic finance, no
 # corpus knowledge — it names nothing this landscape happens to contain.
-DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
+# Held in `fixture_registry` with the second one, because the recorder asks
+# them and this file rebuilds their inputs: one fact, one home.
+DEMO_QUESTION = question("corpus")
+RECEIVABLES_QUESTION = question("corpus_receivables")
 
 
 @pytest.fixture(scope="module")
@@ -94,6 +102,11 @@ def pipeline(tmp_path_factory):
     results = {"root": root, "roles": roles}
     results["v4"] = ask(root, DEMO_QUESTION, guide=roles, store=store,
                         scenario="corpus")
+    # A second question of a different family, asked of the same landscape.
+    # Two requests in one project is the ordinary case, not a test rig: an
+    # analyst asks more than one thing of the files they have.
+    results["receivables"] = ask(root, RECEIVABLES_QUESTION, guide=roles,
+                                 store=store, scenario="corpus_receivables")
     results["v1"] = hypothesize(root, store=store, scenario="corpus")
     results["proposals"] = propose_mappings(root, roles=roles, store=store,
                                                  scenario="corpus")
@@ -309,7 +322,8 @@ def test_the_slot_of_a_settled_object_is_answered_not_asked(pipeline):
 
 def test_call_logs_are_complete(pipeline):
     logs = sorted((pipeline["root"] / "cache" / "llm_log").glob("*.json"))
-    assert len(logs) == 5  # v4, v1, role proposals, v2 role batch, v2 claim batch
+    # two requests, v1, role proposals, v2 role batch, v2 claim batch
+    assert len(logs) == 6
     outcomes = []
     for path in logs:
         entry = json.loads(path.read_text(encoding="utf-8"))
@@ -321,7 +335,7 @@ def test_call_logs_are_complete(pipeline):
             assert entry["attempts"][-1]["validation_errors"]  # skips are visible
     # the recorded V1 and V2-claims answers keep a few bad items even after
     # their retry — replayed as "partial", same items skipped every run
-    assert sorted(outcomes) == ["ok", "ok", "partial", "partial", "partial"]
+    assert sorted(outcomes) == ["ok", "ok", "ok", "partial", "partial", "partial"]
 
 
 def test_pipeline_is_idempotent(pipeline):
@@ -542,8 +556,9 @@ def test_fixtures_match_current_inputs(pipeline):
     def fixture(name: str) -> dict:
         return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
 
-    assert fixture("request__corpus")["input_sha256"] == \
-        build_question_context(DEMO_QUESTION, pipeline["roles"]).sha256
+    for scenario, text in REQUEST_SCENARIOS:
+        assert fixture(f"request__{scenario}")["input_sha256"] == \
+            build_question_context(text, pipeline["roles"]).sha256
     assert fixture("v1_hypotheses__corpus")["input_sha256"] == \
         build_profile_context(store, matrix).sha256
     assert fixture("role_binding__corpus")["input_sha256"] == \
@@ -650,3 +665,91 @@ def test_no_fixture_escapes_the_drift_guard():
         f"fixture_registry names recorded answers that do not exist: "
         f"{sorted(missing)}"
     )
+
+
+# --- M7: a second answer type, so classification is a judgement -----------
+#
+# With one type declared, the classification call could not be wrong: every
+# question landed on the only entry there was, "not on this path" described
+# nothing, and the dependency list was the same list whatever was asked. The
+# guide now declares two, and both questions below are recorded against the
+# real model with both in front of it.
+
+
+class TestTwoFamiliesInOneLandscape:
+    def test_each_question_finds_its_own_family(self, pipeline):
+        """The P&L answer was re-recorded with a competitor present — the
+        interesting half of this test is that it did not move."""
+        assert pipeline["v4"].request.answer_type == "profit_and_loss_by_dimension"
+        assert pipeline["receivables"].request.answer_type == "open_receivables"
+
+    def test_neither_question_needed_a_delta(self, pipeline):
+        """A delta item is the model saying the guide's list is short for
+        this question. Zero on both means the two families cover what was
+        asked — which is what makes the expansion trustworthy."""
+        assert pipeline["v4"].required is None
+        assert pipeline["receivables"].required is None
+
+    def test_what_the_two_answers_share_and_what_they_do_not(self, pipeline):
+        store, roles = pipeline["store"], pipeline["roles"]
+        pl = {i.ref for i in evaluate_request(
+            store, roles, pipeline["v4"].request.id).items}
+        ar = {i.ref for i in evaluate_request(
+            store, roles, pipeline["receivables"].request.id).items}
+
+        assert pl & ar == {"journal", "journal.account", "journal.amount_local"}
+        # Nothing about a receivables balance depends on how postings split by
+        # entity or month, and nothing about a P&L depends on which account
+        # carries receivables. That is the whole value of asking *which
+        # question* before deciding what has to be known.
+        assert "journal.entity" in pl and "journal.entity" not in ar
+        assert "intercompany" in pl and "intercompany" not in ar
+        assert "subledger_ar" in ar and "subledger_ar" not in pl
+
+    def test_the_same_landscape_blocks_the_two_questions_differently(self, pipeline):
+        """Same files, same claims, same evidence — different verdicts about
+        what is missing, because the question is what decides what missing
+        means."""
+        store, roles = pipeline["store"], pipeline["roles"]
+        pl = evaluate_request(store, roles, pipeline["v4"].request.id)
+        ar = evaluate_request(store, roles, pipeline["receivables"].request.id)
+
+        assert sorted(i.ref for i in pl.blocking()) == [
+            "intercompany", "journal.account", "journal.entity", "journal.period",
+        ]
+        assert sorted(i.ref for i in ar.blocking()) == [
+            "journal.account", "subledger_ar",
+        ]
+        assert sorted(i.ref for i in ar.limitations()) == [
+            "when a receivable counts as open", "which account carries receivables",
+        ]
+
+    def test_the_subledger_question_stops_being_a_side_issue(self, pipeline):
+        """The owner's question about the report, answered by the engine.
+
+        "What is missing before subledger_ar can be tested?" ranked as a
+        side issue and looked important — correctly, because nothing the
+        P&L needs rests on it. Ask the receivables question of the same
+        landscape and the same card is the first thing in the way. A
+        question's urgency is a property of what is being asked, not of how
+        important it sounds."""
+        store, roles = pipeline["store"], pipeline["roles"]
+        pl = evaluate_request(store, roles, pipeline["v4"].request.id)
+        ar = evaluate_request(store, roles, pipeline["receivables"].request.id)
+
+        assert "subledger_ar" not in {i.ref for i in pl.blocking()}
+        assert "subledger_ar" in {i.ref for i in ar.blocking()}
+
+    def test_confirming_one_classification_says_nothing_about_the_other(
+            self, pipeline):
+        """A confirmation vouches for one list. Two questions of one
+        landscape are two lists, and signing the first must not quietly
+        raise the cap on the second."""
+        store = ProjectStore(pipeline["root"])  # a private reload
+        roles = pipeline["roles"]
+        confirm_classification(store, roles, pipeline["v4"].request.id)
+
+        store = ProjectStore(pipeline["root"])
+        assert evaluate_request(store, roles, pipeline["v4"].request.id).confirmed
+        assert not evaluate_request(
+            store, roles, pipeline["receivables"].request.id).confirmed
