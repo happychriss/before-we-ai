@@ -59,9 +59,17 @@ class ProfileIndex:
     def __init__(self, store: ProjectStore):
         self.columns: dict[str, str] = {}  # "view.column" -> source_id
         self.views: dict[str, str] = {}  # view -> source_id
+        # A bare column name -> the source_ids of every view carrying it.
+        # More than one means the name identifies nothing on its own.
+        bare: dict[str, set[str]] = {}
         for p in store.profiles.values():
             self.columns[f"{p.table}.{p.column}"] = p.source_id
             self.views[p.table] = p.source_id
+            bare.setdefault(p.column, set()).add(f"{p.table}.{p.column}")
+        self.unique_columns: dict[str, str] = {
+            column: self.columns[next(iter(qualified))]
+            for column, qualified in bare.items() if len(qualified) == 1
+        }
         self.scopes: dict[str, Scope | None] = {
             s.id: s.scope for s in store.sources.values()
         }
@@ -92,6 +100,15 @@ class ProfileIndex:
     def source_ids(self, values: list[str]) -> list[str]:
         ids = {self.columns[v] for v in values if v in self.columns}
         ids |= {self.views[v] for v in values if v in self.views}
+        # A bare column name grounds too, but only where the landscape
+        # leaves no doubt which column it is. Some predicates (`decodes`)
+        # declare no table param at all, so an unqualified name is the only
+        # thing the model can write and rejecting it says "grounded in
+        # nothing" about a column that plainly exists. Where two views share
+        # the name it stays ungrounded — that is a real ambiguity, not a
+        # majority to pick from.
+        ids |= {self.unique_columns[v] for v in values
+                if v in self.unique_columns}
         return sorted(ids)
 
 

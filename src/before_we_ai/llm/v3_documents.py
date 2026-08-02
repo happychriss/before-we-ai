@@ -47,8 +47,6 @@ from before_we_ai.llm.inputs import build_document_context
 from before_we_ai.llm.mapping import check_document_finding, finding_to_claim
 from before_we_ai.llm.prompts import V3_SYSTEM, with_schema
 from before_we_ai.llm.schemas import DocumentReading
-from before_we_ai.readiness import evaluate_request, link_claim
-from before_we_ai.readiness.evaluate import UnlinkableItem
 from before_we_ai.store.proposals import ProposalStore, QuoteNotFound
 from before_we_ai.store.repository import ProjectStore
 
@@ -86,6 +84,11 @@ def open_rule_items(store: ProjectStore, guide: DomainGuide) -> list[str]:
     ReadinessMap can never disagree about what is still open. Sorted,
     because the result goes into a prompt.
     """
+    # Imported here, not at module scope: `readiness` reaches back into
+    # `llm` for the guide, so a top-level import makes `import
+    # before_we_ai.readiness` fail outright depending on who imports first.
+    from before_we_ai.readiness import evaluate_request
+
     names: set[str] = set()
     for request_id in sorted(store.requests):
         readiness = evaluate_request(store, guide, request_id)
@@ -276,6 +279,9 @@ def _stated_value(value: str):
 
 
 def _link(store, project, guide, report, ref, claim_id, note) -> None:
+    from before_we_ai.readiness import link_claim  # see open_rule_items
+    from before_we_ai.readiness.evaluate import UnlinkableItem
+
     for request in sorted(project.requests.values(), key=lambda r: r.id):
         try:
             link_claim(project, guide, request.id, ref, claim_id,

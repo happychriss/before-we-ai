@@ -103,6 +103,48 @@ def test_check_hypothesis_reports_semantic_errors(tmp_path):
     assert any("must name the term it defines" in e for e in nameless)
 
 
+class TestABareColumnNameGrounds:
+    """A rule hypothesis has to stand on something real in the landscape.
+
+    `decodes` declares no table param at all, so an unqualified column name
+    is the only thing the model *can* write for it — and rejecting that as
+    "grounded in no known view or column" says the column does not exist
+    when it plainly does. Both V1 skips on the corpus were this. The name
+    still has to identify one column and no more.
+    """
+
+    def _decodes(self, **params):
+        return Hypothesis.model_validate({
+            "statement": "name decodes customer_id",
+            "predicate": "decodes", "columns": [],
+            "rationale": "low-cardinality codes",
+            "params": params,
+        })
+
+    def test_a_name_only_one_view_carries_is_enough(self, tmp_path):
+        _, index = _index(tmp_path)
+        h = self._decodes(encoded="customer_id", decode="name",
+                          key="customer_id", column="name")
+        assert check_hypothesis(h, index) == []
+        assert hypothesis_to_claim(h, index).source_ids == ["src_alpha"]
+
+    def test_a_name_two_views_share_grounds_nothing(self, tmp_path):
+        """`customer_id` sits in both views, so on its own it names no
+        column. That is a real ambiguity, not a majority to pick from."""
+        _, index = _index(tmp_path)
+        errors = check_hypothesis(
+            self._decodes(encoded="customer_id", decode="customer_id",
+                          key="customer_id", column="customer_id"), index)
+        assert any("grounded in no known view or column" in e for e in errors)
+
+    def test_a_name_no_view_carries_still_grounds_nothing(self, tmp_path):
+        _, index = _index(tmp_path)
+        errors = check_hypothesis(
+            self._decodes(encoded="nonesuch", decode="nonesuch",
+                          key="nonesuch", column="nonesuch"), index)
+        assert any("grounded in no known view or column" in e for e in errors)
+
+
 def test_concept_hypothesis_becomes_a_concept_claim(tmp_path):
     _, index = _index(tmp_path)
     h = _hypothesis(

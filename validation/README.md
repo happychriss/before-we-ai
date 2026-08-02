@@ -166,7 +166,7 @@ nothing can promote itself.
 
 Look at: created/deduped/skipped counts, predicate mix, sample claims; then
 `llm-log.sh 1` for the verbatim prompt and answer.
-Good (offline pins): **52 created, 0 deduped, 3 skipped** with visible
+Good (offline pins): **54 created, 1 deduped, 1 skipped** with visible
 reasons; every claim `proposed`, created by `ai`, with a structured
 predicate. Audit the prompt: profiles + matrix only, no corpus hints.
 
@@ -181,12 +181,12 @@ the invariant checks will decide.
 ### Stage 3c — check plans
 
 Look at: template mix; the three honest rejection buckets.
-Good (offline pins): **42 check plans**, **19 unbindable** (model answered
+Good (offline pins): **50 check plans**, **18 unbindable** (model answered
 `template=null`, with its reason), **6 semantic-only** (no admissible check
-definition exists — the semantic-equivalence class lives here), **7 skipped**
+definition exists — the semantic-equivalence class lives here), **2 skipped**
 (validation rejected the model's binding — e.g. `accounts` given as a string
 where the contract requires a list). Nothing disappears silently: each of
-those **32** claims carries a DECLARATION in the store with the verbatim
+those **26** claims carries a DECLARATION in the store with the verbatim
 reason, so the readiness report shows *why* it was never tested — read them, they
 are the sharpest evidence of what the domain pack is still missing (several
 say, in effect: "the rule is in a document I cannot see" → M5).
@@ -201,10 +201,11 @@ nowhere else — a sign convention lives in an accounting policy, not in a
 column — so this is where the three unsupported rule items finally get a
 candidate.
 
-Good (offline pins): **6 documents read, 6 claims proposed, 6 anchors, 0
+Good (offline pins): **6 documents read, 9 claims proposed, 9 anchors, 0
 deduped**. Two links: `sign convention for income and expense` and `which
 accounts are profit and loss`, both to claims read out of the accounting
-policy. Three refusals, each with its own reason and each leaving a question:
+policy. **Five refusals**, each with its own reason and each leaving a
+question:
 
 - the Q3 figure **appears only inside a chart** — nothing on the page
   supports it (F23);
@@ -212,7 +213,18 @@ policy. Three refusals, each with its own reason and each leaving a question:
   which applies is a decision and not a calculation (F24/K7);
 - the divested-unit figure is **alone on its page with no check behind it**
   (F26). The press release was read and refused, not kept out of the
-  project — refusing a document nobody opened would prove nothing.
+  project — refusing a document nobody opened would prove nothing;
+- the **two revenue figures in the ruled table** (2024 Q1, 2025 Q4) are each
+  carried by one passage only, so each is refused for the same single-anchor
+  reason as F26.
+
+Those last two are worth a moment, because they are the multi-anchor rule
+being *strict against us* rather than against a trap. A figure printed in a
+clean table on a management report is not suspicious — it is simply
+uncorroborated, and the rule does not distinguish. That is the intended
+direction to be wrong in (a refusal costs a question; a wrong link costs the
+answer), but it is also why the rule governs figures and not policy
+sentences: hold definitions to the same bar and K3 becomes unreachable.
 
 **Claims promoted: 0.** A link routes the question; the claim still has to
 earn its status. Watch this in section 6: the two linked items move from
@@ -224,12 +236,12 @@ good reason to believe something, and still not a measurement.
 
 Look at: executed/skipped, verdict mix, role verdicts, the false-promotion
 audit line.
-Good (offline pins): **42 executed, 0 skipped**; verdicts **35 pass, 7 fail**;
+Good (offline pins): **50 executed, 0 skipped**; verdicts **37 pass, 13 fail**;
 journal role: `de_erp__gl_postings` **test-supported**, `buchungen_report`
 **contradicted** (the decoy loses — trap F27), `us_erp__gl_postings`
 **contradicted** (honest — the data has a missing intercompany leg, trap F22);
-audit **CLEAN**. Resulting AI-claim statuses: 35 test-supported, 32 proposed,
-7 contradicted.
+audit **CLEAN**. Resulting AI-claim statuses: 37 test-supported, 35 proposed,
+13 contradicted.
 
 ### Stage 5 — clarification
 
@@ -242,11 +254,21 @@ field ends in a check verdict or a clarification question, never in nothing.**
 
 Good (offline pins): **six** clarification questions, one per unsettled entry —
 
-- `intercompany`, `subledger_ar` — law-decided objects whose invariant V2
-  bound to no candidate (an honest `template=null`) →
-  "What is missing before the 'intercompany' can be tested? … No proposed
-  candidate could be put to the ic_symmetry law at all, so nothing about it
-  has been tested."
+- `subledger_ar` — a law-decided object whose invariant V2 bound to no
+  candidate (an honest `template=null`) →
+  "What is missing before the 'subledger_ar' can be tested? … No proposed
+  candidate could be put to the subledger_equals_gl law at all, so nothing
+  about it has been tested."
+- `intercompany` — a law-decided object whose candidates **were** tested, and
+  every one of them failed →
+  "Which source is the authoritative 'intercompany'? … Every proposed
+  candidate was put to the ic_symmetry law, and every one of them failed it."
+
+  Those two read almost alike and mean opposite things, which is the point:
+  one is "nobody has answered", the other is "everything was answered and the
+  answers are wrong". Only the second tells you to go and fix data. Both
+  intercompany candidates fail because F22 removes one leg of the pair, so
+  the law breaks symmetrically and neither side can win.
 - `account`, `doc_ref`, `entity`, `period` — clarification-decided journal
   fields → "Which of the proposed candidates is the 'doc_ref'? … No check can
   settle this — what the data means is a business fact, not an arithmetic
@@ -265,9 +287,9 @@ run grouped by `period`, and `doc_ref` still has to be asked — a journal
 balances per document AND per period, so a passing law never identifies the
 grouping column.
 
-The project now holds **16** open questions in total: these 6, plus 7 drafted
-by the engine in stage 4 where a check failed or was inconclusive, plus **3**
-raised in 3d where a document figure was refused.
+The project now holds **23** open questions in total: these 6, plus **12**
+drafted by the engine in stage 4 where a check failed or was inconclusive,
+plus **5** raised in 3d where a document figure was refused.
 
 ### Stage 6 — the verdict
 
@@ -305,9 +327,31 @@ blocked on missing dependencies and a confirmation supplies none of them. On a
 landscape where everything held, this is exactly the step between
 `ready_with_limitations` and `ready`.
 
-Answer the four open mapping questions and the verdict narrows rather than
-clearing: `ready_with_limitations`, with the three business rules named as the
-limitations they are. That is the third outcome — permit, narrow, or block.
+Answer the three journal-field questions (`account`, `period`, `entity`) and
+the picture narrows sharply but **does not clear**: the verdict stays
+`blocked`, now on `intercompany` alone, with the three business rules
+demoted to the limitations they are.
+
+Measured, and worth understanding rather than fixing:
+
+```
+before: blocked  — journal.entity, journal.period, journal.account, intercompany
+after : blocked  — intercompany
+        limitations: which accounts are profit and loss · sign convention
+                     for income and expense · month cut-off for late postings
+```
+
+`intercompany` does not move because **no answer can move it**. Both
+candidates were tested and both failed `ic_symmetry` — trap F22 removes one
+leg of the pair, so the law breaks on the DE side and the US side alike and
+there is no correct candidate to elect. The item's own sentence says exactly
+this: *"This is not a missing answer but a wrong one — the data itself has
+to change."*
+
+That is the walkthrough's clearest demonstration of the three unblock
+routes: answering (route 1) cleared three items, and the fourth needs route
+3. A report that responded to every blocker with "answer this question"
+would be wrong here, and it does not.
 
 **Try this.** Edit `src/before_we_ai/domains/finance.yaml`, add a fourth
 rule to the answer type, and re-run `./scripts/report.sh`. The new dependency
@@ -335,8 +379,8 @@ lapsed, and nothing in `data/project/` changed — the list was never stored.
   **0 inputs** (the three declared domain inputs), **1 request** (the question
   verbatim, the classification with its guide fingerprint, and every dependency
   with where it came from), **2 measured** (sources, column profiles, candidate
-  overlaps), **3 proposed** (the funnel: 74 proposed → 42 planned / 19
-  unbindable / 6 semantic-only / 7 skipped → 42 judged → the derived statuses,
+  overlaps), **3 proposed** (the funnel: 76 proposed → 50 planned / 18
+  unbindable / 6 semantic-only / 2 skipped → 50 judged → the derived statuses,
   every number a filter), **4 tested** (the role elections — each object with
   its fields nested beneath it: the winner, each loser with the domain law that
   felled it, and for a slot field the column its object's passing law
@@ -375,19 +419,23 @@ DuckDB client takes an exclusive lock, and ours then fails with
 `Conflicting lock is held in PID 0`.
 - `recall.sh [--online]` — Seeded-Recall scoring in its own project under
   `validation/data/recall/`. The offline replay deterministically scores
-  **14/25** — the frozen fixtures are one particular sample; the online run of
-  also scored 14/25 (`docs/seeded-recall.md`). Note online runs
-  vary by ±2–3 traps.
+  **14/25** in-scope traps, semantic-only 1/1 — the frozen fixtures are one
+  particular sample; the online run also scored 14/25
+  (`docs/seeded-recall.md`). Note online runs vary by ±2–3 traps.
 
 ## Expected behaviors that are NOT bugs
 
-- Three V1 hypotheses and seven V2 bindings are skipped on every offline
+- One V1 hypothesis and two V2 bindings are skipped on every offline
   replay — the recorded answers kept a few bad items; skips are per-item and
-  visible in the logs (`outcome: partial`).
+  visible in the logs (`outcome: partial`). The V1 one is **not** a defect in
+  the answer: `account_range_group` exists in both the DE and the US chart of
+  accounts, so the unqualified name identifies no single column and the
+  hypothesis grounds in nothing. A bare name is accepted only where exactly
+  one view carries it.
 - The **repair attempt is always discarded offline**: when items fail, the
   retry resends only those items, but the stub can only replay the one
   recorded answer — the full batch — so the splice guard refuses it
-  (`repair returned 55 item(s), expected 3 — discarded, originals kept`).
+  (`repair returned 56 item(s), expected 1 — discarded, originals kept`).
   That is the guard working; online the repair gets a real short answer.
 - `us_erp__gl_postings` journal candidate is CONTRADICTED — data-honest (the
   US ledger's missing IC leg breaks the per-period balance).

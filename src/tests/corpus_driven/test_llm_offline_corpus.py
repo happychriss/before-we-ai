@@ -121,32 +121,36 @@ def test_contracts_ran_clean_offline(pipeline):
     assert v4.request.answer_type == "profit_and_loss_by_dimension"
     assert v4.required is None
     assert v1.failure is None
-    assert len(v1.claims_created) == 53
-    # One of the 54 restated a rule another already made; claim_key
+    assert len(v1.claims_created) == 54
+    # One of the 55 restated a rule another already made; claim_key
     # collapses them, which is the dedup working rather than a loss.
     assert v1.claims_deduped == 1
-    # Two, and they are a different error from the three that used to be
-    # here. Those were concept hypotheses whose omitted `kind` contradicted
-    # their own predicate — kickoff item 4 made that unwritable, and the
-    # live run skipped none. These two are rules whose column references
-    # resolve to nothing, which is a real defect in the answer; the live
-    # call repaired them and the offline replay cannot, exactly as the
-    # recorder documents.
-    assert len(v1.skipped) == 2
+    # One, and it is the last survivor of a shrinking class. First there
+    # were three concept hypotheses whose omitted `kind` contradicted their
+    # own predicate (kickoff item 4 made that unwritable). Then two
+    # `decodes` rules that named their columns without a view — and since
+    # `decodes` declares no table param, an unqualified name is the only
+    # thing the model can write, so rejecting it claimed a real column did
+    # not exist. A bare name now grounds where exactly one view carries it.
+    #
+    # This one stays skipped and should: `account_range_group` sits in the
+    # DE *and* the US chart of accounts, so on its own it names no column.
+    # That is the ambiguity rule earning its keep rather than a leftover.
+    assert len(v1.skipped) == 1
     assert all("grounded in no known view or column" in reason
                for _statement, reason in v1.skipped)
     assert proposals.failure is None and len(proposals.claims_created) == 22
     assert v2.failures == [] and v2.unanswered == []
-    # 49 on the first fully live recording. The owner's two normalization
-    # decisions (2026-08-02) recover bindings that used to be lost to
-    # shape errors, and every recovery is recorded as a declaration rather
-    # than applied silently.
-    assert len(v2.check_plans_created) == 49
+    # 50 after the decodes-grounding fix put one more claim in front of V2.
+    # The owner's two normalization decisions (2026-08-02) recover bindings
+    # that used to be lost to shape errors, and every recovery is recorded
+    # as a declaration rather than applied silently.
+    assert len(v2.check_plans_created) == 50
     assert v2.corrections
-    assert len(v2.skipped) == 1  # validation-rejected bindings — skipped, not crashed
+    assert len(v2.skipped) == 2  # validation-rejected bindings — skipped, not crashed
     assert len(v2.semantic_only) == 6  # no admissible template — never sent
-    assert len(v2.unbindable) == 19  # honest template=null answers
-    assert len(pipeline["engine"].executed) == 49
+    assert len(v2.unbindable) == 18  # honest template=null answers
+    assert len(pipeline["engine"].executed) == 50
     assert pipeline["engine"].skipped == []
 
     # every claim that ends without a check says why, in the store — the reason
@@ -159,14 +163,14 @@ def test_contracts_ran_clean_offline(pipeline):
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") in no_check
     }
-    assert len(reasons) == 26  # 19 unbindable + 6 semantic-only + 1 skipped
+    assert len(reasons) == 26  # 18 unbindable + 6 semantic-only + 2 skipped
     assert sorted(p["decision"] for p in reasons.values()) == (
-        ["semantic_only"] * 6 + ["skipped"] * 1 + ["unbindable"] * 19
+        ["semantic_only"] * 6 + ["skipped"] * 2 + ["unbindable"] * 18
     )
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
 
     # And every param we read as something other than what the model wrote
-    # is on the record too. Eleven of them here — the number is the point,
+    # is on the record too. Twelve of them here — the number is the point,
     # not its size: column normalization had been happening silently since
     # M4, and only the view-param case was ever visible, as a failure. The
     # count moves with the answer; that it is written down does not.
@@ -175,7 +179,7 @@ def test_contracts_ran_clean_offline(pipeline):
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") == "param_normalized"
     ]
-    assert len(corrections) == 11
+    assert len(corrections) == 12
     assert all(c["given"] != c["read_as"] for c in corrections)
     for claim_id in reasons:
         assert store.claims[claim_id].status is ClaimStatus.PROPOSED
@@ -186,7 +190,7 @@ def test_llm_path_cannot_promote(pipeline):
     proposed claim or a check; status changes came from check evidence only."""
     store = pipeline["store"]
     ai_claims = [c for c in store.claims.values() if c.created_by is Actor.AI]
-    assert len(ai_claims) == 75  # 53 hypotheses + 22 role candidates
+    assert len(ai_claims) == 76  # 54 hypotheses + 22 role candidates
     for evidence in store.evidence.values():
         assert evidence.actor is not Actor.AI
     # promotions happened, but only through check evidence
@@ -309,7 +313,7 @@ def test_pipeline_is_idempotent(pipeline):
     claims; bound claims drop out of the V2 selection entirely."""
     root, store = pipeline["root"], pipeline["store"]
     again = hypothesize(root, store=store, scenario="corpus")
-    assert again.claims_created == [] and again.claims_deduped == 54
+    assert again.claims_created == [] and again.claims_deduped == 55
     proposals = propose_mappings(root, roles=pipeline["roles"], store=store,
                                       scenario="corpus")
     assert proposals.claims_created == [] and proposals.claims_deduped == 22

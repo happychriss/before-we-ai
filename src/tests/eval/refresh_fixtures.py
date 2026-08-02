@@ -40,7 +40,25 @@ from before_we_ai.store import ProjectStore
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
 
 
-def write_fixture_from_log(log_ref: str, scenario_override: str | None = None) -> Path:
+def still_answers_its_input(entry: dict, scenario: str) -> bool:
+    """True when the fixture on disk already answers exactly this call.
+
+    A recorded answer goes stale when its input or its prompt moves, and
+    those are the only two reasons to replace it. Rewriting a fixture whose
+    hashes both still match swaps a known answer for a fresh one and moves
+    the corpus baseline for nothing — and the baseline is what every pinned
+    number in the walkthrough is measured against.
+    """
+    path = FIXTURES / f"{entry['contract']}__{scenario}.json"
+    if not path.exists():
+        return False
+    current = json.loads(path.read_text(encoding="utf-8"))
+    return (current.get("input_sha256") == entry["input_sha256"]
+            and current.get("system_sha256") == entry["system_sha256"])
+
+
+def write_fixture_from_log(log_ref: str, scenario_override: str | None = None,
+                           only_drifted: bool = False) -> Path | None:
     entry = json.loads(Path(log_ref).read_text(encoding="utf-8"))
     if entry["outcome"] == "failed":
         raise SystemExit(
@@ -63,6 +81,8 @@ def write_fixture_from_log(log_ref: str, scenario_override: str | None = None) -
               f"replay cannot reproduce — downstream fixtures may misalign "
               f"(claim labels shift); consider re-running the refresh")
     scenario = scenario_override or entry["scenario"]
+    if only_drifted and still_answers_its_input(entry, scenario):
+        return None
     path = FIXTURES / f"{entry['contract']}__{scenario}.json"
     path.write_text(json.dumps({
         "contract": entry["contract"],
@@ -88,6 +108,17 @@ def main() -> None:
              "self-consistent on their own; it is the downstream ones that "
              "go out of alignment, so this is the cheap fix for the usual "
              "case.")
+    parser.add_argument(
+        "--only-drifted", action="store_true",
+        help="write a fixture only where the one on disk no longer answers "
+             "its input or its prompt. The call still happens (batches are "
+             "not separable), but a fixture that is still valid keeps its "
+             "recorded answer instead of being swapped for a fresh one.")
+    parser.add_argument(
+        "--skip-v3", action="store_true",
+        help="do not record the document contract. V3's inputs depend on "
+             "which rule items are still open, so they survive most "
+             "upstream changes — six calls not worth making blind.")
     args = parser.parse_args()
 
     workdir = Path(args.keep) if args.keep else Path(tempfile.mkdtemp(prefix="refresh-"))
@@ -99,7 +130,8 @@ def main() -> None:
     else:
         _record_upstream(workdir, client, roles)
 
-    _record_downstream(workdir, client, roles)
+    _record_downstream(workdir, client, roles,
+                       only_drifted=args.only_drifted, skip_v3=args.skip_v3)
     if not args.keep:
         shutil.rmtree(workdir)
 
@@ -142,7 +174,8 @@ def _record_upstream(workdir: Path, client, roles) -> None:
     shutil.rmtree(root)
 
 
-def _record_downstream(workdir: Path, client, roles) -> None:
+def _record_downstream(workdir: Path, client, roles, only_drifted: bool = False,
+                       skip_v3: bool = False) -> None:
     """Record against the state the OFFLINE replay produces, not the
     state the live run happens to be in.
 
@@ -170,7 +203,16 @@ def _record_downstream(workdir: Path, client, roles) -> None:
     print(f"  {len(v2.check_plans_created)} checks, {len(v2.unbindable)} unbindable, "
           f"{len(v2.semantic_only)} semantic-only, usage {v2.usage}")
     for log_ref in v2.log_refs:
-        print("  fixture:", write_fixture_from_log(log_ref).name)
+        written = write_fixture_from_log(log_ref, only_drifted=only_drifted)
+        print("  fixture:", written.name if written
+              else "unchanged — the recorded answer still fits its input")
+
+    if skip_v3:
+        print("skipping V3 (--skip-v3): its fixtures are pinned in "
+              "test_documents_offline_corpus.py — run the suite to confirm "
+              "they still hold")
+        _closing_note()
+        return
 
     # V3 last: it asks what rule items are still open, and that answer is
     # only right once the stages above have run. One call per document, so
@@ -186,7 +228,13 @@ def _record_downstream(workdir: Path, client, roles) -> None:
           f"{len(v3.links)} links, {len(v3.skipped)} refused, "
           f"usage {v3.usage}")
     for log_ref in v3.log_refs:
-        print("  fixture:", write_fixture_from_log(log_ref).name)
+        written = write_fixture_from_log(log_ref, only_drifted=only_drifted)
+        print("  fixture:", written.name if written
+              else "unchanged — the recorded answer still fits its input")
+    _closing_note()
+
+
+def _closing_note() -> None:
     print("\nFixtures refreshed. Run the offline suite (python -m pytest -q) —")
     print("the drift guard and the pinned pipeline assertions will tell you")
     print("what the new answers changed; review and commit the diff.")
