@@ -121,6 +121,29 @@ class DataProfile(BaseModel):
     created_at: datetime = Field(default_factory=_now)
 
 
+class DocumentProfile(BaseModel):
+    """Measured shape of one document — what it contains, never what it means.
+
+    The document twin of ``DataProfile``, and it obeys the same law: a
+    document that has been read produces a profile and **zero claims**.
+    What the text asserts is V3's proposal to make, in the next stage,
+    where nothing can promote itself.
+
+    ``kinds`` counts chunks per origin (text / table / chart), which is the
+    first thing a reader wants to know about a document the multi-anchor
+    rule will later be strict about.
+    """
+
+    id: str = Field(default_factory=new_id)
+    source_id: str
+    document: str  # the source name, as declared in before-ai.yaml
+    pages: int
+    chunk_count: int
+    char_count: int
+    kinds: dict[str, int] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=_now)
+
+
 # Row-level observations are evidence *content*, strictly bounded: a check
 # reports the aggregate plus a hand-picked, representative sample of
 # counterexamples. Anything larger belongs in cache/ (via result_ref),

@@ -18,6 +18,7 @@ from before_we_ai.core.objects import (
     KnowledgeAct,
     Claim,
     DataProfile,
+    DocumentProfile,
     ConceptClaim,
     EvidenceRecord,
     CheckPlan,
@@ -33,6 +34,14 @@ _CLAIM_TYPES = {
     "Claim": Claim,
     "ConceptClaim": ConceptClaim,
     "MappingClaim": MappingClaim,
+}
+
+# profiles/ holds both kinds of measurement — a column's statistics and a
+# document's shape. They are read together because they answer one question:
+# what did we find out without asking anybody.
+_PROFILE_TYPES = {
+    "DataProfile": DataProfile,
+    "DocumentProfile": DocumentProfile,
 }
 
 # answers/ holds a request, whatever knowledge was drafted freely for it, and
@@ -80,6 +89,7 @@ class ProjectStore:
         self.questions: dict[str, ClarificationQuestion] = {}
         self.sources: dict[str, Source] = {}
         self.profiles: dict[str, DataProfile] = {}
+        self.documents: dict[str, DocumentProfile] = {}
         self.checks: dict[str, CheckPlan] = {}
         self.requests: dict[str, AnswerRequest] = {}
         self.required: dict[str, RequiredKnowledge] = {}
@@ -106,8 +116,12 @@ class ProjectStore:
         self.sources = {
             o.id: o for o in self._read_dir("sources_meta", Source.model_validate)
         }
+        measured = self._read_dir("profiles", self._parse_profile, keep_type=True)
         self.profiles = {
-            o.id: o for o in self._read_dir("profiles", DataProfile.model_validate)
+            o.id: o for o in measured if isinstance(o, DataProfile)
+        }
+        self.documents = {
+            o.id: o for o in measured if isinstance(o, DocumentProfile)
         }
         self.checks = {
             o.id: o for o in self._read_dir("checks", CheckPlan.model_validate)
@@ -139,6 +153,13 @@ class ProjectStore:
     def _parse_claim(data: dict) -> Claim:
         cls = _CLAIM_TYPES.get(data.pop("object_type", "Claim"), Claim)
         return cls.model_validate(data)
+
+    @staticmethod
+    def _parse_profile(data: dict) -> DataProfile | DocumentProfile:
+        name = data.pop("object_type", "DataProfile")
+        if name not in _PROFILE_TYPES:
+            raise ValueError(f"profiles/ holds no object of type {name!r}")
+        return _PROFILE_TYPES[name].model_validate(data)
 
     @staticmethod
     def _parse_answer(data: dict) -> AnswerRequest | RequiredKnowledge:
@@ -259,6 +280,10 @@ class ProjectStore:
     def save_profile(self, profile: DataProfile) -> None:
         self._write("profiles", profile)
         self.profiles[profile.id] = profile
+
+    def save_document_profile(self, profile: DocumentProfile) -> None:
+        self._write("profiles", profile)
+        self.documents[profile.id] = profile
 
     def save_check_plan(self, check: CheckPlan) -> None:
         self._write("checks", check)

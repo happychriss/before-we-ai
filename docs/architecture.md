@@ -596,10 +596,14 @@ is **documents** (spec alias V3), frontier tier.
   fixture hashes. A bump is therefore the same class of event as a prompt
   change: deliberate, with a fixture re-record.
 - **Chunking is deterministic by construction:** chunks follow PyMuPDF text
-  blocks in page order, greedily packed to a fixed target size, never split
-  inside a block. Chunk id = `{doc_stem}:p{page}:{seq}` — stable for identical
-  PDF bytes. Each chunk carries its position anchor data: page number and the
-  char span within the page's extracted text.
+  blocks in reading order (`sort=True`), greedily packed to a fixed target
+  size, never split inside a block **and never mixing kinds** — a chart
+  label and the paragraph beneath it are different chunks, because the
+  chunk is what carries the anchor's kind. Chunk id = `{source}:p{page}:{seq}`
+  — stable for identical PDF bytes. Position anchor data: page number plus
+  the char span within the page text, where page text is defined as the
+  chunk texts joined in reading order, so spans are exact by construction
+  rather than by trusting a second extraction call to agree.
 - **Index:** DuckDB FTS over the chunk table, in `cache/` (disposable, like
   the catalog: delete + re-scan ⇒ identical output). Extraction and indexing
   create ZERO claims — a scanned PDF yields a document profile, nothing else
@@ -641,14 +645,30 @@ must produce; this is its definition. Anchors never promote —
 the rule governs what **reconciliation may propose** and how V3 must label
 anchors, never status transitions.
 
-Every anchor carries two labels, enforced as closed enums at validation:
+Every anchor carries two labels. **Neither is supplied by the model** —
+both are derived, which is what makes the rule structural rather than
+prompt-dependent (revised 2026-08-02, after reading the corpus PDFs: the
+chart figure F23 hides behind extracts as ordinary text, so a model asked
+to classify it would have to be *trusted* to say "chart", and the whole
+point of this layer is that nothing epistemic rests on trust):
 
-- `kind`: `text` | `table` | `chart` — where in the document the figure
-  lives. V3 must classify; a chart-read figure claiming `text` is the F23
-  failure mode.
-- `match`: `exact` | `rounded` | `coincidental_candidate` — how the anchored
-  value relates to the claim's value. `rounded` means agreement within
-  presentation rounding; anything looser is `coincidental_candidate`.
+- `kind`: `text` | `table` | `chart` — **derived from page geometry** at
+  extraction time and carried by the chunk; an anchor inherits the kind of
+  the chunk its quote lives in, and V3 cannot override it. PyMuPDF's
+  `find_tables()` gives table regions; vector-drawing clusters outside
+  them are graphic regions; text blocks are classified by which region
+  contains them, everything else is `text`. Verified against the corpus:
+  the management report's quarterly table is detected exactly (9×2) and
+  the leftover drawing cluster is precisely the chart frame that boxes
+  F23's `EUR 2,847,000`.
+- `match`: `exact` | `rounded` | `coincidental_candidate` — **computed by
+  reconciliation** by parsing numbers out of the quote and comparing them
+  to the claim's value. `rounded` means agreement within presentation
+  rounding; anything looser is `coincidental_candidate`.
+
+What V3 supplies is therefore only the quote and what it takes the quote
+to assert. Everything that decides whether the anchor may count is
+computed from the document and the store.
 
 Reconciliation may propose a corroborating link between a claim and a rule
 item only when:
