@@ -42,7 +42,12 @@ from before_we_ai.llm.domain_guide import (
     settled_slots,
 )
 from before_we_ai.llm.mapping import admissible_templates
-from before_we_ai.readiness import Readiness, evaluate_request, guide_label
+from before_we_ai.readiness import (
+    Ground,
+    Readiness,
+    evaluate_request,
+    guide_label,
+)
 from before_we_ai.stages import (
     BOUNDARY_BEFORE,
     BOUNDARY_TEXT,
@@ -522,6 +527,44 @@ class DecisionLogView:
 
 
 @dataclass(frozen=True)
+class RouteView:
+    """One way out of a block, and what it costs to take it."""
+
+    heading: str  # the move, in the second person
+    css: str
+    items: tuple[str, ...]  # the dependencies this route would clear
+    explanation: str  # why these are here and not on another route
+    where: tuple[str, ...] = ()  # the locus, when a check found one
+    alternative: str = ""  # the other move, when there is one
+
+
+@dataclass(frozen=True)
+class UnblockView:
+    """What a reader can actually do about a verdict that will not clear.
+
+    The engine already knows which route applies to which dependency —
+    ``Ground`` distinguishes "nobody has answered" from "everything was
+    tested and refuted", and the item sentences say so. What was missing
+    was saying it as an *offer* rather than a diagnosis, in one place,
+    with the locus of the failure brought forward from the evidence
+    instead of left for the reader to dig out.
+
+    Routes are only ever offered when they work. Fixing the data closes a
+    block since staleness landed (a newer reading supersedes the one
+    before it); asking a narrower question is deliberately **not** offered,
+    because a conservation law that spans entities blocks a narrowed
+    question at exactly the same items — an escape that is not one is
+    worse than none.
+    """
+
+    blocked: bool
+    heading: str
+    summary: str
+    routes: tuple[RouteView, ...]
+    settled: str  # what to say when there is nothing to unblock
+
+
+@dataclass(frozen=True)
 class ReportViewModel:
     project_name: str
     project_path: str
@@ -532,6 +575,7 @@ class ReportViewModel:
     measurement: MeasurementView
     documents: DocumentsView
     decisions: DecisionLogView
+    unblock: UnblockView
     funnel: FunnelView
     elections: tuple[ElectionView, ...]
     open_questions: tuple[QuestionView, ...]
@@ -1296,6 +1340,114 @@ def _build_decisions(store: ProjectStore, claims: list[Claim],
         decisions=tuple(view for _when, view in entries),
         empty="Nothing has been decided yet \u2014 the project has only been declared.",
     )
+
+
+def _locus(store: ProjectStore, claim_ids) -> tuple[str, ...]:
+    """Where a check actually found the problem, in a reader's words.
+
+    The exception samples have always held this — one period, one missing
+    leg — and it has always been three clicks away. A reader told "the
+    data must change" needs to know *which* data before that sentence is
+    an instruction rather than a verdict.
+    """
+    found: list[str] = []
+    for claim_id in claim_ids:
+        claim = store.claims.get(claim_id)
+        if claim is None:
+            continue
+        for record in store.evidence_for(claim):
+            if (record.type is not EvidenceType.CHECK_RESULT
+                    or record.verdict is not CheckVerdict.FAIL
+                    or record.stale):
+                continue
+            where = ", ".join(
+                f"{key} {value}"
+                for sample in record.exception_samples[:2]
+                for key, value in sample.items()
+            )
+            counted = _population_text(record)
+            line = f"{_claim_title(claim)} — {counted}"
+            found.append(f"{line}: {where}" if where else line)
+    return tuple(dict.fromkeys(found))
+
+
+def _build_unblock(store: ProjectStore,
+                   readiness_maps: list) -> UnblockView:
+    blocking = [
+        item for readiness in readiness_maps if readiness
+        for item in readiness.blocking()
+    ]
+    if not blocking:
+        return UnblockView(
+            blocked=False,
+            heading="Nothing is blocked",
+            summary="",
+            routes=(),
+            settled="Every dependency this answer rests on is either "
+                    "satisfied or a named limitation. There is nothing here "
+                    "to clear.",
+        )
+
+    answerable = [i for i in blocking if i.ground is not Ground.ALL_CONTRADICTED]
+    refuted = [i for i in blocking if i.ground is Ground.ALL_CONTRADICTED]
+
+    routes = []
+    if answerable:
+        routes.append(RouteView(
+            heading="You answer",
+            css="route-human",
+            items=tuple(i.ref for i in answerable),
+            explanation=(
+                "Candidates exist and no check can choose between them. "
+                "These are waiting on a person, and each one has a "
+                "clarification question in section 5 with the candidates "
+                "side by side."
+            ),
+            alternative=(
+                "Or, if the answer genuinely does not rest on one of them, "
+                "waive it with a reason: the item stays in the map, struck "
+                "through, and the verdict carries it as a stated limitation "
+                "rather than a silent omission."
+            ),
+        ))
+    if refuted:
+        routes.append(RouteView(
+            heading="The data has to change",
+            css="route-data",
+            items=tuple(i.ref for i in refuted),
+            explanation=(
+                "Every candidate was tested and refuted. This is not a "
+                "missing answer but a wrong one, so no amount of answering "
+                "will settle it — correct the data and run the checks "
+                "again. The new reading supersedes the old one and the "
+                "claim settles."
+            ),
+            where=_locus(store, [cid for i in refuted for cid in i.claim_ids]),
+            alternative=(
+                "Or waive it with a reason, if you accept the discrepancy "
+                "and want the answer anyway — recorded as your decision, "
+                "visible beside the verdict."
+            ),
+        ))
+
+    counts = " and ".join(
+        f"{len(group)} {word}"
+        for group, word in ((answerable, "waiting on you"),
+                            (refuted, "waiting on the data"))
+        if group
+    )
+    return UnblockView(
+        blocked=True,
+        heading="What would move this forward",
+        summary=(
+            f"{len(blocking)} dependenc"
+            f"{'ies' if len(blocking) != 1 else 'y'} block the answer — "
+            f"{counts}."
+        ),
+        routes=tuple(routes),
+        settled="",
+    )
+
 
 def _answer_type_views(declared) -> tuple[AnswerTypeView, ...]:
     """The guide's answer types, in the order it declares them.
@@ -3418,6 +3570,7 @@ def build_view_model(
         ),
         documents=_build_documents(store),
         decisions=_build_decisions(store, claims, facts),
+        unblock=_build_unblock(store, readiness_maps),
         funnel=_build_funnel(facts),
         elections=_build_elections(
             facts, questions, guide, answered_slots

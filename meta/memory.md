@@ -289,7 +289,7 @@ recording (its corpus fixture is hand-authored and marked as such).
    Effect on the pins: 42 → 43 check plans, 7 → 6 V2 skips, 32 → 31
    claims without a check.
 
-## The unblock path — measured 2026-08-02, and it has one hole
+## The unblock path — measured 2026-08-02, hole closed the same day
 
 Owner question: "I can read that it blocks, but what do I *do*?" Measured
 rather than assumed. Going backwards from a blocker, there are three
@@ -309,19 +309,23 @@ re-assembled from the guide plus the acts on every read. Verified: waiving
 `intercompany` drops it out of `blocking()` and leaves it visible, struck
 through, with the reason beside it.
 
-**Route 3, you fix the data — and this one does not close.** `scan` picks
-up the new fingerprint and `run_ready` re-executes every plan, but
-**nothing marks the old evidence stale**: `mark_evidence_stale` exists in
-the repository and no product code calls it. Measured: a second
-`run_ready` appended 49 more check results (49 → 98) and marked none
-stale. So the old FAIL and the new PASS are both live, and
-`resolve_status` returns **unresolved** (conflict), not test-supported.
+**Route 3, you fix the data — BUILT 2026-08-02, and it closes now.** It
+did not: `run_ready` re-executed every plan and appended the new PASS
+beside the live old FAIL, so `resolve_status` called the pair a conflict
+and the claim went from *contradicted* to **unresolved**. You corrected
+your books and the system found a new way to be stuck. Measured before
+the fix: a second run took 49 check results to 98 and marked none stale.
 
-That is M7 (Staleness & Replay), and it is the route the `intercompany`
-blocker actually points at. **Consequence for the planned "what would
-unblock this" chapter: it must not offer route 3 as though it closed.**
-Until M7, the honest wording is that fixing the data lets the check run
-again but the contradiction stays visible until staleness lands.
+A new run of a plan now marks that plan's earlier runs stale
+(`engine/runner.py::_supersede`). Evidence stays append-only — nothing is
+deleted, `stale` is the one mutation the store permits, and the
+derivation stops counting it. Both readings stay in the trail; what
+changes is which one describes the data as it is now.
+
+**Still unbuilt from M7:** flagging evidence whose *source* has moved but
+which has not been re-run yet. Today a project with edited data and no
+re-run shows its old readings as live. Superseding is what unblocks;
+flagging is what warns, and it is the remaining half.
 
 Also measured, against expectation: **narrowing the question does not
 help here.** `ic_symmetry` is inherently cross-entity — the DE table books

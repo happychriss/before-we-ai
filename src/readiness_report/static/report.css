@@ -428,3 +428,31 @@
       border-left: 3px solid var(--link);
       background: var(--panel-2);
     }
+
+    /* -- what would move this forward --------------------------------- */
+    .routes {
+      display: grid; gap: 12px; margin-top: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+    .route {
+      background: var(--panel-2); border: 1px solid var(--line);
+      border-left: 3px solid var(--line); border-radius: 8px; padding: 12px 14px;
+    }
+    .route.route-human { border-left-color: var(--voice-human); }
+    .route.route-data { border-left-color: var(--unresolved); }
+    .route h3 { margin: 0 0 8px; font-size: 15px; }
+    .route-items { margin: 0 0 10px; padding-left: 18px; }
+    .route-why { margin: 0; }
+    .route-alt {
+      margin: 10px 0 0; padding-top: 10px; color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+    .route-where {
+      margin-top: 10px; padding: 8px 10px; border-radius: 6px;
+      background: var(--panel); border: 1px solid var(--line);
+    }
+    .route-where-label {
+      text-transform: uppercase; font-size: 10px; letter-spacing: .06em;
+      color: var(--muted); margin-bottom: 4px;
+    }
+    .route-where ul { margin: 0; padding-left: 18px; }

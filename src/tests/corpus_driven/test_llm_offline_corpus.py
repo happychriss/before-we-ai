@@ -417,6 +417,39 @@ def test_demo_6_the_answer_is_blocked_and_the_blockers_are_named(pipeline):
     assert "the figures are computed from them" in reason
 
 
+def test_the_reader_is_told_how_to_get_unblocked(pipeline):
+    """A verdict that will not clear has to come with a way forward.
+
+    The engine has always known which route applies — Ground separates
+    "nobody has answered" from "everything was tested and refuted" — but
+    the report said it as a diagnosis, per item, with the locus of the
+    failure three clicks away in the exception samples. On this corpus the
+    honest answer is two routes, and this checks the reader gets both.
+    """
+    import yaml as _yaml
+
+    from readiness_report.projection import build_view_model
+
+    root = pipeline["root"]
+    config = _yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8"))
+    unblock = build_view_model(ProjectStore(root), root, config).unblock
+
+    assert unblock.blocked
+    assert {r.heading for r in unblock.routes} == {
+        "You answer", "The data has to change"}
+
+    data = next(r for r in unblock.routes if r.heading == "The data has to change")
+    assert data.items == ("intercompany",)
+    # "US does not work", readable without digging: the period and the
+    # missing leg, lifted out of the check's exception samples.
+    where = " ".join(data.where)
+    assert "us_erp__intercompany" in where
+    assert "2024-06" in where
+    assert "right_legs 1" in where or "left_legs 0" in where
+    # Every route names its alternative, so waiving is never a hidden move.
+    assert all(route.alternative for route in unblock.routes)
+
+
 def test_demo_6_answering_the_clarifications_narrows_instead_of_blocking(pipeline,
                                                                         tmp_path):
     """The other side of "permit, narrow, or block". A human answers the four

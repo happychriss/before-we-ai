@@ -104,6 +104,30 @@
 {%- endif -%}
 {%- endmacro -%}
 
+{%- macro unblock(value) -%}
+{%- if value.blocked -%}
+<p class="lede">{{ value.summary }}</p>
+<div class="routes">
+  {%- for route in value.routes -%}
+  <div class="route {{ route.css }}">
+    <h3>{{ route.heading }}</h3>
+    <ul class="route-items">{%- for item in route.items -%}<li><code>{{ item }}</code></li>{%- endfor -%}</ul>
+    <p class="route-why">{{ route.explanation }}</p>
+    {%- if route.where -%}
+    <div class="route-where">
+      <div class="route-where-label">where it breaks</div>
+      <ul>{%- for line in route.where -%}<li>{{ line }}</li>{%- endfor -%}</ul>
+    </div>
+    {%- endif -%}
+    {%- if route.alternative %}<p class="route-alt">{{ route.alternative }}</p>{% endif -%}
+  </div>
+  {%- endfor -%}
+</div>
+{%- else -%}
+<p class="empty">{{ value.settled }}</p>
+{%- endif -%}
+{%- endmacro -%}
+
 {%- macro process_diagram(stages, ghost) -%}
 {%- set flow = namespace(first=true) -%}
 <div class="flow">{%- for stage in stages -%}
@@ -344,6 +368,10 @@
         <h2>How this project got from data to knowledge</h2>
         {{ process_diagram(view.stages, view.copy.process_ghost) }}
         <p class="muted">{{ view.copy.reading_guide }}</p>
+      </section>
+      <section class="panel" id="unblock">
+        <h2>{{ view.unblock.heading }}</h2>
+        {{ unblock(view.unblock) }}
       </section>
       <section class="panel" id="decisions">
         <h2>{{ view.decisions.heading }}</h2>

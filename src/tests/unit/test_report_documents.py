@@ -103,13 +103,9 @@ class TestDocumentsRead:
 
     def test_no_chunk_ids_reach_the_reader(self, project):
         """The reader's unit is a page, not a chunk."""
-        documents = _view(project).documents.documents
         rendered = " ".join(
-            [d.name, d.pages, d.passages, d.caution, *d.origins]
-            for d in documents
-        )[0] if False else " ".join(
             f"{d.name} {d.pages} {d.passages} {d.caution} {' '.join(d.origins)}"
-            for d in documents
+            for d in _view(project).documents.documents
         )
         assert ":p1:" not in rendered
         assert "chunk" not in rendered.lower()
@@ -237,3 +233,28 @@ class TestAnchorsReadForAHuman:
         assert details["page"] == "1"
         assert details["where on the page"] == "inside a chart"
         assert "payload" not in details  # no raw JSON in front of a reader
+
+
+class TestWhatWouldMoveThisForward:
+    """The chapter exists because the report could say what was wrong and
+    not what to do about it. The engine always knew — `Ground` separates
+    "nobody has answered" from "everything was tested and refuted" — so
+    this says it as an offer, in one place, with the locus brought forward
+    from the evidence instead of left three clicks away.
+    """
+
+    def test_a_project_with_nothing_to_clear_says_so(self, project):
+        view = _view(project).unblock
+        assert not view.blocked
+        assert "nothing here to clear" in view.settled
+
+    def test_it_never_offers_a_narrower_question(self, project):
+        """Deliberate. A conservation law that spans entities blocks a
+        narrowed question at exactly the same items — measured — and an
+        escape that is not one is worse than none."""
+        rendered = " ".join(
+            r.heading + r.explanation + r.alternative
+            for r in _view(project).unblock.routes
+        )
+        assert "narrow" not in rendered.lower()
+        assert "scope" not in rendered.lower()
