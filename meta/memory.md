@@ -86,12 +86,32 @@
    - **All six corpus PDFs are declared sources — DONE** (was: only
      `management_report.pdf`). Noise presence is the precision test.
      Walkthrough pins still need re-recording (below).
-   - **The spec's real public PDF is still missing** (Pflichtbestandteil,
-     `fixture-korpus-spezifikation.md:46` — all six corpus PDFs are
-     generator-made). OWNER picks the document (a public annual report is
-     the spec's own example); it enters additively as
-     `src/corpus/data/real/` with hand-annotated expected anchors. Blocks
-     final M5 acceptance, not the build.
+   - **The spec's real public PDF — SUPPLIED 2026-08-02, decision B
+     closed.** `src/corpus/data/real/bosch-geschaeftsbericht-2025.pdf`:
+     146 pages of published annual report, InDesign, encrypted, bilingual.
+     Read end to end in `tests/corpus_driven/test_real_document.py`;
+     deliberately **not** a walkthrough source, because 539 passages would
+     make one V3 call larger than the rest of the corpus put together.
+
+     It earned its place immediately. **R1** — 3,081 soft hyphens and six
+     kinds of exotic space across 512 of 539 passages meant a *correct*
+     quote could not match: the page reads "Verlustrechnung", the
+     extraction held "Verlust\u00adrechnung". Extraction now normalises
+     invisible characters once, deterministically, and the match against
+     the normalised text stays exact — normalising the text is not
+     loosening the match. **R2** — a 146-page financial report yields
+     essentially **no detected tables**: designed reports rule with
+     whitespace and colour, not strokes, so balance-sheet rows arrive as
+     `text`. That is the permissive direction and the strongest argument
+     for the layout-analyser evaluation below. **R3** — on a designed page
+     anything inside a drawn region reads as `chart`, including cover
+     titles and navigation bars: false *refusals*, which is the right way
+     round to be wrong.
+
+     Still open from the same spec section (:42, wider than decision B):
+     the milestone's own completion asks for **a run against a real,
+     well-known dataset whose truth the owner knows** — real data, not a
+     real document.
 
    **Built so far (2026-08-02), suite 470 → 580 green:**
    `before_we_ai/documents/` — `extract` (geometry → kind), `chunk`

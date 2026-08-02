@@ -27,6 +27,32 @@ TABLE = AnchorKind.TABLE.value
 CHART = AnchorKind.CHART.value
 KINDS = (TEXT, TABLE, CHART)
 
+# Characters a typesetter puts in and a reader never sees. They have to go
+# before anything quotes the text, and the reason is the strictness of the
+# quote rule rather than tidiness: a quote is matched character for
+# character, so an invisible one is an invisible way for a correct finding
+# to be thrown away. The first real annual report we read carried 3,081
+# soft hyphens across 512 of its 539 passages — "Verlust\u00adrechnung" is
+# stored, "Verlustrechnung" is what anybody reading the page would quote.
+#
+# Normalising the *text* is not the same as loosening the *match*. This
+# happens once, deterministically, at extraction; what a chunk holds is
+# then what a reader sees, and the match against it stays exact.
+_INVISIBLE = str.maketrans({
+    "\u00ad": None,  # soft hyphen — a "you may break here" hint
+    "\ufeff": None,  # zero-width no-break space
+    "\u200b": None,  # zero-width space
+    # Spacing that renders as a space and is written as something else.
+    "\u00a0": " ", "\u2003": " ", "\u2006": " ", "\u2009": " ",
+    "\u200a": " ", "\u202f": " ",
+})
+
+
+def readable(text: str) -> str:
+    """The text as a reader sees it, which is the only text worth quoting."""
+    return text.translate(_INVISIBLE)
+
+
 # A stroke thinner than this is a ruling line, not a region of its own.
 _HAIRLINE = 2.0
 # Slack when asking "does this region contain that box": generators and
@@ -117,7 +143,7 @@ def read_page(page, number: int) -> list[Block]:
         x0, y0, x1, y1, text, _no, block_type = raw
         if block_type != 0:  # image block — no text to anchor to
             continue
-        text = text.strip()
+        text = readable(text).strip()
         if not text:
             continue
         box = (x0, y0, x1, y1)

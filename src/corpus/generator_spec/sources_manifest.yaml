@@ -298,3 +298,20 @@ sources:
     filename: acme_annual_extract.pdf
     built_by: corpus/build_hard_document.py
     traps: [H1, H2, H3, H4, H5, H6, H7, H8, H9]
+
+  # H. The spec's Pflichtbestandteil, supplied by the owner 2026-08-02 and
+  # NOT generated: "ein echtes, hässliches öffentliches PDF (z. B.
+  # Geschäftsbericht) mit manuell annotierten Ankern"
+  # (fixture-korpus-spezifikation.md:15, :46 — synthetic documents test V3
+  # only partially). This closes that requirement.
+  H1_real_annual_report:
+    format: pdf_file
+    description: >-
+      Robert Bosch GmbH Geschäftsbericht 2025, 146 pages, as published. A
+      designed, encrypted, two-language report: soft hyphens throughout,
+      six different space characters, KPI figures set inside infographics,
+      and financial statements laid out without ruling lines. Nobody wrote
+      its traps for us, which is the whole point of it.
+    filename: bosch-geschaeftsbericht-2025.pdf
+    source: public — published by Robert Bosch GmbH
+    traps: [R1, R2, R3]
