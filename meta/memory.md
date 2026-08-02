@@ -139,17 +139,31 @@
    PDF — that stays open) · `system_sha256` closing the prompt half of the
    drift guard.
 
-   **Still open in M5:**
-   1. Widen the guardrail allow-list (`test_llm_guardrail.py`) to admit
-      DOCUMENT_ANCHOR/AI **when V3 joins that fixture** — its project does
-      not read documents yet, so widening now would permit what nothing does.
-   2. A `tell` beat in walkthrough stage 5 (F28/F29). **Note the fragility:**
-      `tell` calls V3 with scenario `…__statements`, and that input carries
-      the *currently open* rule items — so its fixture depends on where in
-      the run it is recorded. Fine for a fixed walkthrough, worth knowing
-      before the live session.
-   3. Kickoff batch 1–4 + the live re-record session; acceptance run.
-   4. Owner decision B (the real public PDF) whenever it comes.
+   **Still open in M5** (state as of 2026-08-02, end of session):
+
+   1. **Re-pin the walkthrough.** The live recording changed every number
+      the walkthrough prints, and only the *test* pins were updated. Run
+      `cd validation && ./scripts/reset.sh` through `6-readiness.sh` and
+      correct `validation/README.md` — it currently promises the old
+      counts (52 hypotheses, 42 plans, 22 candidates …). **Do this first:
+      the README is what the owner validates against, and it is wrong.**
+   2. **A `tell` beat in walkthrough stage 5** (F28/F29). Fragility to know
+      first: `tell` calls V3 with scenario `…__statements`, and that input
+      carries the *currently open* rule items, so its fixture depends on
+      where in the run it is recorded.
+   3. **Kickoff batch items 1 and 3** — `discover(root)` sources discovery
+      + bundled guides, and mapping claims binding to generic templates
+      where a real data property exists. Items 2, 4 and 5 landed with the
+      live recording; item 3 was deliberately left out of that session
+      rather than rushed into it.
+   4. **M5 acceptance run** (`meta/conventions.md` acceptance duties), then
+      the milestone can be called done.
+
+   **Done this session and worth not re-doing:** the guardrail now covers
+   V3 · decision B closed (the Bosch report, `corpus/data/real/`) · the
+   live re-record (every fixture is a real answer; request and V3 for the
+   first time) · staleness superseding · the unblock chapter · question
+   magnitude.
 
    **Unblocked, and the sequencing was deliberate:** the refactor ran first
    so M5 builds its document surfaces into `projection.py` and the template
@@ -376,9 +390,12 @@ their old text — it is a re-record-shaped change, not a re-render.
   same card. What it buys, on the corpus: AR vs GL is **98.6%**,
   intercompany **4.2%**, invoices vs orders **2.4%** — three sentences
   that read alike and mean entirely different things.
-- **(2) priority** — pure presentation. `gap_load()` is a derivation over
-  claims and cards; nothing is stored, so this is the report/UI layer
-  alone.
+- **(2) priority — NEXT, and the real lever.** `gap_load()` has been built
+  and tested since M3 and is called by nothing: a grep finds two hits,
+  both the `__init__` that exports it. It ranks unproven claims by how
+  many questions rest on them. Surfacing it turns 21 flat questions into
+  "these four block your answer, seventeen can wait". Pure presentation —
+  a derivation over claims and cards, nothing stored.
 - **(3) candidates in the question** — presentation. The card already
   holds the candidates as `claim_ids`; a list view can expand them.
 - **(4) duplicates** — presentation, per owner 2026-08-02. Two directions
