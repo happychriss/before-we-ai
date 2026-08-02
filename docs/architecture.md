@@ -670,8 +670,27 @@ What V3 supplies is therefore only the quote and what it takes the quote
 to assert. Everything that decides whether the anchor may count is
 computed from the document and the store.
 
-Reconciliation may propose a corroborating link between a claim and a rule
-item only when:
+**What the rule is about, and what it is not** (settled 2026-08-02, while
+implementing it — the first draft would have broken K3). Documents are read
+for two quite different purposes, and only one of them is corroboration:
+
+- **Value corroboration** — a figure in a document offered as agreeing with
+  a number the data produces. This is where the multi-anchor rule lives and
+  where T8's negatives (F23, F24, F26) are caught.
+- **Definitional grounding** — a policy sentence that *states a rule* the
+  data cannot show (a sign convention, a revenue definition, which FX rate
+  type applies). One authoritative policy saying it once is what a policy
+  *is*; demanding a second document would make policy documents useless and
+  would make K3 — the accounting policy resolving F14/F15/F19 — impossible
+  to satisfy.
+
+Nothing is lost by letting definitional anchors through, because a link is
+not evidence: `link_claim` only says *which dependency this claim answers*,
+and the item counts as satisfied solely through the claim's own status.
+A policy-grounded concept claim therefore sits at `proposed` until a check
+tests it or a human confirms it — visible, named, and promoting nothing.
+
+For **value corroboration**, reconciliation may propose a link only when:
 
 1. **≥ 2 independent anchors** — different (document, page) pairs — of kind
    `text` or `table` with match `exact` or `rounded` agree, **or**
@@ -685,9 +704,17 @@ Everything else surfaces, never links:
   figure is flagged low-confidence (F23);
 - `coincidental_candidate` never counts, whatever the quantity — noise
   documents must be present and refused (F26);
-- two qualifying anchors that **disagree in value** for the same figure are
-  a restatement: marked as a documented finding **and** a clarification
-  question, never silently reconciled to either value (K7/F24).
+- **disagreeing values** for the same figure are a restatement: marked as a
+  documented finding **and** a clarification question, never silently
+  reconciled to either value (K7/F24). Two anchors can disagree, but so can
+  one quote with itself — F24's poisoned line carries both the restated and
+  the original figure in a single sentence, which is precisely how a
+  restatement announces itself in prose.
+- **ambiguous figures never count.** `500.000` is half a million under one
+  grouping convention and five hundred under the other. Where a literal has
+  two readings and only one of them matches, agreement would be an artefact
+  of the locale we assumed, so the anchor is a `coincidental_candidate` —
+  the reading is recorded, the agreement is not claimed.
 
 ### Statements & the mirror loop (`tell`, `answer_question`)
 
