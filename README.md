@@ -38,8 +38,8 @@ One Python package, no services: point it at a directory. Files (YAML/Markdown) 
 the source of truth; everything under `cache/` is disposable and reconstructible.
 **DuckDB is the only execution engine** — it attaches databases, reads CSV/Parquet/
 Excel, and runs the profiling and check SQL. The LLM is a subroutine behind **typed
-contracts** (question decomposition, hypothesis generation, mapping proposals,
-check planning; document interpretation to follow), each with deterministic input building,
+contracts** (question classification, hypothesis generation, mapping proposals,
+check planning, document interpretation), each with deterministic input building,
 schema-validated output, full logging, and an offline stub mode for deterministic
 tests. Everything domain-specific enters through a declared **domain pack** (a
 curated domain-guide YAML + domain-law check definitions) — new domain, new pack,

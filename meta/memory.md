@@ -11,7 +11,14 @@
   ReadinessMap · **answer types** (the guide declares what a family of
   question depends on; the model classifies, the engine expands, a human
   confirms) · **the outer-layer refactor** (`meta/refactor-workorder.md`,
-  all seven PRs).
+  all seven PRs) · **M5 documents & V3** (PDF pipeline, anchors,
+  multi-anchor reconciliation, `tell` + mirror loop; complete 2026-08-02,
+  all four finish-line leftovers closed with tests).
+- **The road ahead is consolidated** (owner decision 2026-08-02): M7
+  makes the engine consumer-ready, M8 builds the end-user GUI on the M7
+  projection, M9 computes the answer (V4 + Assumption Capture). Scope per
+  milestone: the Next list below. The readiness report stays as the
+  debugging surface; the GUI speaks no claim vocabulary.
 - **What the refactor changed for anyone writing code now:** report facts
   live in `readiness_report/projection.py`, HTML in
   `templates/report.html.j2` with CSS/JS as package resources, and
@@ -60,7 +67,11 @@ claim vocabulary.
      is written on every check result and read by nobody; document anchors
      have the same gap (a quote can go silently untrue). Acceptance per
      spec :69: mutate the corpus by seed → flags propagate into question
-     cards → rerun clears them.
+     cards → rerun clears them. Known friction to resolve on the way:
+     the offline walkthrough's `3c` refuses to run twice (replay answers
+     are keyed to the first run's claim labels) — live rebinding has no
+     such limit, and M7's rerun loop is where the difference must become
+     explicit instead of folklore.
    - **Second answer type** (receivables — `subledger_ar` sits ready).
      One type makes classification vacuous and "not on this path" untestable.
    - **Request lifecycle**: supersession/revisions (the mockup's
@@ -72,6 +83,12 @@ claim vocabulary.
      (PDF: source/page/quote — already on every anchor; tables:
      source/sheet/column — encoded in every binding). Cell-level provenance
      through the Excel normalization is explicitly OUT (UI phase, if ever).
+     **This is also where the two open work-list points land** (owner
+     review 2026-08-02, "The work list" below): (3) candidates expanded in
+     the compact list view, (4) the two directions of one `ic_symmetry`
+     law collapsed to one decision — both presentation, so they belong to
+     the projection, not the engine. Plus the mockup's tab split (guide
+     decision vs answer issue) as a derived field on each question.
    - **Two small acts the mockup demands**: "I don't know" (a defer act, so
      a seen-but-undecidable question stops ranking as unseen) and
      `Source.description` (the human sentence the UI shows per source).
@@ -89,6 +106,26 @@ claim vocabulary.
 3. **After M8, unchanged**: computing the answer (V4 SQL generation +
    Assumption Capture) stays one milestone of its own — see "Declared
    goal" below.
+
+   **Backlog check at consolidation (2026-08-02) — every unscheduled item,
+   with its landing place, so nothing is lost between here and M7:**
+   - work-list points 3 & 4 → **M7** (projection bullet above);
+   - `scripts/` ops tools + Typer CLI verbs → **M8** (they ride packaging;
+     `with-api-key.sh` exists already);
+   - spec `:42` real-data run → **M8 acceptance** (owner decision);
+   - layout-analyser evaluation (pymupdf4llm / Docling) → unscheduled,
+     after M8 at the earliest — extraction quality, not epistemics;
+   - Seeded-Recall metric split → unscheduled; eval-script only, do it
+     with the next recording session rather than as its own errand;
+   - acceptance-kit holds/violated fixtures for the three finance laws →
+     unscheduled (conventions.md rule applies to *new* laws; these three
+     predate it);
+   - standalone demo dataset → **M8** (it is the first-user experience,
+     which is what M8 ships);
+   - two-sided laws as paired claims → deliberately unscheduled, recorded
+     boundary in `docs/architecture.md` (the false-promotion hole is
+     closed; only the object model remains);
+   - cell-level Excel provenance → OUT until a UI user asks for it.
 
 **Closed 2026-08-02:** the owner validation run happened (Next item 1 since
 M4, deferred twice) — no findings recorded; the two read-along confirmations
