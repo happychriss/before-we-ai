@@ -32,7 +32,23 @@ SOURCES = [
     {"name": "kontakte_aussendienst", "kind": "xlsx",
      "location": str(CORPUS / "kontakte_aussendienst.xlsx")},
     {"name": "buchungen_report", "kind": "csv", "location": str(CORPUS / "buchungen_report.csv")},
+    # All six documents, declared with M5 (owner decision 2026-08-02). The
+    # policy is what makes the sign convention and the revenue definition
+    # answerable at all (K3); the rebate contract carries F25. The three
+    # noise documents are declared *deliberately*: a document pipeline that
+    # only ever sees relevant documents has not been tested. Their presence
+    # is the precision measurement — F26's divested-unit press release must
+    # be read and refused, not absent.
     {"name": "management_report", "kind": "pdf", "location": str(CORPUS / "management_report.pdf")},
+    {"name": "buchhaltungsrichtlinie", "kind": "pdf",
+     "location": str(CORPUS / "buchhaltungsrichtlinie.pdf")},
+    {"name": "rabattvertrag", "kind": "pdf", "location": str(CORPUS / "rabattvertrag.pdf")},
+    {"name": "lieferantenkatalog", "kind": "pdf",
+     "location": str(CORPUS / "noise" / "lieferantenkatalog.pdf")},
+    {"name": "pressemitteilung_2022_divested_unit", "kind": "pdf",
+     "location": str(CORPUS / "noise" / "pressemitteilung_2022_divested_unit.pdf")},
+    {"name": "reisekostenrichtlinie", "kind": "pdf",
+     "location": str(CORPUS / "noise" / "reisekostenrichtlinie.pdf")},
 ]
 
 

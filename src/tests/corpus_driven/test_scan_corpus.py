@@ -99,7 +99,11 @@ def matrix_pairs(root):
 
 def test_scan_covers_the_whole_corpus(project):
     root, result = project
-    assert len(result.source_ids) == 7
+    # Six of the seven declared sources. The PDF is not scan's to record:
+    # from M5 the document pipeline owns documents end to end (Source,
+    # profile and chunks), so that one source has one owner writing one
+    # shape of fingerprint. See tests/unit/test_documents_pipeline.py.
+    assert len(result.source_ids) == 6
     assert len(result.views) == 48  # 2 × 22 ERP tables + 3 sheets + 1 csv
     assert result.profiles_written > 200
     assert result.warnings == []

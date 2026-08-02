@@ -76,7 +76,12 @@ def read_documents(root: str | Path) -> DocumentsResult:
         all_chunks.extend(chunks)
 
         existing = sources_by_name.get(spec.name)
-        fingerprint = file_fingerprint(path)
+        # Same outer shape as a scanned source ("file" plus what was found
+        # inside it), so staleness sees one kind of thing either way.
+        fingerprint = {
+            "file": file_fingerprint(path),
+            "chunks": {chunk.id: len(chunk.text) for chunk in chunks},
+        }
         source = (
             existing.model_copy(update={"fingerprint": fingerprint,
                                         "scope": spec.scope})

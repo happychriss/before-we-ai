@@ -113,6 +113,25 @@ def test_the_cache_is_disposable(project):
     assert first.chunks == second.chunks
 
 
+def test_scan_leaves_documents_to_the_document_pipeline(project):
+    """One source, one owner.
+
+    Both stages used to write a Source record for a PDF, in two different
+    fingerprint shapes — and staleness compares fingerprints, so whichever
+    ran last decided what "unchanged" meant. Documents belong to stage 2c.
+    """
+    from before_we_ai import scan
+
+    result = scan(project)
+    assert result.source_ids == {}
+    assert ProjectStore(project).sources == {}
+
+    read_documents(project)
+    store = ProjectStore(project)
+    assert {s.name for s in store.sources.values()} == {"policy", "rebates"}
+    assert set(next(iter(store.sources.values())).fingerprint) == {"file", "chunks"}
+
+
 def test_a_project_without_documents_reads_cleanly(tmp_path):
     root = init_project(tmp_path / "empty")
     result = read_documents(root)

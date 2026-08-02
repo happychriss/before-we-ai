@@ -82,6 +82,13 @@ def build_catalog(root: str | Path, specs: list[SourceSpec], con) -> list[Catalo
     root = Path(root)
     entries = []
     for spec in specs:
+        if spec.kind == "pdf":
+            # Documents belong to the document pipeline (stage 2c,
+            # ``documents.read_documents``), which records their Source and
+            # their profile. Recording them here too would give one source
+            # two owners writing two shapes of fingerprint into one file —
+            # and staleness compares fingerprints.
+            continue
         path = spec.resolve(root)
         entry = CatalogEntry(spec=spec, file_fingerprint=file_fingerprint(path))
         if spec.kind == "duckdb":
@@ -120,8 +127,6 @@ def build_catalog(root: str | Path, specs: list[SourceSpec], con) -> list[Catalo
                 )
                 entry.views[view] = table_fingerprint(con, view)
                 entry.decisions.extend({**d, "table": view} for d in sheet.decisions)
-        elif spec.kind == "pdf":
-            pass  # fingerprinted Source only; the document pipeline is M5
         else:
             raise ValueError(f"unknown source kind: {spec.kind!r} ({spec.name})")
         entries.append(entry)
