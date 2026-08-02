@@ -463,12 +463,42 @@ def check_document_finding(f: DocumentFinding, chunks: dict[str, object],
             f"passage {f.chunk_id}: term/definition belong to "
             "reads_as=definition, not to a figure"
         )
+    if f.reads_as == "figure":
+        errors += _check_stated_value(f)
+    elif f.value:
+        errors.append(
+            f"passage {f.chunk_id}: 'value' belongs to reads_as=figure — a "
+            "definition states a rule, not a number"
+        )
     if f.answers is not None and f.answers not in open_items:
         errors.append(
             f"passage {f.chunk_id}: {f.answers!r} is not one of the open "
             "questions listed in the input"
         )
     return errors
+
+
+def _check_stated_value(f: DocumentFinding) -> list[str]:
+    """The figure the finding is about must be in the words it quotes.
+
+    This is the whole reason the model is allowed to name it. Which number
+    a sentence is *about* is a reading, not a computation — the engine used
+    to guess and took the year out of "Prior year Q1 2023 revenue: EUR
+    3,200,000" — but a reading can be checked, and an unchecked one would
+    be a free hand to point an anchor at any number it liked.
+    """
+    from before_we_ai.documents.figures import read_figure
+
+    value = (f.value or "").strip()
+    if not value:
+        return [f"passage {f.chunk_id}: a figure needs the number it is "
+                "about, in 'value', exactly as the document writes it"]
+    if value not in f.quote:
+        return [f"passage {f.chunk_id}: {value!r} is not in the quote it is "
+                "taken from — name the number as the document writes it"]
+    if not read_figure(value).readings:
+        return [f"passage {f.chunk_id}: {value!r} cannot be read as a number"]
+    return []
 
 
 def finding_to_claim(f: DocumentFinding, source_id: str) -> Claim:

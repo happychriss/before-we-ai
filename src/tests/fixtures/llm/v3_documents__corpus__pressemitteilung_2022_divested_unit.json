@@ -2,9 +2,9 @@
  "contract": "v3_documents",
  "scenario": "corpus__pressemitteilung_2022_divested_unit",
  "input_sha256": "ee684fe2c3a51109cc517eb27ff8bdbacf42ce2db6466470478b42f4db73d39c",
- "system_sha256": "82080590552436492864fdb01f57b99b854aefc31eb2b35b225908b4666d8dc9",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",
  "recorded_at": "hand-authored",
  "source_log": "none — hand-authored before the first V3 online run, per stub.py; replace it with a recorded answer at the next refresh_fixtures run",
- "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"pressemitteilung_2022_divested_unit:p1:0\",\n      \"quote\": \"Mit dem Verkauf unserer Industriesparte erzielte die Gruppe einen Erloes von EUR 8.450.000.\",\n      \"reads_as\": \"figure\",\n      \"statement\": \"The group realised EUR 8,450,000 from selling its industrial division.\",\n      \"term\": null,\n      \"definition\": null,\n      \"answers\": null,\n      \"rationale\": \"a revenue-shaped figure stated in the release\"\n    }\n  ]\n}\n"
+ "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"pressemitteilung_2022_divested_unit:p1:0\",\n      \"quote\": \"Mit dem Verkauf unserer Industriesparte erzielte die Gruppe einen Erloes von EUR 8.450.000.\",\n      \"reads_as\": \"figure\",\n      \"statement\": \"The group realised EUR 8,450,000 from selling its industrial division.\",\n      \"term\": null,\n      \"definition\": null,\n      \"answers\": null,\n      \"rationale\": \"a revenue-shaped figure stated in the release\",\n      \"value\": \"8.450.000\"\n    }\n  ]\n}\n"
 }

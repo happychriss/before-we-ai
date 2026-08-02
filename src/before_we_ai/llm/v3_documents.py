@@ -36,6 +36,7 @@ import duckdb
 
 from before_we_ai.core.enums import Actor, KnowledgeKind
 from before_we_ai.core.objects import ClarificationQuestion
+from before_we_ai.documents.figures import read_figure
 from before_we_ai.documents.index import load_chunks, retrieve
 from before_we_ai.documents.reconcile import corroborate, ground_definition
 from before_we_ai.llm.call_log import CallLogger
@@ -240,7 +241,10 @@ def _record(store, project, guide, report, finding, chunk, source_id) -> None:
     if finding.reads_as == "definition":
         outcome = ground_definition(anchors)
     else:
-        stated = _figure_value(finding.quote)
+        # The model named the figure and the semantic check confirmed it is
+        # in the quote; an ambiguous literal still yields no single value,
+        # and then nothing can corroborate it, which is correct.
+        stated = read_figure(finding.value or "").value
         outcome = (corroborate(anchors, stated) if stated is not None
                    else ground_definition(anchors))
 
@@ -254,22 +258,6 @@ def _record(store, project, guide, report, finding, chunk, source_id) -> None:
     if outcome.may_link and finding.answers:
         _link(store, project, guide, report, finding.answers, kept.id,
               outcome.reason)
-
-
-def _figure_value(quote: str):
-    """Which number in the quote the finding is actually about.
-
-    The largest one. Not a guess dressed up as a rule: a quoted amount is
-    surrounded by period labels and years, and taking the first number
-    picks the year every time — "Prior year Q1 2023 revenue: EUR
-    3,200,000" is about the revenue, and reading it as being about 2023
-    hid F24's restatement behind a lesser refusal until a corpus run
-    showed it.
-    """
-    from before_we_ai.documents.figures import distinct_values
-
-    values = distinct_values(quote)
-    return max(values, key=abs) if values else None
 
 
 def _link(store, project, guide, report, ref, claim_id, note) -> None:

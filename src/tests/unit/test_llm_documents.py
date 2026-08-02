@@ -44,7 +44,7 @@ def _finding(**overrides):
     payload = dict(chunk_id="policy:p1:0", quote=POLICY_LINE,
                    reads_as="definition", statement="Credits are negative.",
                    term="sign_convention", definition="credits are negative",
-                   answers=None, rationale="stated in the policy")
+                   value=None, answers=None, rationale="stated in the policy")
     payload.update(overrides)
     return DocumentFinding(**payload)
 
@@ -84,8 +84,48 @@ class TestFindingShape:
 
     def test_a_figure_may_not_carry_a_definition(self):
         errors = check_document_finding(
-            _finding(reads_as="figure", term="x", definition="y"), CHUNKS, set())
+            _finding(reads_as="figure", term="x", definition="y",
+                     value="2020"), CHUNKS, set())
         assert any("belong to reads_as=definition" in e for e in errors)
+
+    def test_a_figure_must_name_the_number_it_is_about(self):
+        """The engine used to guess this and took the year out of
+        "Prior year Q1 2023 revenue: EUR 3,200,000"."""
+        errors = check_document_finding(
+            _finding(reads_as="figure", term=None, definition=None,
+                     value=None), CHUNKS, set())
+        assert any("needs the number it is about" in e for e in errors)
+
+    def test_a_named_number_that_is_not_in_the_quote_is_refused(self):
+        """Naming it is allowed precisely because naming it is checkable."""
+        chunks = {"policy:p1:0": _Chunk("policy:p1:0",
+                                        "Revenue was EUR 4,598,231 last year.")}
+        errors = check_document_finding(
+            _finding(reads_as="figure", term=None, definition=None,
+                     quote="Revenue was EUR 4,598,231 last year.",
+                     value="9,999,999"), chunks, set())
+        assert any("is not in the quote" in e for e in errors)
+
+    def test_a_named_number_that_is_no_number_is_refused(self):
+        chunks = {"policy:p1:0": _Chunk("policy:p1:0", "Revenue was strong.")}
+        errors = check_document_finding(
+            _finding(reads_as="figure", term=None, definition=None,
+                     quote="Revenue was strong.", value="strong"),
+            chunks, set())
+        assert any("cannot be read as a number" in e for e in errors)
+
+    def test_the_named_number_may_be_any_of_the_ones_in_the_quote(self):
+        """Which one a sentence is about is a reading, not a computation:
+        here the smaller figure is the subject and the larger is context."""
+        text = "Earnings per share of 4.12 on 8,312,504 shares."
+        chunks = {"policy:p1:0": _Chunk("policy:p1:0", text)}
+        assert check_document_finding(
+            _finding(reads_as="figure", term=None, definition=None,
+                     quote=text, value="4.12"), chunks, set()) == []
+
+    def test_a_definition_may_not_name_a_number(self):
+        errors = check_document_finding(_finding(value="4,000"), CHUNKS, set())
+        assert any("belongs to reads_as=figure" in e for e in errors)
 
     def test_answering_an_unlisted_question_is_refused(self):
         errors = check_document_finding(
@@ -109,6 +149,8 @@ class TestFindingToClaim:
     def test_a_figure_becomes_a_plain_proposed_claim(self):
         claim = finding_to_claim(
             _finding(reads_as="figure", term=None, definition=None,
+                     quote="Q3 revenue was EUR 2,847,000.",
+                     value="2,847,000",
                      statement="Q3 revenue was EUR 2,847,000."),
             source_id="s1")
         assert not isinstance(claim, ConceptClaim)
@@ -252,8 +294,8 @@ class TestInterpretDocuments:
         client = _ScriptedClient([{
             "chunk_id": _chunk_id(project, CHART_LINE), "quote": CHART_LINE,
             "reads_as": "figure", "statement": "Q3 revenue was EUR 2,847,000.",
-            "term": None, "definition": None, "answers": None,
-            "rationale": "the chart says so",
+            "term": None, "definition": None, "value": "2,847,000",
+            "answers": None, "rationale": "the chart says so",
         }])
         report = interpret_documents(project, guide=guide, client=client)
 
@@ -269,7 +311,8 @@ class TestInterpretDocuments:
         client = _ScriptedClient([{
             "chunk_id": _chunk_id(project, CHART_LINE), "quote": CHART_LINE,
             "reads_as": "figure", "statement": "Q3 revenue.", "term": None,
-            "definition": None, "answers": None, "rationale": "…",
+            "definition": None, "value": "2,847,000", "answers": None,
+            "rationale": "…",
         }])
         interpret_documents(project, guide=guide, client=client)
         assert ProjectStore(project).questions

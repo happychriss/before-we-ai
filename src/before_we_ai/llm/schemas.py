@@ -118,6 +118,15 @@ class DocumentFinding(BaseModel):
     ``answers`` is the seam to the dependency list: the name of the rule
     item this passage settles, or null. A wrong one is refused, not
     guessed at.
+
+    ``value`` is the figure the finding is about, written exactly as the
+    document writes it. It is here for the opposite reason ``kind`` is
+    absent: which number a sentence is *about* cannot be read off the
+    text mechanically — "earnings per share of 4.12 on 8,312,504 shares"
+    defeats every rule of thumb — but the model's answer **is**
+    checkable, because the literal has to be in the quote. Model reads,
+    engine verifies. Guessing it here used to be the engine's job and it
+    picked the year out of "Prior year Q1 2023 revenue: EUR 3,200,000".
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -128,6 +137,7 @@ class DocumentFinding(BaseModel):
     statement: str  # what the passage asserts, one sentence
     term: str | None = None  # definition only
     definition: str | None = None  # definition only
+    value: str | None = None  # figure only — the literal, verbatim from the quote
     answers: str | None = None  # the rule item this settles, or null
     rationale: str  # logged, never stored
 

@@ -670,9 +670,21 @@ point of this layer is that nothing epistemic rests on trust):
   to the claim's value. `rounded` means agreement within presentation
   rounding; anything looser is `coincidental_candidate`.
 
-What V3 supplies is therefore only the quote and what it takes the quote
-to assert. Everything that decides whether the anchor may count is
-computed from the document and the store.
+What V3 supplies is the quote, what it takes the quote to assert, and —
+for a figure — **which number in the quote it is about** (`value`, the
+literal as the document writes it). That last field looks like a
+concession and is the opposite of one. The dividing line is not "does the
+model touch it" but **"can we check it"**: `kind` is unknowable from the
+text, so the model must never assert it; which number a sentence is about
+*is* a reading, and a reading can be verified — the named literal has to
+appear in the quote and parse as a number, or the finding is refused.
+
+The engine used to compute it instead, by taking the largest number in
+the quote, and before that the first. Both are guesses. "Earnings per
+share of 4.12 on 8,312,504 shares" defeats one; "Prior year Q1 2023
+revenue: EUR 3,200,000" defeats the other, and did — it hid a restatement
+behind a weaker refusal until a corpus run showed it. A checked answer
+from the model beats an unchecked guess from us.
 
 **What the rule is about, and what it is not** (settled 2026-08-02, while
 implementing it — the first draft would have broken K3). Documents are read

@@ -2,9 +2,9 @@
  "contract": "v3_documents",
  "scenario": "corpus__management_report",
  "input_sha256": "19cf6716a65a0124647f8cbb20665b394e6e28be2ed8a9bc621a36be142cc052",
- "system_sha256": "82080590552436492864fdb01f57b99b854aefc31eb2b35b225908b4666d8dc9",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",
  "recorded_at": "hand-authored",
  "source_log": "none — hand-authored before the first V3 online run, per stub.py; replace it with a recorded answer at the next refresh_fixtures run",
- "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"management_report:p1:3\",\n      \"quote\": \"EUR 2,847,000\",\n      \"reads_as\": \"figure\",\n      \"statement\": \"Q3 2024 revenue was EUR 2,847,000.\",\n      \"term\": null,\n      \"definition\": null,\n      \"answers\": null,\n      \"rationale\": \"the report gives a Q3 revenue figure\"\n    },\n    {\n      \"chunk_id\": \"management_report:p1:4\",\n      \"quote\": \"Prior year Q1 2023 revenue: EUR 3,200,000 (restated from EUR 3,050,000).\",\n      \"reads_as\": \"figure\",\n      \"statement\": \"Prior year Q1 2023 revenue is EUR 3,200,000.\",\n      \"term\": null,\n      \"definition\": null,\n      \"answers\": null,\n      \"rationale\": \"the report gives a prior-year comparative\"\n    }\n  ]\n}\n"
+ "response_text": "{\n  \"findings\": [\n    {\n      \"chunk_id\": \"management_report:p1:3\",\n      \"quote\": \"EUR 2,847,000\",\n      \"reads_as\": \"figure\",\n      \"statement\": \"Q3 2024 revenue was EUR 2,847,000.\",\n      \"term\": null,\n      \"definition\": null,\n      \"answers\": null,\n      \"rationale\": \"the report gives a Q3 revenue figure\",\n      \"value\": \"2,847,000\"\n    },\n    {\n      \"chunk_id\": \"management_report:p1:4\",\n      \"quote\": \"Prior year Q1 2023 revenue: EUR 3,200,000 (restated from EUR 3,050,000).\",\n      \"reads_as\": \"figure\",\n      \"statement\": \"Prior year Q1 2023 revenue is EUR 3,200,000.\",\n      \"term\": null,\n      \"definition\": null,\n      \"answers\": null,\n      \"rationale\": \"the report gives a prior-year comparative\",\n      \"value\": \"3,200,000\"\n    }\n  ]\n}\n"
 }
