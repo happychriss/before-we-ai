@@ -244,8 +244,9 @@ Good (offline pins): **54 executed, 0 skipped**; verdicts **42 pass, 12 fail**;
 journal role: `de_erp__gl_postings` **test-supported**, `buchungen_report`
 **contradicted** (the decoy loses — trap F27), `us_erp__gl_postings`
 **contradicted** (honest — the data has a missing intercompany leg, trap F22);
-audit **CLEAN**. Resulting AI-claim statuses: 38 test-supported, 36 proposed,
-12 contradicted.
+audit **CLEAN**. Resulting AI-claim statuses: 38 test-supported, 35 proposed,
+12 contradicted. (Stage 5b adds one more `proposed` claim out of the told
+statement, so the report's totals read 36 once you get that far.)
 
 **Watch the three `account` candidates.** Each one now gets an anti_join
 against the chart of accounts, each one **passes**, and all three stay
@@ -306,7 +307,7 @@ plus **5** raised in 3d where a document figure was refused.
 **In the report, section 5 is not in the order they were asked.** Twenty-three
 questions that all read alike is not a work list, so each card carries a badge
 saying what it holds up, and the list is sorted by it. On this landscape:
-**5 block the answer, 18 are not on this path** — real findings, every one of
+**5 block the answer, 17 are not on this path** — real findings, every one of
 them, but the question you asked does not wait on any of them.
 
 The band comes off the ReadinessMap, never off the card's wording, and that
@@ -488,7 +489,7 @@ DuckDB client takes an exclusive lock, and ours then fails with
 
 ## Expected behaviors that are NOT bugs
 
-- One V1 hypothesis and two V2 bindings are skipped on every offline
+- One V1 hypothesis and four V2 bindings are skipped on every offline
   replay — the recorded answers kept a few bad items; skips are per-item and
   visible in the logs (`outcome: partial`). The V1 one is **not** a defect in
   the answer: `account_range_group` exists in both the DE and the US chart of
