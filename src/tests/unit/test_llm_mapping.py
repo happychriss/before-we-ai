@@ -505,3 +505,38 @@ class TestWhenTheContractItselfMisleads:
         )
         assert params["key_columns"] == ["document_number"]
         assert [c["param"] for c in corrections] == ["key_columns", "key_columns"]
+
+
+class TestARefusalNamesWhatItRefused:
+    """A rejected binding writes its reason into the store as a
+    DECLARATION and the readiness report renders it: the message is a
+    product surface, not a debugging aid.
+
+    It cost us: "param 'accounts' must be a list, got str" is accurate and
+    useless. The value was `de_erp__chart_of_accounts`, and a message
+    carrying it would have made the real cause — our own instruction —
+    visible on the first read instead of the fiftieth.
+    """
+
+    @pytest.mark.parametrize("template, params, offender", [
+        ("subledger_equals_gl", {"accounts": "de_erp__chart_of_accounts"},
+         "de_erp__chart_of_accounts"),
+        ("coverage", {"expected": "de_erp__chart.account_range_group"},
+         "de_erp__chart.account_range_group"),
+        ("duplicate", {"key_columns": 7}, "7"),
+        ("subledger_equals_gl", {"accounts": ["not_a_number"]}, "not_a_number"),
+        ("reconciliation", {"left_measure_expr": "sum(amount)"}, "sum(amount)"),
+        ("balance", {"amount": "de_erp__gl.amount"}, "de_erp__gl.amount"),
+    ])
+    def test_the_offending_value_is_in_the_message(self, template, params,
+                                                   offender):
+        errors = check_template_params(template, params)
+        assert any(offender in e for e in errors), (params, errors)
+
+    def test_a_list_refusal_also_says_what_the_list_holds(self):
+        """The half that turns a refusal into an instruction."""
+        (error,) = [e for e in check_template_params(
+            "subledger_equals_gl", {"accounts": "de_erp__chart_of_accounts"})
+            if "must be a list" in e]
+        assert "account NUMBERS" in error
+        assert "NOT the chart-of-accounts view" in error

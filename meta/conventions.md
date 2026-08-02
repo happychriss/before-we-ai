@@ -67,6 +67,30 @@ turns red. If a safety property depends on it, it is not a heuristic — it
 is a law sitting in the wrong place. Anything tuned against the corpus
 must survive this before it ships.
 
+## What an assertion has to be about
+
+Distilled from the defects a fully green suite did not catch. Every one of
+them was a test asserting the wrong *kind* of thing — not a missing test.
+
+- **A count over a rejection bucket must be paired with something that
+  reads a reason.** Skips, refusals, unbindables and waivers are not
+  failures, so a suite that only counts them lets a wrong one sit for
+  weeks. Better still: where the healthy number is zero, assert zero, so
+  the first rejection turns the suite red and someone has to read it. The
+  corpus run does this for V2 (`v2.skipped == 0`).
+- **Assert behaviour, not the promise.** A flag documented in `--help` and
+  threaded into one of its two call sites reads as working in every review
+  and in the help text; only running it shows otherwise.
+- **When the model's output looks stupid, read what we asked for first.**
+  Our own contract has been the bug more than once — an instruction that
+  told the model to write a table name where numbers belonged, a grounding
+  rule that rejected columns which exist. The refusal message describes
+  the symptom faithfully and points away from the cause.
+- **Any new cross-package import is a candidate for import-order
+  breakage.** `tests/unit/test_import_order.py` imports each package first
+  in its own interpreter; extend it rather than trusting that some test
+  happens to get there first.
+
 ## Corpus & validation style
 
 - **Sources stay heterogeneous and dirty** (native DuckDB/xlsx/csv/PDF, never

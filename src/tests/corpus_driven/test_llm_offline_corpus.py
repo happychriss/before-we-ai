@@ -180,6 +180,11 @@ def test_contracts_ran_clean_offline(pipeline):
     # `subledger_equals_gl` bindings — so the only law that can settle a
     # receivables object had never run once. `VALUE_PARAMS` now says per
     # param what it holds, and the model writes `accounts: ["1200"]`.
+    # Pinned at ZERO deliberately, and it is a gate rather than a count:
+    # a rejected binding is not a failure to a test suite, so five of them
+    # sat here for weeks while every run stayed green. Now the first one
+    # turns this red and somebody has to read its reason — which is the
+    # step that was missing, not the test.
     assert len(v2.skipped) == 0  # validation-rejected bindings
     assert len(v2.semantic_only) == 6  # no admissible template — never sent
     assert len(v2.unbindable) == 9  # honest template=null answers

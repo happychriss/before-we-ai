@@ -1,14 +1,15 @@
 # Hand-off prompt for an external coding agent
 
-Paste the block below, with `<<PACKAGE>>` replaced by exactly one work
-package (`WP4`, `WP5a`, `WP5b`, `WP5c`). **One package per session** — the
-gates only mean something if each is reviewed on its own.
+Write the assignment as a work order of its own — scope, acceptance checks,
+and an explicit out-of-scope list — then paste the block below with
+`<<PACKAGE>>` replaced by that one work order. **One package per session**:
+the gates only mean something if each is reviewed on its own.
 
 ---
 
 You are working in the `before-we-ai` repository. Before changing anything,
-read in this order: `CLAUDE.md`, then `meta/refactor-workorder.md` (your
-assignment), then `meta/conventions.md`.
+read in this order: `CLAUDE.md`, then your work order, then
+`meta/conventions.md`.
 
 Your task is **<<PACKAGE>> and nothing else.** Do not start the next package.
 Do not do anything the work order lists as out of scope, however obviously

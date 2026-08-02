@@ -134,8 +134,7 @@ Z1-Z4 spot-check results, seed stability report.
   tool consequences.
 - **target_questions.yaml**: Defines Z1-Z4 and the business rules (F14/F15/F19/etc.) that matter most.
 - **generator_contract.md**: The interface between external build and harness; all requirements.
-- **expected_verdicts.yaml** (once populated by the generator): Ground truth—the answer key against
-  which M1+ will be validated.
+- **expected_verdicts.yaml**: Ground truth — the answer key the suite validates against.
 
 ---
 
@@ -154,16 +153,10 @@ traps correctly, not just the known ones.
 
 ---
 
-## Next steps (M1-M8)
+## What builds on it
 
-Once this corpus is frozen and validated:
-- **M1**: Build the epistemic core (model, state machine, promotion rules)
-- **M2**: Ingestion & profiling — test against T1/T9 (normalization), candidate matrix
-- **M3**: Check engine — validate without any LLM (T1-T6, T11, T12)
-- **M4**: LLM contracts V1/V2 — hypothesis generation, check planning (with offline stub mode)
-- **M5**: Document pipeline V3 — interpretation with anchor validation (T8 negative cases, real PDF)
-- **M6**: Question flow V4 — SQL generation, assumption capture, gap report (T5, T10, gap-list content)
-- **M7**: Staleness & replay — M0 corpus frozen, future runs against live data with version tracking
-- **M8**: Packaging — `pipx install before-we-ai`, 10-minute quickstart
+The roadmap and the status of every milestone live in one place, `README.md`
+at the repository root — this file used to carry a second copy and it drifted
+(it still had SQL generation as M6).
 
 All M1+ acceptance criteria reference this corpus's traps and reference results.

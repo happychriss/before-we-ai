@@ -992,17 +992,17 @@ filters; deep links reveal their claim:
   inputs → measured → the AI proposes → the checks decide → humans decide the
   rest. Two things are drawn, not written: the **actor boundary** between
   "proposed" and "decided" (nothing the AI authors can promote a claim — the
-  structural False-Promotion invariant, made visible), and a **ghost node**
-  for M5 (documents), dashed and labelled "not built", so what is missing is
-  stated rather than omitted.
-- **0 · Request** — the frame opening: the business question verbatim, the
-  requested output attributed to the model, the scope, and the
-  required-knowledge list with each item's `why`. What the answer depends on,
-  before anything has been measured.
-- **1 · Inputs** — the three declared domain inputs, live from the project:
+  structural False-Promotion invariant, made visible). A stage not yet built
+  is drawn as a dashed **ghost node** labelled as such, so what is missing is
+  stated rather than omitted; the documents node was one until M5 landed.
+- **0 · Inputs** — the three declared domain inputs, live from the project:
   sources, the domain guide (domain, count, names, definitions, settlement
   paths), and the domain-law check definitions (naming the generic remainder
-  as such).
+  as such). The precondition, chosen once, before any question is asked.
+- **1 · Request** — the frame opening: the business question verbatim, the
+  requested output attributed to the model, the scope, the answer type it was
+  classified to, and the required-knowledge list with each item's `why`. What
+  the answer depends on, before anything has been measured.
 - **2 · Measured** — sources, column profiles, candidate-overlap summary:
   counted facts, no model involved yet.
 - **3 · Proposed** — the funnel: proposed → planned / unbindable /
@@ -1036,6 +1036,61 @@ filters; deep links reveal their claim:
   `check_plan_id` on the mapping claim's evidence.
 - **Core terms** (bottom) — rendered from `before_we_ai/glossary.py` (one
   home, no drift).
+
+### A question card: what is stored, what is derived
+
+The distinction decides who may change what, so it is worth stating once.
+
+A `ClarificationQuestion` is **not** a view. Its wording is authored by the
+engine and **stored** in `questions/` — three authors write them
+(`engine/runner.py::_draft_question`, `llm/domain_guide.py` for role cards,
+`llm/v3_documents.py` for document refusals). Editing that wording rewrites
+project data and leaves old cards on their old text: a re-record-shaped
+change, not a re-render.
+
+Everything about a card's *urgency* is derived on every read and stored
+nowhere: its band (blocks the answer / limits it / bears on it / not on this
+path) comes off the ReadinessMap, ties inside a band break on `gap_load()`,
+and the tally above the list is counted from the same maps. A priority
+written beside the wording would be stale the moment a check ran, and
+nothing would say so.
+
+One thing sits deliberately between the two: `finding`, the size of the
+problem ("1 exception in 24 rows"). Stored, because the run that measured it
+is gone by render time — but stored *beside* the question rather than inside
+it, because the wording is the dedup key and a count in it would mint a
+fresh card every time the number moved, putting one decision in front of the
+reader again and again. A re-run updates the size on the same card. Three
+findings that read alike can differ by two orders of magnitude, which is the
+whole reason a reader needs it.
+
+### Three routes out of a block, and one that is not a route
+
+A verdict that will not clear has to come with a way forward, and the engine
+already knows which one applies — `Ground` separates "nobody has answered"
+from "everything was tested and refuted". What each route costs:
+
+1. **You answer.** Writes one CONFIRMATION `EvidenceRecord` (human, scoped)
+   into `evidence/`; the chosen claim gains the id and its stored status is
+   recomputed. **Nothing re-runs** — the ReadinessMap is derived on every
+   read, so the next render simply shows it.
+2. **You waive.** Writes one `KnowledgeAct` into `answers/` and changes no
+   other object at all: the dependency list is never stored, it is
+   re-assembled from the guide plus the acts on every read. The waived item
+   stays visible, struck through, with the reason beside it.
+3. **You fix the data.** The re-run supersedes (`engine/runner.py::_supersede`)
+   and, since M7, staleness flags what the fix outran — see *Staleness*.
+   Before that pair existed, correcting your books moved a claim from
+   *contradicted* to *unresolved*, because the new PASS landed beside a live
+   old FAIL and the derivation called the pair a conflict. Fixing the data
+   has to be a way forward, not a new kind of stuck.
+
+**Narrowing the question is not a fourth route**, though a report would be
+tempted to offer it. Measured on the corpus: `ic_symmetry` is inherently
+cross-entity — one entity books against a leg missing in the other — so a
+single-entity request blocks on exactly the same items. Offering "ask a
+narrower question" wherever a page blocks would be offering an escape that
+often is not one.
 
 **The three-voices rule.** The report is read by
 people who will act on it, so it must be business-legible — and being

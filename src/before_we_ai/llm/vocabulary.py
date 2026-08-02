@@ -519,9 +519,17 @@ def check_template_params(template: str, params: dict) -> list[str]:
     errors += _self_comparison(template, params)
     for key in _LIST_PARAMS:
         if key in keys and key in contract.allowed and not isinstance(params[key], list):
+            # Naming the value, not its type. "must be a list, got str" is
+            # what this said for weeks while the value was
+            # `de_erp__chart_of_accounts` — accurate, and it pointed at the
+            # model instead of at the instruction that asked for a table
+            # name. A refusal a reader cannot act on is a refusal that hides
+            # its own cause, and these reasons are a product surface: they
+            # are stored as declarations and rendered in the report.
+            wants = VALUE_PARAMS.get(key)
             errors.append(
-                f"template {template!r}: param {key!r} must be a list, "
-                f"got {type(params[key]).__name__}"
+                f"template {template!r}: param {key!r} must be a list, got "
+                f"{params[key]!r}" + (f" — {key} is {wants}" if wants else "")
             )
     accounts = params.get("accounts")
     if template == "subledger_equals_gl" and isinstance(accounts, list):
