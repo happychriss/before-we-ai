@@ -56,7 +56,7 @@
    then follow the `next:` line each stage prints. Every stage rebuilds
    `validation/data/report/index.html` — leave a tab open on it.
    `validation/README.md` says what to look for and the numbers to expect.
-2. **M5 — documents & V3. IN PROGRESS since 2026-08-02.** PDF pipeline,
+2. **M5 — documents & V3. FEATURE-COMPLETE 2026-08-02.** PDF pipeline,
    position anchors, DuckDB FTS, multi-anchor reconciliation, `tell` +
    mirror loop. Acceptance: T8 negatives and a real PDF — every PDF it
    needs is in the frozen corpus (`src/corpus/data/`, including `noise/`).
@@ -142,12 +142,19 @@
    PDF — that stays open) · `system_sha256` closing the prompt half of the
    drift guard.
 
-   **Still open in M5** (state as of 2026-08-02, second session):
+   **Nothing in M5 is unbuilt.** All five kickoff items landed, the
+   acceptance run is green (T8 negatives, K3, F28/F29 against the
+   *recorded* answers, False-Promotion 0), and the walkthrough is
+   re-pinned and audited against a fresh run.
 
-   **M5 is feature-complete.** Kickoff items 1 and 3 both landed
-   2026-08-02; what remains is the owner validation run (item 1 of this
-   Next list) and the spec's real-dataset requirement, which is a
-   milestone-completion question rather than unbuilt code.
+   **Two things stand between here and calling the milestone done, and
+   neither is code:**
+   1. the **owner validation run** (item 1 of this Next list) — read the
+      report end to end and judge it;
+   2. the spec's `:42` requirement — **a run against a real,
+      well-known dataset whose truth the owner knows.** Real *data*,
+      not a real document; decision B (the Bosch PDF) closed the
+      document half only.
 
    **Done this session (2026-08-02, second):**
    - **`discover(root)`** — `scan` walks `sources/` and merges what it
@@ -334,18 +341,19 @@ Design consequences that hold *now*, without building it:
 - "Answered — what must now rerun / what is now stale?" is M7, and the GUI
   turns M7 from nice-to-have into required.
 
-### M5 kickoff batch
+### M5 kickoff batch — ALL FIVE DONE 2026-08-02
 
-Runs at M5 start. Items 2–4 change prompt bytes → **one shared fixture
-re-record**, ~5 calls now that V4 rides along and gets its first real
-recording (its corpus fixture is hand-authored and marked as such).
+Kept for the reasoning, not as a to-do list.
 
-1. `discover(root)` sources discovery + bundled domain guides
-   (architecture.md → "Onboarding workflow").
-2. Show the domain tag in the V2 template docs
-   (architecture.md → "Domain inputs").
-3. Mapping claims binding to *generic* templates where a real data property
-   exists (`account` via anti_join against the chart of accounts).
+1. `discover(root)` sources discovery + bundled domain guides — **done.**
+   Merge never overwrites; `domain_guide_file: finance` resolves to the
+   shipped pack.
+2. Show the domain tag in the V2 template docs — **done.**
+3. Mapping claims binding to *generic* templates — **done**, with the
+   refutation-only rule (owner decision): a generic check over a role
+   refutes but never establishes, via `establishes: False` on the
+   evidence payload. All three `account` candidates pass an anti_join
+   and none of them promotes.
 4. **Derive `Hypothesis.kind` from the predicate instead of asking for it.**
    It is a pure function of the predicate (`concept` iff
    `concept_definition`), yet the model must supply it — and when it omits
@@ -531,6 +539,41 @@ recording touched two and left eight. Before, both would have replaced
 everything wholesale — and a replaced fixture moves the corpus baseline
 that every pinned number is measured against.
 
+## Open, found while finishing M5 — 2026-08-02
+
+Small, real, and none of them blocking. Listed because each was found by
+reading output rather than by testing, and none has a test that would
+catch it coming back.
+
+- **`reconciliation` still asks the model to cast.** Its TEMPLATE_NOTE
+  says "text-typed numeric columns must be cast in the expression, e.g.
+  CAST(col AS DOUBLE)" — true for that template, because its measure
+  params really are row-level expressions. But `balance` and
+  `subledger_equals_gl` now read the number themselves (`amount_expr`),
+  so the three notes no longer describe one consistent contract. That
+  inconsistency is exactly what produced the F27 loss in recording B.
+  **Either give `reconciliation` the same treatment or say plainly in
+  its note why it differs.** Prompt bytes → one recording.
+
+- **A two-sided law is still modelled as a one-sided claim.** A
+  `MappingClaim` binds one candidate to one view; `ic_symmetry` and
+  `subledger_equals_gl` need two. The fix that landed is a *permission*
+  in `V2_ROLES_SYSTEM` ("take the missing params from the other claims
+  in this batch"), which works and is recorded — but the object model
+  still cannot express "this pair plays this role", so the pairing lives
+  in the model's answer rather than in a claim. If two-sided laws ever
+  need to be elected against each other, this is where to start.
+
+- **The escape guard allows by prefix.** `test_no_fixture_escapes_the_
+  drift_guard` waves through anything named `v3_documents__*` on the
+  grounds that the documents file pins it. Two `tell` fixtures shipped
+  green and pinned by nothing before that was noticed. A new fixture
+  under an existing prefix still inherits a guarantee nobody checked.
+
+- **`amount_expr` covers `balance` and `subledger_equals_gl` only.**
+  Other templates that touch numbers (`reconciliation` measure
+  expressions) still rely on whatever the model wrote.
+
 ## Open decisions (owner)
 
 - **Domain packs live in `before_we_ai/domains/` — decided and done
@@ -623,6 +666,17 @@ that every pinned number is measured against.
 
 ## Standing constraints
 
+- **`guide_builder` is somebody else's work in progress — do not touch
+  it** (owner instruction 2026-08-02: "ignore the guide-builder and
+  corpus-vessel folder, other project"). It lives uncommitted in the
+  tree as `src/before_we_ai/guide_builder/`, two `test_guide_builder*`
+  files, plus edits to `src/before_we_ai/llm/config.py` (a
+  `guide_builder` model tier) and `src/pyproject.toml` (a package
+  entry). **Never `git add -A`** — stage your own paths explicitly, or
+  you will commit their in-flight work. Note `pyproject.toml` names a
+  package that is only partly on disk, so a fresh `pip install -e .`
+  may break; the running editable install does not notice, which is why
+  the suite stays green.
 - **The Anthropic API key is reused, not rotated** (owner decision). Since
   2026-08-02 (owner decision) it lives in `~/.zshenv` — outside the repo,
   chmod 600 — so every shell exports `ANTHROPIC_API_KEY`. It is never
