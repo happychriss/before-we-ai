@@ -21,6 +21,8 @@ DEFAULT_MODELS = {
     # the request contract classifies one question against the guide — short input,
     # but the item that gets left out is the gap nothing downstream can find.
     "request": "claude-opus-4-8",
+    # V3 reads prose for rules nobody wrote down as data — frontier per spec.
+    "v3_documents": "claude-opus-4-8",
 }
 
 

@@ -24,9 +24,12 @@ from before_we_ai.llm.v2_bind import (
     propose_mappings,
 )
 from before_we_ai.llm.request import RequestReport, ask
+from before_we_ai.llm.v3_documents import V3Report, interpret_documents
 
 __all__ = [
     "LLMConfig",
+    "V3Report",
+    "interpret_documents",
     "MappingProposalReport",
     "DomainGuide",
     "V1Report",

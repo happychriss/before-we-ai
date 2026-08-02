@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 from before_we_ai.llm.schemas import (
     AnswerRequestDraft,
+    DocumentFinding,
     Hypothesis,
     CheckPlanProposal,
     KnowledgeItemProposal,
@@ -415,4 +416,82 @@ def proposal_to_check_plan(b: CheckPlanProposal, claim: Claim) -> CheckPlan | No
         claim_id=claim.id,
         roles=[claim.role] if isinstance(claim, MappingClaim) else [],
         params=_canonical_params(normalize_template_params(b.template, b.params)),
+    )
+
+
+# -- V3: document findings ------------------------------------------------
+
+def check_document_finding(f: DocumentFinding, chunks: dict[str, object],
+                           open_items: set[str]) -> list[str]:
+    """Is this finding really in the document it says it is?
+
+    The spec's quote validation, and the only check here that matters
+    more than tidiness: the quote must appear **character for character**
+    in the passage it cites. A model that remembers a policy correctly
+    but rewords it slightly is still reporting something the document
+    does not say, and an anchor pointing at words nobody wrote is worse
+    than no anchor — it survives review by looking exactly like one that
+    was checked.
+    """
+    errors = []
+    chunk = chunks.get(f.chunk_id)
+    if chunk is None:
+        errors.append(
+            f"passage {f.chunk_id!r} was not in this document's input; "
+            "quote only from the passages supplied"
+        )
+    elif not f.quote.strip():
+        errors.append(f"passage {f.chunk_id}: the quote is empty")
+    elif f.quote not in getattr(chunk, "text", ""):
+        errors.append(
+            f"passage {f.chunk_id}: the quote does not appear verbatim in "
+            f"that passage — quote the document's exact words: {f.quote!r}"
+        )
+    if not f.statement.strip():
+        errors.append(f"passage {f.chunk_id}: 'statement' is empty")
+    if f.reads_as == "definition":
+        if not (f.term or "").strip():
+            errors.append(
+                f"passage {f.chunk_id}: a definition needs the term it defines"
+            )
+        if not (f.definition or "").strip():
+            errors.append(
+                f"passage {f.chunk_id}: a definition needs its definition"
+            )
+    elif f.term or f.definition:
+        errors.append(
+            f"passage {f.chunk_id}: term/definition belong to "
+            "reads_as=definition, not to a figure"
+        )
+    if f.answers is not None and f.answers not in open_items:
+        errors.append(
+            f"passage {f.chunk_id}: {f.answers!r} is not one of the open "
+            "questions listed in the input"
+        )
+    return errors
+
+
+def finding_to_claim(f: DocumentFinding, source_id: str) -> Claim:
+    """One finding becomes one proposed claim — never anything stronger.
+
+    A figure becomes a plain claim stating what the document says, so the
+    assertion is visible and anchorable rather than floating in a report.
+    Its status is decided the way every claim's is: by evidence, of which
+    a document anchor is the weakest kind there is.
+    """
+    if f.reads_as == "definition":
+        term = (f.term or "").strip()
+        return ConceptClaim(
+            statement=f.statement.strip(),
+            created_by=Actor.AI,
+            predicate=Predicate(name="concept_definition",
+                                params=_canonical_params({"term": term})),
+            source_ids=[source_id],
+            term=term,
+            definition=(f.definition or "").strip(),
+        )
+    return create_claim(
+        f.statement.strip(),
+        Actor.AI,
+        source_ids=[source_id],
     )

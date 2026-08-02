@@ -209,6 +209,31 @@ def claim_label_map(claims: list[Claim]) -> dict[str, Claim]:
     return {f"c{i}": claim for i, claim in enumerate(ordered, start=1)}
 
 
+def build_document_context(document: str, chunks: list, open_items: list[str],
+                           *, max_chars: int | None = None) -> BuiltInput:
+    """V3 input: one document's selected passages, and what is still open.
+
+    One call per document, not per chunk. The spec's "chunkweise" is about
+    where a quote is *validated* — every quote is string-matched against
+    the passage it cites — not about how many calls it takes. Per document
+    keeps the fixture machinery honest (one recorded answer per document,
+    one input hash to pin) and lets the model see a passage in the company
+    of the ones around it.
+
+    Passages arrive in document order and carry their id, page and text.
+    They deliberately do NOT carry their kind: whether a passage sits in a
+    chart is what the multi-anchor rule turns on, and telling the model
+    would invite it to argue.
+    """
+    lines = [f"## Document: {document}", "",
+             "## Open questions this project is trying to settle"]
+    lines += [f"- {item}" for item in open_items] or ["- (none listed)"]
+    lines += ["", "## Passages"]
+    for chunk in chunks:
+        lines += [f"### passage {chunk.id} (page {chunk.page})", chunk.text, ""]
+    return _built("\n".join(lines).rstrip() + "\n")
+
+
 def build_binding_context(store: ProjectStore, labels: dict[str, Claim],
                           template_docs: str,
                           *, max_chars: int | None = None) -> BuiltInput:

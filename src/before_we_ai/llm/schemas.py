@@ -102,6 +102,42 @@ class KnowledgeItemProposal(BaseModel):
     why: str  # the dependency in business words — what the human prunes on
 
 
+class DocumentFinding(BaseModel):
+    """One passage V3 says is worth something (V3).
+
+    Deliberately small. The model reports *where* it read something and
+    *what it takes that to mean* — and nothing else. Where the passage
+    sits on the page (text, table or chart) was derived when the document
+    was read; whether a figure agrees with anything is computed by
+    reconciliation. Both were fields on this schema in the first draft,
+    and both were removed once the corpus showed that a chart figure
+    extracts as ordinary text: a model cannot see the frame around a
+    number, so asking it would have made the multi-anchor rule rest on
+    the model's word.
+
+    ``answers`` is the seam to the dependency list: the name of the rule
+    item this passage settles, or null. A wrong one is refused, not
+    guessed at.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    chunk_id: str  # one of the chunks supplied in the input (semantic check)
+    quote: str  # verbatim from that chunk — string-matched, not trusted
+    reads_as: Literal["definition", "figure"]
+    statement: str  # what the passage asserts, one sentence
+    term: str | None = None  # definition only
+    definition: str | None = None  # definition only
+    answers: str | None = None  # the rule item this settles, or null
+    rationale: str  # logged, never stored
+
+
+class DocumentReading(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    findings: list[DocumentFinding]
+
+
 class AnswerRequestDraft(BaseModel):
     """The request contract's answer: one question, classified and structured.
 
