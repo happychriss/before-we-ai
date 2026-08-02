@@ -293,3 +293,114 @@ def _forget_chunk(root, chunk_id: str) -> None:
     for path in (root / "evidence").glob("*.yaml"):
         if chunk_id in path.read_text(encoding="utf-8"):
             path.unlink()
+
+
+class TestTheK8StatementsAgainstTheRecordedAnswers:
+    """F28 and F29 as the milestone promised them, on real answers.
+
+    The mirror loop is unit-tested with scripted clients elsewhere. What
+    that cannot show is whether a *real* model answer produces the two
+    outcomes the corpus was built to distinguish — a statement nothing can
+    be made of, and one that yields a claim which still may not be
+    believed. So this runs `tell` against the recorded fixtures.
+    """
+
+    @staticmethod
+    @pytest.fixture(scope="class")
+    def told(tmp_path_factory):
+        from before_we_ai.statements import tell
+
+        root = init_project(tmp_path_factory.mktemp("k8") / "statements")
+        config = yaml.safe_load(
+            (root / "before-ai.yaml").read_text(encoding="utf-8"))
+        config["llm"] = {"offline": True, "fixtures_dir": str(FIXTURES)}
+        (root / "before-ai.yaml").write_text(
+            yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+        guide = load_domain_guide(DOMAIN_GUIDE_FILE)
+        spec = yaml.safe_load(STATEMENTS_SPEC.read_text(encoding="utf-8"))
+        reports = {
+            entry["id"]: tell(root, entry["text"], guide=guide,
+                              store=ProjectStore(root),
+                              scenario=f"corpus_{entry['id'].lower()}")
+            for entry in spec["statements"]
+        }
+        return root, guide, reports
+
+    def test_f28_is_parked_rather_than_dropped(self, told):
+        """Nothing structurable, and the words survive anyway."""
+        root, _guide, reports = told
+        report = reports["TELL_F28"]
+        assert report.claims_created == []
+        assert report.mirror.parked
+        assert report.testimonials, "the words must be kept even so"
+        store = ProjectStore(root)
+        kept = [e for e in store.evidence.values()
+                if e.type is EvidenceType.TESTIMONIAL
+                and "Apotheken" in (e.statement or "")]
+        assert kept and kept[0].claim_id is None
+
+    def test_f29_yields_a_claim_that_is_only_proposed(self, told):
+        root, _guide, reports = told
+        report = reports["TELL_F29"]
+        assert len(report.claims_created) == 1
+        claim = ProjectStore(root).claims[report.claims_created[0]]
+        assert claim.status is ClaimStatus.PROPOSED
+
+    def test_f29_the_mirror_asks_for_a_scope(self, told):
+        report = told[2]["TELL_F29"]
+        assert report.mirror.needs_scope
+        assert "scope" in report.mirror.question().lower()
+
+    def test_f29_confirming_without_a_scope_is_refused(self, told):
+        """The law, on a real answer: somebody said it is not somebody
+        said it *about whom*."""
+        from before_we_ai.core.transitions import PromotionError
+        from before_we_ai.statements import confirm_claim
+
+        root, _guide, reports = told
+        store = ProjectStore(root)
+        claim_id = reports["TELL_F29"].claims_created[0]
+        with pytest.raises(PromotionError):
+            confirm_claim(store, claim_id, scope=None, note="the finance lead")
+        assert ProjectStore(root).claims[claim_id].status is ClaimStatus.PROPOSED
+
+    def test_f29_with_a_scope_it_is_business_confirmed(self, told):
+        from before_we_ai.core.objects import Scope
+        from before_we_ai.statements import confirm_claim
+
+        root, _guide, reports = told
+        claim_id = reports["TELL_F29"].claims_created[0]
+        confirm_claim(ProjectStore(root), claim_id, scope=Scope(entity="US"),
+                      note="the finance lead")
+        claim = ProjectStore(root).claims[claim_id]
+        assert claim.status is ClaimStatus.BUSINESS_CONFIRMED
+
+    def test_no_statement_ever_promoted_itself(self, told):
+        """False-Promotion 0 on the tell path too.
+
+        Order-independent on purpose: by the time this runs a human has
+        deliberately confirmed the F29 claim, and that is not a false
+        promotion — it is the only kind of promotion this path allows. So
+        the assertion is the real one: nothing sits above `proposed`
+        without a human CONFIRMATION under it, and no evidence anywhere
+        on this path was written by the AI.
+        """
+        root, _guide, _reports = told
+        store = ProjectStore(root)
+        promoting = {EvidenceType.CONFIRMATION, EvidenceType.CHECK_RESULT}
+        for record in store.evidence.values():
+            # The AI may write anchors — an anchor is a citation, and
+            # `resolve_status` never reads one. What it may not write is
+            # anything a status is derived from.
+            assert not (record.actor is Actor.AI and record.type in promoting), (
+                "a human's sentence is read by the same contract as a PDF "
+                "and can no more write its own support")
+        confirmed = {
+            record.claim_id for record in store.evidence.values()
+            if record.type is EvidenceType.CONFIRMATION
+        }
+        for claim in store.claims.values():
+            if claim.status is not ClaimStatus.PROPOSED:
+                assert claim.id in confirmed, (
+                    f"{claim.statement!r} is {claim.status.value} with no "
+                    f"human confirmation behind it")
