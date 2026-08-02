@@ -723,8 +723,10 @@ def stage_inputs(args) -> None:
     for s in SOURCES:
         print(f"  {s['name']:22s} {s['kind']:7s} "
               f"{Path(s['location']).relative_to(REPO)}")
-    print("\n  The product never discovers files: init_project writes "
-          "`sources: []`\n  and a human fills it in.")
+    print("\n  init_project writes an empty `sources: []`; scan then merges "
+          "in whatever\n  is dropped under sources/ — never overwriting, so a "
+          "hand-written entry\n  wins. These were declared directly, outside "
+          "the drop directory.")
     unlisted = sorted(
         f.name for f in (REPO / "src" / "corpus" / "data").iterdir()
         if f.is_file() and f.suffix in {".pdf", ".csv", ".xlsx"}

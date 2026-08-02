@@ -142,6 +142,34 @@ def admit_evidence(
         )
 
 
+def establishing(record: EvidenceRecord) -> bool:
+    """Can this check's PASS make a claim true, or only break it?
+
+    Almost always both — that is what a check is. The exception is a
+    **generic** data check standing against a **role** binding, and the
+    asymmetry there is logic rather than caution.
+
+    Take `account` tested by referential integrity against a chart of
+    accounts. Values with no matching account are decisive: whatever that
+    column is, it is not the account. But full coverage establishes
+    nothing about *meaning* — measured on the corpus, all three
+    candidates have zero orphans, the deliberate decoy included.
+    Promoting on that would hand one role three test-supported winners
+    and settle a question of meaning with arithmetic, which is the
+    "too-loose law" path in `docs/architecture.md`.
+
+    A domain law is different, and that is the whole point of a domain
+    pack: `balance` passing over a candidate journal *is* evidence that
+    the thing is a journal, because balancing to zero per document is
+    what being one means.
+
+    The runner writes the flag from `CheckDefinition.domain` (owner
+    decision 2026-08-02). Absent, it defaults true — every record
+    written before this distinction existed keeps its meaning.
+    """
+    return bool(record.payload.get("establishes", True))
+
+
 def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
     """Derive the claim's status from its non-stale evidence.
 
@@ -153,6 +181,7 @@ def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
 
     check_pass = any(
         e.type is EvidenceType.CHECK_RESULT and e.verdict is CheckVerdict.PASS
+        and establishing(e)
         for e in live
     )
     check_fail = any(

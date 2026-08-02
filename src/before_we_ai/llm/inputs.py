@@ -20,7 +20,7 @@ import json
 from pydantic import BaseModel
 
 from before_we_ai.llm.domain_guide import DomainGuide
-from before_we_ai.llm.vocabulary import INVARIANT_TEMPLATES, PREDICATES
+from before_we_ai.llm.vocabulary import PREDICATES, ROLE_TEMPLATES
 from before_we_ai.core.objects import Claim, DataProfile, MappingClaim
 from before_we_ai.store.repository import ProjectStore
 
@@ -260,7 +260,7 @@ def build_binding_context(store: ProjectStore, labels: dict[str, Claim],
         for label, claim in labels.items():
             predicate = claim.predicate
             if isinstance(claim, MappingClaim):
-                admissible = INVARIANT_TEMPLATES
+                admissible = ROLE_TEMPLATES
             elif predicate and predicate.name in PREDICATES:
                 admissible = PREDICATES[predicate.name].templates
             else:

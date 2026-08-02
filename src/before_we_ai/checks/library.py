@@ -47,6 +47,87 @@ def column_expr(con, view: str, column: str, canonical: bool = True,
     return canonical_sql_expr(column, dtype, alias=alias)
 
 
+# Four disjoint readings of one text value. Disjoint is the whole point:
+# `1.234` matches "a number with a decimal point" AND "a number with a
+# thousands group", so a classifier that lets those two overlap counts it
+# twice and concludes whatever it happened to test first.
+_EUROPEAN = r'^-?[0-9.]*[0-9],[0-9]+$'        # 1234,56 · 1.234.567,89
+_GROUPED = r'^-?[0-9]{1,3}(\.[0-9]{3}){2,}$'  # 1.234.567 — two dots settle it
+_AMBIGUOUS = r'^-?[0-9]+\.[0-9]{3}$'          # 1.234 — could be either
+_PLAIN = r'^-?[0-9]+(\.[0-9]+)?$'             # 304718.22 · 0.5 · 42
+
+
+def amount_expr(con, view: str, column: str, alias: str | None = None) -> str:
+    """A DOUBLE expression for an amount column, whatever it is stored as.
+
+    Exports arrive with money as text more often than not, and a bare
+    ``CAST(col AS DOUBLE)`` only survives the Anglo form: ``1.234,56``
+    raises, so the check *errors* instead of failing and the claim ends
+    up untested for a reason nobody reads.
+
+    The format is decided from the column's own values, never guessed
+    per row, and the rule is the one ``documents/figures.py`` already
+    follows: **never invent agreement.** A column whose only dotted
+    values could be read two ways (``1.234`` — one thousand two hundred
+    thirty four, or one point two three four) is refused rather than
+    resolved by majority. `run_ready` turns that refusal into a skip
+    carrying this sentence, which is a reader's cue to say which it is.
+    """
+    _ident(view), _ident(column)
+    if alias:
+        _ident(alias)
+    quoted = f'"{alias}"."{column}"' if alias else f'"{column}"'
+    dtype = next(
+        r[1] for r in con.execute(f'DESCRIBE "{view}"').fetchall() if r[0] == column
+    ).upper().split("(")[0].strip()
+    if dtype != "VARCHAR":
+        return f"CAST({quoted} AS DOUBLE)"
+
+    trimmed = f"trim({quoted})"
+    european, grouped, ambiguous, plain, total = con.execute(f'''
+        SELECT
+          count(*) FILTER (WHERE regexp_matches({trimmed}, '{_EUROPEAN}')),
+          count(*) FILTER (WHERE regexp_matches({trimmed}, '{_GROUPED}')),
+          count(*) FILTER (WHERE regexp_matches({trimmed}, '{_AMBIGUOUS}')),
+          count(*) FILTER (WHERE regexp_matches({trimmed}, '{_PLAIN}')),
+          count(*) FILTER (WHERE {trimmed} IS NOT NULL AND {trimmed} <> '')
+        FROM "{view}"
+    ''').fetchone()
+    if total == 0:
+        return f"CAST({quoted} AS DOUBLE)"  # nothing to read; let it be empty
+
+    # `_PLAIN` swallows `_AMBIGUOUS`; everything else is already disjoint.
+    decisive_european = european + grouped
+    decisive_plain = plain - ambiguous
+    recognized = decisive_european + plain
+
+    if recognized < total:
+        raise ValueError(
+            f'"{view}"."{column}" holds {total - recognized} value(s) that '
+            f"are not numbers at all; it cannot be summed as an amount."
+        )
+    if decisive_european and decisive_plain:
+        raise ValueError(
+            f'"{view}"."{column}" mixes number formats — some values read as '
+            f"1234.56 and some as 1.234,56. Which one this column uses is a "
+            f"fact about the export, not something a check may decide."
+        )
+    if decisive_european:
+        # Dots are grouping, the comma is the point. An ambiguous `1.234`
+        # riding along in this column reads as 1234, which is what the
+        # rest of the column says it must be.
+        return (f"CAST(replace(replace({trimmed}, '.', ''), ',', '.') "
+                f"AS DOUBLE)")
+    if not decisive_plain:
+        raise ValueError(
+            f'"{view}"."{column}" is ambiguous: every dotted value has '
+            f"exactly three decimals, so 1.234 could be one thousand two "
+            f"hundred thirty four or one point two three four. Nothing in "
+            f"the column settles it, so a check may not either."
+        )
+    return f"CAST({trimmed} AS DOUBLE)"
+
+
 @dataclass
 class CheckDefinition:
     file: str
@@ -183,6 +264,9 @@ def _prep_balance(con, p, tol):
     return {
         "journal": _ident(p["journal"]),
         "amount": _ident(p["amount"]),
+        # The amount arrives however the export wrote it; reading it as a
+        # number is ours to do, not the model's to phrase.
+        "amount_expr": amount_expr(con, p["journal"], p["amount"]),
         "group_expr": f'"{_ident(group)}"' if group else p["group_expr"],
         "tolerance": tol["absolute"],
         "views": [p["journal"]],
@@ -194,8 +278,12 @@ def _prep_subledger(con, p, tol):
     return {
         "subledger": _ident(p["subledger"]),
         "subledger_amount": _ident(p["subledger_amount"]),
+        "subledger_amount_expr": amount_expr(
+            con, p["subledger"], p["subledger_amount"]),
         "journal": _ident(p["journal"]),
         "journal_amount": _ident(p["journal_amount"]),
+        "journal_amount_expr": amount_expr(
+            con, p["journal"], p["journal_amount"]),
         "account": _ident(p["account"]),
         "account_list": accounts,
         "tolerance": tol["absolute"],

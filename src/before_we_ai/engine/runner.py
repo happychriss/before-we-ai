@@ -14,7 +14,13 @@ from jinja2 import Environment, PackageLoader
 
 from before_we_ai.core.enums import Actor, EvidenceType
 from before_we_ai.core.ids import new_id
-from before_we_ai.core.objects import MAX_EXCEPTION_SAMPLES, EvidenceRecord, CheckPlan, ClarificationQuestion
+from before_we_ai.core.objects import (
+    MAX_EXCEPTION_SAMPLES,
+    CheckPlan,
+    ClarificationQuestion,
+    EvidenceRecord,
+    MappingClaim,
+)
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.checks.library import REGISTRY
 from before_we_ai.sources.fingerprint import table_fingerprint
@@ -48,6 +54,22 @@ def _write_parquet(con, columns: list[str], rows: list[tuple], path: Path) -> No
     )
     con.execute(f"COPY _check_exceptions TO '{path}' (FORMAT PARQUET)")
     con.execute("DROP TABLE _check_exceptions")
+
+
+def _establishes(store: ProjectStore, check: CheckPlan, spec) -> bool:
+    """Whether a PASS of this check may promote the claim it ran against.
+
+    Both conditions must hold to *withhold* it: the claim is a role
+    binding, and the check knows nothing about the domain
+    (``CheckDefinition.domain is None``). A domain law over a role is the
+    case the guide exists for and promotes normally; a generic check over
+    an ordinary hypothesis is testing exactly what the hypothesis asserts
+    and promotes normally too.
+    """
+    if spec.domain is not None:
+        return True
+    claim = store.claims.get(check.claim_id) if check.claim_id else None
+    return not isinstance(claim, MappingClaim)
 
 
 def run_check(
@@ -99,6 +121,12 @@ def run_check(
             "template": check.template,
             "sql": exceptions_sql,
             "summary": assessment.summary,
+            # A generic data check may break a role binding but never make
+            # one — see `core.transitions.establishing`. Written here
+            # because this is the one place holding both halves: the check
+            # definition and the claim it ran against.
+            **({} if _establishes(store, check, spec)
+               else {"establishes": False}),
         },
         source_fingerprints={view: table_fingerprint(con, view) for view in ctx["views"]},
     )

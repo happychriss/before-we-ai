@@ -141,16 +141,21 @@ def test_contracts_ran_clean_offline(pipeline):
                for _statement, reason in v1.skipped)
     assert proposals.failure is None and len(proposals.claims_created) == 22
     assert v2.failures == [] and v2.unanswered == []
-    # 50 after the decodes-grounding fix put one more claim in front of V2.
-    # The owner's two normalization decisions (2026-08-02) recover bindings
-    # that used to be lost to shape errors, and every recovery is recorded
-    # as a declaration rather than applied silently.
-    assert len(v2.check_plans_created) == 50
-    assert v2.corrections
-    assert len(v2.skipped) == 2  # validation-rejected bindings — skipped, not crashed
+    # 54 since kickoff item 3 widened what a role may be tested by: the
+    # three `account` candidates now get an anti_join against the chart of
+    # accounts. They all PASS and none of them promotes — that is the
+    # refutation-only rule, asserted in test_transitions.py.
+    assert len(v2.check_plans_created) == 54
+    # No assertion that corrections *happened*: this recording needed
+    # none, which is the point rather than a gap. Telling the model
+    # "BARE COLUMN NAME, the template reads it as a number itself"
+    # removed the shape errors that normalization was cleaning up after —
+    # it went 16 -> 0. The machinery stays (unit-tested in
+    # test_llm_mapping.py) because the next landscape will need it.
+    assert len(v2.skipped) == 4  # validation-rejected bindings — skipped, not crashed
     assert len(v2.semantic_only) == 6  # no admissible template — never sent
-    assert len(v2.unbindable) == 18  # honest template=null answers
-    assert len(pipeline["engine"].executed) == 50
+    assert len(v2.unbindable) == 12  # honest template=null answers
+    assert len(pipeline["engine"].executed) == 54
     assert pipeline["engine"].skipped == []
 
     # every claim that ends without a check says why, in the store — the reason
@@ -163,23 +168,25 @@ def test_contracts_ran_clean_offline(pipeline):
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") in no_check
     }
-    assert len(reasons) == 26  # 18 unbindable + 6 semantic-only + 2 skipped
+    assert len(reasons) == 22  # 12 unbindable + 6 semantic-only + 4 skipped
     assert sorted(p["decision"] for p in reasons.values()) == (
-        ["semantic_only"] * 6 + ["skipped"] * 2 + ["unbindable"] * 18
+        ["semantic_only"] * 6 + ["skipped"] * 4 + ["unbindable"] * 12
     )
     assert all(p["reason"] for p in reasons.values())  # never an empty reason
 
     # And every param we read as something other than what the model wrote
-    # is on the record too. Sixteen of them here — the number is the point,
-    # not its size: column normalization had been happening silently since
-    # M4, and only the view-param case was ever visible, as a failure. The
-    # count moves with the answer; that it is written down does not.
+    # is on the record too. **Zero here**, and that is the interesting
+    # number: normalization had been quietly cleaning up after a contract
+    # description that told the model to cast text columns and then
+    # rejected the cast. With the instruction fixed the model writes
+    # bare names and there is nothing to correct. The count moves with
+    # the answer; that it is written down does not.
     corrections = [
         record.payload for record in store.evidence.values()
         if record.type is EvidenceType.DECLARATION
         and record.payload.get("decision") == "param_normalized"
     ]
-    assert len(corrections) == 16
+    assert len(corrections) == 0
     assert all(c["given"] != c["read_as"] for c in corrections)
     for claim_id in reasons:
         assert store.claims[claim_id].status is ClaimStatus.PROPOSED
@@ -305,7 +312,7 @@ def test_call_logs_are_complete(pipeline):
             assert entry["attempts"][-1]["validation_errors"]  # skips are visible
     # the recorded V1 and V2-claims answers keep a few bad items even after
     # their retry — replayed as "partial", same items skipped every run
-    assert sorted(outcomes) == ["ok", "ok", "ok", "partial", "partial"]
+    assert sorted(outcomes) == ["ok", "ok", "partial", "partial", "partial"]
 
 
 def test_pipeline_is_idempotent(pipeline):
@@ -318,8 +325,8 @@ def test_pipeline_is_idempotent(pipeline):
                                       scenario="corpus")
     assert proposals.claims_created == [] and proposals.claims_deduped == 22
     # only the honestly unbound claims are still selectable for V2:
-    # 19 unbindable + 6 semantic-only + 1 skipped binding
-    assert len(_untested_claims(store, None)) == 26
+    # 12 unbindable + 6 semantic-only + 4 skipped bindings
+    assert len(_untested_claims(store, None)) == 22
 
 
 def test_built_inputs_leak_no_corpus_hints(pipeline):

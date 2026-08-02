@@ -270,7 +270,7 @@ def test_binding_checks_and_maps(tmp_path):
                for e in check_binding(stray_reason, claims, index))
 
 
-def test_role_claim_binds_to_invariants_only(tmp_path):
+def test_a_role_claim_binds_to_a_domain_law(tmp_path):
     _, index = _index(tmp_path)
     role_claim = proposal_to_mapping_claim(
         MappingProposal(role="journal", binding={"table": "beta__orders"},
@@ -285,12 +285,30 @@ def test_role_claim_binds_to_invariants_only(tmp_path):
     assert check_binding(invariant, claims, index) == []
     check, _ = proposal_to_check_plan(invariant, role_claim)
     assert check.roles == ["journal"]
-    ordinary = CheckPlanProposal(claim_id=role_claim.id, template="anti_join", params={
-        "child": "beta__orders", "parent": "alpha__customers",
-        "child_column": "customer_id", "parent_column": "customer_id",
-    })
-    assert any("cannot test predicate 'role_binding'" in e
-               for e in check_binding(ordinary, claims, index))
+
+
+def test_a_role_claim_may_also_bind_to_a_generic_check(tmp_path):
+    """Kickoff item 3, 2026-08-02. A role no domain law can reach may
+    still have a data property worth testing — `account` against a chart
+    of accounts — and V2's own refusals had been saying exactly that.
+
+    This used to be rejected with "cannot test predicate 'role_binding'".
+    What keeps the wider menu safe is the *promotion* boundary, not the
+    binding one: a generic check over a role refutes but never
+    establishes. See `core.transitions.establishing`.
+    """
+    _, index = _index(tmp_path)
+    role_claim = proposal_to_mapping_claim(
+        MappingProposal(role="account", binding={"table": "beta__orders"},
+                            rationale="r"),
+        index,
+    )
+    generic = CheckPlanProposal(
+        claim_id=role_claim.id, template="anti_join", params={
+            "child": "beta__orders", "parent": "alpha__customers",
+            "child_column": "customer_id", "parent_column": "customer_id",
+        })
+    assert check_binding(generic, {role_claim.id: role_claim}, index) == []
 
 
 def test_a_qualified_view_param_is_read_as_its_view():

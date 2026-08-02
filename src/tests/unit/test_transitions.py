@@ -190,3 +190,71 @@ class TestEvidenceScoping:
         assert updated.evidence_ids == [record.id]
         assert updated.status is ClaimStatus.TEST_SUPPORTED
         assert claim.status is ClaimStatus.PROPOSED  # original untouched
+
+
+class TestAGenericCheckCanBreakARoleButNotMakeOne:
+    """Owner decision 2026-08-02, and the measurement behind it.
+
+    Kickoff item 3 lets a role binding be tested by an ordinary data
+    check — `account` against a chart of accounts. Referential integrity
+    catches garbage, which is what it was wanted for. What it cannot do
+    is establish *meaning*: on the corpus all three `account` candidates
+    have zero orphans, the deliberate CSV decoy included. Promoting on a
+    pass would give one role three test-supported winners and settle a
+    question of meaning with arithmetic.
+
+    So: FAIL is decisive, PASS is not. The flag rides on the evidence
+    payload, written by the runner from `CheckDefinition.domain`, and
+    defaults to promoting so every record written before the distinction
+    existed keeps its meaning.
+    """
+
+    def _result(self, verdict, establishes=None):
+        payload = {"template": "anti_join"}
+        if establishes is not None:
+            payload["establishes"] = establishes
+        return EvidenceRecord(
+            type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK,
+            verdict=verdict, payload=payload,
+        )
+
+    def _status(self, *records):
+        claim, evidence = with_evidence(list(records))
+        return resolve_status(claim, evidence)
+
+    def test_a_pass_that_does_not_establish_leaves_it_proposed(self):
+        assert self._status(self._result(CheckVerdict.PASS, establishes=False)) \
+            is ClaimStatus.PROPOSED
+
+    def test_a_fail_is_decisive_either_way(self):
+        """Nothing is softened on the refuting side — that is the half
+        that is logically sound."""
+        assert self._status(self._result(CheckVerdict.FAIL, establishes=False)) \
+            is ClaimStatus.CONTRADICTED
+
+    def test_an_ordinary_pass_still_promotes(self):
+        assert self._status(self._result(CheckVerdict.PASS)) \
+            is ClaimStatus.TEST_SUPPORTED
+
+    def test_the_default_is_to_promote(self):
+        record = self._result(CheckVerdict.PASS)
+        assert "establishes" not in record.payload
+        assert self._status(record) is ClaimStatus.TEST_SUPPORTED
+
+    def test_a_non_establishing_pass_does_not_conflict_with_a_fail(self):
+        """It carries no weight at all, so it cannot manufacture the
+        conflict that forces `unresolved`. A refuted binding stays
+        refuted."""
+        assert self._status(
+            self._result(CheckVerdict.PASS, establishes=False),
+            self._result(CheckVerdict.FAIL, establishes=False),
+        ) is ClaimStatus.CONTRADICTED
+
+    def test_a_domain_law_pass_still_settles_a_role(self):
+        """The case the guide exists for: balancing to zero per document
+        *is* what being a journal means."""
+        record = EvidenceRecord(
+            type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK,
+            verdict=CheckVerdict.PASS, payload={"template": "balance"},
+        )
+        assert self._status(record) is ClaimStatus.TEST_SUPPORTED

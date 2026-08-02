@@ -36,10 +36,10 @@
 - **Walkthrough pins** (offline; `validation/README.md` carries them per
   stage; re-pinned end to end 2026-08-02 after the live re-record): 12 sources
   (6 data, 6 documents) · 260 column profiles · 6 pages / 10 passages, 1 inside
-  a chart · 54 hypotheses / 1 deduped / 1 skipped · 22 candidates · 50 plans /
-  18 unbindable / 6 semantic-only / 2 skipped · 9 document claims / 9 anchors /
-  2 links / 5 refusals · 50 executed, 37 pass / 13 fail · 6 role questions,
-  23 open in total (5 blocking, 18 not on this path) · 2 statements told
+  a chart · 54 hypotheses / 1 deduped / 1 skipped · 22 candidates · 54 plans /
+  12 unbindable / 6 semantic-only / 4 skipped · **0 param normalizations** ·
+  9 document claims / 9 anchors / 2 links / 5 refusals · 54 executed,
+  42 pass / 12 fail · 6 role questions, 22 open in total · 2 statements told
   (1 parked, 1 claim) · 9 required-knowledge items · verdict **blocked**,
   naming `journal.entity`, `journal.period`, `journal.account`,
   `intercompany`. Seeded-Recall unmoved at 14/25.
@@ -144,25 +144,28 @@
 
    **Still open in M5** (state as of 2026-08-02, second session):
 
-   1. **Kickoff item 3 — the only M5 work left.** (Item 1,
-      `discover(root)`, is done. Item 3 = role claims may bind to
-      *generic* templates, not only the three domain laws.)
-
-      **Owner decided the safety rule 2026-08-02:** a generic check over
-      a role may **refute** the binding but never **establish** it.
-      Orphaned account ids prove a column is not the account; full
-      coverage proves nothing about meaning — measured, all three corpus
-      `account` candidates cover the chart fully, the CSV decoy
-      included, so promoting on a pass would hand one role three
-      test-supported winners. Implement as `establishes: False` on the
-      check evidence payload, written by the runner from
-      `CheckDefinition.domain`, read by `resolve_status`. It was built
-      and tested once and reverted with everything else; rebuild it the
-      same way.
-
-      **Do not start it before reading the next section.**
+   **M5 is feature-complete.** Kickoff items 1 and 3 both landed
+   2026-08-02; what remains is the owner validation run (item 1 of this
+   Next list) and the spec's real-dataset requirement, which is a
+   milestone-completion question rather than unbuilt code.
 
    **Done this session (2026-08-02, second):**
+   - **`discover(root)`** — `scan` walks `sources/` and merges what it
+     finds; never overwrites, so a hand-tuned entry wins. Plus
+     `domain_guide_file: finance` now resolving to the shipped pack.
+   - **Kickoff item 3, with the refutation-only rule.** A role may bind
+     to any template; a *generic* check over a role writes
+     `establishes: False` and its PASS does not promote. Proven on the
+     corpus: all three `account` candidates get an anti_join, all three
+     pass, all three stay `proposed`.
+   - **`amount_expr`** — `balance` and `subledger_equals_gl` read a text
+     amount column in whatever format it is stored, and **refuse** a
+     column that could be read two ways rather than pick a majority.
+     The corpus is plain-format, so this is unit-tested, not corpus-tested.
+   - **The contract descriptions that misled the model** — `balance` and
+     `subledger_equals_gl` now say BARE COLUMN NAME and that the template
+     reads the number itself. Effect: param normalizations went **16 → 0**.
+     The machinery stays; the next landscape will need it.
    - **Walkthrough re-pinned end to end** — every number above, plus two
      *qualitative* corrections the old README got wrong: answering the
      mapping questions no longer clears to `ready_with_limitations` (it

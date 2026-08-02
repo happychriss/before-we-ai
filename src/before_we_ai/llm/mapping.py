@@ -27,7 +27,7 @@ from before_we_ai.llm.schemas import (
 )
 from before_we_ai.llm.vocabulary import (
     COLUMN_PARAMS,
-    INVARIANT_TEMPLATES,
+    ROLE_TEMPLATES,
     PREDICATES,
     ROLE_BINDING_PREDICATE,
     VIEW_PARAMS,
@@ -365,7 +365,7 @@ def item_to_knowledge(item: KnowledgeItemProposal, scope: Scope) -> KnowledgeIte
 
 def admissible_templates(claim: Claim) -> tuple[str, ...]:
     if isinstance(claim, MappingClaim):
-        return INVARIANT_TEMPLATES
+        return ROLE_TEMPLATES
     if claim.predicate and claim.predicate.name in PREDICATES:
         return PREDICATES[claim.predicate.name].templates
     return ()

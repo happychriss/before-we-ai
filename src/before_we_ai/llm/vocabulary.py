@@ -17,7 +17,7 @@ Two tables anchor the set to the check library:
 
 import re
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, get_args
 
 # The closed set, spelled twice: once as a typing.Literal so the output
 # schemas reject unknown names at validation time, once as runtime tables.
@@ -128,6 +128,21 @@ PREDICATES: dict[str, PredicateSpec] = {
 # The invariant templates are bound to roles (MappingClaims), not to
 # ordinary hypothesis claims — V2 splits on this.
 INVARIANT_TEMPLATES: tuple[str, ...] = ("balance", "subledger_equals_gl", "ic_symmetry")
+
+# What a role binding may be tested by — wider than the invariants since
+# 2026-08-02 (kickoff item 3). V2's own refusals had been asking for this
+# ("account role implies a referential-integrity invariant (anti_join),
+# not any admissible finance invariant"): a role no domain law can reach
+# may still have a data property worth testing.
+#
+# Widening the menu is only safe because of the asymmetry the owner
+# decided the same day: a generic check over a role can **refute** the
+# binding but never establish it (`core.transitions.establishing`).
+# Orphaned account ids prove a column is not the account; full coverage
+# proves nothing about meaning — measured, all three corpus candidates
+# cover fully, the decoy included. Wide menu, narrow promotion boundary,
+# rather than the other way round.
+ROLE_TEMPLATES: tuple[str, ...] = tuple(sorted(get_args(TemplateName)))
 
 # Predicate name assigned by the mapping layer to MappingClaims. Not
 # part of the hypothesis vocabulary (V1 cannot choose it) — it exists so
@@ -339,8 +354,14 @@ TEMPLATE_NOTES: dict[str, str] = {
                        "— never pre-aggregate. Check the column types in the "
                        "view schemas: text-typed numeric columns must be cast "
                        "in the expression, e.g. CAST(col AS DOUBLE)"),
-    "balance": ("amount is a plain column summed by the template; group_expr, "
-                "if used, is a row-level expression"),
+    "balance": ("amount is a BARE COLUMN NAME, never an expression — the "
+                "template reads it as a number and sums it itself, so a "
+                "text-typed amount column needs no cast from you; "
+                "group_expr, if used, is a row-level expression"),
+    "subledger_equals_gl": ("subledger_amount and journal_amount are BARE "
+                            "COLUMN NAMES, never expressions — the template "
+                            "reads each as a number and sums it itself, so a "
+                            "text-typed amount column needs no cast from you"),
 }
 
 

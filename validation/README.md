@@ -64,7 +64,8 @@ The precondition, not part of the run: a source list and a domain pack are
 chosen once, and many questions are asked against them. This stage creates the
 project and writes those declarations, then shows all three before any data is
 touched: the **source list** (a human
-writes it — the product never discovers files), the **domain guide**, and the
+writes it, or `discover(root)` proposes it from the drop directory), the
+**domain guide**, and the
 **domain laws** shipped for that domain.
 
 It is the only stage that can fail before measurement: the guide's coherence
@@ -127,13 +128,16 @@ has one owner writing one shape of fingerprint;
 every normalization is a visible SYSTEM declaration; **claim count is 0** —
 the scan never infers.
 
-Who writes the source list: a **human**. `init_project()` creates
-`before-ai.yaml` with an empty `sources: []` — the product never discovers
-files by itself. For the walkthrough the corpus harness fills it in
-(`validation/support/corpus.py`), and the step prints which corpus files are
-*not* listed: `buchhaltungsrichtlinie.pdf` and `rabattvertrag.pdf` carry the
-policy traps (F14/F15/F19/F25) and are invisible here — PDFs are only
-fingerprinted, the document pipeline is M5.
+Who writes the source list: a **human**, or `discover(root)` on their behalf.
+`init_project()` creates `before-ai.yaml` with an empty `sources: []`; `scan`
+then walks the `sources/` drop directory and **merges** in what it finds —
+never overwriting, so a hand-tuned entry with its own `scope:` always wins and
+re-running adds only what is new.
+
+For the walkthrough the corpus harness fills the list in directly
+(`validation/support/corpus.py`), pointing at the frozen corpus outside the
+project, so discovery has nothing to add here — which is the merge rule doing
+its job rather than a gap.
 
 ### Stage 2b — the candidate matrix
 
@@ -181,12 +185,12 @@ the invariant checks will decide.
 ### Stage 3c — check plans
 
 Look at: template mix; the three honest rejection buckets.
-Good (offline pins): **50 check plans**, **18 unbindable** (model answered
+Good (offline pins): **54 check plans**, **12 unbindable** (model answered
 `template=null`, with its reason), **6 semantic-only** (no admissible check
-definition exists — the semantic-equivalence class lives here), **2 skipped**
+definition exists — the semantic-equivalence class lives here), **4 skipped**
 (validation rejected the model's binding — e.g. `accounts` given as a string
 where the contract requires a list). Nothing disappears silently: each of
-those **26** claims carries a DECLARATION in the store with the verbatim
+those **22** claims carries a DECLARATION in the store with the verbatim
 reason, so the readiness report shows *why* it was never tested — read them, they
 are the sharpest evidence of what the domain pack is still missing (several
 say, in effect: "the rule is in a document I cannot see" → M5).
@@ -236,12 +240,20 @@ good reason to believe something, and still not a measurement.
 
 Look at: executed/skipped, verdict mix, role verdicts, the false-promotion
 audit line.
-Good (offline pins): **50 executed, 0 skipped**; verdicts **37 pass, 13 fail**;
+Good (offline pins): **54 executed, 0 skipped**; verdicts **42 pass, 12 fail**;
 journal role: `de_erp__gl_postings` **test-supported**, `buchungen_report`
 **contradicted** (the decoy loses — trap F27), `us_erp__gl_postings`
 **contradicted** (honest — the data has a missing intercompany leg, trap F22);
-audit **CLEAN**. Resulting AI-claim statuses: 37 test-supported, 35 proposed,
-13 contradicted.
+audit **CLEAN**. Resulting AI-claim statuses: 38 test-supported, 36 proposed,
+12 contradicted.
+
+**Watch the three `account` candidates.** Each one now gets an anti_join
+against the chart of accounts, each one **passes**, and all three stay
+`proposed`. A generic check over a role may refute a binding but never
+establish it: orphaned account ids would prove a column is not the account,
+while full coverage proves nothing about what it *means* — and all three
+cover fully, the decoy included. Promoting on that would hand one role three
+winners.
 
 ### Stage 5 — clarification
 
@@ -287,7 +299,7 @@ run grouped by `period`, and `doc_ref` still has to be asked — a journal
 balances per document AND per period, so a passing law never identifies the
 grouping column.
 
-The project now holds **23** open questions in total: these 6, plus **12**
+The project now holds **22** open questions in total: these 6, plus **11**
 drafted by the engine in stage 4 where a check failed or was inconclusive,
 plus **5** raised in 3d where a document figure was refused.
 
@@ -430,8 +442,8 @@ lapsed, and nothing in `data/project/` changed — the list was never stored.
   **0 inputs** (the three declared domain inputs), **1 request** (the question
   verbatim, the classification with its guide fingerprint, and every dependency
   with where it came from), **2 measured** (sources, column profiles, candidate
-  overlaps), **3 proposed** (the funnel: 76 proposed → 50 planned / 18
-  unbindable / 6 semantic-only / 2 skipped → 50 judged → the derived statuses,
+  overlaps), **3 proposed** (the funnel: 76 proposed → 54 planned / 12
+  unbindable / 6 semantic-only / 4 skipped → 54 judged → the derived statuses,
   every number a filter), **4 tested** (the role elections — each object with
   its fields nested beneath it: the winner, each loser with the domain law that
   felled it, and for a slot field the column its object's passing law
