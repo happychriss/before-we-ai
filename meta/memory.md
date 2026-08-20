@@ -69,6 +69,32 @@
 
 ## Next
 
+- **Run A is done (2026-08-20) and Run B is the next measurement, not the next
+  feature.** The vessel landscape reads: 10 sources → 20 tables → 162 columns
+  profiled, 4 PDFs → 36 passages, 0 claims, determinism holds across two runs.
+  Five of eight pre-registered predictions were right; the three misses were
+  worth more (`corpora/vessel/results-run-a.md`). Two product findings came out
+  of it, both pre-existing and both invisible on the finance landscape because
+  its numbers live in DuckDB rather than in spreadsheets:
+  1. **An Excel formula cell with no cached value profiles as `empty`.** The
+     column reads as "the business has no data here" when the truth is "this
+     reader cannot evaluate a formula". A missing capability must arrive as a
+     declaration, not as a plausible zero. Fix in the Excel reader; not yet
+     scheduled.
+  2. **`min`/`max` are lexicographic on every spreadsheet number**, because the
+     column is VARCHAR in the catalog. `amount_local` reports
+     `min 106861.97, max 97643`. Finance has the same defect on
+     `buchungen_report.betrag_eur` and always has. Nothing promotes on it, so
+     no verdict is wrong — it is a wrong number a human reads.
+  3. Open routing question, new: **a prose cover sheet inside a workbook
+     ingests as a table** (`Read_Me_First` → six columns, five all-null), so
+     the warnings it carries never reach the document path. Table or document?
+  **Run B** is the first model run over the vessel landscape and needs an owner
+  go-ahead — it spends the key. It is also where the negative control lives
+  (vessel data against the plain packaged `finance` pack, expecting no
+  candidate to win a role), because binding is a V2 call.
+
+
 **0. Publish-and-vessel plan — running now, ahead of everything below**
 (owner decision 2026-08-17). Four phases in `meta/plan-publish-and-vessel.md`:
 a repository a stranger can clone and run (Apache-2.0, `pyproject.toml` at the

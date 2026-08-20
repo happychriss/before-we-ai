@@ -183,11 +183,15 @@ first half only when something in the repository makes it checkable.
   noise, no agreed bar, and — measured 2026-08-20 — a scorer that matches
   tokens rather than meaning. It reports; it never gates; it is not a figure to
   quote. See `docs/seeded-recall.md`.
-- **"It has been proven on real data."** Every number comes from one frozen
-  synthetic finance landscape built by the same people who built the tool. A
-  second, independent landscape now ships (`corpora/vessel/`) precisely because
-  that is a fair test of the mechanism and no test of the world — but it has
-  not been read yet.
+- **"It has been proven on real data."** Every scored number comes from one
+  frozen synthetic finance landscape built by the same people who built the
+  tool. A second, independent landscape ships alongside it (`corpora/vessel/`)
+  and has now been **read once, deterministically**: all ten sources ingest,
+  20 tables, 162 columns profiled, four PDFs chunked, zero claims — with the
+  predictions committed before the run
+  (`corpora/vessel/predictions-run-a.md` → `results-run-a.md`). That says the
+  tool can read a landscape it did not grow up in. It does not yet say the tool
+  is *right* about one; that needs a model run, and it has not happened.
 - **"The software reads your policies and proposes your rules."** That is the
   guide builder: an experimental slice in a separate workstream, not
   integrated.
