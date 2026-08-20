@@ -1,10 +1,19 @@
-# Active plan — make the repository runnable, then read the vessel corpus
+# Executed plan — repository published, vessel corpus read
 
-> **Read this file first after a compaction, together with `meta/memory.md`.**
-> It is the executable plan for the work in flight. When a phase is done, tick
-> it here; when the whole plan is done, delete this file and leave the durable
-> facts in their homes. Nothing here is confirmed design — that is
-> `docs/architecture.md`.
+> **DONE 2026-08-20. All four phases executed; commits `2d23f37`, `fb409a0`,
+> `9b1110d`, `c205c19`, `f43a9e9`, plus two fixes found by a fresh clone.**
+>
+> Every durable fact from this plan is already in its home — `README.md`,
+> `corpora/README.md`, `docs/seeded-recall.md`, `docs/corpus.md`,
+> `meta/conventions.md`, `meta/memory.md`. **This file survives only so the
+> owner can read the decision log at the bottom**, which records every
+> judgement call made without asking. Delete it once read; nothing links to it
+> except `meta/memory.md`'s resume pointer.
+>
+> Two items in that log need an owner answer and are also filed as open
+> decisions in `meta/memory.md`: **D6** (a real company's annual report in a
+> public repository) and **D11** (the vessel domain guide, possibly the other
+> workstream's).
 
 **Goal.** A stranger can clone the repository and run it; both landscapes live
 in one structure that makes a third cheap; then Run A — the vessel corpus is
@@ -62,7 +71,7 @@ finding out the base was wrong. Verified this session: the suite is green
 
 ---
 
-## Phase 1 — a repository a stranger can run
+## Phase 1 — a repository a stranger can run  ✅ DONE
 
 1. **`LICENSE`** — Apache-2.0 text, plus the year and copyright holder line.
 2. **Move `src/pyproject.toml` → `pyproject.toml`** with
@@ -107,7 +116,7 @@ finding out the base was wrong. Verified this session: the suite is green
 **Acceptance:** the fresh-clone CI job is green, `pip install -e .` works from
 the clone root, and the pre-publication scan is clean.
 
-## Phase 2 — one home for landscapes
+## Phase 2 — one home for landscapes  ✅ DONE
 
 Split the harness code from the landscape data. Code stays in `src/`;
 landscapes become pure data.
@@ -151,7 +160,7 @@ src/corpus/                  # harness only: invariant checkers, report builder
 **Acceptance:** full suite green, corpus checksums unchanged, and
 `corpora/README.md` describes adding a third landscape in under a page.
 
-## Phase 3 — clean the history, keep the lessons
+## Phase 3 — clean the history, keep the lessons  ✅ DONE
 
 Rule: a historical file is deleted only after its lesson has a home. Lessons
 go to `meta/conventions.md` (rules), `docs/architecture.md` (confirmed
@@ -239,7 +248,7 @@ design), or `docs/seeded-recall.md` (measurement).
 above is findable in its home, the doc-path sweep is clean, and the README
 carries the can-defend / cannot-defend list.
 
-## Phase 4 — Run A: read the vessel corpus
+## Phase 4 — Run A: read the vessel corpus  ✅ DONE — `corpora/vessel/results-run-a.md`
 
 The go/no-go. If the ten files do not ingest, nothing else matters.
 
@@ -391,3 +400,27 @@ effect within its subtree. **From here: explicit file paths only, and
 `git diff --cached --name-only | grep -iE "guide_builder|draft-thoughts"` before
 every commit.** This belongs in `meta/conventions.md` as a rule, done in
 Phase 3.
+
+
+**D13 — a fresh clone was the only thing that could find the last bug, and it
+found one.** `git clone` into a clean directory, `scripts/bootstrap.sh`,
+`pytest -q`: **one failure**, and a serious one. `.gitattributes` still named
+`src/corpus/data/**` after Phase 2 moved the landscapes, so
+`buchungen_report.csv` — Latin-1 on purpose — was staged under a path with no
+`-text` attribute and git normalized its line endings into the object database.
+The working tree kept the true bytes, so nothing here went red, while every
+fresh clone got a corpus 384 bytes different from the one all recorded numbers
+are scored against.
+
+Both halves fixed: `.gitattributes` now covers `corpora/**` with a wildcard, and
+the file was re-added so the stored blob matches the pinned sha256 again. All 62
+tracked files under `corpora/` were checked; that was the only one. **The freeze
+test written in Phase 2 caught it, in exactly the scenario it was written for**
+— which is the argument for the test and for the rule now in
+`meta/conventions.md`: anything that depends on exact bytes is verified from a
+clean checkout, never from the maintainer's tree.
+
+Verified after the fix: a fresh clone bootstraps and runs **875 passed** (the
+maintainer's tree shows 883 — the difference is the other workstream's eight
+untracked `guide_builder` tests), the publication scan is clean, and
+`scripts/run-landscape.py vessel` reproduces Run A.

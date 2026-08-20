@@ -17,6 +17,22 @@ landscape was cheaper than any remaining feature and was the only thing that
 could show whether a good score on the first one was familiarity — so it went
 first, and feature work paused for it.
 
+**A maintainer's working tree cannot show a checkout-time bug — verify from a
+fresh clone.** Found 2026-08-20: after the landscapes moved to `corpora/`,
+`.gitattributes` still named the old paths, so git normalized a Latin-1 CSV's
+line endings on the way into the object database. The working tree kept the
+true bytes, every test stayed green, and *every fresh clone* got a corpus with
+different bytes from the ones all recorded numbers are scored against. Anything
+that depends on exact bytes — frozen corpora, fixtures, checksums — is verified
+by `git clone` into a clean directory and running the suite there. That is what
+the CI *fresh-clone* job is for; run it by hand before trusting a move.
+
+**Stage explicit file paths, never a directory.** `git add -A` is already
+banned; `git add <dir>` has the same effect inside its subtree and stages
+another workstream's untracked files. Two workstreams share this tree. Before
+every commit:
+`git diff --cached --name-only | grep -iE "guide_builder|draft-thoughts"`.
+
 ## Architectural boundaries (hard)
 
 - **Corpus is test infrastructure, product stays domain-agnostic.** `corpora/`

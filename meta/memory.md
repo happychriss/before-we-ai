@@ -57,15 +57,16 @@
   other pin above survived that change untouched, which is the blast radius
   the guide's shape was designed to have.
 - **Where to start reading after a compaction:** this file, then
-  **`meta/plan-publish-and-vessel.md`** — the active plan, which takes
-  precedence over the milestone order below. Feature work (M7.4 onward) is
-  paused behind it by owner decision: make the repository runnable by a
-  stranger, put both landscapes in one structure, then read the vessel
-  corpus. Reason: every number in this repository was measured inside one
-  synthetic landscape whose author also wrote the guide, the laws and the
-  answer key, so building further raises the cost of finding out the base
-  was wrong. After that plan, the next feature is still **M7.4**, the
-  end-user projection, and everything it was blocked on is done.
+  `README.md` and `corpora/README.md`. The publish-and-vessel plan is
+  **executed** (2026-08-20): the repository is clonable and runnable by a
+  stranger, both landscapes live in `corpora/` as data, and Run A read the
+  vessel corpus for the first time. `meta/plan-publish-and-vessel.md` survives
+  only for its decision log — two entries there need an owner answer and are
+  filed under *Open decisions* below; delete the file once it has been read.
+  **The next feature is M7.4**, the end-user projection, and everything it was
+  blocked on is done — but the open 7.4 question (one projection or two) has to
+  be answered first. **The next *measurement* is Run B**, which is the more
+  valuable of the two and needs an owner go-ahead because it spends the key.
 
 ## Next
 
