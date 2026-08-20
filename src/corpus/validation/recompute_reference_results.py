@@ -21,17 +21,22 @@ import duckdb
 import yaml
 from datetime import datetime
 
-corpus_root = Path(__file__).parent.parent
+# The finance landscape moved to corpora/finance/ (a landscape is data, this
+# harness is code). Resolved through the manifest so no path is written twice.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from corpora import load as load_landscape  # noqa: E402
+
+corpus_root = load_landscape("finance").root
 
 def load_expected_verdicts():
     """Load expected_verdicts.yaml to get reference values."""
-    verdicts_path = corpus_root / "data" / "expected_verdicts.yaml"
+    verdicts_path = corpus_root / "answer-key" / "expected_verdicts.yaml"
     with open(verdicts_path) as f:
         return yaml.safe_load(f)
 
 def load_target_questions():
     """Load target_questions.yaml for formula spec."""
-    spec_path = corpus_root / "generator_spec" / "target_questions.yaml"
+    spec_path = corpus_root / "spec" / "target_questions.yaml"
     with open(spec_path) as f:
         return yaml.safe_load(f)
 

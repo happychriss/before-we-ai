@@ -1,6 +1,6 @@
 {
  "contract": "v3_documents",
- "scenario": "corpus_tell_f29__statements",
+ "scenario": "finance_tell_f29__statements",
  "input_sha256": "d769426c4fbd30a0bab6d7dedb2c1c344dfb6a82aa0aaf713ac003caed0ef1ff",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",

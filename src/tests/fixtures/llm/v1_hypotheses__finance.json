@@ -1,6 +1,6 @@
 {
  "contract": "v1_hypotheses",
- "scenario": "corpus",
+ "scenario": "finance",
  "input_sha256": "02ac340a038bc964aa6e17b09d8a71f1c39bfcab23993d1361df9e86d43d3f7f",
  "system_sha256": "50c158c158a14aa1b2183de0718a4ac97f74e045920ca2694c92803707cb56fe",
  "model": "claude-opus-4-8",

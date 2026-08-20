@@ -22,7 +22,7 @@ REPO = VALIDATION.parent
 DATA = VALIDATION / "data"
 PROJECT = DATA / "project"
 REPORT = DATA / "report"
-SCENARIO = "corpus"  # shared with fixtures and the eval tools
+SCENARIO = "finance"  # shared with fixtures and the eval tools
 # byte-identical to DEMO_QUESTION in the offline corpus suite and in
 # tests/eval/refresh_fixtures.py — the drift guard rebuilds its input from it
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
@@ -32,6 +32,7 @@ _ORIGIN = {"text": "in running text", "table": "in a ruled table",
 sys.path.insert(0, str(REPO))  # validation.support — owner-facing, not test code
 from validation.support import corpus as corpus_support  # noqa: E402
 from validation.support.corpus import (  # noqa: E402
+    CORPUS,
     DOMAIN_GUIDE_FILE,
     build_corpus_project,
 )
@@ -70,7 +71,7 @@ from before_we_ai.store import ProjectStore  # noqa: E402
 # The corpus' own K8 statements, read from the frozen file rather than
 # retyped here — a walkthrough that quotes its inputs from memory is a
 # walkthrough that can drift from them silently.
-TELL_STATEMENTS = REPO / "src" / "corpus" / "data" / "tell_statements.yaml"
+TELL_STATEMENTS = CORPUS / "tell_statements.yaml"
 
 
 def section(title: str) -> None:
@@ -631,7 +632,7 @@ def stage_tell(args) -> None:
         "  so a person and a policy are read against the same question",
         "the domain guide, for the vocabulary the statement is read in",
         "answers: recorded fixtures, one per statement "
-        "(v3_documents__corpus_<id>__statements)",
+        "(v3_documents__finance_<id>__statements)",
     )
 
     section("what was said, and what the system made of it")
@@ -779,7 +780,7 @@ def stage_inputs(args) -> None:
           "hand-written entry\n  wins. These were declared directly, outside "
           "the drop directory.")
     unlisted = sorted(
-        f.name for f in (REPO / "src" / "corpus" / "data").iterdir()
+        f.name for f in CORPUS.iterdir()
         if f.is_file() and f.suffix in {".pdf", ".csv", ".xlsx"}
         and not any(Path(s["location"]).name == f.name for s in SOURCES))
     if unlisted:

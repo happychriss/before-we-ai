@@ -634,7 +634,7 @@ decision revealed far more existing leniency than it added.
   never stand in for the full batch; and a live repair that *accepted*
   items is irreproducible offline (labels shift downstream) — the script
   warns, re-run the refresh in that case. GOTCHA: the corpus generator's
-  `generator_spec/roles.yaml` names trap decoys — runtime domain guides must be
+  `corpora/finance/spec/roles.yaml` names trap decoys — runtime domain guides must be
   clean (see `before_we_ai/domains/finance.yaml`).
 - **A refusal is a result — and it is persisted**. Every claim V2
   leaves without a check (`unbindable` / `semantic_only` / `skipped`) gets a

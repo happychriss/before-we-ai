@@ -160,7 +160,7 @@ def test_a_stuck_queue_says_so_rather_than_looking_untouched(tmp_path):
                                          encoding="utf-8")
     guide = load_domain_guide(guide_file)
     ask(root, "Can these files reliably produce actual P&L by entity and "
-              "month?", guide=guide, store=ProjectStore(root), scenario="corpus")
+              "month?", guide=guide, store=ProjectStore(root), scenario="finance")
 
     store = ProjectStore(root)
     binding = store.add_claim(MappingClaim(

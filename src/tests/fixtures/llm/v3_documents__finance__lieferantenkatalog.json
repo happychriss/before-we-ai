@@ -1,6 +1,6 @@
 {
  "contract": "v3_documents",
- "scenario": "corpus__lieferantenkatalog",
+ "scenario": "finance__lieferantenkatalog",
  "input_sha256": "973cbeeed06f314262d2592c1440039c7fc89cedd8f74ebf0e52cf89ee0042f0",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",

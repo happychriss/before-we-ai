@@ -36,17 +36,21 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 WAIVERS = Path(__file__).resolve().parent / "publication-scan-waivers.yaml"
 
-# Landscape data that ships in the public repository. Updated when a landscape
-# moves; nothing outside these trees is the corpus.
-SCAN_ROOTS = [
-    REPO / "corpora",                       # after the corpora/ move
-    REPO / "src" / "corpus" / "data",       # finance, before the move
-    REPO / "corpus-vessel" / "source-documents",   # vessel, before the move
-]
+# Every landscape's business data and its domain guide — a new landscape is
+# scanned the day it is added, with no list to remember to extend.
+#
+# Not the generators and not the answer keys. Not because they are safe: a
+# generator is the *source* of every name in the data, so anything real in one
+# arrives in data/ and is caught there. It is because those files are the ones
+# nobody may read, and a tool that opens them and prints matched fragments into
+# a build log is a way for the key to escape.
+SCAN_ROOTS = sorted(
+    [d for landscape in (REPO / "corpora").glob("*/")
+     for d in (landscape / "data", landscape / "guide") if d.exists()])
 
 # Never opened: held-out answers.
 EXCLUDED_NAMES = {"expected_verdicts.yaml"}
-EXCLUDED_DIRS = {"answer-key", "ground-truth", "__pycache__"}
+EXCLUDED_DIRS = {"answer-key", "ground-truth", "generator", "spec", "__pycache__"}
 
 TEXT_SUFFIXES = {".csv", ".txt", ".md", ".yaml", ".yml", ".json", ".sql", ".tsv"}
 

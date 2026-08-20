@@ -6,8 +6,9 @@ Three callers need it and none of them is a test: the owner walkthrough
 never collected). Keeping it here rather than under `tests/` is what stops
 owner-facing validation from depending on test-internal code.
 
-The corpus *data* it points at is still `src/corpus/data/` — frozen, and the
-one thing every offline run measures against.
+The landscape it points at is `corpora/finance/` — frozen, and the one thing
+every offline run measures against. Which files that is, and what each one is
+described as, is the manifest's business, not this module's.
 """
 
 from pathlib import Path
@@ -18,50 +19,26 @@ from before_we_ai import scan
 from before_we_ai.domains import packaged
 from before_we_ai.store import init_project
 
-SRC = Path(__file__).resolve().parents[2] / "src"
-CORPUS = SRC / "corpus" / "data"
-FIXTURES = SRC / "tests" / "fixtures" / "llm"
-DOMAIN_GUIDE_FILE = packaged("finance")
-EXPECTED_VERDICTS = CORPUS / "expected_verdicts.yaml"
+from corpora import load as load_landscape
 
-SOURCES = [
-    {"name": "de_erp", "description":
-     "The DE entity's ERP database as exported by IT — ledger, invoices, receivables, master data.", "kind": "duckdb", "location": str(CORPUS / "DE" / "erp.duckdb")},
-    {"name": "us_erp", "description":
-     "The US entity's ERP database, same export, same shapes.", "kind": "duckdb", "location": str(CORPUS / "US" / "erp.duckdb")},
-    {"name": "kunden_migration", "description":
-     "Spreadsheet from the customer-number migration: which old number became which new one.", "kind": "xlsx", "location": str(CORPUS / "kunden_migration.xlsx")},
-    {"name": "marketing_grouping", "description":
-     "Marketing's own product grouping, maintained outside the ERP.", "kind": "xlsx", "location": str(CORPUS / "marketing_grouping.xlsx")},
-    {"name": "kontakte_aussendienst", "description":
-     "Field-sales contact list kept by the sales office.", "kind": "xlsx",
-     "location": str(CORPUS / "kontakte_aussendienst.xlsx")},
-    {"name": "buchungen_report", "description":
-     "A posting report exported from a reporting tool, not from the ledger itself.", "kind": "csv", "location": str(CORPUS / "buchungen_report.csv")},
-    # All six documents, declared with M5 (owner decision 2026-08-02). The
-    # policy is what makes the sign convention and the revenue definition
-    # answerable at all (K3); the rebate contract carries F25. The three
-    # noise documents are declared *deliberately*: a document pipeline that
-    # only ever sees relevant documents has not been tested. Their presence
-    # is the precision measurement — F26's divested-unit press release must
-    # be read and refused, not absent.
-    {"name": "management_report", "description":
-     "Quarterly management report, as circulated to the board.", "kind": "pdf", "location": str(CORPUS / "management_report.pdf")},
-    {"name": "buchhaltungsrichtlinie", "description":
-     "The accounting policy in force: sign conventions, revenue definition, cut-off.", "kind": "pdf",
-     "location": str(CORPUS / "buchhaltungsrichtlinie.pdf")},
-    {"name": "rabattvertrag", "description":
-     "A signed master rebate agreement with a customer.", "kind": "pdf", "location": str(CORPUS / "rabattvertrag.pdf")},
-    {"name": "lieferantenkatalog", "description":
-     "A supplier catalogue that happened to be in the same folder.", "kind": "pdf",
-     "location": str(CORPUS / "noise" / "lieferantenkatalog.pdf")},
-    {"name": "pressemitteilung_2022_divested_unit", "description":
-     "A 2022 press release about a business unit that has since been sold.", "kind": "pdf",
-     "location": str(CORPUS / "noise" / "pressemitteilung_2022_divested_unit.pdf")},
-    {"name": "reisekostenrichtlinie", "description":
-     "The travel expense policy.", "kind": "pdf",
-     "location": str(CORPUS / "noise" / "reisekostenrichtlinie.pdf")},
-]
+FINANCE = load_landscape("finance")
+SRC = Path(__file__).resolve().parents[2] / "src"
+CORPUS = FINANCE.data
+FIXTURES = SRC / "tests" / "fixtures" / "llm"
+DOMAIN_GUIDE_FILE = packaged(FINANCE.guide_packaged)
+EXPECTED_VERDICTS = FINANCE.answer_key
+
+# The source list is the landscape's, declared in corpora/finance/manifest.yaml
+# — names, kinds, and the descriptions that reach the model. It used to be a
+# literal here, which meant the same twelve facts also lived in the drift
+# guard's PDF list and in the walkthrough's config.
+#
+# The three noise documents are declared *deliberately*: a document pipeline
+# that only ever sees relevant documents has not been tested. Their presence is
+# the precision measurement — F26's divested-unit press release must be read
+# and refused, not absent.
+SOURCES = FINANCE.declarations()
+
 
 
 def build_corpus_project(root: Path, *, offline: bool,

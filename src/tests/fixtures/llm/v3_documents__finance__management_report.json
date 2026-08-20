@@ -1,6 +1,6 @@
 {
  "contract": "v3_documents",
- "scenario": "corpus__management_report",
+ "scenario": "finance__management_report",
  "input_sha256": "19cf6716a65a0124647f8cbb20665b394e6e28be2ed8a9bc621a36be142cc052",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",

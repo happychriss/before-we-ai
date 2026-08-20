@@ -14,11 +14,13 @@ from pathlib import Path
 import pytest
 import yaml
 
+from corpora import load as load_landscape
+
 pytestmark = pytest.mark.acceptance
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
-MANIFEST = (Path(__file__).resolve().parents[2] / "corpus" / "generator_spec"
-            / "sources_manifest.yaml")
+FINANCE = load_landscape("finance")
+CORPUS = FINANCE.data
+MANIFEST = FINANCE.root / "spec" / "sources_manifest.yaml"
 
 _SOURCES = yaml.safe_load(MANIFEST.read_text(encoding="utf-8"))["sources"]
 

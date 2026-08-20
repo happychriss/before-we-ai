@@ -1,17 +1,28 @@
 # Corpus — confirmed facts
 
+The finance landscape specifically. What a landscape *is*, the reading rule for
+answer keys, and how to add a third: `corpora/README.md`.
+
 **Frozen.** Never regenerate or edit: the corpus is the fixed answer key
 every later measurement is scored against, so changing it invalidates the
-comparison. Test infrastructure only — `src/before_we_ai/` never imports it.
+comparison. Enforced by sha256 per file in `corpora/finance/manifest.yaml` and
+`src/tests/corpus_driven/test_corpus_is_frozen.py`. Test infrastructure only —
+`src/before_we_ai/` never imports it.
 
 ## Layout
 
-- Data: `src/corpus/data/` — DE/US `erp.duckdb` (per entity), real `.xlsx` (merged
-  headers, German decimal commas), Latin-1 `.csv`, `.pdf`, text notes,
-  `expected_verdicts.yaml`
-- Validation harness: `src/corpus/validation/` (all checks pass); interactive HTML
-  report via `build_html_report.py`
-- Generator archive: `src/raw-training-data/` (generator + seed-stability report)
+- Data: `corpora/finance/data/` — DE/US `erp.duckdb` (per entity), real `.xlsx`
+  (merged headers, German decimal commas), Latin-1 `.csv`, `.pdf`, text notes
+- Answer key: `corpora/finance/answer-key/expected_verdicts.yaml` — **not read**
+- Spec the generator and the harness both build against:
+  `corpora/finance/spec/` (sources manifest, trap classes, target questions,
+  role definitions)
+- Generator archive: `corpora/finance/generator/` — the generator, its
+  seed-stability report, and `output-seed-0/`, the raw output before curation.
+  **Not read**: it holds the blind traps' definitions.
+- Grading harness (code, so it stays in `src/`): `src/corpus/validation/`;
+  interactive HTML report via `build_html_report.py`
+- Resolve any of it with `corpora.load("finance")` — nothing hardcodes a path.
 
 ## Traps
 

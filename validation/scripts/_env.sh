@@ -12,6 +12,8 @@ if [ -z "${VIRTUAL_ENV:-}" ]; then
     return 1 2>/dev/null || exit 1
   fi
 fi
-# Run against the working tree, not whatever package list the last
-# `pip install -e` froze — a renamed package must not break the walkthrough.
-export PYTHONPATH="$BW_REPO/src${PYTHONPATH:+:$PYTHONPATH}"
+# $BW_REPO for `corpora` (the landscapes) and `validation.support`;
+# $BW_REPO/src to run against the working tree rather than whatever the
+# last `pip install -e` froze — a renamed package must not break the
+# walkthrough.
+export PYTHONPATH="$BW_REPO:$BW_REPO/src${PYTHONPATH:+:$PYTHONPATH}"

@@ -54,11 +54,13 @@ from before_we_ai.readiness import (
 )
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, init_project
-from fixture_registry import REQUEST_SCENARIOS, all_guarded, question
+from fixture_registry import SCENARIO, REQUEST_SCENARIOS, all_guarded, question
+
+from corpora import load as load_landscape
 
 pytestmark = pytest.mark.acceptance
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+CORPUS = load_landscape("finance").data
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
 DOMAIN_GUIDE_FILE = packaged("finance")
 
@@ -82,8 +84,8 @@ LEAK_TOKENS = ("trap", "decoy", "BLIND_", "expected_verdicts", "F27", "Seeded")
 # corpus knowledge — it names nothing this landscape happens to contain.
 # Held in `fixture_registry` with the second one, because the recorder asks
 # them and this file rebuilds their inputs: one fact, one home.
-DEMO_QUESTION = question("corpus")
-RECEIVABLES_QUESTION = question("corpus_receivables")
+DEMO_QUESTION = question(SCENARIO)
+RECEIVABLES_QUESTION = question(f"{SCENARIO}_receivables")
 
 
 @pytest.fixture(scope="module")
@@ -101,16 +103,16 @@ def pipeline(tmp_path_factory):
 
     results = {"root": root, "roles": roles}
     results["v4"] = ask(root, DEMO_QUESTION, guide=roles, store=store,
-                        scenario="corpus")
+                        scenario=SCENARIO)
     # A second question of a different family, asked of the same landscape.
     # Two requests in one project is the ordinary case, not a test rig: an
     # analyst asks more than one thing of the files they have.
     results["receivables"] = ask(root, RECEIVABLES_QUESTION, guide=roles,
-                                 store=store, scenario="corpus_receivables")
-    results["v1"] = hypothesize(root, store=store, scenario="corpus")
+                                 store=store, scenario=f"{SCENARIO}_receivables")
+    results["v1"] = hypothesize(root, store=store, scenario=SCENARIO)
     results["proposals"] = propose_mappings(root, roles=roles, store=store,
-                                                 scenario="corpus")
-    results["v2"] = plan_checks(root, store=store, scenario="corpus")
+                                                 scenario=SCENARIO)
+    results["v2"] = plan_checks(root, store=store, scenario=SCENARIO)
     con = open_catalog(root)
     try:
         results["engine"] = run_ready(store, con)
@@ -369,10 +371,10 @@ def test_pipeline_is_idempotent(pipeline):
     """Re-running the contracts creates nothing new — claim-key dedup for
     claims; bound claims drop out of the V2 selection entirely."""
     root, store = pipeline["root"], pipeline["store"]
-    again = hypothesize(root, store=store, scenario="corpus")
+    again = hypothesize(root, store=store, scenario=SCENARIO)
     assert again.claims_created == [] and again.claims_deduped == 55
     proposals = propose_mappings(root, roles=pipeline["roles"], store=store,
-                                      scenario="corpus")
+                                      scenario=SCENARIO)
     assert proposals.claims_created == [] and proposals.claims_deduped == 22
     # only the honestly unbound claims are still selectable for V2:
     # 12 unbindable + 6 semantic-only + 4 skipped bindings
@@ -615,9 +617,9 @@ def test_fixtures_match_current_inputs(pipeline):
     for scenario, text in REQUEST_SCENARIOS:
         assert fixture(f"request__{scenario}")["input_sha256"] == \
             build_question_context(text, pipeline["roles"]).sha256
-    assert fixture("v1_hypotheses__corpus")["input_sha256"] == \
+    assert fixture(f"v1_hypotheses__{SCENARIO}")["input_sha256"] == \
         build_profile_context(store, matrix).sha256
-    assert fixture("role_binding__corpus")["input_sha256"] == \
+    assert fixture(f"role_binding__{SCENARIO}")["input_sha256"] == \
         build_role_context(store, matrix, pipeline["roles"]).sha256
 
     # reconstruct the V2 batches exactly as plan_checks selects them, from a
@@ -632,9 +634,9 @@ def test_fixtures_match_current_inputs(pipeline):
     ordinary = [c for c in ai_claims
                 if not isinstance(c, MappingClaim) and admissible_templates(c)]
     docs = render_template_docs()
-    assert fixture("v2_bind__corpus_roles")["input_sha256"] == \
+    assert fixture(f"v2_bind__{SCENARIO}_roles")["input_sha256"] == \
         build_binding_context(store, claim_label_map(role_claims), docs).sha256
-    assert fixture("v2_bind__corpus_claims")["input_sha256"] == \
+    assert fixture(f"v2_bind__{SCENARIO}_claims")["input_sha256"] == \
         build_binding_context(store, claim_label_map(ordinary), docs).sha256
 
 
@@ -668,11 +670,11 @@ def test_fixtures_match_the_prompts_they_answered():
     )
 
     systems = {
-        "request__corpus": with_schema(REQUEST_SYSTEM, AnswerRequestDraft),
-        "v1_hypotheses__corpus": with_schema(V1_SYSTEM, HypothesisBatch),
-        "role_binding__corpus": with_schema(MAPPING_SYSTEM, MappingProposalBatch),
-        "v2_bind__corpus_roles": with_schema(V2_ROLES_SYSTEM, BindingBatch),
-        "v2_bind__corpus_claims": with_schema(V2_SYSTEM, BindingBatch),
+        f"request__{SCENARIO}": with_schema(REQUEST_SYSTEM, AnswerRequestDraft),
+        f"v1_hypotheses__{SCENARIO}": with_schema(V1_SYSTEM, HypothesisBatch),
+        f"role_binding__{SCENARIO}": with_schema(MAPPING_SYSTEM, MappingProposalBatch),
+        f"v2_bind__{SCENARIO}_roles": with_schema(V2_ROLES_SYSTEM, BindingBatch),
+        f"v2_bind__{SCENARIO}_claims": with_schema(V2_SYSTEM, BindingBatch),
     }
     v3 = with_schema(V3_SYSTEM, DocumentReading)
     for path in sorted(FIXTURES.glob("v3_documents__*.json")):

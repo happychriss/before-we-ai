@@ -76,10 +76,10 @@ def llm_stage_evidence(tmp_path_factory):
     evidence_before = set(store.evidence)
     guide = load_domain_guide(DOMAIN_GUIDE_FILE)
 
-    ask(root, DEMO_QUESTION, guide=guide, store=store, scenario="corpus")
-    hypothesize(root, store=store, scenario="corpus")
-    propose_mappings(root, roles=guide, store=store, scenario="corpus")
-    plan_checks(root, store=store, scenario="corpus")
+    ask(root, DEMO_QUESTION, guide=guide, store=store, scenario="finance")
+    hypothesize(root, store=store, scenario="finance")
+    propose_mappings(root, roles=guide, store=store, scenario="finance")
+    plan_checks(root, store=store, scenario="finance")
     # V3 is an LLM stage that writes evidence, so it belongs under the
     # guardrail like the rest. It joined 2026-08-02 — until then the
     # allow-list below was narrower than the stages it guarded, which is
@@ -87,7 +87,7 @@ def llm_stage_evidence(tmp_path_factory):
     # looked at.
     read_documents(root)
     interpret_documents(root, guide=guide, store=ProjectStore(root),
-                        scenario="corpus")
+                        scenario="finance")
 
     # Re-read from disk: the stages above were handed fresh stores, so the
     # one opened at the top of this fixture has long stopped being the

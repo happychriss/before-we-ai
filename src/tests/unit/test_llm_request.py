@@ -322,7 +322,7 @@ def test_the_shipped_fixture_matches_the_shipped_guide():
     from pathlib import Path
 
     path = (Path(__file__).resolve().parents[1] / "fixtures" / "llm"
-            / "request__corpus.json")
+            / "request__finance.json")
     entry = json.loads(path.read_text(encoding="utf-8"))
     assert entry["recorded_at"] != "hand-authored"
     assert entry["source_log"].endswith(".json")

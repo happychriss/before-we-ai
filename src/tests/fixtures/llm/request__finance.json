@@ -1,6 +1,6 @@
 {
  "contract": "request",
- "scenario": "corpus",
+ "scenario": "finance",
  "input_sha256": "19506d91bf4e2809dbcc35a907ea4f480a039278c92afc8b2e486e7d01afff58",
  "system_sha256": "dd04dd9a08a579c5b55ea6fb5005dbe2d5472b8d1dab8f9e8b6ab0782d7569f1",
  "model": "claude-opus-4-8",

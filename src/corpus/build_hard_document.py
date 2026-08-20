@@ -31,7 +31,11 @@ from pathlib import Path
 
 import pymupdf
 
-OUT = Path(__file__).resolve().parent / "data" / "hard" / "acme_annual_extract.pdf"
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from corpora import load as load_landscape  # noqa: E402
+
+OUT = load_landscape("finance").path("hard/acme_annual_extract.pdf")
 
 HEADER = "ACME Group SE — Annual Report 2025 (extract)"
 # Non-breaking space: the digit grouping published reports actually use,

@@ -53,14 +53,14 @@ def project(tmp_path):
     guide = load_domain_guide(GUIDE_FILE)
     store = ProjectStore(root)
     report = ask(root, "Can these files reliably produce actual P&L by entity "
-                       "and month?", guide=guide, store=store, scenario="corpus")
+                       "and month?", guide=guide, store=store, scenario="finance")
     return root, guide, report.request
 
 
 def _revise_to_receivables(root, guide, request_id):
     return revise(root, request_id, "What is still outstanding from our customers?",
                   guide=guide, store=ProjectStore(root),
-                  scenario="corpus_receivables")
+                  scenario="finance_receivables")
 
 
 class TestWhatARevisionKeeps:
@@ -153,7 +153,7 @@ class TestWhatARevisionCosts:
         confirm_classification(ProjectStore(root), guide, request.id)
 
         revise(root, request.id, request.question, guide=guide,
-               store=ProjectStore(root), scenario="corpus")
+               store=ProjectStore(root), scenario="finance")
 
         assert evaluate_request(ProjectStore(root), guide, request.id).confirmed
 
@@ -186,7 +186,7 @@ def test_revising_a_request_that_does_not_exist_is_refused(project):
     root, guide, _request = project
     with pytest.raises(UnknownRequest):
         revise(root, "01NOPE", "anything", guide=guide, store=ProjectStore(root),
-               scenario="corpus")
+               scenario="finance")
 
 
 def test_the_fingerprint_covers_what_a_human_read():

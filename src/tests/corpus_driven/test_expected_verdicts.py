@@ -26,9 +26,12 @@ from before_we_ai.core import (
 )
 from before_we_ai.core.transitions import attach_evidence, resolve_status
 
+from corpora import load as load_landscape
+
 pytestmark = pytest.mark.acceptance
 
-GROUND_TRUTH = Path(__file__).resolve().parents[2] / "corpus" / "data" / "expected_verdicts.yaml"
+FINANCE = load_landscape("finance")
+GROUND_TRUTH = FINANCE.answer_key
 
 _DATA = yaml.safe_load(GROUND_TRUTH.read_text(encoding="utf-8"))
 TRAPS = _DATA["traps"]
@@ -159,8 +162,8 @@ def test_every_trap_category_is_a_class_that_exists():
     building tell.
     """
     defined = set(yaml.safe_load(
-        (Path(__file__).resolve().parents[2] / "corpus" / "generator_spec"
-         / "trap_classes.yaml").read_text(encoding="utf-8"))["trap_classes"])
+        (FINANCE.root / "spec" / "trap_classes.yaml")
+        .read_text(encoding="utf-8"))["trap_classes"])
     tagged = set()
     for trap in TRAPS.values():
         tagged |= classes(trap)

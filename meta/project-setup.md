@@ -58,14 +58,17 @@ Two things to know:
 
 ## 1. Folder Structure
 
-`/workspace` is the git repo root (one repo for everything):
+One repo for everything. Paths below are relative to the clone root (the
+owner's container happens to put it at `/workspace`; nothing depends on that):
 
 ```
-/workspace/
+<clone root>/
 ├── CLAUDE.md        # bootstrap + one-fact-one-home rule (canonical folder definitions)
 ├── README.md        # human-facing product front page
 ├── pyproject.toml   # package + pytest config (install/test from the root)
-├── src/             # all code (Python package, corpus, tests)
+├── scripts/bootstrap.sh   # clone -> green, one command
+├── corpora/         # the landscapes, as data (finance, vessel) — see its README
+├── src/             # all code (Python package, corpus grading harness, tests)
 ├── docs/            # everything about the software:
 │   ├── architecture.md   #   confirmed design decisions & gotchas
 │   ├── corpus.md         #   frozen corpus facts

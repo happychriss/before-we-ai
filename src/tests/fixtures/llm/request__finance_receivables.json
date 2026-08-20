@@ -1,6 +1,6 @@
 {
  "contract": "request",
- "scenario": "corpus_receivables",
+ "scenario": "finance_receivables",
  "input_sha256": "1d6d1875f329b444d70c77258c6e2c283541573db93bbfdf00805453090c4b80",
  "system_sha256": "dd04dd9a08a579c5b55ea6fb5005dbe2d5472b8d1dab8f9e8b6ab0782d7569f1",
  "model": "claude-opus-4-8",

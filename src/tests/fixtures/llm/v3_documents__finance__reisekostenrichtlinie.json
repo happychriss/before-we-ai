@@ -1,6 +1,6 @@
 {
  "contract": "v3_documents",
- "scenario": "corpus__reisekostenrichtlinie",
+ "scenario": "finance__reisekostenrichtlinie",
  "input_sha256": "e21a7dead52e0a38c290caf5e4aa9684caf473013738da3b04098c1a1ec9b974",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",

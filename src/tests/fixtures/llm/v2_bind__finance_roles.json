@@ -1,6 +1,6 @@
 {
  "contract": "v2_bind",
- "scenario": "corpus_roles",
+ "scenario": "finance_roles",
  "input_sha256": "5be16112231e0779dc2bd7aea8f7e7bb43517a4f2bb6e6d5208d66a9a3d90625",
  "system_sha256": "fbfc3b5629832b410eb7ffd2e2efe7facdc85fd1c40eb311e06bf931c8a22d74",
  "model": "claude-opus-4-8",

@@ -39,9 +39,11 @@ from before_we_ai.engine import run_ready
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, init_project
 
+from corpora import load as load_landscape
+
 pytestmark = pytest.mark.acceptance
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+CORPUS = load_landscape("finance").data
 JOURNAL = "de_erp__gl_postings"
 SEED = 7
 

@@ -1,6 +1,6 @@
 {
  "contract": "v3_documents",
- "scenario": "corpus__rabattvertrag",
+ "scenario": "finance__rabattvertrag",
  "input_sha256": "8df12030ff72dbd3aeb83e28aabe86ceeac0cb105a2721f54c4312c39cb3042e",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",

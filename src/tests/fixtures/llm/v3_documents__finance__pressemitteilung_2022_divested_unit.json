@@ -1,6 +1,6 @@
 {
  "contract": "v3_documents",
- "scenario": "corpus__pressemitteilung_2022_divested_unit",
+ "scenario": "finance__pressemitteilung_2022_divested_unit",
  "input_sha256": "ee684fe2c3a51109cc517eb27ff8bdbacf42ce2db6466470478b42f4db73d39c",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",

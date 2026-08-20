@@ -13,13 +13,16 @@ from pathlib import Path
 import duckdb
 import yaml
 
-# Add src to path for corpus imports
-corpus_root = Path(__file__).parent.parent
-sys.path.insert(0, str(corpus_root.parent))
+# The finance landscape moved to corpora/finance/ (a landscape is data, this
+# harness is code). Resolved through the manifest so no path is written twice.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from corpora import load as load_landscape  # noqa: E402
+
+corpus_root = load_landscape("finance").root
 
 def load_expected_verdicts():
     """Load expected_verdicts.yaml to understand expected exceptions."""
-    verdicts_path = corpus_root / "data" / "expected_verdicts.yaml"
+    verdicts_path = corpus_root / "answer-key" / "expected_verdicts.yaml"
     with open(verdicts_path) as f:
         return yaml.safe_load(f)
 

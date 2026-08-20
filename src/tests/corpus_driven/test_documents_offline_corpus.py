@@ -33,8 +33,10 @@ from before_we_ai.domains import packaged
 from before_we_ai.llm import ask, interpret_documents, load_domain_guide
 from before_we_ai.readiness import evaluate_request
 from before_we_ai.store import ProjectStore, init_project
+from corpora import load as load_landscape
 from fixture_registry import (
     PDF_SOURCES,
+    SCENARIO,
     document_fixture,
     statement_fixture,
     statement_scenarios,
@@ -42,7 +44,7 @@ from fixture_registry import (
 
 pytestmark = pytest.mark.acceptance
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+CORPUS = load_landscape("finance").data
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
 DOMAIN_GUIDE_FILE = packaged("finance")
 DEMO_QUESTION = "Can these files reliably produce actual P&L by entity and month?"
@@ -76,9 +78,9 @@ def read(tmp_path_factory):
     read_documents(root)
     guide = load_domain_guide(DOMAIN_GUIDE_FILE)
     ask(root, DEMO_QUESTION, guide=guide, store=ProjectStore(root),
-        scenario="corpus")
+        scenario=SCENARIO)
     report = interpret_documents(root, guide=guide, store=ProjectStore(root),
-                                 scenario="corpus")
+                                 scenario=SCENARIO)
     return root, guide, report, ProjectStore(root)
 
 
@@ -237,7 +239,7 @@ def every_document(tmp_path_factory):
     read_documents(root)
     guide = load_domain_guide(DOMAIN_GUIDE_FILE)
     ask(root, DEMO_QUESTION, guide=guide, store=ProjectStore(root),
-        scenario="corpus")
+        scenario=SCENARIO)
     return root, guide, ProjectStore(root)
 
 
@@ -351,7 +353,7 @@ class TestTheK8StatementsAgainstTheRecordedAnswers:
         reports = {
             statement_id: tell(root, text, guide=guide,
                                store=ProjectStore(root),
-                               scenario=f"corpus_{statement_id.lower()}")
+                               scenario=f"{SCENARIO}_{statement_id.lower()}")
             for statement_id, text in statement_scenarios()
         }
         return root, guide, reports

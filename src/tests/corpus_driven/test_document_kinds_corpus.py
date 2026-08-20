@@ -19,9 +19,11 @@ import pytest
 from before_we_ai.documents.chunk import chunk_pdf
 from before_we_ai.documents.extract import CHART, TABLE, TEXT
 
+from corpora import load as load_landscape
+
 pytestmark = pytest.mark.acceptance
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+CORPUS = load_landscape("finance").data
 
 # F23's figure, exactly as it appears on the page.
 CHART_ONLY_FIGURE = "EUR 2,847,000"

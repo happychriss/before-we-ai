@@ -16,8 +16,14 @@ lives in `src/before_we_ai/glossary.py` — use those words, never synonyms.
 Every piece of information has exactly one canonical file; other files may link to it
 but never restate it:
 
-- `src/` — all code (Python package, corpus, tests). `pyproject.toml` lives at
-  the repository root — install and run the tests from there
+- `src/` — all code (Python package, corpus grading harness, tests).
+  `pyproject.toml` lives at the repository root — install and run the tests
+  from there
+- `corpora/` — the landscapes, as data: one directory per landscape, each with
+  a `manifest.yaml` that is the only place its facts are written down. Its
+  `README.md` is the canonical definition of what a landscape is and carries
+  the standing rule: **never open a landscape's `answer-key/` or
+  `generator/`**
 - `docs/` — everything about the software:
   `before-ai-concept.md` (plain-language walkthrough of the whole flow, one
   concept at a time, each tied to its real code object),

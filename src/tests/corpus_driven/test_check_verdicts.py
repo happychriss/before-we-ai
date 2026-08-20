@@ -23,9 +23,11 @@ from before_we_ai.core.objects import MappingClaim
 from before_we_ai.sources import open_catalog
 from before_we_ai.store import ProjectStore, check_integrity, init_project
 
+from corpora import load as load_landscape
+
 pytestmark = pytest.mark.acceptance
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+CORPUS = load_landscape("finance").data
 
 SOURCES = [
     {"name": "de_erp", "kind": "duckdb", "location": str(CORPUS / "DE" / "erp.duckdb")},

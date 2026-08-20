@@ -1,6 +1,6 @@
 {
  "contract": "v3_documents",
- "scenario": "corpus__buchhaltungsrichtlinie",
+ "scenario": "finance__buchhaltungsrichtlinie",
  "input_sha256": "3fe2c1bb196aa62f72f2cf76a1d9699bc177d2050e6a7a8cc5b4d7ee3ee6c2ac",
  "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
  "model": "claude-opus-4-8",

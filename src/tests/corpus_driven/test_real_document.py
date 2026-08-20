@@ -25,9 +25,11 @@ from before_we_ai.documents.chunk import chunk_pdf
 from before_we_ai.documents.extract import CHART, TABLE, TEXT, readable
 from before_we_ai.documents.figures import distinct_values
 
+from corpora import load as load_landscape
+
 pytestmark = pytest.mark.acceptance
 
-DOCUMENT = (Path(__file__).resolve().parents[2] / "corpus" / "data" / "real"
+DOCUMENT = (load_landscape("finance").data / "real"
             / "bosch-geschaeftsbericht-2025.pdf")
 
 

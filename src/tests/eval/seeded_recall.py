@@ -32,7 +32,10 @@ import yaml
 # The corpus project construction is owner-facing support, not test code
 # (validation/support/) — this tool is run as a script, so it says where.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from corpora import load as load_landscape  # noqa: E402
 from validation.support.corpus import EXPECTED_VERDICTS, DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
+
+FINANCE = load_landscape("finance")
 
 from before_we_ai.engine import run_ready
 from before_we_ai.llm import (
@@ -147,7 +150,7 @@ def main() -> int:
     root = build_corpus_project(workdir / "project", offline=args.offline)
     store = ProjectStore(root)
     roles = load_domain_guide(DOMAIN_GUIDE_FILE)
-    scenario = "corpus"  # fixtures and logs share the scenario name
+    scenario = FINANCE.name  # fixtures and logs share the scenario name
 
     v1 = hypothesize(root, store=store, scenario=scenario)
     proposals = propose_mappings(root, roles=roles, store=store,

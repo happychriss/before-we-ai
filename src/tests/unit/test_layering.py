@@ -1,9 +1,12 @@
 """The product does not know the corpus, the tests or the walkthrough exist.
 
-`before_we_ai` is a general machine; the frozen corpus is how *we* grade it.
-The day the product imports its own grading fixtures, the corpus stops being
-evidence and becomes part of what it was supposed to measure. The same goes
-for the walkthrough's support code and for the tests themselves.
+`before_we_ai` is a general machine; the landscapes in `corpora/` are how *we*
+grade it. The day the product imports its own grading fixtures, a landscape
+stops being evidence and becomes part of what it was supposed to measure. The
+same goes for the walkthrough's support code and for the tests themselves.
+
+`corpora` is in the list for a sharper reason than the rest: it is the module
+that can resolve a path to an answer key.
 
 Checked over parsed imports rather than text, because that is what the rule
 is actually about — a module reached, not a word written.
@@ -17,7 +20,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 PRODUCT = Path(__file__).resolve().parents[2] / "before_we_ai"
-FORBIDDEN = ("corpus", "tests", "validation", "readiness_report")
+FORBIDDEN = ("corpus", "corpora", "tests", "validation", "readiness_report")
 
 
 def _imported_roots(path: Path) -> set[str]:

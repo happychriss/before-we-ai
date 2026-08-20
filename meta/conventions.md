@@ -10,7 +10,7 @@ about how to work.
 
 ## Architectural boundaries (hard)
 
-- **Corpus is test infrastructure, product stays domain-agnostic.** `src/corpus/`
+- **Corpus is test infrastructure, product stays domain-agnostic.** `corpora/`
   (incl. its finance answer-key logic) is never imported by `src/before_we_ai/`.
   Domain rules enter the product only as data — tell statements, documents, checked
   patterns — becoming Claims, never Python. When tempted to add domain logic, ask:

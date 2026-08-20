@@ -4,12 +4,17 @@ import html
 import yaml
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]   # src/corpus
-OUT = ROOT / "validation" / "corpus-validation-report.html"
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from corpora import load as load_landscape  # noqa: E402
 
-verdicts = yaml.safe_load(open(ROOT / "data" / "expected_verdicts.yaml"))
-classes = yaml.safe_load(open(ROOT / "generator_spec" / "trap_classes.yaml"))["trap_classes"]
-manifest = yaml.safe_load(open(ROOT / "generator_spec" / "sources_manifest.yaml"))["sources"]
+ROOT = load_landscape("finance").root        # corpora/finance
+OUT_DIR = Path(__file__).resolve().parent    # src/corpus/validation
+OUT = OUT_DIR / "corpus-validation-report.html"
+
+verdicts = yaml.safe_load(open(ROOT / "answer-key" / "expected_verdicts.yaml"))
+classes = yaml.safe_load(open(ROOT / "spec" / "trap_classes.yaml"))["trap_classes"]
+manifest = yaml.safe_load(open(ROOT / "spec" / "sources_manifest.yaml"))["sources"]
 
 traps = verdicts["traps"]
 deny_set = verdicts.get("deny_set", [])

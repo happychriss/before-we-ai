@@ -1,6 +1,6 @@
 {
  "contract": "v2_bind",
- "scenario": "corpus_claims",
+ "scenario": "finance_claims",
  "input_sha256": "b788fdde32a891a11df5762051a2463ca67826f324bbec2eae31fcfedd453b7c",
  "system_sha256": "e6e8914a7c3ad39ff327440e8e38ed7162d15a3aa41a7264f51de606b4d19f30",
  "model": "claude-sonnet-5",

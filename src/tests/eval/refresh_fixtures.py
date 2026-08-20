@@ -23,6 +23,7 @@ from pathlib import Path
 # `src/` goes on the path too, for the one list of recorded questions.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from corpora import load as load_landscape  # noqa: E402
 from validation.support.corpus import FIXTURES, DOMAIN_GUIDE_FILE, build_corpus_project  # noqa: E402
 
 from before_we_ai.documents import read_documents
@@ -40,13 +41,16 @@ from before_we_ai.store import ProjectStore
 # The questions, and the scenario each is filed under, come from the one
 # list the drift guard rebuilds its inputs from — they used to be a second
 # copy here, kept identical by a comment asking nicely.
-from tests.corpus_driven.fixture_registry import REQUEST_SCENARIOS, question  # noqa: E402
+from tests.corpus_driven.fixture_registry import (  # noqa: E402
+    REQUEST_SCENARIOS,
+    SCENARIO,
+    question,
+)
 
-DEMO_QUESTION = question("corpus")
+DEMO_QUESTION = question(SCENARIO)
 
 # The corpus' K8 statements — the same file the walkthrough's 5b beat reads.
-TELL_STATEMENTS = (Path(__file__).resolve().parents[2]
-                   / "corpus" / "data" / "tell_statements.yaml")
+TELL_STATEMENTS = load_landscape("finance").path("tell_statements.yaml")
 
 
 def still_answers_its_input(entry: dict, scenario: str) -> bool:
@@ -206,7 +210,7 @@ def _record_upstream(workdir: Path, client, roles,
 
     if "v1" in only:
         print("V1 hypotheses (frontier) ...")
-        v1 = hypothesize(root, client=client, store=store, scenario="corpus")
+        v1 = hypothesize(root, client=client, store=store, scenario=SCENARIO)
         if v1.failure:
             raise SystemExit(f"V1 failed twice: {v1.failure} (log: {v1.log_ref})")
         print(f"  {len(v1.claims_created)} claims, {len(v1.skipped)} skipped, "
@@ -220,7 +224,7 @@ def _record_upstream(workdir: Path, client, roles,
 
     print("role-binding proposals (frontier) ...")
     proposals = propose_mappings(root, roles=roles, client=client,
-                                      store=store, scenario="corpus")
+                                      store=store, scenario=SCENARIO)
     if proposals.failure:
         raise SystemExit(f"role proposals failed twice: {proposals.failure}")
     print(f"  {len(proposals.claims_created)} candidates, "
@@ -248,13 +252,13 @@ def _record_downstream(workdir: Path, client, roles, only_drifted: bool = False,
           "against what CI will see ...")
     root = build_corpus_project(workdir / "project", offline=True)
     store = ProjectStore(root)
-    ask(root, DEMO_QUESTION, guide=roles, store=store, scenario="corpus")
-    hypothesize(root, store=store, scenario="corpus")
-    propose_mappings(root, roles=roles, store=store, scenario="corpus")
+    ask(root, DEMO_QUESTION, guide=roles, store=store, scenario=SCENARIO)
+    hypothesize(root, store=store, scenario=SCENARIO)
+    propose_mappings(root, roles=roles, store=store, scenario=SCENARIO)
     store = ProjectStore(root)
 
     print("V2 check binding ...")
-    v2 = plan_checks(root, client=client, store=store, scenario="corpus")
+    v2 = plan_checks(root, client=client, store=store, scenario=SCENARIO)
     if v2.failures:
         raise SystemExit(f"V2 failed twice: {v2.failures}")
     print(f"  {len(v2.check_plans_created)} checks, {len(v2.unbindable)} unbindable, "
@@ -276,7 +280,7 @@ def _record_downstream(workdir: Path, client, roles, only_drifted: bool = False,
     print("V3 documents (frontier) ...")
     read_documents(root)
     v3 = interpret_documents(root, guide=roles, client=client,
-                             store=ProjectStore(root), scenario="corpus")
+                             store=ProjectStore(root), scenario=SCENARIO)
     if v3.failures:
         raise SystemExit(f"V3 failed for {[d for d, _ in v3.failures]}")
     print(f"  {len(v3.documents_read)} documents, "
@@ -310,7 +314,7 @@ def _record_statements(root: Path, client, roles, only_drifted: bool) -> None:
     for entry in spec["statements"]:
         report = tell(root, entry["text"], guide=roles, client=client,
                       store=ProjectStore(root),
-                      scenario=f"corpus_{entry['id'].lower()}")
+                      scenario=f"{SCENARIO}_{entry['id'].lower()}")
         if report.failure:
             raise SystemExit(f"tell failed for {entry['id']}: {report.failure}")
         print(f"  {entry['id']}: {len(report.claims_created)} claim(s), "

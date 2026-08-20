@@ -417,7 +417,7 @@ know", which is the state the answer was already in.
 
 The other half of clarification. 5a asks the questions the *data* raises;
 this takes what a person volunteers before being asked — the corpus' K8
-statements, read from `src/corpus/data/tell_statements.yaml`.
+statements, read from `corpora/finance/data/tell_statements.yaml`.
 
 Look at: the order things happen in, because it is the whole design. The
 words are stored **verbatim first**, then V3 reads them exactly as it reads
@@ -561,7 +561,7 @@ lapsed, and nothing in `data/project/` changed — the list was never stored.
 
 That file holds only **views**: over ATTACHed ERP databases and over
 CSV/Parquet, all referenced by *container-absolute* paths
-(`read_csv('/workspace/src/corpus/data/buchungen_report.csv')`). A DuckDB
+(`read_csv('<clone>/corpora/finance/data/buchungen_report.csv')`). A DuckDB
 client on the host opens the file but cannot resolve `/workspace/...` and
 fails with `No files found that match the pattern ...`; views over ATTACHed
 databases additionally don't survive a fresh connection at all.

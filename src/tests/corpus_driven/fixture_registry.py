@@ -23,7 +23,10 @@ from pathlib import Path
 
 import yaml
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus" / "data"
+from corpora import load as load_landscape
+
+FINANCE = load_landscape("finance")
+CORPUS = FINANCE.data
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
 
 # Every PDF a document fixture was recorded for — the walkthrough's six,
@@ -31,21 +34,16 @@ FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "llm"
 # document, so this list and the fixture directory are the same fact
 # twice, and the escape guard is what keeps them that way.
 PDF_SOURCES = [
-    {"name": "management_report", "kind": "pdf",
-     "location": str(CORPUS / "management_report.pdf")},
-    {"name": "buchhaltungsrichtlinie", "kind": "pdf",
-     "location": str(CORPUS / "buchhaltungsrichtlinie.pdf")},
-    {"name": "rabattvertrag", "kind": "pdf",
-     "location": str(CORPUS / "rabattvertrag.pdf")},
-    {"name": "lieferantenkatalog", "kind": "pdf",
-     "location": str(CORPUS / "noise" / "lieferantenkatalog.pdf")},
-    {"name": "pressemitteilung_2022_divested_unit", "kind": "pdf",
-     "location": str(CORPUS / "noise" / "pressemitteilung_2022_divested_unit.pdf")},
-    {"name": "reisekostenrichtlinie", "kind": "pdf",
-     "location": str(CORPUS / "noise" / "reisekostenrichtlinie.pdf")},
+    # Name, kind and location only — no description. The recorded document
+    # answers were built from declarations of exactly this shape, and the drift
+    # guard compares the rebuilt input's sha256 against them; adding the
+    # manifest's description here would change the bytes and turn the guard red
+    # for a reason that has nothing to do with drift.
+    {"name": s.name, "kind": s.kind, "location": str(s.location)}
+    for s in FINANCE.of_kind("pdf")
 ]
 
-STATEMENTS_SPEC = CORPUS / "tell_statements.yaml"
+STATEMENTS_SPEC = FINANCE.path("tell_statements.yaml")
 
 # The questions the pipeline is recorded against, and the scenario each one
 # is filed under. One home for them: the recorder asks them, the drift guard
@@ -57,19 +55,25 @@ STATEMENTS_SPEC = CORPUS / "tell_statements.yaml"
 # entry there was. The second question is deliberately a near neighbour: also
 # about money in the ledger, naming no table, sharing three of its
 # dependencies with the first.
+# One landscape, one scenario prefix. Recorded answers used to be filed under
+# the name "corpus", which was unambiguous while there was one; there are two
+# now (`corpora/`), and a fixture called v3_documents__corpus__rabattvertrag
+# would stop saying which corpus it came from.
+SCENARIO = FINANCE.name
+
 REQUEST_SCENARIOS: list[tuple[str, str]] = [
-    ("corpus", "Can these files reliably produce actual P&L by entity and month?"),
-    ("corpus_receivables", "What is still outstanding from our customers?"),
+    (SCENARIO, "Can these files reliably produce actual P&L by entity and month?"),
+    (f"{SCENARIO}_receivables", "What is still outstanding from our customers?"),
 ]
 
 # The contracts whose fixtures are pinned in test_llm_offline_corpus.py.
 GUARDED_IN_THE_LLM_FILE = frozenset(
     {f"request__{scenario}" for scenario, _ in REQUEST_SCENARIOS}
     | {
-        "v1_hypotheses__corpus",
-        "role_binding__corpus",
-        "v2_bind__corpus_roles",
-        "v2_bind__corpus_claims",
+        f"v1_hypotheses__{SCENARIO}",
+        f"role_binding__{SCENARIO}",
+        f"v2_bind__{SCENARIO}_roles",
+        f"v2_bind__{SCENARIO}_claims",
     }
 )
 
@@ -86,11 +90,11 @@ def statement_scenarios() -> list[tuple[str, str]]:
 
 
 def document_fixture(document: str) -> str:
-    return f"v3_documents__corpus__{document}"
+    return f"v3_documents__{SCENARIO}__{document}"
 
 
 def statement_fixture(statement_id: str) -> str:
-    return f"v3_documents__corpus_{statement_id.lower()}__statements"
+    return f"v3_documents__{SCENARIO}_{statement_id.lower()}__statements"
 
 
 def guarded_in_the_documents_file() -> frozenset[str]:
