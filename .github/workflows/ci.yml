@@ -64,5 +64,10 @@ jobs:
           python-version: "3.13"
       - name: no real-world identities in a public corpus
         run: |
-          pip install --quiet openpyxl pymupdf
+          # The lock file, not a hand-listed subset. The first version of this
+          # job named openpyxl and pymupdf and forgot pyyaml (the waivers) and
+          # duckdb (the two erp.duckdb catalogs) — it went red on the very
+          # first run. A scan that reads every format the corpus uses needs the
+          # same environment as everything else.
+          pip install --quiet -r requirements.lock
           python scripts/publication-scan.py
