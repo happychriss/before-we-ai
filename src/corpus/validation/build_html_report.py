@@ -4,7 +4,7 @@ import html
 import yaml
 from pathlib import Path
 
-ROOT = Path("/workspace/src/corpus")
+ROOT = Path(__file__).resolve().parents[1]   # src/corpus
 OUT = ROOT / "validation" / "corpus-validation-report.html"
 
 verdicts = yaml.safe_load(open(ROOT / "data" / "expected_verdicts.yaml"))

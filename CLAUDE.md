@@ -16,8 +16,8 @@ lives in `src/before_we_ai/glossary.py` — use those words, never synonyms.
 Every piece of information has exactly one canonical file; other files may link to it
 but never restate it:
 
-- `src/` — all code (Python package, corpus, tests; `pyproject.toml` lives here —
-  install/test from `src/`)
+- `src/` — all code (Python package, corpus, tests). `pyproject.toml` lives at
+  the repository root — install and run the tests from there
 - `docs/` — everything about the software:
   `before-ai-concept.md` (plain-language walkthrough of the whole flow, one
   concept at a time, each tied to its real code object),

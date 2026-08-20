@@ -1,0 +1,21 @@
+# Two ways in. Both offline, neither needs an API key.
+#
+#   docker compose run --rm suite    # the gate, against the code in the image
+#   docker compose run --rm shell    # your working tree, mounted live
+services:
+  suite:
+    build: .
+    image: before-we-ai:local
+
+  # Same image, but your checkout is mounted over /app — edit on the host, run
+  # in here. .venv is masked off: a host venv built for another Python would
+  # otherwise shadow the image's site-packages.
+  shell:
+    build: .
+    image: before-we-ai:local
+    volumes:
+      - .:/app
+      - /app/.venv
+    command: ["bash"]
+    stdin_open: true
+    tty: true

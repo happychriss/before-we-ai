@@ -1,0 +1,30 @@
+// Optional convenience, not a requirement. This file does nothing unless
+// someone opens the repository in VS Code and chooses "Reopen in Container".
+// Everyone else uses scripts/bootstrap.sh or `docker compose`; nothing in the
+// project depends on this structure.
+//
+// It builds the same Dockerfile as compose.yaml, mounts the checkout at /app
+// (where the image already has the editable install), and runs as the same
+// uid-1000 user, so DuckDB finds the fts extension baked into its home.
+{
+  "name": "before-we-ai",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+  "workspaceFolder": "/app",
+  "remoteUser": "app",
+  "postCreateCommand": "pip install --no-deps -e . && python -m pytest -q -m unit",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true
+      }
+    }
+  }
+}

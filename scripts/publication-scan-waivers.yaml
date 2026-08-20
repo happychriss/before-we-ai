@@ -1,0 +1,47 @@
+# Findings from scripts/publication-scan.py that are accepted, each with the
+# reason it is accepted. A finding is either fixed in the corpus or written
+# here — an unwaived finding fails the build.
+#
+# Adding a line here is a decision, not a formality. State what makes the hit
+# harmless; "false positive" on its own is not a reason.
+#
+# Not listed and not needed: addresses in RFC 2606 / RFC 6761 reserved domains
+# (@company.example and friends). Those are clean by construction and the
+# scanner never raises them.
+
+waived:
+  url:europa.eu: >-
+    Citation, not identity. The vessel tax memo cites the EU's public VAT-rates
+    page as the source for the rates it quotes. A public authority URL is what
+    a real working paper would carry, and removing it would make the corpus
+    less realistic without protecting anyone.
+
+  url:www.bundesfinanzministerium.de: >-
+    Same: the German finance ministry's public page on corporation tax, cited
+    as the source of the 15% rate.
+
+  url:www.podatki.gov.pl: >-
+    Same: the Polish tax administration's public CIT-rates page.
+
+  # --- The one real-world document in the repository -----------------------
+  # src/corpus/data/real/bosch-geschaeftsbericht-2025.pdf is a genuine
+  # published Bosch annual report. It is in the corpus on purpose: the spec
+  # makes a real public PDF a Pflichtbestandteil, because a generator only
+  # builds the traps it already knows about, and this document is what proved
+  # the pipeline survives an InDesign-typeset, encrypted, bilingual 146-page
+  # page. Four acceptance tests read it.
+  #
+  # These waivers cover the identities *inside* that document. They say nothing
+  # about whether redistributing the document itself is right — that is a
+  # separate question, open, recorded in meta/memory.md and in NOTICE.
+  email:contact@bosch.com: >-
+    The publisher's own published contact address, inside their own published
+    annual report. Nothing was extracted or joined; the file is carried whole.
+  real_company:bosch: >-
+    The publisher of the real annual report described above.
+  real_company:basf: >-
+    Named inside the Bosch annual report (peer/market commentary), not by us.
+  real_company:siemens: >-
+    Named inside the Bosch annual report, not by us.
+  real_company:volkswagen: >-
+    Named inside the Bosch annual report, not by us.

@@ -144,11 +144,15 @@ about prompt fragility, not a schema artifact.
 
 ## Dev environment
 
-- Python 3.13, venv at `/workspace/.venv` (system pip is externally-managed)
-- Repo root: `/workspace` — https://github.com/happychriss/before-we-ai
-  (`pyproject.toml` lives in `src/`)
-- Install: `source /workspace/.venv/bin/activate && pip install -e '.[dev]'` in
-  `/workspace/src`; run `python -m pytest -q` there — **the gate is that every
+- Python 3.11+ (3.13 in the dev image); the venv lives at `.venv` in the clone
+  (system pip is externally-managed). Paths in this document are relative to
+  the clone root — the owner's container happens to put it at `/workspace`,
+  nothing depends on that.
+- Upstream: https://github.com/happychriss/before-we-ai. `pyproject.toml` is at
+  the clone root (src-layout via `package-dir`).
+- Install: `scripts/bootstrap.sh` from the clone root does it all; by hand it is
+  `python3 -m venv .venv && source .venv/bin/activate && pip install -e '.[dev]'`;
+  run `python -m pytest -q` from the root — **the gate is that every
   test passes**, and CI runs it fully offline from recorded fixtures. Lanes
   for faster feedback between edits: `meta/project-setup.md`. No exact suite
   count is kept in this document; it went stale three times before anyone
@@ -1603,8 +1607,8 @@ presentable dataset needs one live recording session. **Open** — see
 
 ## Operations
 
-- **Install & test**: from `/workspace/src`, `source
-  /workspace/.venv/bin/activate && pip install -e '.[dev]'`; `python -m
+- **Install & test**: from the clone root, `scripts/bootstrap.sh` (or by hand:
+  `source .venv/bin/activate && pip install -e '.[dev]'`); then `python -m
   pytest -q` — fully offline, no API key. Never run pip against the system
   Python.
 - **DuckDB catalog gotcha**: views over ATTACHed databases die on a fresh

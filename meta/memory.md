@@ -35,8 +35,8 @@
   number. 0 inputs · 1 request · 2 measured · 3 proposed · 4 tested ·
   5 clarification · 6 readiness. Stage 0 is the precondition; 1 and 6 are the
   frame around the middle.
-- **The suite is green and fully offline** (`cd /workspace/src &&
-  source /workspace/.venv/bin/activate && python -m pytest -q`); lanes for
+- **The suite is green and fully offline** (from the clone root:
+  `source .venv/bin/activate && python -m pytest -q`); lanes for
   faster feedback in `meta/project-setup.md`. No count is written down
   anywhere, here included — it went stale three times and never once
   changed a decision.
@@ -57,12 +57,27 @@
   other pin above survived that change untouched, which is the blast radius
   the guide's shape was designed to have.
 - **Where to start reading after a compaction:** this file, then
-  `docs/architecture.md` for the M7 sections named above. The one thing
-  that is *not* written down anywhere else: the next piece of work is
-  **M7.4**, the end-user projection, and it is the piece M8 sits directly
-  on top of. Everything it was blocked on (staleness, revisions) is done.
+  **`meta/plan-publish-and-vessel.md`** — the active plan, which takes
+  precedence over the milestone order below. Feature work (M7.4 onward) is
+  paused behind it by owner decision: make the repository runnable by a
+  stranger, put both landscapes in one structure, then read the vessel
+  corpus. Reason: every number in this repository was measured inside one
+  synthetic landscape whose author also wrote the guide, the laws and the
+  answer key, so building further raises the cost of finding out the base
+  was wrong. After that plan, the next feature is still **M7.4**, the
+  end-user projection, and everything it was blocked on is done.
 
 ## Next
+
+**0. Publish-and-vessel plan — running now, ahead of everything below**
+(owner decision 2026-08-17). Four phases in `meta/plan-publish-and-vessel.md`:
+a repository a stranger can clone and run (Apache-2.0, `pyproject.toml` at the
+root, bootstrap script, Dockerfile + devcontainer, CI); one `corpora/` home
+holding both landscapes; history cleaned with every lesson moved to its home;
+then **Run A** — the vessel corpus ingested and profiled. Decided along the
+way: the answer keys are committed openly, because `generate_corpus.py`
+contains the trap table anyway — blindness is a reading rule for the
+implementer, not cryptography, and pre-registered predictions replace sealing.
 
 **Consolidated 2026-08-02 (owner decision): two milestones to the GUI, not
 one.** M7 prepares the engine for a consumer; M8 builds the end-user GUI on
@@ -270,6 +285,25 @@ Kept for the reasoning, not as a to-do list.
    claims without a check.
 
 ## Open decisions (owner)
+
+- **Does a real company's annual report belong in a public repository?**
+  Raised 2026-08-20 by `scripts/publication-scan.py`, the only genuine finding
+  in either landscape. `src/corpus/data/real/bosch-geschaeftsbericht-2025.pdf`
+  is a real published Bosch annual report, carried whole and read by four
+  acceptance tests; it is in the corpus because the spec makes a real public
+  PDF a Pflichtbestandteil — a generator only builds the traps its author
+  already thought of. Nothing about it is extracted, joined or presented as
+  ours, and `NOTICE` scopes the Apache-2.0 grant off it. The question is
+  redistribution, and it is legal rather than technical, so it is the owner's.
+  Three answers, any of which is fine:
+  1. **Keep it** (status quo). The `NOTICE` entry is the whole mitigation.
+  2. **Swap it** for a public report published under an open licence — same
+     test value, no question. Costs a re-record of the pinned chunk counts.
+  3. **Fetch it on demand** — a script downloads it, `.gitignore` it, the four
+     tests skip when absent. Keeps the repository clean; makes the suite weaker
+     for anyone offline, and CI would have to fetch.
+  Generated data is clean: no valid IBAN or VAT number anywhere in either
+  landscape, every fictional e-mail in a reserved documentation domain.
 
 - **`sql`/`result_ref` return with the spec's V4.** They were deleted from
   `AnswerRequest` on the stated grounds that "no milestone produces SQL".

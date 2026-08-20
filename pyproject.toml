@@ -11,7 +11,10 @@ dependencies = [
     "pydantic>=2.5",
     "pyyaml>=6.0",
     "python-ulid>=2.2",
-    "duckdb>=1.0",
+    # Pinned EXACT: the FTS extension is built per DuckDB version and is
+    # installed into ~/.duckdb/extensions/<version>/ — a bump silently
+    # invalidates the installed extension (scripts/bootstrap.sh).
+    "duckdb==1.5.4",
     # Pinned EXACT: text extraction is deterministic only per version, and
     # chunk bytes feed fixture hashes — a bump is a deliberate re-record event
     # (docs/architecture.md → "Documents & V3").
@@ -30,20 +33,17 @@ llm = [
 ]
 
 [tool.setuptools]
-packages = [
-    "before_we_ai",
-    "before_we_ai.core",
-    "before_we_ai.store",
-    "before_we_ai.sources",
-    "before_we_ai.profile",
-    "before_we_ai.checks",
-    "before_we_ai.domains",
-    "before_we_ai.documents",
-    "before_we_ai.engine",
-    "before_we_ai.llm",
-    "before_we_ai.readiness",
-    "readiness_report",
-]
+# src-layout: this file lives at the repository root, the code lives in src/.
+package-dir = {"" = "src"}
+
+# Discovered, not listed. A hand-maintained package list drifts from disk the
+# moment a subpackage is added, and the failure is silent until someone
+# installs from a fresh clone. The include filter is what keeps control:
+# nothing outside these two trees ships, and src/corpus + src/tests carry no
+# __init__.py, so they can never be picked up.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["before_we_ai*", "readiness_report*"]
 
 [tool.setuptools.package-data]
 "before_we_ai.checks" = ["templates/*.sql.j2"]
@@ -55,7 +55,7 @@ packages = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["src/tests"]
 # Lanes say what CLASS of thing a red test is about, so a failure points at
 # the layer that owns it. The full suite stays the release gate — these only
 # decide what is worth running between edits.

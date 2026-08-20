@@ -18,7 +18,7 @@ right it looks.
 **First, establish the baseline:**
 
 ```
-cd src && source ../.venv/bin/activate && python -m pytest -q
+source .venv/bin/activate && python -m pytest -q
 ```
 
 Write that number down. At the end it must be the same or higher — a package

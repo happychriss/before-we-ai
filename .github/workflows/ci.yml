@@ -1,0 +1,68 @@
+# Two questions, two jobs.
+#
+#   fresh-clone : does the README actually work on a machine that is not the
+#                 maintainer's? It runs the README's commands verbatim, with no
+#                 lock file and no container. If it goes red, the README lies.
+#   suite       : is the pinned environment green? Same image a visitor gets
+#                 from `docker compose`, exact versions from requirements.lock.
+#
+# Both are fully offline after dependency installation: no API key, no model
+# call. The suite replays recorded answers from fixtures.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fresh-clone:
+    name: fresh clone, python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The declared floor and the version the numbers were recorded on. A
+        # fixture hash that differs between them is a determinism hole, and
+        # this matrix is how we find out rather than assume.
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: bootstrap (the README's one command)
+        run: ./scripts/bootstrap.sh
+      - name: the gate
+        run: |
+          source .venv/bin/activate
+          python -m pytest -q
+      - name: resolved versions (for the record)
+        if: always()
+        run: |
+          source .venv/bin/activate
+          pip freeze --exclude-editable
+
+  suite:
+    name: pinned image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build the image
+        run: docker build -t before-we-ai:ci .
+      - name: the gate, inside the image
+        run: docker run --rm before-we-ai:ci python -m pytest -q
+
+  publication-scan:
+    name: publication scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: no real-world identities in a public corpus
+        run: |
+          pip install --quiet openpyxl pymupdf
+          python scripts/publication-scan.py

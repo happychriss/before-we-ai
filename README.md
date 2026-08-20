@@ -8,6 +8,40 @@ inference. The missing layer between fragmented data and powerful-but-unreliable
 is one that keeps track of *what is known, what is merely assumed, and what is
 unknown*. That layer is the product.
 
+## Run it
+
+Everything below is offline and needs no API key. Recorded model answers are
+replayed, so a fresh clone reproduces the same numbers the maintainer sees.
+
+```bash
+git clone https://github.com/happychriss/before-we-ai.git
+cd before-we-ai
+./scripts/bootstrap.sh          # venv, dependencies, DuckDB fts, verify
+source .venv/bin/activate
+python -m pytest -q             # the gate: everything must pass
+```
+
+Requirements: Python 3.11+ and network access *once* — for pip and for DuckDB's
+full-text-search extension. That extension is not optional and has no fallback
+on purpose: a substitute would select different document chunks, and the
+selected chunks are what the model gets asked about. `bootstrap.sh` installs it
+and tells you exactly what to do if it cannot reach the network. On a machine
+with no network at all, use the image instead — it bakes the extension in:
+
+```bash
+docker compose run --rm suite
+```
+
+Then take the guided tour. [`validation/README.md`](validation/README.md) drives
+the pipeline **one stage at a time** over a landscape with 32 seeded errors, and
+says what to look for after each one. It is the fastest way to see what this
+does that a chat window does not:
+
+```bash
+validation/scripts/0-inputs.sh          # ... through 6-readiness.sh
+open validation/data/report/index.html  # rebuilt by every stage
+```
+
 ## Core idea
 
 Most tools ask: how do we make the LLM more reliable? This project asks: **how do we

@@ -1,0 +1,35 @@
+# Exact environment for CI and the Docker image — the offline lane only.
+#
+# Why a lock next to a pyproject with ranges: pyproject.toml declares what the
+# library tolerates; this file declares what the recorded numbers were produced
+# with. Every version here is the one the green suite ran against, not the
+# newest that resolves today — a fresh resolve already drifts (python-ulid 3→4,
+# packaging, Pygments), and a measurement environment that moves on its own is
+# not a measurement environment.
+#
+# Deliberately absent: `anthropic`. It is the `llm` extra, online mode only;
+# CI, Docker and the offline stub never import the SDK. Install it separately
+# for a recording session (`pip install -e ".[llm]"`).
+#
+# Regenerate: create a clean venv, `pip install -e ".[dev]"`, then
+# `pip freeze --exclude-editable` minus setuptools/wheel — and re-run the full
+# suite before committing the result.
+
+annotated-types==0.7.0
+duckdb==1.5.4
+et_xmlfile==2.0.0
+iniconfig==2.3.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+openpyxl==3.1.5
+packaging==26.2
+pluggy==1.6.0
+pydantic==2.13.4
+pydantic_core==2.46.4
+Pygments==2.20.0
+pymupdf==1.28.0
+pytest==9.1.1
+python-ulid==3.1.0
+PyYAML==6.0.3
+typing-inspection==0.4.2
+typing_extensions==4.16.0

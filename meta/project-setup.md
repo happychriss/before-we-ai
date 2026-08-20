@@ -20,7 +20,7 @@ This is required when `claude install` warns that the install location is not in
 ## 0b. Running the tests — the lanes
 
 ```bash
-cd /workspace/src && source /workspace/.venv/bin/activate
+cd <clone root> && source .venv/bin/activate
 python -m pytest -q                    # the gate: everything must pass
 python -m pytest -m unit -q            # ~0.5s — pure logic
 python -m pytest -m "unit or integration" -q
@@ -31,7 +31,7 @@ python -m pytest -m acceptance -q      # the frozen corpus, ~12s
 **The full suite is the release gate and nothing replaces it.** The lanes
 exist so a red test says what *class* of thing broke, and so an edit to pure
 logic does not wait on the corpus. What each lane owns is registered in
-`src/pyproject.toml`; the rule of thumb:
+`pyproject.toml` at the clone root; the rule of thumb:
 
 | lane | owns | run it when you touched |
 |------|------|-------------------------|
@@ -64,7 +64,8 @@ Two things to know:
 /workspace/
 ├── CLAUDE.md        # bootstrap + one-fact-one-home rule (canonical folder definitions)
 ├── README.md        # human-facing product front page
-├── src/             # all code (pyproject.toml lives here; install/test from src/)
+├── pyproject.toml   # package + pytest config (install/test from the root)
+├── src/             # all code (Python package, corpus, tests)
 ├── docs/            # everything about the software:
 │   ├── architecture.md   #   confirmed design decisions & gotchas
 │   ├── corpus.md         #   frozen corpus facts

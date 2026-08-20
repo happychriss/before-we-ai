@@ -2,3 +2,9 @@
 .vscode/
 __pycache__/
 validation/data/
+
+# Build artefacts of `pip install -e .` from the clone root
+build/
+dist/
+*.egg-info/
+.pytest_cache/
