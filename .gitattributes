@@ -1,2 +1,13 @@
-src/corpus/data/** -text
-src/raw-training-data/** -text
+# Frozen landscape bytes: git must never rewrite line endings on checkout.
+#
+# Found 2026-08-20, by cloning this repository into a clean directory and
+# running the suite there. The paths in this file still said
+# `src/corpus/data/**` after the landscapes moved to `corpora/`, so
+# `buchungen_report.csv` — a Latin-1 CSV, deliberately — came out of a fresh
+# clone with different bytes from the ones every recorded number was scored
+# against. Nothing in the maintainer's working tree could show that; only a
+# fresh checkout can.
+#
+# Wildcard on purpose: a new landscape is covered the day it is added, with no
+# line to remember to extend.
+corpora/** -text
