@@ -23,6 +23,51 @@ policy, F23/F24/F26 anchors). Those are the document pipeline's job, not a
 prompt-tuning problem; a bar over relationship-style traps only is worth
 considering.
 
+## What the number does not measure
+
+Measured 2026-08-20 against `tests/eval/seeded_recall.py`, and pinned by
+`src/tests/unit/test_seeded_recall_scorer.py` so the finding cannot quietly
+disappear. Nothing below is a prediction; all of it is reproducible offline in
+under a second.
+
+**The scorer never reads what a claim asserts.** `matches()` is a lowercased
+substring test over the claim's statement, its predicate params, and its
+binding. Fabricate one claim per trap whose statement is plainly false —
+*"Nothing whatsoever is true about de_erp__orders and de_erp__invoices."* — and
+the scorer awards **25/25**. A claim and its exact negation score identically,
+because the tokens are the same in both.
+
+So the headline figure is *"how often did some claim mention the right
+columns"*, not *"how often did the pipeline find the seeded relationship"*.
+14/25 is still evidence — the claims it scored are real claims from a real run,
+and False-Promotion 0 and the leakage scan are unaffected — but it is weaker
+evidence than the number looks, and it is not the number a reader assumes.
+
+**It is keyed to this corpus's vocabulary.** 21 of the 25 in-scope matchers
+fire only on a token naming a table or column that exists here
+(`de_erp__orders`, `fx_rates`, `crm_activities`). Of the remaining four, three
+accept a generic word *or* one of this corpus's account numbers (4000, 4300,
+4800, 90001); exactly one, F22, is domain-generic. Point the pipeline at
+`corpora/vessel/` and the figure falls because the words changed, not because
+the machine got worse. **A second landscape needs behaviour-class scoring
+before its recall figure means anything** — that work is scoped, not started.
+
+**The blind traps are in no automated measurement at all.** `BLIND_1/2/3` carry
+an empty matcher and `scope="blind"`, so the report has always printed *"out of
+scope"* for them. The three traps held back specifically to catch what the
+implementer did not anticipate are scored by nobody.
+
+**What a rewrite has to do**, when it happens: score the *verdict* rather than
+the sentence; match on structured predicate and params resolved through the
+source catalog rather than on substrings; ship a negative-control fixture that
+must score **0**; and make the blind traps count.
+
+**The lesson, which is bigger than this file.** The project's own rule — *test
+a heuristic by mutation* — was applied to the checks, the domain laws and the
+document pipeline, and never to the thing that produces the headline number.
+A metric needs a negative control the same way a domain law needs a violated
+fixture. Now a standing rule in `meta/conventions.md`.
+
 **Watch at the next re-record.** The mapping batch has been answering
 `template=null` for roughly 19 of 22 role bindings. Every such answer is
 honest — nothing is promoted falsely — but a more hesitant binder means more

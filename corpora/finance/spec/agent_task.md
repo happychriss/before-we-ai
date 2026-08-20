@@ -1,5 +1,13 @@
 # M0 Corpus Generator — Task for External Agent
 
+> **Archived brief, 2026-07.** This is what the corpus generator was
+> commissioned to build, kept because the grading harness is written against it
+> and because a spot-check must read the brief rather than the generator's code.
+> **The paths below are historical.** `raw-training-data/` is now
+> `corpora/finance/generator/`, its output archive is
+> `corpora/finance/generator/output-seed-0/`, and the curated corpus is
+> `corpora/finance/data/`. Current layout: `corpora/README.md`.
+
 ## Context
 
 You are building the **M0 milestone** for `before-we-ai`: a frozen, seeded fixture corpus for the finance domain with 29 intentional traps (F1–F29, grouped into 7 trap classes K1–K7) that a downstream tool must handle correctly.

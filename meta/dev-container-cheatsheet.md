@@ -1,5 +1,10 @@
 # Dev Container Cheat Sheet
 
+**This file describes the owner's own machine on purpose**, so it names real
+absolute paths — `/workspace` is where the clone happens to sit here, and
+nothing in the project depends on that. Every other document uses clone-relative
+paths. A visitor wants `README.md` → *Run it*, or `.devcontainer/`.
+
 Quick reference for working inside this container. For bad memory. No apologies.
 Remember this is a dev container running inside a docker container.
 

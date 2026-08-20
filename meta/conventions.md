@@ -8,6 +8,15 @@ description: Standing project conventions for before-we-ai — architectural bou
 Standing rules for this project. Confirmed facts live in `docs/`; this file is
 about how to work.
 
+**Sequence by what would falsify the product fastest, not by what the
+dependency graph allows next.** A roadmap ordered purely by dependency builds
+the cheapest-to-build thing next, which is rarely the thing most likely to be
+wrong. Every milestone built on an unvalidated base raises the cost of finding
+out the base was wrong. The concrete case: reading a second, independent
+landscape was cheaper than any remaining feature and was the only thing that
+could show whether a good score on the first one was familiarity — so it went
+first, and feature work paused for it.
+
 ## Architectural boundaries (hard)
 
 - **Corpus is test infrastructure, product stays domain-agnostic.** `corpora/`
@@ -66,6 +75,34 @@ same trust, moved somewhere nobody reviews it.
 turns red. If a safety property depends on it, it is not a heuristic — it
 is a law sitting in the wrong place. Anything tuned against the corpus
 must survive this before it ships.
+
+**A metric is a heuristic too — it needs a negative control.** The rule
+above was applied to the checks, the domain laws and the document pipeline,
+and never to the thing that produces the headline number. Measured
+2026-08-20: fabricate one claim per trap whose statement is plainly false,
+carrying the right column names, and Seeded-Recall scores 25/25 — the
+matcher greps tokens and never reads what a claim asserts (full finding:
+`docs/seeded-recall.md` → *What the number does not measure*). So: **no
+measurement ships without a case that must score zero**, the same way no
+domain law ships without a violated fixture. Build the input the metric
+should reject, and check that it rejects it.
+
+**Assert the view model, not the HTML.** Report tests should read the
+projection. Keep a small presentation suite for the things only rendering can
+break — every section renders, links target anchors that exist, escaping is
+correct, the file is self-contained, verdict wording is shown, browser controls
+carry their data attributes — and stop there. Asserting incidental phrases and
+HTML fragments from full project setups binds a test to a sentence rather than
+to a behaviour.
+
+**Generate derivative documentation; never maintain a copy by hand.** The stage
+spine is canonical data (`before_we_ai/stages.py`), so documentation tables and
+validation indexes should be rendered from it rather than synchronised and then
+tested for agreement. The same goes for numbers: a durable document states the
+command and the gate — *run the complete offline suite; all tests must pass* —
+and never an exact test count. A count in prose needs a documentation commit
+every time a test is added, and it went stale three times here before anyone
+noticed.
 
 ## What an assertion has to be about
 

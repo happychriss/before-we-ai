@@ -349,3 +349,45 @@ an unwaived finding exits non-zero. A file no reader can open is itself a
 finding (`unreadable`), because a file nobody could check is not a file that
 passed. The scan runs as its own CI job, so it stays a gate rather than a
 thing that was done once.
+
+**D8 — `corpora/` is importable, and `conftest.py` at the root is why.** The
+resolver needs to be reachable from the corpus tests, the walkthrough support
+code and the two eval scripts. A root `conftest.py` puts the clone root on
+`sys.path`, which is also what makes `import corpora` work for anything pytest
+drives. `corpora` was added to `test_layering.py`'s FORBIDDEN list in the same
+change: it is the one module that can resolve a path to an answer key, so the
+product must not be able to reach it.
+
+**D9 — `spec/` is its own directory, not part of `generator/`.** The plan put
+`corpus/generator_spec` inside `finance/generator/`. Splitting them is better:
+`generator/` is the do-not-read area (the finance generator holds the blind
+traps' definitions, the same way the vessel one holds its trap table), while
+`spec/` — sources manifest, trap classes K1–K8, the Z1–Z4 target questions,
+role definitions — is documentation anyone may read and the grading harness
+does read. Folding a readable spec into a sealed directory would have made the
+reading rule unusable.
+
+**D10 — `answer-key/` holds only what spoils a blind read.** The plan also put
+trap classes there. They are generic epistemic failure patterns, not answers,
+so they stayed in `spec/`. `answer-key/` is exactly `expected_verdicts.yaml`
+(finance) and `TRAPS_AND_ANSWER_KEY.md` (vessel) — one rule, no judgement calls
+at the moment someone is about to open a file.
+
+**D11 — the vessel domain guide is now committed.**
+`corpora/vessel/guide/simulated-domain-guide.yaml` arrived untracked, in
+`corpus-vessel/source-documents/`. It is committed because the plan's Phase 2
+layout names it, and because the vessel landscape cannot be read at all without
+a guide — Run A and Run B both need it. **Flagged, because it may have come out
+of the guide-builder experiment**, which is the other workstream: if it was
+meant to stay private, `git rm --cached corpora/vessel/guide/simulated-domain-guide.yaml`
+is the whole undo, and nothing else in this plan depends on it being tracked.
+
+**D12 — `git add <directory>` stages untracked files inside it.** Staging
+`src/tests` and `docs` for the Phase 2 commit picked up
+`test_guide_builder*.py` and the three untracked drafts. Caught before the
+commit and unstaged; the commit contains neither. The standing rule "never
+`git add -A`" is not enough on its own — a directory argument has the same
+effect within its subtree. **From here: explicit file paths only, and
+`git diff --cached --name-only | grep -iE "guide_builder|draft-thoughts"` before
+every commit.** This belongs in `meta/conventions.md` as a rule, done in
+Phase 3.

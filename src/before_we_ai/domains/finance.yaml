@@ -5,7 +5,7 @@
 # no hints. The definitions are passed into LLM prompts; anything
 # corpus-specific here would teach to the test and invalidate
 # Seeded-Recall. The corpus generator's own roles.yaml
-# (src/corpus/generator_spec/) is NOT usable at runtime for exactly that
+# (corpora/finance/spec/) is NOT usable at runtime for exactly that
 # reason.
 #
 # Business objects carry fields. An object is what a domain law judges; a

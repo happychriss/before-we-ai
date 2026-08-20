@@ -117,8 +117,19 @@ claim vocabulary.
      request's identity (so waivers and links survive an edited typo) and
      `Review.lapsed_by` distinguishes "guide" from "question", because the
      reader needs to know whether a shared vocabulary moved or they did.
-   - **End-user projection + reference resolver**: a second projection over
-     the same store, no-claims vocabulary; ULID → user-space location
+   - **End-user projection + reference resolver** — **one build or two? open,
+     and it has to be answered before 7.4 starts.** This file used to say both
+     things in two places: "a second projection over the same store" here, and
+     "HTML report and GUI become two renderings of one projection" under M8.
+     Those are different programmes.
+     *(a) A second projection beside `projection.py`* — the end-user view is
+     its own module, the existing report keeps its own; simplest to start, and
+     it means two things to keep in step forever.
+     *(b) One view model, two renderings* — `projection.py` (~3900 lines)
+     first grows a claims-free view model that both the HTML report and the
+     end-user view render; more work before anything is visible, one home
+     afterwards. **The owner decides.** Until then, 7.4 is described as: a
+     no-claims vocabulary over the same store; ULID → user-space location
      (PDF: source/page/quote — already on every anchor; tables:
      source/sheet/column — encoded in every binding). Cell-level provenance
      through the Excel normalization is explicitly OUT (UI phase, if ever).
@@ -230,61 +241,54 @@ not before.
 Design consequences that hold *now*, without building it:
 
 - The GUI is a **loop** (ask → run → see questions → answer → re-run), not
-  the walkthrough's linear batch. That is why recommendation A stays
-  deferred: an application layer shaped today would be shaped like the
-  walkthrough and thrown away.
+  the walkthrough's linear batch. **That is why a single application-workflow
+  interface stays deferred** — one typed `Pipeline` facade over the stages,
+  the natural next structural move, would today be shaped like the
+  walkthrough's linear batch and thrown away when the loop arrives. Revisit
+  when M8 makes the loop real, not before.
 - Its work-queue primitive half-exists (`gap_load` ranks unproven claims by
   the questions resting on them).
 - Its core interaction is the answer operation M5 builds (Next, item 3).
-- What it consumes is the report **view model** the refactor extracts —
-  HTML report and GUI become two renderings of one projection.
+- What it consumes is the report **view model** — but whether that view model
+  is extracted at all is exactly the open 7.4 decision above, not a settled
+  one. If option (a) is taken, the GUI renders the end-user projection and the
+  HTML report keeps its own.
 - "Answered — what must now rerun / what is now stale?" is M7, and the GUI
   turns M7 from nice-to-have into required.
 
-### M5 kickoff batch — ALL FIVE DONE 2026-08-02
+### Two rules the M5 batch left behind
 
-Kept for the reasoning, not as a to-do list.
+The batch itself is finished and its story is in the git log. These two
+outlived it:
 
-1. `discover(root)` sources discovery + bundled domain guides — **done.**
-   Merge never overwrites; `domain_guide_file: finance` resolves to the
-   shipped pack.
-2. Show the domain tag in the V2 template docs — **done.**
-3. Mapping claims binding to *generic* templates — **done**, with the
-   refutation-only rule (owner decision): a generic check over a role
-   refutes but never establishes, via `establishes: False` on the
-   evidence payload. All three `account` candidates pass an anti_join
-   and none of them promotes.
-4. **Derive `Hypothesis.kind` from the predicate instead of asking for it.**
-   It is a pure function of the predicate (`concept` iff
-   `concept_definition`), yet the model must supply it — and when it omits
-   it, the `"rule"` default contradicts the predicate *and* triggers a
-   second, bogus error ("grounded in no known view or column", which fires
-   only for rules). All 3 V1 skips in the walkthrough are this one bug, and
-   the retry cannot fix it. Also fall back `definition` → `statement` when
-   the model gives only `term`. Schema change ⇒ prompt bytes. The gain is
-   admitting the concept class at all, not a recall number: it would not have
-   flipped F21, whose matcher also needs a revenue link the claim never
-   states.
-5. **Normalize `view.column` given for a view param — DECIDED 2026-08-02,
-   and done: normalize, but record the correction.** The owner took the
-   third option rather than either simple one. The check runs (so a
-   binding the model shaped wrongly is no longer lost), *and* every
-   corrected param is written to the store as a `param_normalized`
-   declaration and rendered at the claim: "the model gave X where a bare
-   name belongs; it was read as Y". Leniency without a trace is the
-   too-loose-law failure — a misunderstood binding runs, passes, promotes,
-   and nothing says we changed it.
-
-   **The number that came out of it is the interesting part: 25
-   corrections on this corpus, not one.** Column normalization had been
-   happening *silently since M4*; only the view-param case was ever
-   visible, and only as a failure. The decision did not add leniency so
-   much as reveal how much was already there.
-
-   Effect on the pins: 42 → 43 check plans, 7 → 6 V2 skips, 32 → 31
-   claims without a check.
+- **Derive what is a pure function of something already held, rather than
+  asking the model for it.** `Hypothesis.kind` is `concept` exactly when a
+  `concept_definition` is present, yet the model was asked to supply it —
+  and every omission produced a wrong default *plus* a second, bogus error
+  that pointed at the wrong thing. An asked-for field that could have been
+  computed is a field that can disagree with itself.
+- **Leniency without a trace is the too-loose-law failure.** Normalizing a
+  malformed binding so the check can run is right; doing it silently is not.
+  A misunderstood binding then runs, passes, promotes, and nothing says we
+  changed it. So: normalize *and* record the correction as a
+  `param_normalized` declaration, rendered at the claim. When this was first
+  made visible it turned out to be happening 25 times on this corpus, and had
+  been since M4 — the decision revealed existing leniency more than it added
+  any.
 
 ## Open decisions (owner)
+
+- **Two workstreams share one working tree, held apart by discipline.**
+  `src/before_we_ai/guide_builder/` and its tests sit untracked beside this
+  one, and the only thing keeping them out of a commit is everyone
+  remembering. The specific landmine is defused — `pyproject.toml` now
+  discovers packages instead of listing them, so a package half on disk can no
+  longer break a fresh install — but the general one is not. Staging a
+  *directory* stages untracked files inside it, which nearly put the other
+  workstream into a commit on 2026-08-20. The structural fix (a branch, a git
+  worktree, or a second clone) costs less than the rule does, and it is an
+  ownership decision because it affects both workstreams.
+
 
 - **Does a real company's annual report belong in a public repository?**
   Raised 2026-08-20 by `scripts/publication-scan.py`, the only genuine finding
@@ -344,20 +348,18 @@ Kept for the reasoning, not as a to-do list.
   intended as the first user experience, which is why it rides **M8**. It
   needs its own recorded V1 / role / V2 answers, so it belongs to whichever
   recording session M8 does anyway.
-- **`scripts/` at repo root** holds exactly one tool so far:
-  `with-api-key.sh`, the only way the Anthropic key reaches a process. The
-  rest that `CLAUDE.md` reserves — start the process, readiness report,
-  cleanup of stale processes — rides **M8** with packaging. A tool appears
-  when something needs it, never as an empty reserved slot.
+- **`scripts/` at repo root** now holds `with-api-key.sh` (the only way the
+  Anthropic key reaches a process), `bootstrap.sh` (clone to green) and
+  `publication-scan.py`. The rest that `CLAUDE.md` reserves — start the
+  process, readiness report, cleanup of stale processes — rides **M8** with
+  packaging. A tool appears when something needs it, never as an empty
+  reserved slot.
 
-  The one candidate was deleted with the branch `copilot/create-scripts-folder`
-  (commit `4d59382`, recoverable by that SHA): 71 lines copying generator
-  output into the corpus, with default paths from before the `src/`
-  reorganisation (`/workspace/raw-training-data`, `<root>/corpus/data` — both
-  now wrong). And the operation itself is a *re-baselining* of a deliberately
-  frozen corpus, which invalidates every pinned number and every fixture. It
-  must be rare and deliberate; rewriting it correctly then costs ten minutes,
-  merging it stale costs a file that rots further.
+  **Re-baselining the frozen corpus is rare and deliberate, never a
+  convenience script.** Copying generator output over `corpora/finance/data/`
+  invalidates every pinned number and every recorded fixture at once. A script
+  that makes it a one-liner is a script that makes it an accident; the freeze
+  is now enforced by sha256 in the manifest (`corpora/README.md`).
 
 ## Standing constraints
 

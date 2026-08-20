@@ -2,9 +2,9 @@
 """Export the catalog as a self-contained DuckDB file for external tools.
 
 ``cache/analysis.duckdb`` holds only VIEWS: over ATTACHed ERP databases and
-over CSV/Parquet files, all referenced by *container* absolute paths
-(/workspace/...). A tool on the host (DataGrip) opens the file but cannot
-resolve those paths — "No files found that match the pattern ...".
+over CSV/Parquet files, all referenced by absolute paths on the machine that
+wrote them. A tool elsewhere (DataGrip on the host, say) opens the file but
+cannot resolve those paths — "No files found that match the pattern ...".
 
 This writes every view out as a real TABLE into one new database with no
 external references, so any DuckDB client can browse it anywhere.

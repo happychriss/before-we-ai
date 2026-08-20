@@ -129,9 +129,80 @@ didn't anticipate.
 
 Standing measures: **False-Promotion 0** (structural, non-negotiable),
 Seeded-Recall **14–15/25**, prompt-leakage scan clean. The misses cluster in
-rules that live only in documents — the document pipeline's job. Method and
-current numbers: `docs/seeded-recall.md`. Owner-facing validation walkthrough:
-`validation/README.md`.
+rules that live only in documents — the document pipeline's job.
+
+**Read the recall number with its caveat.** The scorer matches tokens, not
+meaning: fabricated claims carrying the right column names score full marks,
+and 21 of 25 matchers are keyed to this corpus's own table names. The figure
+is closer to *"did some claim mention the right columns"* than to *"did the
+pipeline find the seeded relationship"*, and it will not transfer to a second
+landscape as it stands. False-Promotion and the leakage scan are unaffected.
+Full measurement and what a rewrite has to do: `docs/seeded-recall.md`.
+Owner-facing validation walkthrough: `validation/README.md`.
+
+## What this can be held to — and what it cannot
+
+A product whose argument is *we say what we do not know* has to say what it
+does not know about itself. This list is maintained, not decorative: every line
+in the first half is checkable against this repository, and a line moves to the
+first half only when something in the repository makes it checkable.
+
+### Defensible today
+
+- The AI structurally **cannot promote a claim**; only a deterministic check or
+  a named human can change a status. False-Promotion measured **0**.
+- Every check result keeps the rendered SQL, the population, the exception
+  count, sample offending rows, and the data fingerprints it ran against.
+- Every document anchor keeps the source, the page and the verbatim quote, and
+  the quote is validated against the passage at write time — an invented
+  sentence cannot enter the store.
+- Every human confirmation carries an author, a scope and a date. A
+  confirmation without a scope is refused.
+- The dependency list is **derived on every read** from a reviewed answer type
+  plus recorded human acts, never stored — so it cannot describe a guide that
+  has since changed.
+- A verdict that blocks or limits **names the dependency**, and every satisfied
+  item says *how* it is satisfied.
+- A confirmation **lapses** when the guide or the question changes, and the
+  verdict says which of the two moved.
+- When the data moves under a conclusion, readings taken against the old data
+  **stop counting**, and the report says which table moved.
+- The whole pipeline **replays offline** from recorded model answers, with a
+  drift guard over both the built input and the system prompt.
+- A stranger can clone this and reproduce all of the above. CI runs the
+  README's own commands on a clean machine, so if that stops being true the
+  build goes red.
+
+### Not defensible yet
+
+- **"The ground rules are themselves tested."** The three finance domain laws
+  have no holds-fixture and no violated-fixture, and no role has a deliberately
+  wrong candidate that must lose. This is the single sentence the project most
+  wants to say and cannot.
+- **"Any recall number."** Seeded-Recall is 14–15/25 with ±2–3 run-to-run
+  noise, no agreed bar, and — measured 2026-08-20 — a scorer that matches
+  tokens rather than meaning. It reports; it never gates; it is not a figure to
+  quote. See `docs/seeded-recall.md`.
+- **"It has been proven on real data."** Every number comes from one frozen
+  synthetic finance landscape built by the same people who built the tool. A
+  second, independent landscape now ships (`corpora/vessel/`) precisely because
+  that is a fair test of the mechanism and no test of the world — but it has
+  not been read yet.
+- **"The software reads your policies and proposes your rules."** That is the
+  guide builder: an experimental slice in a separate workstream, not
+  integrated.
+- **"There is a UI."** M8. Today's surface is the readiness report and the
+  owner walkthrough.
+- **"It computes the answer."** M9. The product gates answers; it does not
+  produce them.
+- **"It works on your semantic layer."** No import seam from LookML, dbt or
+  Datasphere exists.
+
+The standing trap, written down so it stays visible: *"the data is consistent
+with the ground rules, therefore the interpretation is right"* is affirming the
+consequent. Data can refute an interpretation. It can never confirm one. Any
+sentence that drifts back toward the friendlier version is wrong, however well
+it reads.
 
 ## Roadmap & status
 

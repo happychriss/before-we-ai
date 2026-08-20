@@ -562,8 +562,8 @@ lapsed, and nothing in `data/project/` changed — the list was never stored.
 That file holds only **views**: over ATTACHed ERP databases and over
 CSV/Parquet, all referenced by *container-absolute* paths
 (`read_csv('<clone>/corpora/finance/data/buchungen_report.csv')`). A DuckDB
-client on the host opens the file but cannot resolve `/workspace/...` and
-fails with `No files found that match the pattern ...`; views over ATTACHed
+client outside the machine that wrote it cannot resolve those absolute paths
+and fails with `No files found that match the pattern ...`; views over ATTACHed
 databases additionally don't survive a fresh connection at all.
 
 So run `db-export.sh` and open `export.duckdb` — 48 real tables, no external

@@ -1,5 +1,13 @@
 # Generator Contract — Interface and acceptance criteria for the external seeded generator
 
+> **Archived brief, 2026-07.** This is what the corpus generator was
+> commissioned to build, kept because the grading harness is written against it
+> and because a spot-check must read the brief rather than the generator's code.
+> **The paths below are historical.** `raw-training-data/` is now
+> `corpora/finance/generator/`, its output archive is
+> `corpora/finance/generator/output-seed-0/`, and the curated corpus is
+> `corpora/finance/data/`. Current layout: `corpora/README.md`.
+
 ## Overview
 
 This document specifies the contract between the generator (built externally by the user)
