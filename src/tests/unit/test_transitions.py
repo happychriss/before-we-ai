@@ -250,6 +250,30 @@ class TestAGenericCheckCanBreakARoleButNotMakeOne:
             self._result(CheckVerdict.FAIL, establishes=False),
         ) is ClaimStatus.CONTRADICTED
 
+    def test_a_fail_that_does_not_refute_leaves_it_proposed(self):
+        """Revised 2026-10-03 after Run B: the runner now marks a generic
+        check over a role binding as carrying no weight in *either*
+        direction. On the vessel landscape "FAIL is decisive" struck out
+        15 plainly correct candidates on rounding and single dirty rows.
+        The flag is separate from `establishes`, so a record written
+        before it existed keeps the meaning the tests above pin."""
+        payload = {"template": "anti_join", "establishes": False,
+                   "refutes": False}
+        record = EvidenceRecord(
+            type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK,
+            verdict=CheckVerdict.FAIL, payload=payload)
+        assert self._status(record) is ClaimStatus.PROPOSED
+
+    def test_a_weightless_fail_cannot_unsettle_a_confirmation(self):
+        fail = EvidenceRecord(
+            type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK,
+            verdict=CheckVerdict.FAIL,
+            payload={"template": "anti_join", "refutes": False})
+        law = EvidenceRecord(
+            type=EvidenceType.CHECK_RESULT, actor=Actor.CHECK,
+            verdict=CheckVerdict.PASS, payload={"template": "balance"})
+        assert self._status(fail, law) is ClaimStatus.TEST_SUPPORTED
+
     def test_a_domain_law_pass_still_settles_a_role(self):
         """The case the guide exists for: balancing to zero per document
         *is* what being a journal means."""

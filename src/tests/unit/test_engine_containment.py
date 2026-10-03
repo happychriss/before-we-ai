@@ -42,6 +42,11 @@ def test_execution_error_is_contained_and_the_sweep_continues(tmp_path):
     check_plan_id, reason = report.skipped[0]
     assert check_plan_id == broken.id
     assert reason.startswith("execution error")
-    # no evidence, no judgment: the claim is untouched
-    assert store.claims[claim.id].status is ClaimStatus.PROPOSED
-    assert store.claims[claim.id].evidence_ids == []
+    # No judgment — but, since Run B, no silence either: the claim carries
+    # an inconclusive record saying a test was attempted and why it could
+    # not run. Its status does not move.
+    reloaded = ProjectStore(store.root)
+    [trace] = reloaded.evidence_for(reloaded.claims[claim.id])
+    assert trace.payload["could_not_run"] is True
+    assert trace.verdict.value == "inconclusive"
+    assert reloaded.claims[claim.id].status.value == "proposed"

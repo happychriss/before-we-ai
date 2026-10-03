@@ -170,6 +170,37 @@ def establishing(record: EvidenceRecord) -> bool:
     return bool(record.payload.get("establishes", True))
 
 
+def refuting(record: EvidenceRecord) -> bool:
+    """Whether a FAIL of this check may contradict the claim it ran against.
+
+    The other half of `establishing`, and it was missing until a second
+    landscape showed why (Run B, 2026-10-03). The first rule said a generic
+    check may break a role binding but never make one: "values with no
+    matching account are decisive: whatever that column is, it is not the
+    account." On the corpus the tool grew up on, that was never put to the
+    test — every role there is refuted by a domain law.
+
+    On the vessel landscape it refuted 15 role candidates that are plainly
+    the right column: the labour table, because `hours x rate` differs from
+    the stored cost by rounding to whole euros; the local amount, because
+    one row in 138 has an FX error; a build reference, because one value in
+    five is unassigned. Each check found something true about the *data*
+    and the status recorded it as a verdict on the *binding*. A dirty row
+    says the data needs care. It does not say the column is not what it is.
+
+    So a generic check over a role binding now carries no weight in either
+    direction. Its result is still evidence, still shown beside the
+    candidate, still drafted as a question — and the role is settled by a
+    domain law or by a person, which is where a question of meaning
+    belonged all along. The model picks the check; without this the model
+    could not promote a binding but could strike one out.
+
+    Absent, the flag defaults true: an ordinary claim asserts exactly what
+    its check tests, and a failed check refutes it.
+    """
+    return bool(record.payload.get("refutes", True))
+
+
 def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
     """Derive the claim's status from its non-stale evidence.
 
@@ -186,6 +217,7 @@ def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
     )
     check_fail = any(
         e.type is EvidenceType.CHECK_RESULT and e.verdict is CheckVerdict.FAIL
+        and refuting(e)
         for e in live
     )
     testimonial = any(e.type is EvidenceType.TESTIMONIAL for e in live)

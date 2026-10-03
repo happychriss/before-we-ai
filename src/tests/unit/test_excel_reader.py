@@ -77,3 +77,35 @@ def test_parquet_round_trip_is_all_text(tmp_path):
     assert set(types.values()) == {"VARCHAR"}
     rows = con.execute(f"SELECT * FROM '{out}' ORDER BY kunde_nr").fetchall()
     assert rows == [("1042", "Köln", "1234.56"), ("7", "Bonn", "99")]
+
+
+def test_a_formula_with_no_stored_value_is_declared_not_read_as_empty(tmp_path):
+    """A workbook written by a script carries formulas and no cached values.
+
+    The cell reads as None, the column profiles as empty, and "empty" is a
+    statement about the business that happens to be false. Found on the
+    vessel landscape; in Run B it turned a reconciliation nobody could test
+    into a contradiction. The reader cannot evaluate the formula — so it
+    says that, per column, with the formula it could not evaluate.
+    """
+    import openpyxl
+
+    from before_we_ai.sources.excel import RULE_FORMULA_UNEVALUATED
+
+    path = tmp_path / "pivot.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Pivot"
+    ws.append(["project", "total", "note"])
+    ws.append(["A", "=SUM(Ledger!B:B)", "plain text"])
+    ws.append(["B", "=SUM(Ledger!C:C)", None])
+    wb.save(path)
+
+    [sheet] = read_workbook(path)
+    declared = [d for d in sheet.decisions
+                if d["rule"] == RULE_FORMULA_UNEVALUATED]
+    assert [d["column"] for d in declared] == ["total"]
+    assert declared[0]["example"]["before"] == "=SUM(Ledger!B:B)"
+    assert declared[0]["example"]["after"].startswith("2 formula cell(s)")
+    # the values still arrive as missing — nothing is invented in their place
+    assert [row[1] for row in sheet.rows] == [None, None]

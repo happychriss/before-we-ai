@@ -80,11 +80,15 @@ def _tested(con, ctx: dict) -> list[dict]:
     population query already is the answer.
     """
     out = []
-    for view, where in ctx.get("tested", ()):
+    for view, where, measure in ctx.get("tested", ()):
         total = con.execute(f'SELECT count(*) FROM "{view}"').fetchone()[0]
-        rows = total if not where else con.execute(
-            f'SELECT count(*) FROM "{view}" WHERE {where}').fetchone()[0]
-        out.append({"view": view, "filter": where, "rows": rows, "of": total})
+        conditions = [f"({c})" for c in (
+            where, f"({measure}) IS NOT NULL" if measure else None) if c]
+        rows = total if not conditions else con.execute(
+            f'SELECT count(*) FROM "{view}" WHERE {" AND ".join(conditions)}'
+        ).fetchone()[0]
+        out.append({"view": view, "filter": where, "rows": rows, "of": total,
+                    **({"measure": measure} if measure else {})})
     return out
 
 
@@ -101,6 +105,12 @@ def _nothing_tested(population: int, tested: list[dict]) -> str:
         if side["rows"] == 0 and side["filter"]:
             return (f"nothing was tested: the filter {side['filter']!r} "
                     f"leaves none of the {side['of']} rows of {side['view']}")
+        if side["rows"] == 0 and side["of"]:
+            # e.g. a spreadsheet column of formulas with no cached value:
+            # the rows are there and the number is not. Comparing nothing
+            # to something is not a disagreement.
+            return (f"nothing was tested: {side.get('measure', 'the measure')} "
+                    f"is empty in every row of {side['view']}")
         if side["rows"] == 0:
             return f"nothing was tested: {side['view']} has no rows"
     if not population:
@@ -130,8 +140,17 @@ def run_check(
     assessment = spec.verdict(rows, columns, ctx)
     tested = _tested(con, ctx)
     nothing = _nothing_tested(population, tested)
-    if nothing and assessment.verdict is CheckVerdict.PASS:
+    if nothing:
+        # In both directions: no rows cannot pass, and an empty measure
+        # cannot fail — "0 against 1,234,567" is not a disagreement when
+        # the 0 is a number nobody could read.
         assessment = Assessment(CheckVerdict.INCONCLUSIVE, [], nothing)
+    filtered = [t for t in tested if t["filter"]]
+    limits = [
+        f"holds only where {t['filter']} — tested on {t['rows']} of "
+        f"{t['of']} rows of {t['view']}" for t in filtered
+    ] if assessment.verdict is CheckVerdict.PASS else []
+    weightless = not _establishes(store, check, spec)
 
     record_id = new_id()
     result_ref = None
@@ -168,8 +187,10 @@ def run_check(
             # one — see `core.transitions.establishing`. Written here
             # because this is the one place holding both halves: the check
             # definition and the claim it ran against.
-            **({} if _establishes(store, check, spec)
-               else {"establishes": False}),
+            **({"establishes": False} if weightless else {}),
+            # ... and, since Run B, may not break one either — see
+            # `core.transitions.refuting`.
+            **({"refutes": False} if weightless else {}),
         },
         source_fingerprints={view: table_fingerprint(con, view) for view in ctx["views"]},
     )
@@ -179,9 +200,53 @@ def run_check(
     if check.claim_id:
         claim = store.claims[check.claim_id]
         claim = attach_evidence(claim, record, store.evidence_for(claim))
+        # A pass on some of the rows is a pass on some of the rows. Whoever
+        # bound the check wrote the filter, and the claim's text does not
+        # carry it — so the test got narrower and the claim did not (Run B:
+        # "reconciles per project", tested on delivered vessels only, false
+        # for the other two). The claim now says so itself: the filter is
+        # written onto it as an open assumption, next to the status it
+        # earned. A FAIL under a filter needs no such note — one
+        # counterexample is enough for "every".
+        new = [limit for limit in limits if limit not in claim.open_assumptions]
+        if new:
+            claim = claim.model_copy(
+                update={"open_assumptions": [*claim.open_assumptions, *new]})
         store.save_claim(claim)
 
     _draft_question(store, spec, ctx, check, record)
+    return record
+
+
+def record_failure(store: ProjectStore, check: CheckPlan,
+                   exc: Exception) -> EvidenceRecord:
+    """A check that could not run still says so on the claim.
+
+    Until Run B a check that raised was listed in the sweep's report and
+    nowhere else: the claim stayed `proposed` with no evidence, exactly as
+    if nobody had tried. That is silence, in the one place the product
+    promises none. INCONCLUSIVE neither promotes nor contradicts; what it
+    adds is the trace — a test was attempted, and here is why it failed.
+    """
+    record = EvidenceRecord(
+        type=EvidenceType.CHECK_RESULT,
+        actor=Actor.CHECK,
+        claim_id=check.claim_id,
+        check_plan_id=check.id,
+        verdict=CheckVerdict.INCONCLUSIVE,
+        payload={
+            "template": check.template,
+            "summary": f"the check could not run ({type(exc).__name__}): "
+                       f"{(str(exc).splitlines() or [''])[0]}",
+            "could_not_run": True,
+        },
+    )
+    _supersede(store, check, record)
+    store.add_evidence(record)
+    if check.claim_id and check.claim_id in store.claims:
+        claim = store.claims[check.claim_id]
+        store.save_claim(attach_evidence(claim, record,
+                                         store.evidence_for(claim)))
     return record
 
 

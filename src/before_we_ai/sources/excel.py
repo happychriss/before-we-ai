@@ -18,6 +18,7 @@ from before_we_ai.sources.canonical import canonicalize
 
 RULE_MERGED_HEADER = "merged_header_resolved"
 RULE_BLANK_ROWS = "blank_rows_skipped"
+RULE_FORMULA_UNEVALUATED = "formula_unevaluated"
 
 
 @dataclass
@@ -57,9 +58,20 @@ def _header_merges(ws, header_row: int) -> dict[int, str]:
 
 def read_workbook(path: str | Path) -> list[SheetData]:
     wb = openpyxl.load_workbook(path, data_only=True)
+    # A second reading, for the formulas themselves. `data_only` returns the
+    # value Excel cached when it last saved; a workbook written by a script
+    # has none, and such a cell comes back as None — indistinguishable from
+    # an empty one. The column then profiles as "empty", which is a positive
+    # statement about the business and a false one: the truth is that this
+    # reader cannot evaluate a formula. Found on the vessel landscape (Run
+    # A), and in Run B it turned a reconciliation nobody could test into a
+    # contradiction. A missing capability arrives as a declaration.
+    formulas = openpyxl.load_workbook(path, data_only=False)
     sheets = []
     for ws in wb.worksheets:
         grid = [list(row) for row in ws.iter_rows(values_only=True)]
+        formula_grid = [list(row) for row in
+                        formulas[ws.title].iter_rows(values_only=True)]
         header_idx = next(
             (i for i, row in enumerate(grid) if any(v is not None for v in row)), None
         )
@@ -96,7 +108,14 @@ def read_workbook(path: str | Path) -> list[SheetData]:
         rows: list[list[str | None]] = []
         blank = 0
         rule_seen: dict[tuple[str, str], dict] = {}
-        for raw in grid[data_start:]:
+        unevaluated: dict[str, list[str]] = {}
+        for offset, raw in enumerate(grid[data_start:], start=data_start):
+            written = formula_grid[offset] if offset < len(formula_grid) else []
+            for i, col in enumerate(columns):
+                cell = written[i] if i < len(written) else None
+                if (isinstance(cell, str) and cell.startswith("=")
+                        and (raw[i] if i < len(raw) else None) is None):
+                    unevaluated.setdefault(col, []).append(cell)
             if all(v is None for v in raw):
                 blank += 1
                 continue
@@ -119,6 +138,16 @@ def read_workbook(path: str | Path) -> list[SheetData]:
                 "example": {"before": f"{blank} blank rows", "after": "dropped"},
             })
         decisions.extend(rule_seen.values())
+        for col, cells in unevaluated.items():
+            decisions.append({
+                "rule": RULE_FORMULA_UNEVALUATED,
+                "column": col,
+                "example": {
+                    "before": cells[0],
+                    "after": f"{len(cells)} formula cell(s) with no stored "
+                             "value — read as empty, not evaluated",
+                },
+            })
         sheets.append(SheetData(_sanitize(ws.title), columns, rows, decisions))
     return sheets
 

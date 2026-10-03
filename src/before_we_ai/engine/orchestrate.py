@@ -22,7 +22,7 @@ from before_we_ai.core.scheduler import ready_for_check, topological_order
 from before_we_ai.staleness import StalenessReport, refresh_questions
 from before_we_ai.store.repository import ProjectStore
 
-from before_we_ai.engine.runner import run_check
+from before_we_ai.engine.runner import record_failure, run_check
 
 
 @dataclass
@@ -60,6 +60,7 @@ def run_ready(
             report.skipped.append(
                 (check.id, f"execution error ({type(exc).__name__}): {exc}")
             )
+            record_failure(store, check, exc)
 
     # The other half of staleness: flagging tells a reader their answer
     # rests on data that moved, and this is where taking their data

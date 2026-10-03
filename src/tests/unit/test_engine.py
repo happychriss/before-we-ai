@@ -143,10 +143,60 @@ class TestACheckThatTestedNothingHasNotPassed:
             store, ledgers, left_where="grp = 'y'", right_where="grp = 'y'")
         assert record.verdict is CheckVerdict.PASS
         assert store.claims[claim_id].status is ClaimStatus.TEST_SUPPORTED
-        assert record.payload["tested"] == [
-            {"view": "a", "filter": "grp = 'y'", "rows": 1, "of": 2},
-            {"view": "b", "filter": "grp = 'y'", "rows": 1, "of": 2},
+        assert [(t["view"], t["filter"], t["rows"], t["of"])
+                for t in record.payload["tested"]] == [
+            ("a", "grp = 'y'", 1, 2), ("b", "grp = 'y'", 1, 2)]
+
+    def test_a_filtered_pass_writes_its_limit_onto_the_claim(
+            self, store, ledgers):
+        """The test got narrower; the claim has to say so too, or a reader
+        of the claim list sees an unqualified statement marked supported."""
+        _, claim_id = self._reconcile(
+            store, ledgers, left_where="grp = 'y'", right_where="grp = 'y'")
+        assert store.claims[claim_id].open_assumptions == [
+            "holds only where grp = 'y' — tested on 1 of 2 rows of a",
+            "holds only where grp = 'y' — tested on 1 of 2 rows of b",
         ]
+
+    def test_an_unfiltered_pass_carries_no_such_limit(self, store, ledgers):
+        ledgers.execute("UPDATE b SET amount = 10 WHERE grp = 'x'")
+        record, claim_id = self._reconcile(store, ledgers)
+        assert record.verdict is CheckVerdict.PASS
+        assert store.claims[claim_id].open_assumptions == []
+
+    def test_a_measure_nobody_could_read_is_not_a_disagreement(self, store):
+        """A column of formulas with no stored value arrives as NULLs.
+        Setting a real total against that is not a contradiction."""
+        con = duckdb.connect()
+        con.execute("CREATE TABLE ledger (grp VARCHAR, amount DOUBLE)")
+        con.execute("CREATE TABLE summary_sheet (grp VARCHAR, total DOUBLE)")
+        con.execute("INSERT INTO ledger VALUES ('x', 10), ('y', 5)")
+        con.execute("INSERT INTO summary_sheet VALUES ('x', NULL), ('y', NULL)")
+        claim = store.add_claim(create_claim("pivot equals ledger", Actor.AI))
+        record = run_check(store, con, CheckPlan(
+            template="reconciliation", claim_id=claim.id, params={
+                "left": "ledger", "right": "summary_sheet",
+                "left_group_expr": "grp", "right_group_expr": "grp",
+                "left_measure_expr": "amount", "right_measure_expr": "total"}))
+        assert record.verdict is CheckVerdict.INCONCLUSIVE
+        assert "is empty in every row of summary_sheet" in record.payload["summary"]
+        assert store.claims[claim.id].status is ClaimStatus.PROPOSED
+
+
+def test_a_check_that_cannot_run_says_so_on_the_claim(store, con):
+    """Listed in the sweep's report and nowhere else, a crashed check left
+    its claim looking as if nobody had tried."""
+    claim = store.add_claim(create_claim("t reconciles with itself", Actor.AI))
+    store.save_check_plan(CheckPlan(
+        template="duplicate", claim_id=claim.id,
+        params={"table": "t", "key_columns": ["no_such_column"]}))
+    report = run_ready(store, con)
+    assert len(report.skipped) == 1
+    [record] = store.evidence_for(store.claims[claim.id])
+    assert record.verdict is CheckVerdict.INCONCLUSIVE
+    assert record.payload["could_not_run"] is True
+    assert "could not run" in record.payload["summary"]
+    assert store.claims[claim.id].status is ClaimStatus.PROPOSED
 
     def test_an_empty_table_does_not_promote(self, store):
         con = duckdb.connect()

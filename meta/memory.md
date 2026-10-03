@@ -27,11 +27,23 @@
   as stated, because a model-written filter narrowed the test and not the
   claim. **The larger finding:** the AI can *contradict* by choice of check —
   15 role candidates refuted by checks about something else, several on
-  rounding. Open engine decisions that follow, none taken yet: a filtered
-  pass must scope the claim or not promote; a generic check should not refute
-  a role binding on dirty rows; a crashed check must leave evidence; an
-  unevaluated formula must not read as a contradiction. The answer key is
-  still unopened — opening it to score trap recall is the owner's call;
+  rounding. **All four engine issues it raised are fixed (2026-10-03,
+  owner decision):** a filtered pass writes its limit onto the claim as an
+  open assumption; a generic check over a role binding carries no weight in
+  either direction (`core.transitions.refuting` — this revises the
+  2026-08-02 "FAIL is decisive" rule, with the measurement behind it); a
+  check that cannot run leaves an inconclusive record on its claim; an
+  unevaluated Excel formula is declared by the reader and an all-empty
+  measure reads as "nothing tested". Re-judging the kept run with the fixed
+  engine (free — stages 2 and 4 only): contradicted 28 → 12, role candidates
+  contradicted 17 → 2 (both `journal`, by the balance law), dependencies
+  marked all-contradicted 13 → 1. **The answer key has been opened** (owner
+  authorised, after the blind commit): 16 of 27 traps surfaced, 5 partly, 6
+  missed — `corpora/vessel/results-run-b-scored.md`. The vessel landscape is
+  no longer blind. Still open from Run B, not fixed: an anti-join skips
+  blank keys silently (VT12 was certified absent by a check and found by a
+  document); document claims are not linked to dependencies (1 of 28); a
+  dependency list is drafted even when no answer type fits;
   (4) the write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
   layout-analyser swap are dropped** — the roadmap below predates this and
   is kept for reference only. **What building the web app showed about the engine**, each worth a
