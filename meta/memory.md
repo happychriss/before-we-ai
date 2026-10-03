@@ -4,6 +4,48 @@
      queued. No history — git has that. Durable facts belong in README.md
      (roadmap + status) and docs/ (confirmed design). -->
 
+## Continue here
+
+Written 2026-10-03 for picking this up on another machine. The full account
+of that day is `docs/case-study-notes.md`; this is only what to do next.
+
+- **Setup on a fresh clone:** `git clone -b case-study …`, then
+  `./scripts/bootstrap.sh` (Python 3.11+; `uv venv --python 3.13 --seed .venv`
+  first if the system Python is newer than 3.13), then
+  `python -m pytest -q`. The demo web app: `./scripts/ui.sh`. No API key is
+  needed for any of that. If `/tmp` is small or quota-limited, run pytest with
+  `--basetemp` pointing outside `/tmp` **and outside this repository** (one
+  store test commits whatever git repository its temp directory sits in).
+- **The branch.** `case-study` on GitHub is this repository's fresh history.
+  `main` there still holds the old container-era history (190 commits) and was
+  left untouched. The old working folder also holds the uncommitted guide
+  builder; it is not in this repository.
+- **In flight: the affiliate landscape** (`corpora/affiliate/`). A small pharma
+  distribution affiliate with its own ERP; goods receipt, invoice verification,
+  manual clearings. Built by a separate agent from
+  `docs/draft-thoughts/affiliate-landscape-scenario.md`. **Do not open
+  `corpora/affiliate/answer-key/` or `generator/`** until the results are
+  committed. Predictions are committed: `corpora/affiliate/predictions-run-a.md`.
+- **Next, in this order** (the four arms the predictions name):
+  A. `python scripts/run-landscape.py affiliate` — does it read at all;
+  B. the plain model, three fresh agents, the three questions, nothing else —
+     copy `data/` to a clean directory outside the repository first, as was
+     done for the vessel baseline;
+  C. the low-AI flow: `foundation.discover` → `foundation.match.propose` →
+     a person reviews the proposed binding → `foundation.evaluate` with
+     `foundations/procure-to-pay/foundation.docx`; report rules that hold,
+     rules that break, and the exceptions;
+  D. `answer_check` over B's answers, and the document's reconciliation rules
+     over the result.
+  Then write `corpora/affiliate/results-run-a.md` blind, commit, and only then
+  ask the owner whether to open the key.
+- **Not built yet:** a report page for arm C in the web app; a status in
+  `answer_check` for a correction that rests on a general rule rather than a
+  quote about that record; date comparisons and cross-object row rules in the
+  rule language (the procure-to-pay author lists seven rules it could not
+  express); a minimum number of records for a rule to count.
+- **After that:** the write-up, from `docs/case-study-notes.md`.
+
 ## Where we are
 
 - **Direction changed 2026-10-03 (owner decision): this is a case study, not

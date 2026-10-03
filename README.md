@@ -8,13 +8,29 @@ inference. The missing layer between fragmented data and powerful-but-unreliable
 is one that keeps track of *what is known, what is merely assumed, and what is
 unknown*. That layer is the product.
 
+## Where this stands — read this first
+
+**Since 2026-10-03 this repository is a case study, not a product in
+progress.** The description below is what was built: a gate in front of a
+language model. Measured against a landscape it did not grow up on, the gate
+said `blocked`, correctly and uselessly, while a plain model with no framework
+answered the same question almost exactly right — and nobody without the
+answer key could have told. What is left of the idea is not deciding whether a
+model may answer, but checking the answer it gave and running rules a person
+signed over the result.
+
+The record of that day, with every finding tied to a file here:
+[`docs/case-study-notes.md`](docs/case-study-notes.md). Live state and next
+steps: [`meta/memory.md`](meta/memory.md). The roadmap table at the end of
+this page predates all of it and is kept for reference.
+
 ## Run it
 
 Everything below is offline and needs no API key. Recorded model answers are
 replayed, so a fresh clone reproduces the same numbers the maintainer sees.
 
 ```bash
-git clone https://github.com/happychriss/before-we-ai.git
+git clone -b case-study https://github.com/happychriss/before-we-ai.git
 cd before-we-ai
 ./scripts/bootstrap.sh          # venv, dependencies, DuckDB fts, verify
 source .venv/bin/activate
