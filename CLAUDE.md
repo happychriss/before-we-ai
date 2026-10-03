@@ -37,6 +37,11 @@ but never restate it:
 - `scripts/` — self-contained ops scripts, runnable directly after login:
   `with-api-key.sh` (the only way the Anthropic key reaches a process);
   start the process, readiness report, cleanup of stale processes to follow
+- `ui/` — the demo web app (FastAPI + Jinja, server-rendered, no build step):
+  `pipeline.py` (the run, step by step), `views.py` (what the pages show —
+  read from the store, never deciding a status), `app.py` (routes and human
+  acts), `templates/`, `static/`. Started by `scripts/ui.sh`; its project lives
+  in `ui-data/` (git-ignored). It imports the engine and never the reverse
 - `validation/` — owner-facing validation walkthrough: `README.md` (the test
   steps) + `scripts/` (runnable stage & report tools); `data/` is generated
   and git-ignored

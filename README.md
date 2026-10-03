@@ -27,6 +27,18 @@ on purpose: a substitute would select different document chunks, and the
 selected chunks are what the model gets asked about. `bootstrap.sh` installs it
 and tells you exactly what to do if it cannot reach the network.
 
+**See it in the browser.** A small local web app runs the same pipeline over
+the seeded finance landscape and lets you click through the part no script
+shows well — the decisions that take a verdict from *blocked* to *ready*:
+
+```bash
+./scripts/ui.sh                         # http://127.0.0.1:8787, offline, no API key
+```
+
+It is a demo, not the product UI: one fixed question, recorded model answers,
+real checks and real human acts against the engine. Every status on screen is
+re-derived on each page load.
+
 Then take the guided tour. [`validation/README.md`](validation/README.md) drives
 the pipeline **one stage at a time** over a landscape with 32 seeded errors, and
 says what to look for after each one. It is the fastest way to see what this

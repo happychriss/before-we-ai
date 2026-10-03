@@ -13,16 +13,18 @@
   case study still needs, in order: (1) close the vacuous-pass hole — a
   model-supplied `where` filter or an empty population lets a check pass and
   promote (`checks/verdicts.py` `empty_expected`, `llm/vocabulary.py` exempts
-  `*where` from validation); (2) a **small local web app** (owner choice:
-  dashboard of the run plus the clickable blocked-to-ready loop, offline on
-  recorded answers, POC but good-looking; mockup in
-  `docs/draft-thoughts/example_visual_screen.png`); (3) Run B; (4) the
-  write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
+  `*where` from validation); (2) ~~a small local web app~~ **built 2026-10-03** — `ui/`, started by
+  `scripts/ui.sh` (dashboard, step-by-step run, decisions, readiness; offline
+  on recorded answers); (3) Run B; (4) the write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
   layout-analyser swap are dropped** — the roadmap below predates this and
-  is kept for reference only. **First open step for the web app:** establish
-  whether human acts (`answer_question` with a pick, `confirm_claim`,
-  `waive_item`, `confirm_classification`) can move the finance walkthrough
-  from blocked to ready offline — that decides what the workflow can show.
+  is kept for reference only. **What building the web app showed about the engine**, each worth a
+  decision before the write-up: (a) none of the three candidates offered for
+  `journal.entity` is a correct entity column, and a person can confirm a
+  wrong one without any warning; (b) waiving a structural dependency whose
+  every candidate was *contradicted* (`intercompany`) yields a plain `ready`
+  — the UI adds a note beside the verdict, the engine itself says nothing;
+  (c) the web app has no tests of its own — it was verified by driving it
+  end to end by hand (blocked → ready with limitations → ready).
   No API key exists on this machine (`~/.config/before-we-ai/api-key` was
   inside the container), so Run B needs a new one.
 

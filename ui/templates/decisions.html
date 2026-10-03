@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chip, evidence %}
+{% block content %}
+{% set open = o.ready.open if o.ready else [] %}
+<div class="page-head"><div>
+  <h1>Questions requiring human judgement</h1>
+  <p class="muted">What no check could settle. Nothing here is decided for you, and nothing is dropped quietly.</p>
+</div></div>
+<div class="tabs">
+  <a class="{{ 'on' if tab != 'findings' }}" href="/decisions">Blocking this answer ({{ open|length }})</a>
+  <a class="{{ 'on' if tab == 'findings' }}" href="/decisions?tab=findings">Other findings ({{ findings|length }})</a>
+</div>
+
+{% if tab != 'findings' %}
+  {% if not o.ready %}
+  <p class="muted">No question has been asked yet. <a href="/run">Continue the run.</a></p>
+  {% elif not open %}
+  <div class="card done-card">
+    <h2>Nothing left to decide for this answer.</h2>
+    <p>Every dependency is settled or waived. <a href="/readiness">See the verdict and how each one was settled.</a></p>
+  </div>
+  {% endif %}
+  {% for item in open %}
+  <div class="decision">
+    <div class="card d-main">
+      <div class="d-head">
+        <span class="qmark">?</span>
+        <div>
+          <h2>{% if item.kind == 'rule' %}Does this rule hold: {{ item.ref }}?{% else %}What plays '{{ item.ref }}'?{% endif %}</h2>
+          <p class="muted">{{ item.because }}</p>
+        </div>
+      </div>
+      {% set choosable = item.candidates|selectattr('can_confirm')|list %}
+      {% if choosable %}
+      <form method="post" action="/decide">
+        <input type="hidden" name="card_id" value="{{ item.card_id }}">
+        <div class="d-label">{{ 'Choose the one to use' if choosable|length > 1 else 'The one candidate' }}</div>
+        {% for c in item.candidates %}
+        <label class="option{% if not c.can_confirm %} option-off{% endif %}">
+          <input type="radio" name="claim_id" value="{{ c.id }}" {% if not c.can_confirm %}disabled{% endif %} {% if c.can_confirm and choosable|length == 1 %}checked{% endif %} required>
+          <div class="option-body">
+            <div class="option-title">{{ c.binding or c.statement }} {{ chip(c.status, c.status_label) }}</div>
+            {% if c.binding %}<div class="muted small">{{ c.statement }}</div>{% endif %}
+            <details class="why"><summary>Evidence ({{ c.evidence|length }})</summary>{{ evidence(c.evidence) }}</details>
+          </div>
+        </label>
+        {% endfor %}
+        <details class="scope"><summary>Limit this confirmation to an entity or period</summary>
+          <div class="row"><input name="entity" placeholder="Entity, e.g. DE"><input name="period" placeholder="Period, e.g. 2025-03"></div>
+        </details>
+        <div class="d-actions"><button class="btn btn-primary">Confirm the selected one</button></div>
+      </form>
+      {% else %}
+      <div class="d-label">{{ 'What was tried' if item.candidates else 'Nothing in the files speaks to this' }}</div>
+      {% for c in item.candidates %}
+      <div class="option option-off"><div class="option-body">
+        <div class="option-title">{{ c.binding or c.statement }} {{ chip(c.status, c.status_label) }}</div>
+        <details class="why" open><summary>Evidence ({{ c.evidence|length }})</summary>{{ evidence(c.evidence) }}</details>
+      </div></div>
+      {% endfor %}
+      {% endif %}
+      <details class="waive"><summary>None of these, or not needed for this answer</summary>
+        <form method="post" action="/waive" class="row">
+          <input type="hidden" name="ref" value="{{ item.ref }}">
+          <input name="reason" placeholder="Why this answer does not need it" required>
+          <button class="btn">Waive with this reason</button>
+        </form>
+        <p class="muted small">A waiver settles nothing. It records that a person set this dependency aside, and why, and it stays visible in the verdict.</p>
+      </details>
+    </div>
+    <aside class="card d-side">
+      <div class="eyebrow">Issue</div><div class="d-n">{{ loop.index }} of {{ open|length }}</div>
+      <hr>
+      <div class="eyebrow">Affected dependency</div><div><b>{{ item.ref }}</b></div>
+      <p class="muted small">{{ item.why }}</p>
+      <hr>
+      <div class="eyebrow">Impact if unresolved</div>
+      {% if item.structural %}
+      <div class="impact impact-block"><b>Blocks the answer</b><span>The figures are computed from it. Without it there is no number.</span></div>
+      {% else %}
+      <div class="impact impact-limit"><b>Limits the answer</b><span>The number exists, but what it means is qualified.</span></div>
+      {% endif %}
+    </aside>
+  </div>
+  {% endfor %}
+{% else %}
+  {% if not findings %}<p class="muted">No other findings yet.</p>{% endif %}
+  {% for f in findings %}
+  <div class="card finding{% if f.deferred %} deferred{% endif %}">
+    <div class="f-head">
+      <div>
+        <h3>{{ f.question }}</h3>
+        {% if f.finding %}<p class="muted">{{ f.finding }}</p>{% endif %}
+      </div>
+      <form method="post" action="{{ '/pickup' if f.deferred else '/defer' }}">
+        <input type="hidden" name="card_id" value="{{ f.id }}">
+        <button class="btn btn-quiet">{{ 'Pick up again' if f.deferred else "I don't know" }}</button>
+      </form>
+    </div>
+    {% for c in f.claims %}
+    <details class="why"><summary>{{ chip(c.status, c.status_label) }} {{ c.statement }}</summary>{{ evidence(c.evidence) }}</details>
+    {% endfor %}
+  </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

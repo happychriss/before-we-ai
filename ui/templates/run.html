@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import actor %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Run</h1>
+    <p class="muted">Eleven steps over the seeded finance landscape. Each one changes what is known, and one actor is responsible for it.</p>
+  </div>
+  <div class="actions">
+    {% if not o.complete %}
+    <button class="btn" id="run-next" data-next="{{ o.next }}">Run next step</button>
+    <button class="btn btn-primary" id="run-all" data-next="{{ o.next }}">Run all</button>
+    {% else %}
+    <a class="btn btn-primary" href="/">See the result</a>
+    {% endif %}
+    {% if o.started %}
+    <form method="post" action="/reset" onsubmit="return confirm('Delete this run and every decision made in it?')"><button class="btn btn-quiet">Reset</button></form>
+    {% endif %}
+  </div>
+</div>
+<div id="run-error" class="flash flash-no" hidden></div>
+<ol class="steps">
+  {% for step in o.steps %}
+  {% if step.key == 'test' %}<li class="boundary-row"><span>no proposal may promote itself</span></li>{% endif %}
+  <li class="step{% if step.done %} done{% endif %}{% if step.key == o.next %} next{% endif %}" data-key="{{ step.key }}">
+    <div class="step-mark"><span class="step-stage">{{ step.stage }}</span></div>
+    <div class="step-body">
+      <div class="step-title">{{ step.title }} {{ actor(step.actor) }}</div>
+      <div class="step-detail muted">{{ step.detail }}</div>
+      <div class="step-summary">{{ step.summary }}</div>
+    </div>
+    <div class="step-state"></div>
+  </li>
+  {% endfor %}
+  <li class="step final{% if o.complete %} done{% endif %}">
+    <div class="step-mark"><span class="step-stage">6</span></div>
+    <div class="step-body">
+      <div class="step-title">Readiness <span class="actor actor-measured">Derived</span></div>
+      <div class="step-detail muted">Never stored. Worked out from everything above each time it is read.</div>
+      <div class="step-summary">{% if o.complete and o.ready %}{{ o.ready.verdict_label }}{% endif %}</div>
+    </div>
+    <div class="step-state"></div>
+  </li>
+</ol>
+{% endblock %}

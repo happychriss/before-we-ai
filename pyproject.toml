@@ -31,6 +31,13 @@ dev = [
 llm = [
     "anthropic>=0.40",
 ]
+# the demo web app only (ui/, started by scripts/ui.sh) — the engine and the
+# test suite never import it
+ui = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "python-multipart>=0.0.9",
+]
 
 [tool.setuptools]
 # src-layout: this file lives at the repository root, the code lives in src/.

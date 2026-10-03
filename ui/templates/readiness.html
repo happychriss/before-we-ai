@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chip %}
+{% block content %}
+{% if not o.ready %}
+<div class="page-head"><div><h1>Readiness</h1><p class="muted">No question has been asked yet. <a href="/run">Continue the run.</a></p></div></div>
+{% else %}
+{% set r = o.ready %}
+<section class="hero hero-{{ r.verdict }}">
+  <div>
+    <div class="eyebrow">Verdict, derived just now</div>
+    <h1>{{ r.verdict_label }}</h1>
+    <p>{{ r.reason }}</p>
+    {% if r.waived %}<p class="hero-note">{{ r.waived|length }} of these {{ 'was' if r.waived|length == 1 else 'were' }} not settled but waived by a person: {{ r.waived|map(attribute='ref')|join(', ') }}.</p>{% endif %}
+  </div>
+  <div class="hero-side">
+    {% if r.open %}<a class="btn btn-primary" href="/decisions">Decide {{ r.open|length }} open item{{ 's' if r.open|length != 1 }}</a>{% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>What was asked</h2>
+  <table class="kv kv-narrow">
+    <tr><td>Question</td><td>{{ r.question }}</td></tr>
+    <tr><td>Understood as</td><td>{{ r.requested_output }}</td></tr>
+    <tr><td>Answer type</td><td>{{ r.answer_type }} <span class="muted">— named by the AI; the list below was expanded from the domain guide, not from what the model remembered</span></td></tr>
+  </table>
+</section>
+
+<section class="card">
+  <h2>What this answer depends on</h2>
+  <table class="deps">
+    {% for item in r['items'] %}
+    <tr class="{{ 'dep-ok' if item.satisfied else 'dep-open' }}{{ ' dep-waived' if item.waived }}">
+      <td class="dep-mark">{{ '✓' if item.satisfied and not item.waived else ('–' if item.waived else '✕') }}</td>
+      <td><b>{{ item.ref }}</b><div class="muted small">{{ item.kind }}{% if item.structural %} · the figures are computed from it{% endif %}</div></td>
+      <td><span class="chip chip-g-{{ item.ground }}">{{ item.ground_label }}</span></td>
+      <td>{{ item.because }}</td>
+      <td class="dep-act">
+        {% if item.waived %}
+        <form method="post" action="/require"><input type="hidden" name="ref" value="{{ item.ref }}"><button class="btn btn-quiet">Require again</button></form>
+        {% elif not item.satisfied %}
+        <a class="btn btn-quiet" href="/decisions">Decide</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+
+<section class="card">
+  <h2>Has anyone read the list itself?</h2>
+  {% if r.confirmed %}
+  <p>Yes. A person vouched that this question depends on nothing more than the items above. The confirmation lapses if the guide or the question changes.</p>
+  {% else %}
+  <p>Not yet. Whether the dependencies hold is one question; whether the list is complete is another. Until a person vouches for it, the verdict can never read "ready".</p>
+  <form method="post" action="/confirm-list"><button class="btn btn-primary">I have read the list and it is complete</button></form>
+  {% endif %}
+</section>
+
+{% if o.log %}
+<section class="card">
+  <h2>Decision log</h2>
+  <table class="log">
+    {% for e in o.log %}<tr><td class="muted">{{ e.when }}</td><td><b>{{ e.what }}</b></td><td>{{ e.detail }}</td></tr>{% endfor %}
+  </table>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

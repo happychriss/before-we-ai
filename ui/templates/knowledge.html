@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chip, evidence %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Knowledge</h1>
+  <p class="muted">Every claim about this data, with its status and the evidence under it. The AI wrote the statements. It did not set a single status.</p>
+</div></div>
+{% if not claims %}
+<p class="muted">No claims yet. They appear in stage 3 of the <a href="/run">run</a>.</p>
+{% else %}
+<div class="filters">
+  <a class="filter{{ ' on' if not only }}" href="/knowledge">All <b>{{ claims|length }}</b></a>
+  {% for s in o.status %}{% if s.n %}<a class="filter{{ ' on' if only == s.key }}" href="/knowledge?status={{ s.key }}"><span class="dot seg-{{ s.key }}"></span>{{ s.label }} <b>{{ s.n }}</b></a>{% endif %}{% endfor %}
+</div>
+<div class="claims">
+  {% for c in claims if not only or c.status == only %}
+  <details class="claim">
+    <summary>
+      {{ chip(c.status, c.status_label) }}
+      <span class="claim-text">{{ c.statement }}</span>
+      <span class="claim-meta">{{ c.kind }}{% if c.checks_pass or c.checks_fail %} · {{ c.checks_pass }} pass, {{ c.checks_fail }} fail{% endif %}</span>
+    </summary>
+    <div class="claim-body">
+      <div class="muted small">Proposed by {{ c.author }}{% if c.predicate %} · {{ c.predicate }}{% endif %}{% if c.role %} · role '{{ c.role }}'{% endif %}</div>
+      {{ evidence(c.evidence) }}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

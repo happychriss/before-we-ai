@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chip %}
+{% block content %}
+{% if not o.started %}
+<section class="empty">
+  <h1>Know what you know before an AI answers.</h1>
+  <p>This demo takes one business question and a folder of unfamiliar finance files with 32 seeded errors. It shows what is measured, what the AI only guessed, what the checks settled, and what a person still has to decide.</p>
+  <a class="btn btn-primary" href="/run">Start the run</a>
+</section>
+{% else %}
+<section class="hero hero-{{ o.ready.verdict if o.ready else 'none' }}">
+  <div>
+    <div class="eyebrow">Can this question be answered?</div>
+    <h1>{{ o.ready.verdict_label if o.ready else 'Run in progress' }}</h1>
+    <p>{{ o.ready.reason if o.ready else 'The question has not been asked yet.' }}</p>
+    {% if o.ready and o.ready.waived %}<p class="hero-note">{{ o.ready.waived|length }} of these {{ 'was' if o.ready.waived|length == 1 else 'were' }} not settled but waived by a person: {{ o.ready.waived|map(attribute='ref')|join(', ') }}.</p>{% endif %}
+  </div>
+  <div class="hero-side">
+    {% if not o.complete %}
+    <a class="btn btn-primary" href="/run">Continue the run ({{ o.progress }}/{{ o.total }})</a>
+    {% elif o.ready and o.ready.open %}
+    <a class="btn btn-primary" href="/decisions">{{ o.ready.open|length }} decision{{ 's' if o.ready.open|length != 1 }} needed</a>
+    {% elif o.ready and not o.ready.confirmed %}
+    <a class="btn btn-primary" href="/readiness">Review the dependency list</a>
+    {% else %}
+    <a class="btn" href="/readiness">See why</a>
+    {% endif %}
+  </div>
+</section>
+
+<section>
+  <h2>The run, in seven stages</h2>
+  <div class="spine">
+    {% for st in o.stages %}
+    {% if st.number == '4' %}<div class="boundary"><span>no proposal may promote itself</span></div>{% endif %}
+    <div class="stage{% if st.done %} done{% endif %}">
+      <div class="stage-n">{{ st.number }}</div>
+      <div class="stage-name">{{ st.name }}</div>
+      <div class="stage-actor">{{ st.actor }}</div>
+      <div class="stage-count">{{ st.count or '—' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="tiles">
+  <a class="tile" href="/sources"><div class="tile-n">{{ o.counts.sources }}</div><div class="tile-l">Sources</div><div class="tile-s">{{ o.counts.tables }} tables · {{ o.counts.documents }} documents</div></a>
+  <a class="tile" href="/sources"><div class="tile-n">{{ o.counts.columns }}</div><div class="tile-l">Columns profiled</div><div class="tile-s">{{ o.counts.passages }} document passages</div></a>
+  <a class="tile" href="/knowledge"><div class="tile-n">{{ o.counts.claims }}</div><div class="tile-l">Claims</div><div class="tile-s">all proposed by the AI</div></a>
+  <a class="tile" href="/knowledge"><div class="tile-n">{{ o.counts.checks }}</div><div class="tile-l">Checks run</div><div class="tile-s">{{ o.counts.pass }} pass · {{ o.counts.fail }} fail</div></a>
+  <a class="tile" href="/decisions?tab=findings"><div class="tile-n">{{ o.counts.questions }}</div><div class="tile-l">Open questions</div><div class="tile-s">{{ o.counts.deferred }} deferred</div></a>
+  <a class="tile" href="/readiness"><div class="tile-n">{% if o.ready %}{{ o.ready.settled|length }}/{{ o.ready['items']|length }}{% else %}—{% endif %}</div><div class="tile-l">Dependencies settled</div><div class="tile-s">what this answer rests on</div></a>
+</section>
+
+<section class="two">
+  <div class="card">
+    <h2>What is believed</h2>
+    {% if o.counts.claims %}
+    <div class="bar">
+      {% for s in o.status %}{% if s.n %}<a class="seg seg-{{ s.key }}" style="width:{{ '%.2f'|format(s.pct) }}%" href="/knowledge?status={{ s.key }}" title="{{ s.label }}: {{ s.n }}"></a>{% endif %}{% endfor %}
+    </div>
+    <ul class="legend">
+      {% for s in o.status %}
+      <li><a href="/knowledge?status={{ s.key }}"><span class="dot seg-{{ s.key }}"></span>{{ s.label }}<b>{{ s.n }}</b></a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No claims yet. Measuring the data creates none; the AI proposes them in stage 3.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Who changed what is believed</h2>
+    <table class="kv">
+      <tr><td>Claims the AI proposed</td><td>{{ o.authority.proposed_by_ai }}</td></tr>
+      <tr><td>Promoted or refuted by a check</td><td>{{ o.authority.by_check }}</td></tr>
+      <tr><td>Settled by a person</td><td>{{ o.authority.by_human }}</td></tr>
+      <tr><td>Still only proposed</td><td>{{ o.authority.still_proposed }}</td></tr>
+      <tr class="kv-strong"><td>Promoted by the AI itself</td><td>{{ o.authority.by_ai }}</td></tr>
+    </table>
+    <p class="muted small">The last line counts claims whose status changed with no check result and no person behind it. Note what it does not say: that the checks themselves were the right ones.</p>
+  </div>
+</section>
+
+{% if o.log %}
+<section class="card">
+  <h2>Decision log</h2>
+  <table class="log">
+    {% for e in o.log %}<tr><td class="muted">{{ e.when }}</td><td><b>{{ e.what }}</b></td><td>{{ e.detail }}</td></tr>{% endfor %}
+  </table>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

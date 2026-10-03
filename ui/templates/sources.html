@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Sources</h1>
+  <p class="muted">What a person declared, in their own words, and what the tool could read from each file.</p>
+</div></div>
+{% if not sources %}
+<p class="muted">Nothing declared yet. <a href="/run">Start the run.</a></p>
+{% else %}
+<table class="grid">
+  <thead><tr><th>Source</th><th>What it is, as declared</th><th>What was read</th></tr></thead>
+  <tbody>
+  {% for s in sources %}
+  <tr>
+    <td><b>{{ s.name }}</b><div class="muted small">{{ s.file }} · {{ s.kind }}</div></td>
+    <td>{{ s.description or 'Nobody has said what this file is.' }}</td>
+    <td>
+      {% if not s.read %}<span class="muted">not read yet</span>
+      {% elif s.is_document %}{{ s.pages }} page{{ 's' if s.pages != 1 }}, {{ s.passages }} passage{{ 's' if s.passages != 1 }}
+      {% else %}
+      <details><summary>{{ s.tables|length }} table{{ 's' if s.tables|length != 1 }}, {{ s.columns }} columns</summary>
+        <ul class="plain small">{% for name, rows in s.tables %}<li>{{ name }} <span class="muted">{{ '{:,}'.format(rows) }} rows</span></li>{% endfor %}</ul>
+      </details>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% macro chip(status, label) -%}
+<span class="chip chip-{{ status }}">{{ label }}</span>
+{%- endmacro %}
+
+{% macro actor(kind) -%}
+<span class="actor actor-{{ kind }}">{{ {'human': 'Person', 'ai': 'AI', 'check': 'Check', 'measured': 'Measured'}[kind] }}</span>
+{%- endmacro %}
+
+{% macro evidence(items) -%}
+{% if not items %}
+<p class="muted small">No evidence yet. Nothing has tested this, and nobody has confirmed it.</p>
+{% else %}
+<ul class="evidence">
+  {% for e in items %}
+  <li class="ev ev-{{ e.type }}{% if e.stale %} ev-stale{% endif %}">
+    <div class="ev-head">
+      <span class="ev-title">{{ e.title }}</span>
+      {% if e.verdict %}<span class="chip chip-v-{{ e.verdict }}">{{ e.verdict }}</span>{% endif %}
+      {% if e.stale %}<span class="chip chip-stale">out of date</span>{% endif %}
+      <span class="ev-actor">{{ e.actor }}</span>
+    </div>
+    {% if e.quote %}<blockquote>{{ e.detail }}</blockquote>
+    {% elif e.detail %}<div class="ev-detail">{{ e.detail }}</div>{% endif %}
+    {% if e.tests %}<div class="muted small">{{ e.tests }}</div>{% endif %}
+    {% if e.samples %}
+    <div class="small muted">Sample exceptions:</div>
+    <pre class="samples">{% for row in e.samples %}{{ row }}
+{% endfor %}</pre>
+    {% endif %}
+    {% if e.sql %}
+    <details class="sql"><summary>SQL that was run</summary><pre>{{ e.sql }}</pre></details>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{%- endmacro %}
