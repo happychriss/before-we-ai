@@ -121,6 +121,11 @@ def main() -> int:
     parser.add_argument("--guide", metavar="PACK",
                         help="a packaged domain pack instead of the "
                              "landscape's own guide (the control arm)")
+    parser.add_argument("--frontier", metavar="MODEL",
+                        help="model for request, hypotheses, role binding "
+                             "and documents (default: the configured tier)")
+    parser.add_argument("--mid", metavar="MODEL",
+                        help="model for plain check binding")
     parser.add_argument("--out", metavar="DIR", required=True)
     args = parser.parse_args()
     if args.arm != "control" and not args.question:
@@ -140,6 +145,15 @@ def main() -> int:
     config = yaml.safe_load((root / "before-ai.yaml").read_text(encoding="utf-8"))
     config["sources"] = landscape.declarations()
     config["llm"] = {"domain_guide_file": str(guide_file)}  # online: no fixtures
+    overrides = {}
+    if args.frontier:
+        overrides |= dict.fromkeys(
+            ("request", "v1_hypotheses", "role_binding", "v3_documents"),
+            args.frontier)
+    if args.mid:
+        overrides["v2_bind"] = args.mid
+    if overrides:
+        config["llm"]["models"] = overrides
     (root / "before-ai.yaml").write_text(yaml.safe_dump(config, sort_keys=False),
                                          encoding="utf-8")
     guide = load_domain_guide(guide_file)
