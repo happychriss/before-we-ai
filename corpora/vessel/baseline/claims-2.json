@@ -1,0 +1,96 @@
+{
+  "note": "Run 2 cites the same five corrections on the same rows as run 1 (checked by row id in answer-2.md); figures as stated in answer-2.md.",
+  "ledger": {
+    "view": "02_project_cost_ledger_2025__cost_ledger",
+    "key": "transaction_id",
+    "measure": "reported_eur",
+    "group": "project_id"
+  },
+  "figures": [
+    {
+      "label": "Nordlicht, completed build cost",
+      "group": "VSL-2407",
+      "stated": 2718400,
+      "claims": [
+        "c1"
+      ]
+    },
+    {
+      "label": "Baltic Surveyor, completed build cost (incl. CO-17)",
+      "group": "VSL-2411",
+      "stated": 3376900,
+      "claims": [
+        "c2"
+      ]
+    },
+    {
+      "label": "Amber Pilot, completed build cost",
+      "group": "VSL-2504",
+      "stated": 1214600,
+      "claims": [
+        "c3"
+      ]
+    },
+    {
+      "label": "Elbe Runner, cost to date",
+      "group": "VSL-2502",
+      "stated": 1558458,
+      "claims": [
+        "c3",
+        "c4",
+        "c5"
+      ]
+    },
+    {
+      "label": "Hansa Tug, design and bid cost",
+      "group": "VSL-2506",
+      "stated": 84500,
+      "claims": []
+    }
+  ],
+  "claims": [
+    {
+      "id": "c1",
+      "kind": "assign",
+      "row": "CST-00030",
+      "to": "VSL-2407",
+      "document": "10_yard_operations_notes_and_email_prints",
+      "quote": "PO reference on the unassigned class/safety invoice belongs to NB-407 (Nordlicht). Expected amount about EUR 15,298."
+    },
+    {
+      "id": "c2",
+      "kind": "duplicate",
+      "row": "CST-00138",
+      "of": "CST-00034",
+      "same": [
+        "invoice_number",
+        "po_number",
+        "vendor",
+        "reported_eur"
+      ]
+    },
+    {
+      "id": "c3",
+      "kind": "reassign",
+      "row": "CST-00105",
+      "from": "VSL-2502",
+      "to": "VSL-2504",
+      "document": "10_yard_operations_notes_and_email_prints",
+      "quote": "Engine instalment described as AMBER-77 / serial HD-88421 was charged to ER-02. Amount in the cost export: approximately EUR 195,448. Move it to VSL-2504 before margin review."
+    },
+    {
+      "id": "c4",
+      "kind": "recompute",
+      "row": "CST-00068",
+      "expression": "amount_local / pln_per_eur"
+    },
+    {
+      "id": "c5",
+      "kind": "add",
+      "group": "VSL-2502",
+      "amount": 9792,
+      "document": "10_yard_operations_notes_and_email_prints",
+      "quote": "The time workbook contains the batch; the cost ledger does not. Batch amount is EUR 9,792."
+    }
+  ]
+}

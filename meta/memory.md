@@ -53,6 +53,14 @@
   The framework on the same question: `blocked`, no number, 46 decisions.
   `corpora/vessel/results-baseline.md`. Caveats: one run, a landscape built
   to be solvable, and nobody without the key could tell the answer is right.
+  **Repeated five times: identical to the euro** — including the one figure
+  that differs from the key by 4,743, a gap every run flagged and declined to
+  add. Stable is not right. **`before_we_ai/answer_check.py`** (no model)
+  checks an answer's corrections claim by claim and recomputes its figures:
+  2 of 5 corrections shown by the data, 3 rest on a verbatim quote, all
+  figures reproduce, a spoiled copy is caught. It cannot see an omission; a
+  signed reconciliation rule (timesheet labour = ledger labour per vessel)
+  does, and shows the 4,743.
   **Owner's reading: "no number that I know the why of, against a number I
   cannot be sure of."** Direction this points to (not decided): stop gating
   the model, verify its answer instead — each correction it makes is a claim
