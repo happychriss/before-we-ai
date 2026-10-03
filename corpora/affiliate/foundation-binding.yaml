@@ -1,0 +1,82 @@
+# Where the procure-to-pay foundation document's objects and quantities live in
+# the affiliate landscape.
+#
+# Written by hand on 2026-10-03 from the column names, the code values in the
+# extracts and the account descriptions in the mapping workbook — the way a
+# finance person from the affiliate would fill it in. Written WITHOUT knowledge
+# of the answer key: which records are wrong was not known. The machine's own
+# proposal (foundation.match) found one arithmetic tie in this landscape and
+# could not name it; everything else it proposed was by column name, with
+# mistakes. So this file is the binding.
+#
+# What the document asks for and this extract does not carry is left out, and
+# the rules that need it are reported as not applicable. The most important
+# loss: invoice lines carry no local-currency amount, so the reconciliation of
+# receipts minus invoices against the clearing account (R31) cannot be run.
+
+parameters:
+  LOCAL_CURRENCY: NVK
+  CLOSING_DATE: "2025-12-31"
+  GRIR_ACCOUNTS: "2810; 2815"
+  MANUAL_JOURNAL_VALUE: SA
+  REVERSAL_MOVEMENT_VALUE: "102"
+
+objects:
+  purchase_order_line:   {view: po_lines__po_lines}
+  goods_receipt_line:    {view: goods_receipts__goods_receipts}
+  invoice_header:        {view: inv_header__inv_header}
+  invoice_line:          {view: inv_lines__inv_lines}
+  payment:               {view: payments__payments}
+  # the ledger lines on the two clearing accounts
+  clearing_account_line: {view: gl_lines__gl_lines, where: "acct IN ('2810', '2815')"}
+  vendor:                {view: vendors__vendors}
+  account_mapping:       {view: acct_mapping__mapping}
+  exchange_rate:         {view: fx_rates__fx_rates}
+
+quantities:
+  # An order line is an order number and a position. The ledger's assignment
+  # field spells it as one string, position padded to five digits, so every
+  # order-line key is built that way.
+  purchase_order_line.po_line_id:       {expr: "po_no || lpad(CAST(pos AS VARCHAR), 5, '0')"}
+  purchase_order_line.ordered_quantity: {column: qty}
+  purchase_order_line.net_price:        {column: price}
+  purchase_order_line.price_unit:       {column: per}
+  purchase_order_line.net_order_value:  {column: net_val}
+
+  goods_receipt_line.gr_line_id:        {columns: [gr_doc, gr_pos]}
+  goods_receipt_line.po_line_id:        {expr: "po_no || lpad(CAST(po_pos AS VARCHAR), 5, '0')"}
+  goods_receipt_line.movement_type:     {column: mvt}
+  # receipts and reversals are both stored positive; the movement says which
+  goods_receipt_line.quantity:          {column: qty, negative_when: {mvt: "102"}}
+  goods_receipt_line.value_local:       {column: amt_lc, negative_when: {mvt: "102"}}
+  goods_receipt_line.reversed_gr_line_id: {column: rev_ref}
+
+  invoice_header.invoice_id:            {column: inv_doc}
+  invoice_header.gross_amount:          {column: gross, negative_when: {doc_type: KG}}
+  invoice_header.tax_amount:            {column: tax, negative_when: {doc_type: KG}}
+  invoice_header.invoice_date:          {column: inv_dt}
+  invoice_header.posting_date:          {column: post_dt}
+
+  invoice_line.invoice_id:              {column: inv_doc}
+  invoice_line.po_line_id:              {expr: "CASE WHEN po_no IS NULL OR trim(po_no) = '' THEN NULL ELSE po_no || lpad(CAST(po_pos AS VARCHAR), 5, '0') END"}
+  invoice_line.quantity:                {column: qty}
+  invoice_line.net_amount:              {column: net}
+
+  payment.invoice_id:                   {column: inv_doc}
+  payment.settled_amount:               {column: amt}
+
+  clearing_account_line.local_account:  {column: acct}
+  clearing_account_line.document_type:  {column: doc_type}
+  clearing_account_line.line_text:      {column: txt}
+  clearing_account_line.po_line_id:     {column: assign}
+  # credit positive, debit negative, as the document defines it
+  clearing_account_line.amount_local:   {column: amt_lc, negative_when: {dc: D}}
+
+  vendor.trading_partner:               {column: grp_partner}
+
+  account_mapping.local_account:        {column: loc_acct}
+  account_mapping.valid_from:           {column: valid_from}
+
+  exchange_rate.from_currency:          {column: from_cur}
+  exchange_rate.to_currency:            {column: to_cur}
+  exchange_rate.valid_from:             {column: per}

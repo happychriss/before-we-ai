@@ -60,6 +60,28 @@ class Binding:
     def column(self, obj: str, quantity: str) -> str:
         return self.quantities[(obj, quantity)]["column"]
 
+    def source(self, obj: str) -> str:
+        """What the object's records are read from: the view, or the rows of
+        it a person said make up this object (`where:` in the binding — the
+        clearing account's lines are the ledger lines on certain accounts)."""
+        spec = self.objects[obj]
+        if spec.get("where"):
+            return f"(SELECT * FROM {_q(spec['view'])} WHERE {spec['where']})"
+        return _q(spec["view"])
+
+    def sql(self, obj: str, quantity: str) -> str:
+        """The quantity as a value. `columns: [a, b]` binds one business key
+        to several columns — an order line is an order number and a position."""
+        spec = self.quantities[(obj, quantity)]
+        if spec.get("expr"):
+            # written by the person who binds — e.g. an order line's key
+            # built the way the ledger's assignment field spells it
+            return f"({spec['expr']})"
+        if spec.get("columns"):
+            return " || '|' || ".join(
+                f"CAST({_q(c)} AS VARCHAR)" for c in spec["columns"])
+        return _q(spec["column"])
+
     def number(self, obj: str, quantity: str) -> str:
         """The quantity as a number. ``invert: true`` in the binding says
         the company stores it the other way round — an exchange rate quoted
@@ -67,6 +89,12 @@ class Binding:
         a company parameter, not a different rule."""
         spec = self.quantities[(obj, quantity)]
         value = _num(spec["column"])
+        if spec.get("negative_when"):
+            # debit and credit kept as an indicator beside an unsigned amount
+            column, mark = next(iter(spec["negative_when"].items()))
+            mark = str(mark).replace("'", "''")
+            value = (f"(CASE WHEN CAST({_q(column)} AS VARCHAR) = '{mark}' "
+                     f"THEN -{value} ELSE {value} END)")
         return f"(1.0 / NULLIF({value}, 0))" if spec.get("invert") else value
 
     def missing(self, rule: Rule) -> list[str]:
@@ -114,8 +142,8 @@ def _num(column: str) -> str:
     return f"TRY_CAST({_q(column)} AS DOUBLE)"
 
 
-def _blank(column: str) -> str:
-    return f"({_q(column)} IS NULL OR trim(CAST({_q(column)} AS VARCHAR)) = '')"
+def _blank(value: str) -> str:
+    return f"(({value}) IS NULL OR trim(CAST(({value}) AS VARCHAR)) = '')"
 
 
 def _within(left: str, right: str, tolerance, op: str = "=") -> str:
@@ -146,12 +174,12 @@ def _term_sql(term: dict, binding: "Binding") -> str:
     if term.get("filter"):
         f = term["filter"]
         value = binding.parameters[f["parameter"]].replace("'", "''")
-        column = _q(binding.column(obj, f["quantity"]))
+        column = binding.sql(obj, f["quantity"])
         compare = "=" if f["op"] == "=" else "IS DISTINCT FROM"
         where = f" WHERE CAST({column} AS VARCHAR) {compare} '{value}'"
-    return (f"SELECT CAST({_q(binding.column(obj, term['key']))} AS VARCHAR) AS k, "
+    return (f"SELECT CAST({binding.sql(obj, term['key'])} AS VARCHAR) AS k, "
             f"sum({binding.number(obj, term['measure'])}) AS v "
-            f"FROM {_q(binding.view(obj))}{where} GROUP BY 1")
+            f"FROM {binding.source(obj)}{where} GROUP BY 1")
 
 
 def _expression(text: str, obj: str, binding: Binding) -> str:
@@ -164,12 +192,12 @@ def _compile(rule: Rule, binding: Binding, foundation: Foundation) -> tuple[str,
     p = rule.parts
     tolerance = foundation.tolerances[rule.tolerance]
     if rule.kind == "IDENTITY":
-        view = _q(binding.view(p["object"]))
+        view = binding.source(p["object"])
         left = _expression(p["left"], p["object"], binding)
         right = _expression(p["right"], p["object"], binding)
         ok = _within(left, right, tolerance, p.get("op", "="))
         evaluable = f"({left}) IS NOT NULL AND ({right}) IS NOT NULL"
-        columns = ", ".join(_q(binding.column(o, q)) for o, q in rule.quantities)
+        columns = ", ".join(binding.sql(o, q) for o, q in rule.quantities)
         return (
             f"SELECT count(*) FILTER (WHERE {evaluable}), "
             f"count(*) FILTER (WHERE {evaluable} AND {ok}), "
@@ -179,9 +207,9 @@ def _compile(rule: Rule, binding: Binding, foundation: Foundation) -> tuple[str,
             f"ORDER BY abs(({left}) - ({right})) DESC",
         )
     if rule.kind == "UNIQUE":
-        view = _q(binding.view(p["object"]))
-        keys = [_q(binding.column(p["object"], k)) for k in p["keys"]]
-        blank = " OR ".join(_blank(binding.column(p["object"], k))
+        view = binding.source(p["object"])
+        keys = [binding.sql(p["object"], k) for k in p["keys"]]
+        blank = " OR ".join(_blank(binding.sql(p["object"], k))
                             for k in p["keys"])
         key_list = ", ".join(keys)
         counted = (f"SELECT {key_list}, count(*) AS n FROM {view} "
@@ -194,29 +222,29 @@ def _compile(rule: Rule, binding: Binding, foundation: Foundation) -> tuple[str,
             f"WHERE n > 1 ORDER BY n DESC, {key_list}",
         )
     if rule.kind == "REFERENCE":
-        child, parent = _q(binding.view(p["child"])), _q(binding.view(p["parent"]))
-        ckey = binding.column(p["child"], p["child_key"])
-        pkey = _q(binding.column(p["parent"], p["parent_key"]))
-        found = (f"CAST({_q(ckey)} AS VARCHAR) IN "
+        child, parent = binding.source(p["child"]), binding.source(p["parent"])
+        ckey = binding.sql(p["child"], p["child_key"])
+        pkey = binding.sql(p["parent"], p["parent_key"])
+        found = (f"CAST({ckey} AS VARCHAR) IN "
                  f"(SELECT CAST({pkey} AS VARCHAR) FROM {parent})")
         return (
             f"SELECT count(*) FILTER (WHERE NOT {_blank(ckey)}), "
             f"count(*) FILTER (WHERE NOT {_blank(ckey)} AND {found}), "
             f"count(*) FILTER (WHERE {_blank(ckey)}) FROM {child}",
-            f"SELECT {_q(ckey)}, count(*) AS records FROM {child} "
+            f"SELECT {ckey}, count(*) AS records FROM {child} "
             f"WHERE NOT {_blank(ckey)} AND NOT {found} GROUP BY 1 ORDER BY 2 DESC",
         )
     if rule.kind == "CONDITION":
-        view = _q(binding.view(p["object"]))
-        status = _q(binding.column(p["object"], p["status"]))
-        target = binding.column(p["object"], p["quantity"])
+        view = binding.source(p["object"])
+        status = binding.sql(p["object"], p["status"])
+        target = binding.sql(p["object"], p["quantity"])
         value = binding.parameters[p["parameter"]].replace("'", "''")
         applies = f"CAST({status} AS VARCHAR) = '{value}'"
         ok = f"NOT {_blank(target)}" if p["expect"] == "present" else _blank(target)
         return (
             f"SELECT count(*) FILTER (WHERE {applies}), "
             f"count(*) FILTER (WHERE {applies} AND {ok}), 0 FROM {view}",
-            f"SELECT {status}, {_q(target)} FROM {view} "
+            f"SELECT {status}, {target} FROM {view} "
             f"WHERE {applies} AND NOT ({ok})",
         )
     if rule.kind in ("TOTAL", "DIFFERENCE"):
