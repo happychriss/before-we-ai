@@ -1,0 +1,33 @@
+id: 01M419NVYRR228ZQZ3EAYFWP5W
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__time_allocations
+column: hourly_rate_eur
+stats:
+  duckdb_type: VARCHAR
+  row_count: 47
+  null_count: 0
+  distinct_count: 5
+  min: '42.5'
+  max: '78'
+  len_min: 2
+  len_avg: 2.2
+  len_max: 4
+  top_values:
+  - value: '48'
+    count: 16
+  - value: '62'
+    count: 10
+  - value: '78'
+    count: 9
+  - value: '55'
+    count: 8
+  - value: '42.5'
+    count: 4
+  value_class: decimal_like
+  patterns:
+  - mask: '99'
+    count: 4
+  - mask: '99.9'
+    count: 1
+created_at: '2026-10-03T16:31:10.808580Z'
+object_type: DataProfile

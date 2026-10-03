@@ -1,0 +1,14 @@
+id: 01M419TYH7ATVXKZ59CMFENZ1G
+type: declaration
+actor: system
+claim_id: 01M419S1F8S55SQTZKYQZ7T6NC
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: vessel_master has no FX rate or local-currency counterpart for latest_forecast_cost,
+    so no conversion invariant can be checked against it. The only other conversion-free
+    invariant would need external forecast data.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.287989Z'
+object_type: EvidenceRecord

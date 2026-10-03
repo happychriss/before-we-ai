@@ -1,0 +1,47 @@
+id: 01M419NW0NE620R533MM79H29S
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__documents
+column: document_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 0
+  distinct_count: 23
+  min: DE-2024-1187
+  max: PL/2025/01088
+  len_min: 11
+  len_avg: 12.4
+  len_max: 15
+  top_values:
+  - value: PL/2025/00813
+    count: 2
+  - value: DE-2024-1187
+    count: 1
+  - value: DE-2025-0211
+    count: 1
+  - value: DE-2025-0478
+    count: 1
+  - value: DE-2025-0777
+    count: 1
+  - value: DE-2025-1032
+    count: 1
+  - value: DE-2025-1310
+    count: 1
+  - value: DE-2025-1442
+    count: 1
+  - value: DE-2025-1511
+    count: 1
+  - value: DE-2025-1588
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA-9999-9999
+    count: 9
+  - mask: AA/9999/99999
+    count: 9
+  - mask: AA-AA-99999
+    count: 4
+  - mask: AA-AA-9999-9999
+    count: 1
+created_at: '2026-10-03T16:31:10.869869Z'
+object_type: DataProfile

@@ -1,0 +1,55 @@
+{
+  "landscape": "vessel",
+  "arm": "request",
+  "guide": "simulated-domain-guide.yaml",
+  "questions": [
+    "What were our sales in FY2025?",
+    "What is revenue per ship?"
+  ],
+  "models": {
+    "v1_hypotheses": "claude-opus-5-5",
+    "role_binding": "claude-opus-5-5",
+    "v2_bind": "claude-sonnet-5-5",
+    "request": "claude-opus-5-5",
+    "v3_documents": "claude-opus-5-5"
+  },
+  "roles": 41,
+  "objects": 6,
+  "answer_types": [
+    "profit_and_loss_by_dimension",
+    "completed_vessel_actual_build_cost",
+    "open_vessel_cost_to_date",
+    "open_vessel_forecast_cost_at_completion",
+    "precontract_or_cancelled_build_expenditure"
+  ],
+  "stages": [
+    {
+      "stage": "request",
+      "question": "What were our sales in FY2025?",
+      "answer_type": null,
+      "requested_output": "A single total sales (revenue) figure for fiscal year FY2025, in the group reporting currency.",
+      "scope": "period FY2025",
+      "items_drafted": 10,
+      "skipped": [],
+      "usage": {
+        "input_tokens": 5943,
+        "output_tokens": 1268
+      },
+      "seconds": 15.4
+    },
+    {
+      "stage": "request",
+      "question": "What is revenue per ship?",
+      "answer_type": null,
+      "requested_output": "Revenue attributed to each vessel build (ship), one figure per ship, in a single stated currency; no period was given, so the time window must be confirmed.",
+      "scope": "",
+      "items_drafted": 13,
+      "skipped": [],
+      "usage": {
+        "input_tokens": 5941,
+        "output_tokens": 1264
+      },
+      "seconds": 15.3
+    }
+  ]
+}

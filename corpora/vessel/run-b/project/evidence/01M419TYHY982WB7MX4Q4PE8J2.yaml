@@ -1,0 +1,12 @@
+id: 01M419TYHY982WB7MX4Q4PE8J2
+type: declaration
+actor: system
+claim_id: 01M419S1F46YWB0TAFJ3ZTKEFC
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A match-status label implies no invariant.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.310086Z'
+object_type: EvidenceRecord

@@ -1,0 +1,12 @@
+id: 01M419TYHMA8N3Z9EB5XR59V3H
+type: declaration
+actor: system
+claim_id: 01M419S1ES6439G0M05R01HFGJ
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A period attribute role implies no testable invariant by itself.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.300427Z'
+object_type: EvidenceRecord

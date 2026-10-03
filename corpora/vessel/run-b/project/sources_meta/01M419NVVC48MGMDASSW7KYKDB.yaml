@@ -1,0 +1,31 @@
+id: 01M419NVVC48MGMDASSW7KYKDB
+name: 02_project_cost_ledger_2025
+kind: xlsx
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/02_project_cost_ledger_2025.xlsx
+description: The project cost ledger for FY2025 — one row per booked cost line.
+fingerprint:
+  file:
+    kind: file
+    size: 22764
+    sha256: 8abbdc61c6368da9c3e51f8a1aebf2f4253a0fa59513373f2874bdc014afff24
+  tables:
+    02_project_cost_ledger_2025__cost_ledger:
+      kind: table
+      row_count: 138
+      schema_hash: 2debb58cf9b532d95cc4bbcd78212e1e47eeff776bfecc1df340e277e807137a
+      content_hash: '100665312601861361441508879742515872905'
+      max_date: null
+    02_project_cost_ledger_2025__pivot_export:
+      kind: table
+      row_count: 6
+      schema_hash: 155d7a912db97cdced83f2e1ec369dc59e6a7d50caf0d20d01e9dd3e67587abf
+      content_hash: '337149330199394059093841505986967367715'
+      max_date: null
+    02_project_cost_ledger_2025__cost_centre_map:
+      kind: table
+      row_count: 4
+      schema_hash: cc63f9f2567b4e9944d493ece4b974a49c660d01fb904e26219650e5c825e1f0
+      content_hash: '203818333161185839423220064565771497806'
+      max_date: null
+created_at: '2026-10-03T16:31:10.700318Z'
+object_type: Source

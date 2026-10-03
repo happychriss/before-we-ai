@@ -1,0 +1,12 @@
+id: 01M419TYHQVYTS1X1J74FAPPTF
+type: declaration
+actor: system
+claim_id: 01M419S1FCKCTZVYXC7Q2CX0CQ
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A location attribute implies no invariant.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.303948Z'
+object_type: EvidenceRecord

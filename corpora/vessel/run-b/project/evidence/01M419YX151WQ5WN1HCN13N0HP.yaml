@@ -1,0 +1,34 @@
+id: 01M419YX151WQ5WN1HCN13N0HP
+type: check_result
+actor: check
+claim_id: 01M419QXMC0DQJB8HCQ50K7335
+check_plan_id: 01M419WJ8TM09MWR6ER86P4HWD
+verdict: pass
+population: 138
+exception_count: 0
+exception_samples: []
+payload:
+  template: attribute_contradiction
+  sql: "SELECT NULLIF(trim(\"l\".\"entity\"), '') AS key,\n       NULLIF(trim(\"l\"\
+    .\"location\"), '') AS left_value,\n       NULLIF(trim(\"r\".\"city\"), '') AS\
+    \ right_value\nFROM \"02_project_cost_ledger_2025__cost_ledger\" l\nJOIN \"01_company_and_vessel_master__group_structure\"\
+    \ r ON NULLIF(trim(\"l\".\"entity\"), '') = NULLIF(trim(\"r\".\"entity_code\"\
+    ), '')\nWHERE NULLIF(trim(\"l\".\"location\"), '') IS DISTINCT FROM NULLIF(trim(\"\
+    r\".\"city\"), '')\nORDER BY key"
+  summary: no violations
+source_fingerprints:
+  02_project_cost_ledger_2025__cost_ledger:
+    kind: table
+    row_count: 138
+    schema_hash: 2debb58cf9b532d95cc4bbcd78212e1e47eeff776bfecc1df340e277e807137a
+    content_hash: '100665312601861361441508879742515872905'
+    max_date: null
+  01_company_and_vessel_master__group_structure:
+    kind: table
+    row_count: 3
+    schema_hash: a9bb372927cfdb3c2a4154c442b03778685cfcbf0e747caad5bc8cf12e12ab18
+    content_hash: '217815869232236796699729810220490502706'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.824007Z'
+object_type: EvidenceRecord

@@ -1,0 +1,49 @@
+id: 01M419NVWW794AC69XJVCTB4DK
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: reported_eur
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 136
+  min: '104155'
+  max: '97643'
+  len_min: 3
+  len_avg: 5.1
+  len_max: 9
+  top_values:
+  - value: '149589'
+    count: 2
+  - value: '195652'
+    count: 2
+  - value: '104155'
+    count: 1
+  - value: '10938'
+    count: 1
+  - value: '10954'
+    count: 1
+  - value: '10972'
+    count: 1
+  - value: '112357'
+    count: 1
+  - value: '115736'
+    count: 1
+  - value: '116955'
+    count: 1
+  - value: '119167'
+    count: 1
+  value_class: decimal_like
+  patterns:
+  - mask: '99999'
+    count: 84
+  - mask: '999999'
+    count: 32
+  - mask: '9999'
+    count: 18
+  - mask: '999'
+    count: 1
+  - mask: '999999.99'
+    count: 1
+created_at: '2026-10-03T16:31:10.748990Z'
+object_type: DataProfile

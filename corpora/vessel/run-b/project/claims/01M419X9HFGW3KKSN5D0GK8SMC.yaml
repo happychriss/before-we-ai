@@ -1,0 +1,18 @@
+id: 01M419X9HFGW3KKSN5D0GK8SMC
+statement: '''Danzig yard'' is an older alias for the Gdansk yard.'
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: Gdansk yard
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HGWSRHSZ2BPMTZ3HNK
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.095634Z'
+term: Gdansk yard
+definition: Older presentations call the Gdansk yard the Danzig yard.
+object_type: ConceptClaim

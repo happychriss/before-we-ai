@@ -1,0 +1,19 @@
+id: 01M419Y6MSJ5BFBMMYXVNG691W
+type: document_anchor
+actor: ai
+claim_id: 01M419Y6MSJ5BFBMMYXVNG691V
+exception_samples: []
+payload:
+  quote: The internal management schedule recognizes Elbe Runner at 68% cost-to-cost.
+  chunk_id: 09_contracts_change_orders_and_acceptance:p1:4
+  kind: chart
+  source: 09_contracts_change_orders_and_acceptance
+  page: 1
+source_fingerprints:
+  09_contracts_change_orders_and_acceptance:
+    kind: chunk
+    chunk_id: 09_contracts_change_orders_and_acceptance:p1:4
+    sha256: 36d85ec4c32cb679ad974aad1dd247afa845074915c34b0ef9dac9891e3a53b0
+stale: false
+created_at: '2026-10-03T16:35:43.897811Z'
+object_type: EvidenceRecord

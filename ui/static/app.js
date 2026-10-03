@@ -1,6 +1,23 @@
 // The run page: one POST per step, in order. Everything else is plain links
 // and forms — the server re-derives every status on each page load.
 (function () {
+  const load = document.getElementById("run-load");
+  if (load) {
+    load.addEventListener("click", async () => {
+      load.disabled = true;
+      load.textContent = "Loading and re-judging…";
+      const response = await fetch("/api/load", { method: "POST" });
+      const body = await response.json();
+      if (!body.ok) {
+        const error = document.getElementById("run-error");
+        error.textContent = `Loading failed: ${body.error}`;
+        error.hidden = false;
+        return;
+      }
+      window.location.href = "/";
+    });
+    return;
+  }
   const next = document.getElementById("run-next");
   const all = document.getElementById("run-all");
   if (!next && !all) return;

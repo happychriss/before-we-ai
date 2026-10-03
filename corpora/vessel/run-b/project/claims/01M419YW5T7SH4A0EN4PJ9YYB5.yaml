@@ -1,0 +1,20 @@
+id: 01M419YW5T7SH4A0EN4PJ9YYB5
+statement: The controller flags that Baltic Surveyor board cost excluded unsigned
+  CO-17 cost and may have handled the duplicated steel invoice incorrectly.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: unsigned CO-17 in Baltic Surveyor cost
+source_ids:
+- 01M419NWX4Y68Q54348SFZ92ZB
+evidence_ids:
+- 01M419YW5T7SH4A0EN4PJ9YYB6
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:36:05.946392Z'
+term: unsigned CO-17 in Baltic Surveyor cost
+definition: The board cost for Baltic Surveyor omitted the unsigned change order CO-17.
+  The controller asks for a recalculation from source evidence.
+object_type: ConceptClaim

@@ -1,0 +1,13 @@
+id: 01M419TYJ238Q7WMJZAN4TXPQ4
+type: declaration
+actor: system
+claim_id: 01M419S1ERYWRSF6YZAESA11ES
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A document reference need not be unique per line, and no document register
+    is in scope to resolve it against.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.314322Z'
+object_type: EvidenceRecord

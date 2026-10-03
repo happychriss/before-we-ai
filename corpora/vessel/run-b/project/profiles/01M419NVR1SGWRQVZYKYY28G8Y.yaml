@@ -1,0 +1,31 @@
+id: 01M419NVR1SGWRQVZYKYY28G8Y
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__group_structure
+column: legal_name
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: Baltic Hull Works - Danzig branch
+  max: Hanseatic Vessel Works Group GmbH
+  len_min: 28
+  len_avg: 31.3
+  len_max: 33
+  top_values:
+  - value: Baltic Hull Works - Danzig branch
+    count: 1
+  - value: Baltic Hull Works sp. z o.o.
+    count: 1
+  - value: Hanseatic Vessel Works Group GmbH
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAAAA AAAA AAAAA - AAAAAA AAAAAA
+    count: 1
+  - mask: AAAAAA AAAA AAAAA AA. A A.A.
+    count: 1
+  - mask: AAAAAAAAA AAAAAA AAAAA AAAAA AAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.593447Z'
+object_type: DataProfile

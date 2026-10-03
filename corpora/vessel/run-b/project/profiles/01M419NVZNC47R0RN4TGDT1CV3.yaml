@@ -1,0 +1,31 @@
+id: 01M419NVZNC47R0RN4TGDT1CV3
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__overhead_pools
+column: comment
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: Board report uses labour hours instead
+  max: Not normally inventoried; one project sheet includes it
+  len_min: 38
+  len_avg: 44.7
+  len_max: 55
+  top_values:
+  - value: Board report uses labour hours instead
+    count: 1
+  - value: Includes HQ occupancy? controller says no
+    count: 1
+  - value: Not normally inventoried; one project sheet includes it
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA AAAAAAAA AAAAAAAAAAA; AAA AAAAAAA AAAAA AAAAAAAA AA
+    count: 1
+  - mask: AAAAA AAAAAA AAAA AAAAAA AAAAA AAAAAAA
+    count: 1
+  - mask: AAAAAAAA AA AAAAAAAAA? AAAAAAAAAA AAAA AA
+    count: 1
+created_at: '2026-10-03T16:31:10.837939Z'
+object_type: DataProfile

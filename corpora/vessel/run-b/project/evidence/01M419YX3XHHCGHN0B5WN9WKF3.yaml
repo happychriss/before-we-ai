@@ -1,0 +1,50 @@
+id: 01M419YX3XHHCGHN0B5WN9WKF3
+type: check_result
+actor: check
+claim_id: 01M419S1F0B2PARHN1JP0KZMFZ
+check_plan_id: 01M419TYJ69N19K6W1RN21BWY5
+verdict: fail
+population: 5
+exception_count: 2
+exception_samples:
+- grp: IC-PL-25121
+  left_total: 300000.0
+  right_total: null
+  diff: 300000.0
+- grp: IC-DE-25062
+  left_total: 280000.0
+  right_total: 278600.0
+  diff: 1400.0
+result_ref: cache/check_runs/01M419YX3XHHCGHN0B5WN9WKF3.parquet
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT sender_document AS grp, sum(CAST(sender_amount_eur\
+    \ AS DOUBLE)) AS total\n    FROM \"05_intercompany_recharges_2025__ic_transactions\"\
+    \n    GROUP BY 1\n),\nr AS (\n    SELECT sender_document AS grp, sum(CAST(receiver_amount_eur\
+    \ AS DOUBLE)) AS total\n    FROM \"05_intercompany_recharges_2025__ic_transactions\"\
+    \ WHERE receiver_document IS NOT NULL\n    GROUP BY 1\n)\nSELECT coalesce(l.grp,\
+    \ r.grp) AS grp,\n       l.total AS left_total,\n       r.total AS right_total,\n\
+    \       coalesce(l.total, 0) - coalesce(r.total, 0) AS diff\nFROM l FULL JOIN\
+    \ r ON l.grp = r.grp\nWHERE abs(coalesce(l.total, 0) - coalesce(r.total, 0)) >\
+    \ 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: 2 violating groups
+  tested:
+  - view: 05_intercompany_recharges_2025__ic_transactions
+    filter: null
+    rows: 5
+    of: 5
+  - view: 05_intercompany_recharges_2025__ic_transactions
+    filter: receiver_document IS NOT NULL
+    rows: 4
+    of: 5
+  establishes: false
+source_fingerprints:
+  05_intercompany_recharges_2025__ic_transactions:
+    kind: table
+    row_count: 5
+    schema_hash: bd32561c727be1285ffe10c8b1216d17c1006b6748798b2e5d591bfe874c6d29
+    content_hash: '5353300319382409626334155060251948785'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.913504Z'
+object_type: EvidenceRecord

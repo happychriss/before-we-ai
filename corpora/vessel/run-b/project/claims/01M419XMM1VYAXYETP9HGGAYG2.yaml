@@ -1,0 +1,20 @@
+id: 01M419XMM1VYAXYETP9HGGAYG2
+statement: GD-YARD / Danzig branch is not a separate legal entity. It is an operational
+  label for the Gdansk yard operated by BHW-PL.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: Danzig branch / GD-YARD
+source_ids:
+- 01M419NWV33HY301980PZXJK38
+evidence_ids:
+- 01M419XMM2JX7HZ7F5TCFMXPV5
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:25.441916Z'
+term: Danzig branch / GD-YARD
+definition: '''Danzig branch'' is an old operational label, not a third legal entity,
+  even though several ledgers use GD-YARD as if it were an entity code.'
+object_type: ConceptClaim

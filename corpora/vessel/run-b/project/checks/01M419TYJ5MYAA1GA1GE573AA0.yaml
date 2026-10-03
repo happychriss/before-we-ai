@@ -1,0 +1,14 @@
+id: 01M419TYJ5MYAA1GA1GE573AA0
+template: reconciliation
+claim_id: 01M419S1FCKCTZVYXC7Q2CX0CP
+roles:
+- overhead_pool
+params:
+  left: 03_time_and_overhead_allocations__overhead_pools
+  left_group_expr: pool
+  left_measure_expr: CAST(pool_eur AS DOUBLE)
+  right: 03_time_and_overhead_allocations__overhead_pools
+  right_group_expr: pool
+  right_measure_expr: CAST(rate AS DOUBLE) * CAST(base_quantity AS DOUBLE)
+created_at: '2026-10-03T16:33:57.317636Z'
+object_type: CheckPlan

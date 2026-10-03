@@ -1,0 +1,31 @@
+id: 01M419NW35P86PPK0TSW7W3KPT
+name: 05_intercompany_recharges_2025
+kind: xlsx
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/05_intercompany_recharges_2025.xlsx
+description: Recharges between the German parent and the Polish yard.
+fingerprint:
+  file:
+    kind: file
+    size: 9518
+    sha256: 775bd9fc907a212f7ced63539dbd0e5ca38769405408d4d9e7cb55388b7b98b4
+  tables:
+    05_intercompany_recharges_2025__ic_transactions:
+      kind: table
+      row_count: 5
+      schema_hash: bd32561c727be1285ffe10c8b1216d17c1006b6748798b2e5d591bfe874c6d29
+      content_hash: '5353300319382409626334155060251948785'
+      max_date: null
+    05_intercompany_recharges_2025__elimination_journal:
+      kind: table
+      row_count: 5
+      schema_hash: e93f4b1b2ac046cf14c2135e71fdd3a632143c76c6a7b6f2817dac599e183c04
+      content_hash: '63536261500381951187462060451719319402'
+      max_date: null
+    05_intercompany_recharges_2025__policy:
+      kind: table
+      row_count: 3
+      schema_hash: eca1010e315fdce633b56c21f4b347bb284825bf637a93a74650b3f80ce54f50
+      content_hash: '135063250478311781870425713118023168779'
+      max_date: null
+created_at: '2026-10-03T16:31:10.949833Z'
+object_type: Source

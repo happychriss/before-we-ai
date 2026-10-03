@@ -1,0 +1,20 @@
+id: 01M419YW5MK8BV7648HGPJVZXZ
+type: document_anchor
+actor: ai
+claim_id: 01M419YW5B46KVR1EA7AS3F6VB
+exception_samples: []
+payload:
+  quote: reverse the manual-journal copy before close. I cannot see a reversal in
+    the December export.
+  chunk_id: 10_yard_operations_notes_and_email_prints:p1:1
+  kind: text
+  source: 10_yard_operations_notes_and_email_prints
+  page: 1
+source_fingerprints:
+  10_yard_operations_notes_and_email_prints:
+    kind: chunk
+    chunk_id: 10_yard_operations_notes_and_email_prints:p1:1
+    sha256: af5c9948e52ad76c669335698a77d5d24894a18a2cc8193c9d9fd626156da633
+stale: false
+created_at: '2026-10-03T16:36:05.940163Z'
+object_type: EvidenceRecord

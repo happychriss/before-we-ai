@@ -1,0 +1,49 @@
+id: 01M419NW5ZN8W08F4JCXGG5FF0
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__bank_receipts
+column: comment
+stats:
+  duckdb_type: VARCHAR
+  row_count: 12
+  null_count: 2
+  distinct_count: 10
+  min: 100k retention unpaid; 2024 deposit already held
+  max: progress billing
+  len_min: 16
+  len_avg: 34.9
+  len_max: 60
+  top_values:
+  - value: 100k retention unpaid; 2024 deposit already held
+    count: 1
+  - value: 120k retention unpaid at year end
+    count: 1
+  - value: 180k service receivables outstanding
+    count: 1
+  - value: Advance; not revenue
+    count: 1
+  - value: Applied at bank rate; does not equal invoice VAT translation
+    count: 1
+  - value: Gross deposit including 19% VAT; not revenue
+    count: 1
+  - value: Intercompany cash; not external sales
+    count: 1
+  - value: Refund still unpaid after credit note
+    count: 1
+  - value: prior-year invoice
+    count: 1
+  - value: progress billing
+    count: 1
+  value_class: text
+  patterns:
+  - mask: 999A AAAAAAA AAAAAAAAAAA AAAAAAAAAAA
+    count: 1
+  - mask: 999A AAAAAAAAA AAAAAA AA AAAA AAA
+    count: 1
+  - mask: 999A AAAAAAAAA AAAAAA; 9999 AAAAAAA AAAAAAA AAAA
+    count: 1
+  - mask: AAAAA AAAAAAA AAAAAAAAA 99% AAA; AAA AAAAAAA
+    count: 1
+  - mask: AAAAA-AAAA AAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:11.039909Z'
+object_type: DataProfile

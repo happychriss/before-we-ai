@@ -1,0 +1,13 @@
+id: 01M419WJ8R7XEPN74XVZ8VV9EZ
+template: reconciliation
+claim_id: 01M419QXMBJZBNBWK9H4F5QG78
+roles: []
+params:
+  left: 04_sales_invoices_and_credit_notes_2025__management_recognition
+  left_group_expr: project_id
+  left_measure_expr: CAST(revenue_2025_eur AS DOUBLE)
+  right: 04_sales_invoices_and_credit_notes_2025__revenue_by_ship
+  right_group_expr: project_id
+  right_measure_expr: CAST(total_linked_revenue AS DOUBLE)
+created_at: '2026-10-03T16:34:50.264848Z'
+object_type: CheckPlan

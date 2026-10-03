@@ -1,0 +1,10 @@
+id: 01M419YXSJ2PWQHT0YEXDN3Y3X
+question: Which of the proposed candidates is the 'ic_seller_entity'? The legal entity
+  providing the intercompany resource or service. No check can settle this — what
+  the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1F1J973FRKWMT9708D4
+stale: false
+created_at: '2026-10-03T16:36:07.602716Z'
+object_type: ClarificationQuestion

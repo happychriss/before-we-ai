@@ -1,0 +1,41 @@
+id: 01M419NW15QZ3GGHWP7KA5ACMV
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__documents
+column: customer_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 0
+  distinct_count: 9
+  min: CUS-DE-031
+  max: IC-HVW-DE
+  len_min: 9
+  len_avg: 9.8
+  len_max: 10
+  top_values:
+  - value: CUS-DK-022
+    count: 5
+  - value: CUS-NO-014
+    count: 4
+  - value: CUS-PL-008
+    count: 3
+  - value: CUS-DE-031
+    count: 2
+  - value: CUS-DE-044
+    count: 2
+  - value: CUS-SE-041
+    count: 2
+  - value: CUS-UK-017
+    count: 2
+  - value: IC-BHW-PL
+    count: 2
+  - value: IC-HVW-DE
+    count: 2
+  value_class: text
+  patterns:
+  - mask: AAA-AA-999
+    count: 7
+  - mask: AA-AAA-AA
+    count: 2
+created_at: '2026-10-03T16:31:10.885372Z'
+object_type: DataProfile

@@ -1,0 +1,14 @@
+id: 01M419TYHC3DXB8SJJZ5DP4914
+type: declaration
+actor: system
+claim_id: 01M419S1EZJG1TBVJW8E458A3B
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: The subledger law needs the general-ledger receivables account numbers,
+    which are not given in the profiles. No batch view has an account column to filter
+    a journal on.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.292887Z'
+object_type: EvidenceRecord

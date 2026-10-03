@@ -1,0 +1,10 @@
+id: 01M419YXSPA4ZM58WTXR4TFGNY
+question: Which of the proposed candidates is the 'labour_cost_reporting_currency'?
+  The approved burdened labour cost in the group reporting currency. No check can
+  settle this — what the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1FA5PQZVXAHDC5BGPKF
+stale: false
+created_at: '2026-10-03T16:36:07.606607Z'
+object_type: ClarificationQuestion

@@ -1,0 +1,12 @@
+id: 01M419TYHHW9433B9TJA1CQ7PX
+type: declaration
+actor: system
+claim_id: 01M419S1ES6439G0M05R01HFGK
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: An entity attribute role implies no conservation law on its own.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.297970Z'
+object_type: EvidenceRecord

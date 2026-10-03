@@ -1,0 +1,35 @@
+id: 01M419YWZ82PNCXZHDG6D7G2NN
+type: check_result
+actor: check
+claim_id: 01M419QXM8GFPE4ZQT8WJC1VW7
+check_plan_id: 01M419WJ8HZ6SDHQJ4NMG6EXSD
+verdict: pass
+population: 5
+exception_count: 0
+exception_samples: []
+payload:
+  template: anti_join
+  sql: "WITH child_keys AS (\n    SELECT NULLIF(trim(\"source_document\"), '') AS\
+    \ k FROM \"05_intercompany_recharges_2025__elimination_journal\"\n),\nparent_keys\
+    \ AS (\n    SELECT DISTINCT NULLIF(trim(\"sender_document\"), '') AS k FROM \"\
+    05_intercompany_recharges_2025__ic_transactions\"\n    WHERE NULLIF(trim(\"sender_document\"\
+    ), '') IS NOT NULL\n)\nSELECT c.k AS value, count(*) AS occurrences\nFROM child_keys\
+    \ c\nLEFT JOIN parent_keys p USING (k)\nWHERE c.k IS NOT NULL AND p.k IS NULL\n\
+    GROUP BY c.k\nORDER BY occurrences DESC, value"
+  summary: no violations
+source_fingerprints:
+  05_intercompany_recharges_2025__elimination_journal:
+    kind: table
+    row_count: 5
+    schema_hash: e93f4b1b2ac046cf14c2135e71fdd3a632143c76c6a7b6f2817dac599e183c04
+    content_hash: '63536261500381951187462060451719319402'
+    max_date: null
+  05_intercompany_recharges_2025__ic_transactions:
+    kind: table
+    row_count: 5
+    schema_hash: bd32561c727be1285ffe10c8b1216d17c1006b6748798b2e5d591bfe874c6d29
+    content_hash: '5353300319382409626334155060251948785'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.762737Z'
+object_type: EvidenceRecord

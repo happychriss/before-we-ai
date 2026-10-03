@@ -1,0 +1,11 @@
+id: 01M419NV80D5E8DF2MFWYVRFXP
+question: What is the cost of building a vessel?
+requested_output: The reconciled actual cost of building a completed (accepted or
+  delivered) vessel, in the group reporting currency and labelled as actual rather
+  than forecast.
+answer_type: completed_vessel_actual_build_cost
+scope: {}
+revision: 1
+earlier: []
+created_at: '2026-10-03T16:31:10.080303Z'
+object_type: AnswerRequest

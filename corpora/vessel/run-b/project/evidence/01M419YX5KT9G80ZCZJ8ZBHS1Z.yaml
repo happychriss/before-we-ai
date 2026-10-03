@@ -1,0 +1,112 @@
+id: 01M419YX5KT9G80ZCZJ8ZBHS1Z
+type: check_result
+actor: check
+claim_id: 01M419S1F96D5J1KBYRGTRVPFQ
+check_plan_id: 01M419TYJ5MYAA1GA1GE573AA1
+verdict: fail
+population: 47
+exception_count: 41
+exception_samples:
+- grp: TS-00025
+  left_total: 14141.0
+  right_total: 14140.619999999999
+  diff: 0.38000000000101863
+- grp: TS-00046
+  left_total: 9142.0
+  right_total: 9142.38
+  diff: -0.37999999999919964
+- grp: TS-00022
+  left_total: 34084.0
+  right_total: 34083.66
+  diff: 0.33999999999650754
+- grp: TS-00001
+  left_total: 13091.0
+  right_total: 13091.300000000001
+  diff: -0.3000000000010914
+- grp: TS-00020
+  left_total: 34809.0
+  right_total: 34809.280000000006
+  diff: -0.2800000000061118
+- grp: TS-00035
+  left_total: 14628.0
+  right_total: 14628.28
+  diff: -0.28000000000065484
+- grp: TS-00030
+  left_total: 25407.0
+  right_total: 25407.25
+  diff: -0.25
+- grp: TS-00036
+  left_total: 12318.0
+  right_total: 12317.76
+  diff: 0.23999999999978172
+- grp: TS-00033
+  left_total: 21558.0
+  right_total: 21557.8
+  diff: 0.2000000000007276
+- grp: TS-00039
+  left_total: 8476.0
+  right_total: 8476.2
+  diff: -0.2000000000007276
+- grp: TS-00002
+  left_total: 31091.0
+  right_total: 31090.800000000003
+  diff: 0.19999999999708962
+- grp: TS-00047
+  left_total: 31091.0
+  right_total: 31090.800000000003
+  diff: 0.19999999999708962
+- grp: TS-00004
+  left_total: 24545.0
+  right_total: 24545.18
+  diff: -0.18000000000029104
+- grp: TS-00015
+  left_total: 12222.0
+  right_total: 12221.82
+  diff: 0.18000000000029104
+- grp: TS-00028
+  left_total: 7442.0
+  right_total: 7442.175
+  diff: -0.1750000000001819
+- grp: TS-00045
+  left_total: 952.0
+  right_total: 951.8399999999999
+  diff: 0.16000000000008185
+- grp: TS-00018
+  left_total: 4351.0
+  right_total: 4350.84
+  diff: 0.15999999999985448
+- grp: TS-00027
+  left_total: 18735.0
+  right_total: 18735.16
+  diff: -0.15999999999985448
+- grp: TS-00031
+  left_total: 9496.0
+  right_total: 9495.84
+  diff: 0.15999999999985448
+- grp: TS-00013
+  left_total: 25556.0
+  right_total: 25556.159999999996
+  diff: -0.1599999999962165
+result_ref: cache/check_runs/01M419YX5KT9G80ZCZJ8ZBHS1Z.parquet
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT entry_id AS grp, sum(CAST(extended_cost_eur AS DOUBLE))\
+    \ AS total\n    FROM \"03_time_and_overhead_allocations__time_allocations\"\n\
+    \    GROUP BY 1\n),\nr AS (\n    SELECT entry_id AS grp, sum(CAST(hours AS DOUBLE)\
+    \ * CAST(hourly_rate_eur AS DOUBLE)) AS total\n    FROM \"03_time_and_overhead_allocations__time_allocations\"\
+    \n    GROUP BY 1\n)\nSELECT coalesce(l.grp, r.grp) AS grp,\n       l.total AS\
+    \ left_total,\n       r.total AS right_total,\n       coalesce(l.total, 0) - coalesce(r.total,\
+    \ 0) AS diff\nFROM l FULL JOIN r ON l.grp = r.grp\nWHERE abs(coalesce(l.total,\
+    \ 0) - coalesce(r.total, 0)) > 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: 41 violating groups
+  establishes: false
+source_fingerprints:
+  03_time_and_overhead_allocations__time_allocations:
+    kind: table
+    row_count: 47
+    schema_hash: aa83e582c8ddc40c8862c3a04bcb725a354941cbf287c7170f261a4077341223
+    content_hash: '103940560900488189741586873328671753825'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.976357Z'
+object_type: EvidenceRecord

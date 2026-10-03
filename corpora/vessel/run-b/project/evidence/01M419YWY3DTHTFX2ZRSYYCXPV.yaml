@@ -1,0 +1,96 @@
+id: 01M419YWY3DTHTFX2ZRSYYCXPV
+type: check_result
+actor: check
+claim_id: 01M419QXM5J5BZNWAA72Q7THNT
+check_plan_id: 01M419WJ8VKRBAYSR3265M5AHF
+verdict: fail
+population: 47
+exception_count: 35
+exception_samples:
+- key: EMP-002
+  left_value: '62'
+  right_value: '78'
+- key: EMP-002
+  left_value: '48'
+  right_value: '78'
+- key: EMP-003
+  left_value: '48'
+  right_value: '78'
+- key: EMP-005
+  left_value: '55'
+  right_value: '48'
+- key: EMP-009
+  left_value: '55'
+  right_value: '78'
+- key: EMP-018
+  left_value: '48'
+  right_value: '42.5'
+- key: EMP-019
+  left_value: '48'
+  right_value: '42.5'
+- key: EMP-019
+  left_value: '55'
+  right_value: '42.5'
+- key: EMP-021
+  left_value: '62'
+  right_value: '48'
+- key: EMP-022
+  left_value: '62'
+  right_value: '42.5'
+- key: EMP-026
+  left_value: '48'
+  right_value: '55'
+- key: EMP-027
+  left_value: '48'
+  right_value: '62'
+- key: EMP-028
+  left_value: '78'
+  right_value: '55'
+- key: EMP-028
+  left_value: '78'
+  right_value: '55'
+- key: EMP-028
+  left_value: '62'
+  right_value: '55'
+- key: EMP-029
+  left_value: '42.5'
+  right_value: '78'
+- key: EMP-030
+  left_value: '48'
+  right_value: '78'
+- key: EMP-033
+  left_value: '55'
+  right_value: '62'
+- key: EMP-036
+  left_value: '48'
+  right_value: '62'
+- key: EMP-042
+  left_value: '78'
+  right_value: '62'
+result_ref: cache/check_runs/01M419YWY3DTHTFX2ZRSYYCXPV.parquet
+payload:
+  template: attribute_contradiction
+  sql: "SELECT NULLIF(trim(\"l\".\"employee_id\"), '') AS key,\n       NULLIF(trim(\"\
+    l\".\"hourly_rate_eur\"), '') AS left_value,\n       NULLIF(trim(\"r\".\"burdened_rate\"\
+    ), '') AS right_value\nFROM \"03_time_and_overhead_allocations__time_allocations\"\
+    \ l\nJOIN \"03_time_and_overhead_allocations__employee_rates\" r ON NULLIF(trim(\"\
+    l\".\"employee_id\"), '') = NULLIF(trim(\"r\".\"employee_id\"), '')\nWHERE NULLIF(trim(\"\
+    l\".\"hourly_rate_eur\"), '') IS DISTINCT FROM NULLIF(trim(\"r\".\"burdened_rate\"\
+    ), '')\nORDER BY key"
+  summary: 35 violating groups
+source_fingerprints:
+  03_time_and_overhead_allocations__time_allocations:
+    kind: table
+    row_count: 47
+    schema_hash: aa83e582c8ddc40c8862c3a04bcb725a354941cbf287c7170f261a4077341223
+    content_hash: '103940560900488189741586873328671753825'
+    max_date: null
+  03_time_and_overhead_allocations__employee_rates:
+    kind: table
+    row_count: 68
+    schema_hash: 3f90916b92ab8a2c01f47d732a64b64b03ccc8b47c1648557477dae54682e2a9
+    content_hash: '216718860651031418370784549979877416376'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.732950Z'
+object_type: EvidenceRecord

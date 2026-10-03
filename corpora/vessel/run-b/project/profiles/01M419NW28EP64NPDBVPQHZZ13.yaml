@@ -1,0 +1,47 @@
+id: 01M419NW28EP64NPDBVPQHZZ13
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__management_recognition
+column: project_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 9
+  null_count: 0
+  distinct_count: 9
+  min: External revenue excluding disputed POC
+  max: Warning
+  len_min: 7
+  len_avg: 12.2
+  len_max: 39
+  top_values:
+  - value: External revenue excluding disputed POC
+    count: 1
+  - value: Management total
+    count: 1
+  - value: SERVICES
+    count: 1
+  - value: VSL-2407
+    count: 1
+  - value: VSL-2411
+    count: 1
+  - value: VSL-2502
+    count: 1
+  - value: VSL-2504
+    count: 1
+  - value: VSL-2506
+    count: 1
+  - value: Warning
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-9999
+    count: 5
+  - mask: AAAAAAA
+    count: 1
+  - mask: AAAAAAAA
+    count: 1
+  - mask: AAAAAAAA AAAAAAA AAAAAAAAA AAAAAAAA AAA
+    count: 1
+  - mask: AAAAAAAAAA AAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.920942Z'
+object_type: DataProfile

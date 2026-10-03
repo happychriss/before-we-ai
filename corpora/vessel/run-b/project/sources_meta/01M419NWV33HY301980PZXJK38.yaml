@@ -1,0 +1,24 @@
+id: 01M419NWV33HY301980PZXJK38
+name: 08_tax_and_transfer_pricing_memo_2025
+kind: pdf
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/08_tax_and_transfer_pricing_memo_2025.pdf
+description: Internal working paper on VAT, corporate income tax and transfer pricing.
+fingerprint:
+  file:
+    kind: file
+    size: 19272
+    sha256: a8ea35f80bee57f99a137e6e359a8b3d65623685ca4e59ea033968cf5e8ea4af
+  chunks:
+    08_tax_and_transfer_pricing_memo_2025:p1:0: a07531877b33c044eb2689052fc16613c458d2da666a821f13167bc44fb044d1
+    08_tax_and_transfer_pricing_memo_2025:p1:1: da65f64d21dd48ae6a186b19bc9b2d025b3e5d207e083f58e992fea9d16738ab
+    08_tax_and_transfer_pricing_memo_2025:p1:2: b9a8794dd41780a7f3e5086133df66fabb96e5f570dea75f34efa4094899e85b
+    08_tax_and_transfer_pricing_memo_2025:p1:3: 58e2f4f165aecddb2b97e4eb63160de1635c6f38b2b7bad59e34fe8fc6480ccf
+    08_tax_and_transfer_pricing_memo_2025:p1:4: 0a79c3d9a167e9ba22d4b255b16244372b482882dbccb366fe582a7da263b14f
+    08_tax_and_transfer_pricing_memo_2025:p1:5: dcca73e6e1588b5e12bc2b1312e4f0d33b46c947e3d03ede30590ecc462d538f
+    08_tax_and_transfer_pricing_memo_2025:p1:6: db7b1af6814737ae66a76c9487c43e30c4aabe867328912c1c8ea985acd135ac
+    08_tax_and_transfer_pricing_memo_2025:p2:0: 9e055d001a7f57eef42e935eb6e2f154db0ce75d648fac2c2ea4790590bb9dc3
+    08_tax_and_transfer_pricing_memo_2025:p2:1: ae5d637b0a4d3cbd8d02929d20298f2f6eba1ab3164355bfa26e9a591dfe3958
+    08_tax_and_transfer_pricing_memo_2025:p2:2: 49e988c0b26c2ba06be05a13602f58c03d77fc46919b30d7e091635d452f8b51
+    08_tax_and_transfer_pricing_memo_2025:p2:3: 1d3f08245eeea1cde7de54e3816d548154544f839eccfb1524b69721ea2b3301
+created_at: '2026-10-03T16:31:11.715771Z'
+object_type: Source

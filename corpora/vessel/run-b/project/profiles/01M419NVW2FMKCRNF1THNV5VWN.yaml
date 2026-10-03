@@ -1,0 +1,49 @@
+id: 01M419NVW2FMKCRNF1THNV5VWN
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: vendor
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 20
+  min: Baltic Engines Sp. z o.o.
+  max: Stal-Marine sp. z o.o.
+  len_min: 14
+  len_avg: 21.5
+  len_max: 28
+  top_values:
+  - value: HVW Design Office
+    count: 14
+  - value: Internal payroll allocation
+    count: 12
+  - value: North Atlantic Register
+    count: 11
+  - value: Internal yard allocation
+    count: 10
+  - value: Gdansk Electrics S.A.
+    count: 9
+  - value: HanseDiesel GmbH
+    count: 9
+  - value: Danzig Outfitters Sp. z o.o.
+    count: 8
+  - value: Harbour Logistics KG
+    count: 8
+  - value: PropTech Marine BV
+    count: 8
+  - value: Baltic Naval Architects
+    count: 7
+  value_class: text
+  patterns:
+  - mask: AAA AAA AAAAAA
+    count: 1
+  - mask: AAA AAAAAA AAAAAA
+    count: 1
+  - mask: AAAA AAAAA AAAAAAA AAAA
+    count: 1
+  - mask: AAAA-AAAAAA AA. A A.A.
+    count: 1
+  - mask: AAAAA AAA AAAAAAAAAAA AAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.722818Z'
+object_type: DataProfile

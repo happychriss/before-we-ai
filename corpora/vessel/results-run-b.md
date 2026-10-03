@@ -221,3 +221,32 @@ Eleven right, three half, six wrong.
   of the guide-builder experiment and reuses finance laws that do not fit a
   shipbuilder. Q7, Q8 and Q13 follow from that as much as from the engine.
 - **One run, one model pair.** No repeat, so no estimate of run-to-run noise.
+
+## Afterwards — what was changed because of this run
+
+Added 2026-10-03, after the blind results above were committed. Nothing above
+this heading was edited.
+
+All four engine issues were fixed the same day: a filtered pass writes its
+limit onto the claim; a generic check carries no weight on a role binding in
+either direction; a check that cannot run leaves an inconclusive record; an
+unevaluated formula is declared by the reader and an all-empty measure reads as
+nothing tested. The store this run left behind is kept unedited in `run-b/`.
+
+Judging that same store again with the fixed engine — stages 2 and 4 only, no
+model call, so the proposals are identical:
+
+| | on the day | re-judged |
+|---|---|---|
+| claims contradicted | 28 | 12 |
+| role candidates contradicted | 17 | 2 (both `journal`, by the balance law) |
+| dependencies marked "all candidates contradicted" | 13 | 1 |
+| the false promotion (T9) | unqualified | carries "holds only where status = 'delivered' — tested on 3 of 5 rows" |
+| the pivot reconciliation | contradicted | inconclusive: nothing was tested |
+| the check that crashed | no trace | an inconclusive record on its claim |
+
+The verdict is `blocked` either way. What changed is what a person is told on
+the way there: 35 open choices instead of 13 dead ends.
+
+Scored against the answer key, separately and afterwards:
+`results-run-b-scored.md`.

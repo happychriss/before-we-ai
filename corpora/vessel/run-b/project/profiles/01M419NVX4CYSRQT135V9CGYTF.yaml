@@ -1,0 +1,31 @@
+id: 01M419NVX4CYSRQT135V9CGYTF
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: source_system
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 3
+  min: ERP-DE
+  max: YARD-PL
+  len_min: 6
+  len_avg: 6.8
+  len_max: 14
+  top_values:
+  - value: YARD-PL
+    count: 98
+  - value: ERP-DE
+    count: 39
+  - value: MANUAL-JOURNAL
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-AA
+    count: 1
+  - mask: AAAA-AA
+    count: 1
+  - mask: AAAAAA-AAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.756338Z'
+object_type: DataProfile

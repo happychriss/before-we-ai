@@ -1,0 +1,12 @@
+id: 01M419TYHPXKM481SS64V1XQX6
+type: declaration
+actor: system
+claim_id: 01M419S1FE0V1VQSSNJ96Z27TH
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: An allocation-base label implies no conservation law.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.302686Z'
+object_type: EvidenceRecord

@@ -1,0 +1,12 @@
+id: 01M419TYHK1463DWEET5NG95ZY
+type: declaration
+actor: system
+claim_id: 01M419S1EYP0GDQTDG2AZBH7YG
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: No purchase-order register is in scope for the PO reference to resolve against.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.299598Z'
+object_type: EvidenceRecord

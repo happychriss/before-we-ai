@@ -1,0 +1,20 @@
+id: 01M419X9HXVMTDX7368YV0E906
+type: document_anchor
+actor: ai
+claim_id: 01M419X9HXVMTDX7368YV0E905
+exception_samples: []
+payload:
+  quote: December Gdansk labour was approved after year end and may not have reached
+    the project ledger.
+  chunk_id: 07_board_management_report_2025:p2:3
+  kind: text
+  source: 07_board_management_report_2025
+  page: 2
+source_fingerprints:
+  07_board_management_report_2025:
+    kind: chunk
+    chunk_id: 07_board_management_report_2025:p2:3
+    sha256: 2eeb2faf3f1b117102c78a2350ae10fcab3f1dcaf740d8ea4d23b6735d3e2937
+stale: false
+created_at: '2026-10-03T16:35:14.109767Z'
+object_type: EvidenceRecord

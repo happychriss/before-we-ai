@@ -1,0 +1,15 @@
+id: 01M419WJ8VKRBAYSR3265M5AHG
+type: declaration
+actor: system
+claim_id: 01M419QXMA1NRTBB6FJ4YM5MDQ
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: range_join tests a value against from/to interval bounds. The claim is a
+    categorical mapping from issuing entity to VAT rate (HVW-DE 0.19, BHW-PL 0.23),
+    and the params give no real range columns, so the template does not fit. A decode-style
+    check would suit it, but decode is not admissible here.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:34:50.267545Z'
+object_type: EvidenceRecord

@@ -1,0 +1,28 @@
+id: 01M419YWYSXP2GMRH104Z1G563
+type: check_result
+actor: check
+claim_id: 01M419QXM6SB27ZVXWGCCZR228
+check_plan_id: 01M419WJ8MNPTHCSG0CKJDWVY4
+verdict: pass
+population: 11
+exception_count: 0
+exception_samples: []
+payload:
+  template: coverage
+  sql: "WITH expected(unit) AS (VALUES ('2025-01-01'), ('2025-02-01'), ('2025-03-01'),\
+    \ ('2025-04-01'), ('2025-05-01'), ('2025-06-01'), ('2025-07-01'), ('2025-08-01'),\
+    \ ('2025-09-01'), ('2025-10-01'), ('2025-12-01')),\nactual AS (\n    SELECT DISTINCT\
+    \ NULLIF(trim(\"month\"), '') AS unit FROM \"06_bank_receipts_and_fx_2025__monthly_fx_rates\"\
+    \n)\nSELECT e.unit AS missing_unit\nFROM expected e\nLEFT JOIN actual a USING\
+    \ (unit)\nWHERE a.unit IS NULL\nORDER BY missing_unit"
+  summary: all 11 units covered
+source_fingerprints:
+  06_bank_receipts_and_fx_2025__monthly_fx_rates:
+    kind: table
+    row_count: 24
+    schema_hash: d3f7810b46348c671dbd0be3237fb3e8826c4c52aacd8ffdc8cfbbc264a9e0c1
+    content_hash: '262813752055831740250685241757192095077'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.746950Z'
+object_type: EvidenceRecord

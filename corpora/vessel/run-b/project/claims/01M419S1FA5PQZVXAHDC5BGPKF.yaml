@@ -1,0 +1,24 @@
+id: 01M419S1FA5PQZVXAHDC5BGPKF
+statement: role 'labour_cost_reporting_currency' is played by amount=03_time_and_overhead_allocations__time_allocations.extended_cost_eur,
+  table=03_time_and_overhead_allocations__time_allocations
+created_by: ai
+status: contradicted
+predicate:
+  name: role_binding
+  params:
+    role: labour_cost_reporting_currency
+    binding:
+      amount: 03_time_and_overhead_allocations__time_allocations.extended_cost_eur
+      table: 03_time_and_overhead_allocations__time_allocations
+source_ids:
+- 01M419NVY2MBX5GEG5JJ256AYP
+evidence_ids:
+- 01M419YX6DYZ4GGMZMP8S6QJYZ
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.762708Z'
+role: labour_cost_reporting_currency
+binding:
+  amount: 03_time_and_overhead_allocations__time_allocations.extended_cost_eur
+  table: 03_time_and_overhead_allocations__time_allocations
+object_type: MappingClaim

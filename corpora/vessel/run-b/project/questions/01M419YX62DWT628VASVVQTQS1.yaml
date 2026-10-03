@@ -1,0 +1,9 @@
+id: 01M419YX62DWT628VASVVQTQS1
+question: 03_time_and_overhead_allocations__time_allocations and 03_time_and_overhead_allocations__time_allocations
+  do not agree per group — which cutoff or accrual is missing?
+finding: 41 exceptions in 47 rows (87.2%)
+claim_ids:
+- 01M419S1F96D5J1KBYRGTRVPFQ
+stale: false
+created_at: '2026-10-03T16:36:06.978557Z'
+object_type: ClarificationQuestion

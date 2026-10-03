@@ -1,0 +1,19 @@
+id: 01M419YW5SZGYRPQPRKQ0K1AD3
+statement: A proposed build-identity alias that is still unapproved.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: Danzig-11 / GD-11/B alias
+source_ids:
+- 01M419NWX4Y68Q54348SFZ92ZB
+evidence_ids:
+- 01M419YW5SZGYRPQPRKQ0K1AD4
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:36:05.945023Z'
+term: Danzig-11 / GD-11/B alias
+definition: Ops states that Danzig-11 and GD-11/B are the same build; the alias table
+  has not been approved.
+object_type: ConceptClaim

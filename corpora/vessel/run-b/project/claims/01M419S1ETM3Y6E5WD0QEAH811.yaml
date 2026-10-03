@@ -1,0 +1,24 @@
+id: 01M419S1ETM3Y6E5WD0QEAH811
+statement: role 'build_ref' is played by column=02_project_cost_ledger_2025__cost_ledger.project_id,
+  table=02_project_cost_ledger_2025__cost_ledger
+created_by: ai
+status: proposed
+predicate:
+  name: role_binding
+  params:
+    role: build_ref
+    binding:
+      column: 02_project_cost_ledger_2025__cost_ledger.project_id
+      table: 02_project_cost_ledger_2025__cost_ledger
+source_ids:
+- 01M419NVVC48MGMDASSW7KYKDB
+evidence_ids:
+- 01M419YX2YENADKE537Q7GZ6QE
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.746439Z'
+role: build_ref
+binding:
+  column: 02_project_cost_ledger_2025__cost_ledger.project_id
+  table: 02_project_cost_ledger_2025__cost_ledger
+object_type: MappingClaim

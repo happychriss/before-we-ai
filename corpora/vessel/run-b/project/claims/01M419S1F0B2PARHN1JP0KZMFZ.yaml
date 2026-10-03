@@ -1,0 +1,21 @@
+id: 01M419S1F0B2PARHN1JP0KZMFZ
+statement: role 'intercompany' is played by table=05_intercompany_recharges_2025__ic_transactions
+created_by: ai
+status: contradicted
+predicate:
+  name: role_binding
+  params:
+    role: intercompany
+    binding:
+      table: 05_intercompany_recharges_2025__ic_transactions
+source_ids:
+- 01M419NW35P86PPK0TSW7W3KPT
+evidence_ids:
+- 01M419YX3XHHCGHN0B5WN9WKF3
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.752155Z'
+role: intercompany
+binding:
+  table: 05_intercompany_recharges_2025__ic_transactions
+object_type: MappingClaim

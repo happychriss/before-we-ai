@@ -1,0 +1,12 @@
+id: 01M419X9HTD2WQHYDH652SBB78
+statement: The elimination journal is incomplete by EUR 0.21m.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HTD2WQHYDH652SBB79
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.106608Z'
+object_type: Claim

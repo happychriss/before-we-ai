@@ -1,0 +1,14 @@
+id: 01M419YW5QAKVT3ZGT09X1RT6N
+statement: An unassigned class/safety invoice of about EUR 15,298 belongs to NB-407
+  (Nordlicht) by PO reference. Its project field was blank because NB-407 was already
+  closed.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWX4Y68Q54348SFZ92ZB
+evidence_ids:
+- 01M419YW5R6XSHJCBXB78VC21S
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:36:05.943864Z'
+object_type: Claim

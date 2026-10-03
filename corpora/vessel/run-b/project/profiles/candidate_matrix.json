@@ -1,0 +1,1161 @@
+{
+ "threshold": 0.5,
+ "pair_cap": 50000,
+ "pairs_examined": 5597,
+ "cap_hit": false,
+ "warnings": [],
+ "candidates": [
+  {
+   "left": "03_time_and_overhead_allocations__time_allocations.month",
+   "right": "06_bank_receipts_and_fx_2025__monthly_fx_rates.month",
+   "overlap": 11,
+   "left_distinct": 11,
+   "right_distinct": 12,
+   "containment": 1.0,
+   "jaccard": 0.9167
+  },
+  {
+   "left": "01_company_and_vessel_master__customers.customer_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.customer_id",
+   "overlap": 9,
+   "left_distinct": 9,
+   "right_distinct": 9,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.yard_job_no",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 6,
+   "left_distinct": 6,
+   "right_distinct": 19,
+   "containment": 1.0,
+   "jaccard": 0.3158
+  },
+  {
+   "left": "01_company_and_vessel_master__customers.customer_id",
+   "right": "01_company_and_vessel_master__vessel_master.customer_id",
+   "overlap": 5,
+   "left_distinct": 9,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 0.5556
+  },
+  {
+   "left": "01_company_and_vessel_master__customers.legal_name",
+   "right": "01_company_and_vessel_master__vessel_master.customer_name",
+   "overlap": 5,
+   "left_distinct": 9,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 0.5556
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.contract_reference",
+   "right": "01_company_and_vessel_master__vessel_master.contract_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.contract_reference",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 19,
+   "containment": 1.0,
+   "jaccard": 0.2632
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "01_company_and_vessel_master__vessel_master.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 6,
+   "containment": 1.0,
+   "jaccard": 0.8333
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 10,
+   "containment": 1.0,
+   "jaccard": 0.5
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__management_recognition.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 9,
+   "containment": 1.0,
+   "jaccard": 0.5556
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 7,
+   "containment": 1.0,
+   "jaccard": 0.7143
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.yard_job_no",
+   "right": "01_company_and_vessel_master__vessel_master.yard_job_no",
+   "overlap": 5,
+   "left_distinct": 6,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 0.8333
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.yard_job_no",
+   "right": "02_project_cost_ledger_2025__cost_ledger.yard_job_ref",
+   "overlap": 5,
+   "left_distinct": 6,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 0.8333
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.contract_reference",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 19,
+   "containment": 1.0,
+   "jaccard": 0.2632
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.customer_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.customer_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 9,
+   "containment": 1.0,
+   "jaccard": 0.5556
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.customer_id",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.payer",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 7,
+   "containment": 1.0,
+   "jaccard": 0.7143
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.project_id",
+   "right": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.project_id",
+   "right": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 6,
+   "containment": 1.0,
+   "jaccard": 0.8333
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.project_id",
+   "right": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 10,
+   "containment": 1.0,
+   "jaccard": 0.5
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__management_recognition.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 9,
+   "containment": 1.0,
+   "jaccard": 0.5556
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 7,
+   "containment": 1.0,
+   "jaccard": 0.7143
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.vessel_name",
+   "right": "04_sales_invoices_and_credit_notes_2025__management_recognition.description",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 6,
+   "containment": 1.0,
+   "jaccard": 0.8333
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.vessel_name",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.vessel",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 7,
+   "containment": 1.0,
+   "jaccard": 0.7143
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.yard_job_no",
+   "right": "02_project_cost_ledger_2025__cost_ledger.yard_job_ref",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.yard_job_no",
+   "right": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 10,
+   "containment": 1.0,
+   "jaccard": 0.5
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.yard_job_no",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 19,
+   "containment": 1.0,
+   "jaccard": 0.2632
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "right": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 6,
+   "containment": 1.0,
+   "jaccard": 0.8333
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "right": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 10,
+   "containment": 1.0,
+   "jaccard": 0.5
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__management_recognition.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 9,
+   "containment": 1.0,
+   "jaccard": 0.5556
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 7,
+   "containment": 1.0,
+   "jaccard": 0.7143
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.yard_job_ref",
+   "right": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 10,
+   "containment": 1.0,
+   "jaccard": 0.5
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.yard_job_ref",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 19,
+   "containment": 1.0,
+   "jaccard": 0.2632
+  },
+  {
+   "left": "03_time_and_overhead_allocations__employee_rates.burdened_rate",
+   "right": "03_time_and_overhead_allocations__time_allocations.hourly_rate_eur",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "05_intercompany_recharges_2025__elimination_journal.source_document",
+   "right": "05_intercompany_recharges_2025__ic_transactions.sender_document",
+   "overlap": 5,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.document_date",
+   "right": "05_intercompany_recharges_2025__ic_transactions.date",
+   "overlap": 4,
+   "left_distinct": 23,
+   "right_distinct": 4,
+   "containment": 1.0,
+   "jaccard": 0.1739
+  },
+  {
+   "left": "05_intercompany_recharges_2025__elimination_journal.eliminate_cost_eur",
+   "right": "05_intercompany_recharges_2025__ic_transactions.receiver_amount_eur",
+   "overlap": 4,
+   "left_distinct": 4,
+   "right_distinct": 5,
+   "containment": 1.0,
+   "jaccard": 0.8
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.acceptance_date",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.document_date",
+   "overlap": 3,
+   "left_distinct": 3,
+   "right_distinct": 23,
+   "containment": 1.0,
+   "jaccard": 0.1304
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.city",
+   "right": "01_company_and_vessel_master__vessel_master.build_yard",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.city",
+   "right": "02_project_cost_ledger_2025__cost_ledger.location",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.city",
+   "right": "03_time_and_overhead_allocations__employee_rates.location",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.city",
+   "right": "03_time_and_overhead_allocations__time_allocations.home_location",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.entity_code",
+   "right": "02_project_cost_ledger_2025__cost_centre_map.entity",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.entity_code",
+   "right": "02_project_cost_ledger_2025__cost_ledger.entity",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.entity_code",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.issuing_entity",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.entity_code",
+   "right": "05_intercompany_recharges_2025__ic_transactions.buyer_entity",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.entity_code",
+   "right": "05_intercompany_recharges_2025__ic_transactions.seller_entity",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.entity_code",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.bank_entity",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.functional_currency",
+   "right": "02_project_cost_ledger_2025__cost_ledger.currency",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.functional_currency",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.currency",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.headquarter",
+   "right": "02_project_cost_ledger_2025__cost_ledger.approved",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.build_yard",
+   "right": "02_project_cost_ledger_2025__cost_ledger.location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.build_yard",
+   "right": "03_time_and_overhead_allocations__employee_rates.location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.build_yard",
+   "right": "03_time_and_overhead_allocations__overhead_pools.location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 3,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.build_yard",
+   "right": "03_time_and_overhead_allocations__time_allocations.home_location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_centre_map.entity",
+   "right": "02_project_cost_ledger_2025__cost_ledger.entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_centre_map.entity",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.issuing_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_centre_map.entity",
+   "right": "05_intercompany_recharges_2025__ic_transactions.buyer_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_centre_map.entity",
+   "right": "05_intercompany_recharges_2025__ic_transactions.seller_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_centre_map.entity",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.bank_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.currency",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.currency",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.entity",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.issuing_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.entity",
+   "right": "05_intercompany_recharges_2025__ic_transactions.buyer_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.entity",
+   "right": "05_intercompany_recharges_2025__ic_transactions.seller_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.entity",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.bank_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.location",
+   "right": "03_time_and_overhead_allocations__employee_rates.location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.location",
+   "right": "03_time_and_overhead_allocations__overhead_pools.location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 3,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.location",
+   "right": "03_time_and_overhead_allocations__time_allocations.home_location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "03_time_and_overhead_allocations__employee_rates.location",
+   "right": "03_time_and_overhead_allocations__overhead_pools.location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 3,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "03_time_and_overhead_allocations__employee_rates.location",
+   "right": "03_time_and_overhead_allocations__time_allocations.home_location",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "03_time_and_overhead_allocations__overhead_pools.location",
+   "right": "03_time_and_overhead_allocations__time_allocations.home_location",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.issuing_entity",
+   "right": "05_intercompany_recharges_2025__ic_transactions.buyer_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.issuing_entity",
+   "right": "05_intercompany_recharges_2025__ic_transactions.seller_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.issuing_entity",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.bank_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "05_intercompany_recharges_2025__ic_transactions.buyer_entity",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.bank_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "05_intercompany_recharges_2025__ic_transactions.seller_entity",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.bank_entity",
+   "overlap": 2,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 1.0,
+   "jaccard": 1.0
+  },
+  {
+   "left": "03_time_and_overhead_allocations__employee_rates.employee_id",
+   "right": "03_time_and_overhead_allocations__time_allocations.employee_id",
+   "overlap": 32,
+   "left_distinct": 68,
+   "right_distinct": 33,
+   "containment": 0.9697,
+   "jaccard": 0.4638
+  },
+  {
+   "left": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 9,
+   "left_distinct": 10,
+   "right_distinct": 19,
+   "containment": 0.9,
+   "jaccard": 0.45
+  },
+  {
+   "left": "01_company_and_vessel_master__customers.customer_id",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.payer",
+   "overlap": 6,
+   "left_distinct": 9,
+   "right_distinct": 7,
+   "containment": 0.8571,
+   "jaccard": 0.6
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.customer_id",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.payer",
+   "overlap": 6,
+   "left_distinct": 9,
+   "right_distinct": 7,
+   "containment": 0.8571,
+   "jaccard": 0.6
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.yard_job_no",
+   "right": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "overlap": 5,
+   "left_distinct": 6,
+   "right_distinct": 10,
+   "containment": 0.8333,
+   "jaccard": 0.4545
+  },
+  {
+   "left": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "right": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "overlap": 5,
+   "left_distinct": 6,
+   "right_distinct": 10,
+   "containment": 0.8333,
+   "jaccard": 0.4545
+  },
+  {
+   "left": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__management_recognition.project_id",
+   "overlap": 5,
+   "left_distinct": 6,
+   "right_distinct": 9,
+   "containment": 0.8333,
+   "jaccard": 0.5
+  },
+  {
+   "left": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "overlap": 5,
+   "left_distinct": 6,
+   "right_distinct": 7,
+   "containment": 0.8333,
+   "jaccard": 0.625
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__management_recognition.description",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.vessel",
+   "overlap": 5,
+   "left_distinct": 6,
+   "right_distinct": 7,
+   "containment": 0.8333,
+   "jaccard": 0.625
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 19,
+   "containment": 0.8,
+   "jaccard": 0.2
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.project_id",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.vessel_name",
+   "right": "01_company_and_vessel_master__vessel_master.vessel_name",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.vessel_name",
+   "right": "04_sales_invoices_and_credit_notes_2025__management_recognition.description",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 6,
+   "containment": 0.8,
+   "jaccard": 0.5714
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.vessel_name",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.vessel",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 7,
+   "containment": 0.8,
+   "jaccard": 0.5
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 19,
+   "containment": 0.8,
+   "jaccard": 0.2
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.project_id",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 19,
+   "containment": 0.8,
+   "jaccard": 0.2
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.project_id",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 5,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.6667
+  },
+  {
+   "left": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 6,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.5714
+  },
+  {
+   "left": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 10,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.3636
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.document_id",
+   "right": "05_intercompany_recharges_2025__elimination_journal.source_document",
+   "overlap": 4,
+   "left_distinct": 23,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.1667
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.document_id",
+   "right": "05_intercompany_recharges_2025__ic_transactions.sender_document",
+   "overlap": 4,
+   "left_distinct": 23,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.1667
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.gross_amount",
+   "right": "05_intercompany_recharges_2025__ic_transactions.sender_amount_eur",
+   "overlap": 4,
+   "left_distinct": 19,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.2
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.net_amount",
+   "right": "05_intercompany_recharges_2025__ic_transactions.sender_amount_eur",
+   "overlap": 4,
+   "left_distinct": 18,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.2105
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 19,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.2
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__management_recognition.project_id",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 9,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.4
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "right": "05_intercompany_recharges_2025__ic_transactions.project_id",
+   "overlap": 4,
+   "left_distinct": 7,
+   "right_distinct": 5,
+   "containment": 0.8,
+   "jaccard": 0.5
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.document_id",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.applied_document",
+   "overlap": 9,
+   "left_distinct": 23,
+   "right_distinct": 12,
+   "containment": 0.75,
+   "jaccard": 0.3462
+  },
+  {
+   "left": "01_company_and_vessel_master__vessel_master.contract_value",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.vessel_contract_revenue",
+   "overlap": 3,
+   "left_distinct": 5,
+   "right_distinct": 4,
+   "containment": 0.75,
+   "jaccard": 0.5
+  },
+  {
+   "left": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "overlap": 5,
+   "left_distinct": 10,
+   "right_distinct": 7,
+   "containment": 0.7143,
+   "jaccard": 0.4167
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__management_recognition.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "overlap": 5,
+   "left_distinct": 9,
+   "right_distinct": 7,
+   "containment": 0.7143,
+   "jaccard": 0.4545
+  },
+  {
+   "left": "02_project_cost_ledger_2025__pivot_export.project_id",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "overlap": 4,
+   "left_distinct": 6,
+   "right_distinct": 19,
+   "containment": 0.6667,
+   "jaccard": 0.1905
+  },
+  {
+   "left": "01_company_and_vessel_master__customers.legal_name",
+   "right": "01_company_and_vessel_master__group_structure.legal_name",
+   "overlap": 2,
+   "left_distinct": 9,
+   "right_distinct": 3,
+   "containment": 0.6667,
+   "jaccard": 0.2
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.city",
+   "right": "03_time_and_overhead_allocations__overhead_pools.location",
+   "overlap": 2,
+   "left_distinct": 3,
+   "right_distinct": 3,
+   "containment": 0.6667,
+   "jaccard": 0.5
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.project_reference",
+   "right": "04_sales_invoices_and_credit_notes_2025__revenue_by_ship.project_id",
+   "overlap": 4,
+   "left_distinct": 19,
+   "right_distinct": 7,
+   "containment": 0.5714,
+   "jaccard": 0.1818
+  },
+  {
+   "left": "03_time_and_overhead_allocations__time_allocations.project_reference",
+   "right": "04_sales_invoices_and_credit_notes_2025__management_recognition.project_id",
+   "overlap": 5,
+   "left_distinct": 10,
+   "right_distinct": 9,
+   "containment": 0.5556,
+   "jaccard": 0.3571
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.gross_amount",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.amount_bank_currency",
+   "overlap": 5,
+   "left_distinct": 19,
+   "right_distinct": 10,
+   "containment": 0.5,
+   "jaccard": 0.2083
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.gross_amount",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.amount_eur",
+   "overlap": 5,
+   "left_distinct": 19,
+   "right_distinct": 10,
+   "containment": 0.5,
+   "jaccard": 0.2083
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.category",
+   "right": "03_time_and_overhead_allocations__time_allocations.work_package",
+   "overlap": 3,
+   "left_distinct": 12,
+   "right_distinct": 6,
+   "containment": 0.5,
+   "jaccard": 0.2
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.gross_amount",
+   "right": "05_intercompany_recharges_2025__elimination_journal.eliminate_cost_eur",
+   "overlap": 2,
+   "left_distinct": 19,
+   "right_distinct": 4,
+   "containment": 0.5,
+   "jaccard": 0.0952
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.net_amount",
+   "right": "05_intercompany_recharges_2025__elimination_journal.eliminate_cost_eur",
+   "overlap": 2,
+   "left_distinct": 18,
+   "right_distinct": 4,
+   "containment": 0.5,
+   "jaccard": 0.1
+  },
+  {
+   "left": "05_intercompany_recharges_2025__elimination_journal.eliminate_cost_eur",
+   "right": "05_intercompany_recharges_2025__ic_transactions.sender_amount_eur",
+   "overlap": 2,
+   "left_distinct": 4,
+   "right_distinct": 5,
+   "containment": 0.5,
+   "jaccard": 0.2857
+  },
+  {
+   "left": "01_company_and_vessel_master__customers.relationship",
+   "right": "06_bank_receipts_and_fx_2025__unapplied_cash.status",
+   "overlap": 1,
+   "left_distinct": 2,
+   "right_distinct": 3,
+   "containment": 0.5,
+   "jaccard": 0.25
+  },
+  {
+   "left": "01_company_and_vessel_master__group_structure.functional_currency",
+   "right": "06_bank_receipts_and_fx_2025__monthly_fx_rates.from_currency",
+   "overlap": 1,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 0.5,
+   "jaccard": 0.3333
+  },
+  {
+   "left": "01_company_and_vessel_master__project_aliases.mapping_status",
+   "right": "03_time_and_overhead_allocations__time_allocations.approval_status",
+   "overlap": 1,
+   "left_distinct": 3,
+   "right_distinct": 2,
+   "containment": 0.5,
+   "jaccard": 0.25
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.currency",
+   "right": "06_bank_receipts_and_fx_2025__monthly_fx_rates.from_currency",
+   "overlap": 1,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 0.5,
+   "jaccard": 0.3333
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.pln_per_eur",
+   "right": "04_sales_invoices_and_credit_notes_2025__documents.sign_hint",
+   "overlap": 1,
+   "left_distinct": 49,
+   "right_distinct": 2,
+   "containment": 0.5,
+   "jaccard": 0.02
+  },
+  {
+   "left": "02_project_cost_ledger_2025__cost_ledger.pln_per_eur",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.currency_per_eur",
+   "overlap": 1,
+   "left_distinct": 49,
+   "right_distinct": 2,
+   "containment": 0.5,
+   "jaccard": 0.02
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.sign_hint",
+   "right": "06_bank_receipts_and_fx_2025__bank_receipts.currency_per_eur",
+   "overlap": 1,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 0.5,
+   "jaccard": 0.3333
+  },
+  {
+   "left": "04_sales_invoices_and_credit_notes_2025__documents.status",
+   "right": "05_intercompany_recharges_2025__elimination_journal.status",
+   "overlap": 1,
+   "left_distinct": 2,
+   "right_distinct": 4,
+   "containment": 0.5,
+   "jaccard": 0.2
+  },
+  {
+   "left": "06_bank_receipts_and_fx_2025__bank_receipts.currency",
+   "right": "06_bank_receipts_and_fx_2025__monthly_fx_rates.from_currency",
+   "overlap": 1,
+   "left_distinct": 2,
+   "right_distinct": 2,
+   "containment": 0.5,
+   "jaccard": 0.3333
+  }
+ ]
+}

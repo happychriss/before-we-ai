@@ -1,0 +1,13 @@
+id: 01M419WJ8TM09MWR6ER86P4HWE
+template: attribute_contradiction
+claim_id: 01M419QXM2WJT9VJ0X91EREG1C
+roles: []
+params:
+  left: 02_project_cost_ledger_2025__cost_ledger
+  left_attr: project_id
+  left_key: yard_job_ref
+  right: 01_company_and_vessel_master__vessel_master
+  right_attr: project_id
+  right_key: yard_job_no
+created_at: '2026-10-03T16:34:50.266897Z'
+object_type: CheckPlan

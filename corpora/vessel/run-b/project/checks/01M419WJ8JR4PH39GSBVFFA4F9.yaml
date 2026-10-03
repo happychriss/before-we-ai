@@ -1,0 +1,11 @@
+id: 01M419WJ8JR4PH39GSBVFFA4F9
+template: anti_join
+claim_id: 01M419QXM07SZJ6HZEHQ2S2B8Y
+roles: []
+params:
+  child: 06_bank_receipts_and_fx_2025__bank_receipts
+  child_column: payer
+  parent: 01_company_and_vessel_master__customers
+  parent_column: customer_id
+created_at: '2026-10-03T16:34:50.258795Z'
+object_type: CheckPlan

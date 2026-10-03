@@ -1,0 +1,11 @@
+id: 01M419YXSEB006560D87A7M868
+question: Which of the proposed candidates is the 'doc_ref'? The document or voucher
+  reference grouping posting lines into one accounting document. No check can settle
+  this — what the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1EQ8Z59D884AHMD3MPM
+- 01M419S1ERYWRSF6YZAESA11ES
+stale: false
+created_at: '2026-10-03T16:36:07.599001Z'
+object_type: ClarificationQuestion

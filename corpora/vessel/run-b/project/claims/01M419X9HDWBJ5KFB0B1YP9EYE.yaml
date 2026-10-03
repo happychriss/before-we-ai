@@ -1,0 +1,20 @@
+id: 01M419X9HDWBJ5KFB0B1YP9EYE
+statement: Intercompany recharges sit inside location performance and are to be eliminated
+  at group level.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: intercompany recharges
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HESC0DS1WAKRNY38YB
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.093847Z'
+term: intercompany recharges
+definition: Intercompany engineering and yard recharges are included in location performance
+  but should be eliminated at group level.
+object_type: ConceptClaim

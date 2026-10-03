@@ -1,0 +1,13 @@
+id: 01M419Y6MAVEQ3J4EDR6VZCYM7
+request_id: 01M419NV80D5E8DF2MFWYVRFXP
+kind: link
+actor: ai
+guide_fingerprint: 1abf9a265a445cc11171601d30aaa11dd5b28e7520cb1e591021af830a603a85
+request_fingerprint: 483fd8a5bf9f00f88d5c88c591922661a74b193373f64baca1f4ba0bb7780e2a
+ref: unsigned change-order cost treatment
+reason: ''
+claim_id: 01M419Y6M9RWZGBZESVAXKHSFX
+note: stated in 09_contracts_change_orders_and_acceptance p.1; the claim stays proposed
+  until a check tests it or a human confirms it
+created_at: '2026-10-03T16:35:43.882980Z'
+object_type: KnowledgeAct

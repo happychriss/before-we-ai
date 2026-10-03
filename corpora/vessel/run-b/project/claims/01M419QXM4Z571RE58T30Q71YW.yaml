@@ -1,0 +1,21 @@
+id: 01M419QXM4Z571RE58T30Q71YW
+statement: Time allocation project_reference decodes to project_id via the vessel
+  master's yard_job_no.
+created_by: ai
+status: proposed
+predicate:
+  name: decodes
+  params:
+    encoded: 03_time_and_overhead_allocations__time_allocations.project_reference
+    decode: 01_company_and_vessel_master__vessel_master
+    key: 01_company_and_vessel_master__vessel_master.yard_job_no
+    column: 01_company_and_vessel_master__vessel_master.project_id
+source_ids:
+- 01M419NVQATFX47BYPB4ACPC1T
+- 01M419NVY2MBX5GEG5JJ256AYP
+evidence_ids:
+- 01M419WJ8MNPTHCSG0CKJDWVY3
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.052229Z'
+object_type: Claim

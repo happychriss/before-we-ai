@@ -1,0 +1,11 @@
+id: 01M419XMKZHZ6NBMH85NXBNG4S
+question: “Intercompany revenue is excluded from consolidated sales through elimination.”
+  — the only passage found for this rule sits inside a figure in 08_tax_and_transfer_pricing_memo_2025
+  p.1, where a reader cannot check it. Does this passage settle it, and for which
+  scope?
+finding: ''
+claim_ids:
+- 01M419XMKY5C7A8HBNJW085ZKK
+stale: false
+created_at: '2026-10-03T16:35:25.439945Z'
+object_type: ClarificationQuestion

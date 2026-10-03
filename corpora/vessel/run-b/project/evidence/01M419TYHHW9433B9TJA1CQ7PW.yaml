@@ -1,0 +1,12 @@
+id: 01M419TYHHW9433B9TJA1CQ7PW
+type: declaration
+actor: system
+claim_id: 01M419S1EV8X96QNTH6PV13XA9
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A currency attribute role implies no conservation law.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.297160Z'
+object_type: EvidenceRecord

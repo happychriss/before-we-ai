@@ -1,0 +1,49 @@
+id: 01M419NVW0S7B2G5X5YFM88KDZ
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: category
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 12
+  min: classification
+  max: yard overhead
+  len_min: 6
+  len_avg: 11.0
+  len_max: 17
+  top_values:
+  - value: design
+    count: 21
+  - value: engine package
+    count: 14
+  - value: steel and hull
+    count: 14
+  - value: propulsion
+    count: 13
+  - value: direct labour
+    count: 12
+  - value: electrical
+    count: 12
+  - value: outfitting
+    count: 12
+  - value: classification
+    count: 11
+  - value: navigation
+    count: 10
+  - value: yard overhead
+    count: 10
+  value_class: text
+  patterns:
+  - mask: AAAAAAAAAA
+    count: 4
+  - mask: AAAA AAAAAAAA
+    count: 1
+  - mask: AAAAA AAA AAAA
+    count: 1
+  - mask: AAAAA AAAAAAAAAAA
+    count: 1
+  - mask: AAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.720473Z'
+object_type: DataProfile

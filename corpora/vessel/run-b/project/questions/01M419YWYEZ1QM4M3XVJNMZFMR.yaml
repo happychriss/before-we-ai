@@ -1,0 +1,9 @@
+id: 01M419YWYEZ1QM4M3XVJNMZFMR
+question: 03_time_and_overhead_allocations__time_allocations and 03_time_and_overhead_allocations__employee_rates
+  contradict each other on linked attributes — which source leads?
+finding: 35 exceptions in 47 rows (74.5%)
+claim_ids:
+- 01M419QXM5J5BZNWAA72Q7THNT
+stale: false
+created_at: '2026-10-03T16:36:06.734860Z'
+object_type: ClarificationQuestion

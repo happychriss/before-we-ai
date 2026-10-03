@@ -1,0 +1,13 @@
+id: 01M419TYHJXP15Z5ZN360T0A85
+type: declaration
+actor: system
+claim_id: 01M419S1EXAN5W3EYQJAD8V224
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: No invoice register is in scope for a supplier invoice reference to resolve
+    against.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.298776Z'
+object_type: EvidenceRecord

@@ -1,0 +1,20 @@
+id: 01M419YW5QAKVT3ZGT09X1RT6M
+type: document_anchor
+actor: ai
+claim_id: 01M419YW5P95SSY86P96QQ3F5R
+exception_samples: []
+payload:
+  quote: the cost ledger does not. Batch amount is EUR 9,792. Do not add both the
+    supervisor copy and payroll
+  chunk_id: 10_yard_operations_notes_and_email_prints:p1:1
+  kind: text
+  source: 10_yard_operations_notes_and_email_prints
+  page: 1
+source_fingerprints:
+  10_yard_operations_notes_and_email_prints:
+    kind: chunk
+    chunk_id: 10_yard_operations_notes_and_email_prints:p1:1
+    sha256: af5c9948e52ad76c669335698a77d5d24894a18a2cc8193c9d9fd626156da633
+stale: false
+created_at: '2026-10-03T16:36:05.943014Z'
+object_type: EvidenceRecord

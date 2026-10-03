@@ -1,0 +1,27 @@
+id: 01M419NW6S1BCEGWRD2Z9TKGG3
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__unapplied_cash
+column: receipt_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: UA-250701
+  max: UA-251229
+  len_min: 9
+  len_avg: 9.0
+  len_max: 9
+  top_values:
+  - value: UA-250701
+    count: 1
+  - value: UA-251219
+    count: 1
+  - value: UA-251229
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA-999999
+    count: 3
+created_at: '2026-10-03T16:31:11.065383Z'
+object_type: DataProfile

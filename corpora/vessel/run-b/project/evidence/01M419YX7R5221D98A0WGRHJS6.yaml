@@ -1,0 +1,56 @@
+id: 01M419YX7R5221D98A0WGRHJS6
+type: check_result
+actor: check
+claim_id: 01M419S1FFJJC3EX2WG17JY96T
+check_plan_id: 01M419TYHT3BYFFDY1WQS3JQPQ
+verdict: fail
+population: 47
+exception_count: 2
+exception_samples:
+- grp: Gdansk
+  left_total: 13015.730000000001
+  right_total: null
+  diff: 13015.730000000001
+- grp: Hamburg
+  left_total: 7682.329999999999
+  right_total: 19820.0
+  diff: -12137.670000000002
+result_ref: cache/check_runs/01M419YX7R5221D98A0WGRHJS6.parquet
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT home_location AS grp, sum(CAST(hours AS DOUBLE)) AS\
+    \ total\n    FROM \"03_time_and_overhead_allocations__time_allocations\"\n   \
+    \ GROUP BY 1\n),\nr AS (\n    SELECT location AS grp, sum(CAST(base_quantity AS\
+    \ DOUBLE)) AS total\n    FROM \"03_time_and_overhead_allocations__overhead_pools\"\
+    \ WHERE allocation_base = 'direct labour hours'\n    GROUP BY 1\n)\nSELECT coalesce(l.grp,\
+    \ r.grp) AS grp,\n       l.total AS left_total,\n       r.total AS right_total,\n\
+    \       coalesce(l.total, 0) - coalesce(r.total, 0) AS diff\nFROM l FULL JOIN\
+    \ r ON l.grp = r.grp\nWHERE abs(coalesce(l.total, 0) - coalesce(r.total, 0)) >\
+    \ 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: 2 violating groups
+  tested:
+  - view: 03_time_and_overhead_allocations__time_allocations
+    filter: null
+    rows: 47
+    of: 47
+  - view: 03_time_and_overhead_allocations__overhead_pools
+    filter: allocation_base = 'direct labour hours'
+    rows: 1
+    of: 3
+  establishes: false
+source_fingerprints:
+  03_time_and_overhead_allocations__time_allocations:
+    kind: table
+    row_count: 47
+    schema_hash: aa83e582c8ddc40c8862c3a04bcb725a354941cbf287c7170f261a4077341223
+    content_hash: '103940560900488189741586873328671753825'
+    max_date: null
+  03_time_and_overhead_allocations__overhead_pools:
+    kind: table
+    row_count: 3
+    schema_hash: e0411b8abce0eb5b129b888d3080c70c7307c6072d33015f5de398a752c75383
+    content_hash: '197406327796997235847631845018601361453'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:07.035951Z'
+object_type: EvidenceRecord

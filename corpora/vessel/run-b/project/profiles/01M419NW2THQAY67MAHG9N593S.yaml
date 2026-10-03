@@ -1,0 +1,43 @@
+id: 01M419NW2THQAY67MAHG9N593S
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__revenue_by_ship
+column: vessel
+stats:
+  duckdb_type: VARCHAR
+  row_count: 7
+  null_count: 0
+  distinct_count: 7
+  min: Amber Pilot
+  max: Spares and design licence
+  len_min: 9
+  len_avg: 16.7
+  len_max: 33
+  top_values:
+  - value: Amber Pilot
+    count: 1
+  - value: Baltic Surveyor
+    count: 1
+  - value: Customer vessels not built by HVW
+    count: 1
+  - value: Elbe Runner
+    count: 1
+  - value: Hansa Tug
+    count: 1
+  - value: M/V Nordlicht
+    count: 1
+  - value: Spares and design licence
+    count: 1
+  value_class: text
+  patterns:
+  - mask: A/A AAAAAAAAA
+    count: 1
+  - mask: AAAA AAAAAA
+    count: 1
+  - mask: AAAAA AAA
+    count: 1
+  - mask: AAAAA AAAAA
+    count: 1
+  - mask: AAAAAA AAA AAAAAA AAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.938314Z'
+object_type: DataProfile

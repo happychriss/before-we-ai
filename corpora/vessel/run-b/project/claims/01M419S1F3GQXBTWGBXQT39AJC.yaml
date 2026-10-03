@@ -1,0 +1,24 @@
+id: 01M419S1F3GQXBTWGBXQT39AJC
+statement: role 'ic_receiver_ref' is played by column=05_intercompany_recharges_2025__ic_transactions.receiver_document,
+  table=05_intercompany_recharges_2025__ic_transactions
+created_by: ai
+status: proposed
+predicate:
+  name: role_binding
+  params:
+    role: ic_receiver_ref
+    binding:
+      column: 05_intercompany_recharges_2025__ic_transactions.receiver_document
+      table: 05_intercompany_recharges_2025__ic_transactions
+source_ids:
+- 01M419NW35P86PPK0TSW7W3KPT
+evidence_ids:
+- 01M419TYHZZ162RJDD8CS5F1EN
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.755984Z'
+role: ic_receiver_ref
+binding:
+  column: 05_intercompany_recharges_2025__ic_transactions.receiver_document
+  table: 05_intercompany_recharges_2025__ic_transactions
+object_type: MappingClaim

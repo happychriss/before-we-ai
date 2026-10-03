@@ -80,6 +80,10 @@ def evidence_view(s: ProjectStore, record) -> dict:
             f"{record.population or 0:,} rows — {payload.get('summary', '')}"
         )
         view["tests"] = spec.tests if spec else ""
+        if payload.get("refutes") is False:
+            view["weight"] = ("A general data check on a role candidate: "
+                              "shown as a finding, it neither supports nor "
+                              "refutes the candidate.")
         narrowed = [f"{side['rows']:,} of {side['of']:,} rows of {side['view']}"
                     for side in payload.get("tested", []) if side["filter"]]
         if narrowed:
@@ -126,6 +130,7 @@ def claim_view(s: ProjectStore, claim) -> dict:
         "author": ACTOR_LABEL.get(claim.created_by.value, claim.created_by.value),
         "predicate": claim.predicate.name if claim.predicate else "",
         "evidence": [evidence_view(s, e) for e in evidence],
+        "limits": list(claim.open_assumptions),
         "checks_pass": sum(1 for e in evidence
                            if e.verdict and e.verdict.value == "pass"),
         "checks_fail": sum(1 for e in evidence
@@ -136,6 +141,20 @@ def claim_view(s: ProjectStore, claim) -> dict:
 def _request(s: ProjectStore):
     return next(iter(sorted(s.requests.values(), key=lambda r: r.created_at)),
                 None)
+
+
+def _brief(reason: str, items: list[dict]) -> str:
+    """The engine's reason, unless it names so many dependencies that the
+    sentence stops being readable — then the count, and the list below."""
+    blocking = [i["ref"] for i in items if not i["satisfied"] and i["structural"]]
+    if len(blocking) <= 6:
+        return reason
+    limiting = sum(1 for i in items if not i["satisfied"] and not i["structural"])
+    return (f"The answer cannot be produced: {len(blocking)} things the "
+            f"figures are computed from are unsupported — "
+            f"{', '.join(blocking[:4])} and {len(blocking) - 4} more"
+            + (f" — and {limiting} rules that say what the figures mean are "
+               "open" if limiting else "") + ".")
 
 
 def readiness(s: ProjectStore) -> dict | None:
@@ -187,7 +206,7 @@ def readiness(s: ProjectStore) -> dict | None:
         "answer_type": request.answer_type,
         "verdict": result.verdict.value,
         "verdict_label": VERDICT_LABEL[result.verdict.value],
-        "reason": result.reason(),
+        "reason": _brief(result.reason(), items),
         "confirmed": result.confirmed,
         "items": items,
         "open": [i for i in items if not i["satisfied"]],
@@ -259,7 +278,7 @@ def sources(s: ProjectStore) -> list[dict]:
                                  int(profile.stats.get("row_count") or 0))
     columns = Counter(p.source_id for p in s.profiles.values())
     documents = {d.source_id: d for d in s.documents.values()}
-    declared = {entry["name"]: entry for entry in pipeline.SOURCES}
+    declared = {entry["name"]: entry for entry in pipeline.sources()}
     out = []
     names = [src.name for src in s.sources.values()]
     for src in sorted(s.sources.values(), key=lambda x: x.name):
@@ -304,7 +323,7 @@ def overview(s: ProjectStore | None) -> dict:
         "key": step.key, "stage": step.stage, "title": step.title,
         "actor": step.actor, "detail": step.detail,
         "done": step.key in finished, "summary": finished.get(step.key, ""),
-    } for step in pipeline.STEPS]
+    } for step in pipeline.steps()]
     upcoming = pipeline.next_step()
     view = {
         "steps": steps,
@@ -312,10 +331,13 @@ def overview(s: ProjectStore | None) -> dict:
         "complete": upcoming is None,
         "started": bool(finished),
         "progress": len(finished),
-        "total": len(pipeline.STEPS),
-        "question": pipeline.DEMO_QUESTION,
+        "total": len(pipeline.steps()),
+        "question": pipeline.question(),
         "stages": [],
         "ready": None,
+        "active": pipeline.active(),
+        "landscape": pipeline.landscape(),
+        "landscapes": pipeline.LANDSCAPES,
     }
     if s is None:
         view["stages"] = [{"number": st.number, "name": st.name,
@@ -326,8 +348,10 @@ def overview(s: ProjectStore | None) -> dict:
     ready = readiness(s) if "request" in finished else None
     status = Counter(c.status.value for c in s.claims.values())
     ai = pipeline.ai_claims(s)
+    # live readings only: a re-run check leaves its earlier result behind,
+    # marked out of date, and that one no longer counts
     checks = [e for e in s.evidence.values()
-              if e.type is EvidenceType.CHECK_RESULT]
+              if e.type is EvidenceType.CHECK_RESULT and not e.stale]
     verdicts = Counter(e.verdict.value for e in checks if e.verdict)
     human_confirmed = {
         e.claim_id for e in s.evidence.values()
@@ -346,11 +370,12 @@ def overview(s: ProjectStore | None) -> dict:
     stage_done = {
         "0": "inputs" in finished, "1": "request" in finished,
         "2": "documents" in finished, "3": "read_documents" in finished,
-        "4": "test" in finished, "5": "tell" in finished,
+        "4": "test" in finished,
+        "5": pipeline.steps()[-1].key in finished,
         "6": upcoming is None,
     }
     stage_count = {
-        "0": f"{len(pipeline.SOURCES)} sources",
+        "0": f"{len(pipeline.sources())} sources",
         "1": (ready["answer_type"].replace("_", " ") if ready else ""),
         "2": f"{len(s.profiles)} columns · {passages} passages",
         "3": f"{len(ai)} claims · {len(s.checks)} checks",
@@ -366,7 +391,7 @@ def overview(s: ProjectStore | None) -> dict:
     view.update({
         "ready": ready,
         "counts": {
-            "sources": len(s.sources) or len(pipeline.SOURCES),
+            "sources": len(s.sources) or len(pipeline.sources()),
             "tables": len(tables),
             "columns": len(s.profiles),
             "documents": len(s.documents),

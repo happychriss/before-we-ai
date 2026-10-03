@@ -1,0 +1,19 @@
+id: 01M419QXM72G2HZJXT17E1NVG2
+statement: Cost ledger reported_eur equals amount_local divided by pln_per_eur.
+created_by: ai
+status: contradicted
+predicate:
+  name: reconciles
+  params:
+    left: 02_project_cost_ledger_2025__cost_ledger
+    right: 02_project_cost_ledger_2025__cost_ledger
+    left_measure: amount_local / pln_per_eur
+    right_measure: reported_eur
+source_ids:
+- 01M419NVVC48MGMDASSW7KYKDB
+evidence_ids:
+- 01M419YWZ0WQD9CJYFR6M2R92W
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.055184Z'
+object_type: Claim

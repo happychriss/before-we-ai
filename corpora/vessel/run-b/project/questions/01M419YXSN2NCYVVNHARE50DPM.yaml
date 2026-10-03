@@ -1,0 +1,11 @@
+id: 01M419YXSN2NCYVVNHARE50DPM
+question: Which of the proposed candidates is the 'labour_allocation'? An approved
+  allocation of labour effort and burdened cost to a vessel build, including allocations
+  not yet interfaced to the journal. No check can settle this — what the data means
+  is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1F96D5J1KBYRGTRVPFQ
+stale: false
+created_at: '2026-10-03T16:36:07.605885Z'
+object_type: ClarificationQuestion

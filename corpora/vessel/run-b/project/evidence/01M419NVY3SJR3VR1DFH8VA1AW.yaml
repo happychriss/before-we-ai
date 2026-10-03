@@ -1,0 +1,17 @@
+id: 01M419NVY3SJR3VR1DFH8VA1AW
+type: declaration
+actor: system
+exception_samples: []
+payload:
+  source: 03_time_and_overhead_allocations
+  rule: date_to_iso
+  column: month
+  example:
+    before: datetime.datetime(2025, 1, 1, 0, 0)
+    after: '2025-01-01'
+  table: 03_time_and_overhead_allocations__time_allocations
+source_fingerprints:
+  03_time_and_overhead_allocations: 7afe3bc3272087b0b0933e3a8d7ef43bb8199070b332049981048cb9df188af3
+stale: false
+created_at: '2026-10-03T16:31:10.787352Z'
+object_type: EvidenceRecord

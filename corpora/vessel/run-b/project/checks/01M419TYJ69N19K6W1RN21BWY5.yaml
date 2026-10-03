@@ -1,0 +1,15 @@
+id: 01M419TYJ69N19K6W1RN21BWY5
+template: reconciliation
+claim_id: 01M419S1F0B2PARHN1JP0KZMFZ
+roles:
+- intercompany
+params:
+  left: 05_intercompany_recharges_2025__ic_transactions
+  left_group_expr: sender_document
+  left_measure_expr: CAST(sender_amount_eur AS DOUBLE)
+  right: 05_intercompany_recharges_2025__ic_transactions
+  right_group_expr: sender_document
+  right_measure_expr: CAST(receiver_amount_eur AS DOUBLE)
+  right_where: receiver_document IS NOT NULL
+created_at: '2026-10-03T16:33:57.318986Z'
+object_type: CheckPlan

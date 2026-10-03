@@ -1,0 +1,14 @@
+id: 01M419YW5P95SSY86P96QQ3F5R
+statement: The approved December Gdansk labour batch for Elbe Runner (EUR 9,792) is
+  in the time workbook but missing from the cost ledger. The supervisor copy and the
+  payroll interface must not both be added.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWX4Y68Q54348SFZ92ZB
+evidence_ids:
+- 01M419YW5QAKVT3ZGT09X1RT6M
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:36:05.942651Z'
+object_type: Claim

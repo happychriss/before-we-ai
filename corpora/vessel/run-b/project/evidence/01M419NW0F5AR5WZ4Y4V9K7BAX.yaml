@@ -1,0 +1,17 @@
+id: 01M419NW0F5AR5WZ4Y4V9K7BAX
+type: declaration
+actor: system
+exception_samples: []
+payload:
+  source: 04_sales_invoices_and_credit_notes_2025
+  rule: date_to_iso
+  column: due_date
+  example:
+    before: datetime.datetime(2024, 6, 14, 0, 0)
+    after: '2024-06-14'
+  table: 04_sales_invoices_and_credit_notes_2025__documents
+source_fingerprints:
+  04_sales_invoices_and_credit_notes_2025: b5901def8fc09f24310ccf8f9b03a33d9ccbd13568f7fc1a3f0cca8b25370fc0
+stale: false
+created_at: '2026-10-03T16:31:10.863787Z'
+object_type: EvidenceRecord

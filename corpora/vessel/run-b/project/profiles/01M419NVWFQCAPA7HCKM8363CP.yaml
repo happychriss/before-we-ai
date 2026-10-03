@@ -1,0 +1,49 @@
+id: 01M419NVWFQCAPA7HCKM8363CP
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: description
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 50
+  min: Classification for Amber Pilot
+  max: Yard Overhead for M/V Nordlicht
+  len_min: 20
+  len_avg: 29.4
+  len_max: 69
+  top_values:
+  - value: Classification for Amber Pilot
+    count: 5
+  - value: Design for Baltic Surveyor
+    count: 5
+  - value: Design for Hansa Tug
+    count: 5
+  - value: Logistics for Baltic Surveyor
+    count: 5
+  - value: Propulsion for M/V Nordlicht
+    count: 5
+  - value: Steel And Hull for Baltic Surveyor
+    count: 5
+  - value: Design for Amber Pilot
+    count: 4
+  - value: Design for M/V Nordlicht
+    count: 4
+  - value: Direct Labour for Elbe Runner
+    count: 4
+  - value: Direct Labour for M/V Nordlicht
+    count: 4
+  value_class: text
+  patterns:
+  - mask: AAAAAAAAAA AAA A/A AAAAAAAAA
+    count: 4
+  - mask: AAAAAAAAAA AAA AAAA AAAAAA
+    count: 4
+  - mask: AAAAAAAAAA AAA AAAAA AAAAA
+    count: 4
+  - mask: AAAAAAAAAA AAA AAAAAA AAAAAAAA
+    count: 4
+  - mask: AAAA AAAAAA AAAAAAAAAA AAA AAAAA-99 (AA-99 AAAAAAAAAA AAAAAAA)
+    count: 1
+created_at: '2026-10-03T16:31:10.735899Z'
+object_type: DataProfile

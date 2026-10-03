@@ -1,0 +1,24 @@
+id: 01M419S1F1J973FRKWMT9708D4
+statement: role 'ic_seller_entity' is played by column=05_intercompany_recharges_2025__ic_transactions.seller_entity,
+  table=05_intercompany_recharges_2025__ic_transactions
+created_by: ai
+status: proposed
+predicate:
+  name: role_binding
+  params:
+    role: ic_seller_entity
+    binding:
+      column: 05_intercompany_recharges_2025__ic_transactions.seller_entity
+      table: 05_intercompany_recharges_2025__ic_transactions
+source_ids:
+- 01M419NW35P86PPK0TSW7W3KPT
+evidence_ids:
+- 01M419TYJ0YHC9DM3FRTWJ3RM3
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.753503Z'
+role: ic_seller_entity
+binding:
+  column: 05_intercompany_recharges_2025__ic_transactions.seller_entity
+  table: 05_intercompany_recharges_2025__ic_transactions
+object_type: MappingClaim

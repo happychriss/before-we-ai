@@ -1,0 +1,13 @@
+id: 01M419TYHZZ162RJDD8CS5F1EN
+type: declaration
+actor: system
+claim_id: 01M419S1F3GQXBTWGBXQT39AJC
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: No receiver-side document register is in scope for the reference to resolve
+    against.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.311245Z'
+object_type: EvidenceRecord

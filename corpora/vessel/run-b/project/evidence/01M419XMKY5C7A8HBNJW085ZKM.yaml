@@ -1,0 +1,19 @@
+id: 01M419XMKY5C7A8HBNJW085ZKM
+type: document_anchor
+actor: ai
+claim_id: 01M419XMKY5C7A8HBNJW085ZKK
+exception_samples: []
+payload:
+  quote: Consolidated sales must eliminate intercompany revenue.
+  chunk_id: 08_tax_and_transfer_pricing_memo_2025:p1:6
+  kind: chart
+  source: 08_tax_and_transfer_pricing_memo_2025
+  page: 1
+source_fingerprints:
+  08_tax_and_transfer_pricing_memo_2025:
+    kind: chunk
+    chunk_id: 08_tax_and_transfer_pricing_memo_2025:p1:6
+    sha256: db7b1af6814737ae66a76c9487c43e30c4aabe867328912c1c8ea985acd135ac
+stale: false
+created_at: '2026-10-03T16:35:25.438751Z'
+object_type: EvidenceRecord

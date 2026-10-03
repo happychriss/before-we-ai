@@ -1,0 +1,39 @@
+id: 01M419NW2RD8H79M7Z56V2A32K
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__revenue_by_ship
+column: project_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 7
+  null_count: 0
+  distinct_count: 7
+  min: OTHER
+  max: VSL-2506
+  len_min: 5
+  len_avg: 8.0
+  len_max: 11
+  top_values:
+  - value: OTHER
+    count: 1
+  - value: UNALLOCATED
+    count: 1
+  - value: VSL-2407
+    count: 1
+  - value: VSL-2411
+    count: 1
+  - value: VSL-2502
+    count: 1
+  - value: VSL-2504
+    count: 1
+  - value: VSL-2506
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-9999
+    count: 5
+  - mask: AAAAA
+    count: 1
+  - mask: AAAAAAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.936305Z'
+object_type: DataProfile

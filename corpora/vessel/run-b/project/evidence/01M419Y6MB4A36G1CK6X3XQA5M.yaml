@@ -1,0 +1,19 @@
+id: 01M419Y6MB4A36G1CK6X3XQA5M
+type: document_anchor
+actor: ai
+claim_id: 01M419Y6MB4A36G1CK6X3XQA5K
+exception_samples: []
+payload:
+  quote: the customer did not sign the EUR 90,000 price amendment.
+  chunk_id: 09_contracts_change_orders_and_acceptance:p2:1
+  kind: text
+  source: 09_contracts_change_orders_and_acceptance
+  page: 2
+source_fingerprints:
+  09_contracts_change_orders_and_acceptance:
+    kind: chunk
+    chunk_id: 09_contracts_change_orders_and_acceptance:p2:1
+    sha256: 35c057e082c9df6b2b836b210c15cc4ddabcbe27e3f30be06d6e4561f83348bf
+stale: false
+created_at: '2026-10-03T16:35:43.883761Z'
+object_type: EvidenceRecord

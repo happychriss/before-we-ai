@@ -1,0 +1,18 @@
+id: 01M419QXM2WJT9VJ0X91EREG1A
+statement: Each cost ledger invoice_number should be unique.
+created_by: ai
+status: contradicted
+predicate:
+  name: unique_key
+  params:
+    table: 02_project_cost_ledger_2025__cost_ledger
+    key_columns:
+    - 02_project_cost_ledger_2025__cost_ledger.invoice_number
+source_ids:
+- 01M419NVVC48MGMDASSW7KYKDB
+evidence_ids:
+- 01M419YWXEGP3DB3RTGFTH2ATD
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.050106Z'
+object_type: Claim

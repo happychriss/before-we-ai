@@ -1,0 +1,9 @@
+id: 01M419YWZ56H490WBSNCJCJPDQ
+question: 02_project_cost_ledger_2025__cost_ledger and 02_project_cost_ledger_2025__cost_ledger
+  do not agree per group — which cutoff or accrual is missing?
+finding: 1 exception in 138 rows (0.7%)
+claim_ids:
+- 01M419QXM72G2HZJXT17E1NVG2
+stale: false
+created_at: '2026-10-03T16:36:06.757652Z'
+object_type: ClarificationQuestion

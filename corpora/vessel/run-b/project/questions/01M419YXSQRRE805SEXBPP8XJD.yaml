@@ -1,0 +1,11 @@
+id: 01M419YXSQRRE805SEXBPP8XJD
+question: Which of the proposed candidates is the 'labour_source_ref'? The stable
+  source reference used to reconcile an allocation to its journal posting and prevent
+  duplicate accrual. No check can settle this — what the data means is a business
+  fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1FBXWNBCP9VHHBG9DR5
+stale: false
+created_at: '2026-10-03T16:36:07.607086Z'
+object_type: ClarificationQuestion

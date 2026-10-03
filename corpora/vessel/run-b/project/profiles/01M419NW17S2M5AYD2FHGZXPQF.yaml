@@ -1,0 +1,49 @@
+id: 01M419NW17S2M5AYD2FHGZXPQF
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__documents
+column: project_reference
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 1
+  distinct_count: 19
+  min: AMBER-77
+  max: VSL-2504
+  len_min: 5
+  len_avg: 7.7
+  len_max: 11
+  top_values:
+  - value: VSL-2407
+    count: 3
+  - value: VSL-2411
+    count: 2
+  - value: VSL-2504
+    count: 2
+  - value: AMBER-77
+    count: 1
+  - value: AP-77
+    count: 1
+  - value: BALTIC-11
+    count: 1
+  - value: BS-11
+    count: 1
+  - value: DESIGN-42
+    count: 1
+  - value: Danzig-11
+    count: 1
+  - value: ELBE-RUNNER
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-9999
+    count: 4
+  - mask: AA-99
+    count: 3
+  - mask: AAAAAA-99
+    count: 3
+  - mask: AA-999
+    count: 2
+  - mask: AA-99/A
+    count: 1
+created_at: '2026-10-03T16:31:10.887709Z'
+object_type: DataProfile

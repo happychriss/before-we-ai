@@ -1,0 +1,21 @@
+id: 01M419S1F96D5J1KBYRGTRVPFQ
+statement: role 'labour_allocation' is played by table=03_time_and_overhead_allocations__time_allocations
+created_by: ai
+status: contradicted
+predicate:
+  name: role_binding
+  params:
+    role: labour_allocation
+    binding:
+      table: 03_time_and_overhead_allocations__time_allocations
+source_ids:
+- 01M419NVY2MBX5GEG5JJ256AYP
+evidence_ids:
+- 01M419YX5KT9G80ZCZJ8ZBHS1Z
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.761209Z'
+role: labour_allocation
+binding:
+  table: 03_time_and_overhead_allocations__time_allocations
+object_type: MappingClaim

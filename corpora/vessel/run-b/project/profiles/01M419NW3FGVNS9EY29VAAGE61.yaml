@@ -1,0 +1,25 @@
+id: 01M419NW3FGVNS9EY29VAAGE61
+source_id: 01M419NW35P86PPK0TSW7W3KPT
+table: 05_intercompany_recharges_2025__ic_transactions
+column: seller_entity
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 0
+  distinct_count: 2
+  min: BHW-PL
+  max: HVW-DE
+  len_min: 6
+  len_avg: 6.0
+  len_max: 6
+  top_values:
+  - value: HVW-DE
+    count: 3
+  - value: BHW-PL
+    count: 2
+  value_class: text
+  patterns:
+  - mask: AAA-AA
+    count: 2
+created_at: '2026-10-03T16:31:10.959360Z'
+object_type: DataProfile

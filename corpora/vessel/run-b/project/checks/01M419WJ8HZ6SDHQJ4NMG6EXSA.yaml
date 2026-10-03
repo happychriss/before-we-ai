@@ -1,0 +1,11 @@
+id: 01M419WJ8HZ6SDHQJ4NMG6EXSA
+template: anti_join
+claim_id: 01M419QXM5J5BZNWAA72Q7THNV
+roles: []
+params:
+  child: 03_time_and_overhead_allocations__time_allocations
+  child_column: employee_id
+  parent: 03_time_and_overhead_allocations__employee_rates
+  parent_column: employee_id
+created_at: '2026-10-03T16:34:50.257029Z'
+object_type: CheckPlan

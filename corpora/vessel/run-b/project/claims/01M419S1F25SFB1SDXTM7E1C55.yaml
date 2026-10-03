@@ -1,0 +1,24 @@
+id: 01M419S1F25SFB1SDXTM7E1C55
+statement: role 'ic_cost_base' is played by amount=05_intercompany_recharges_2025__ic_transactions.cost_base_eur,
+  table=05_intercompany_recharges_2025__ic_transactions
+created_by: ai
+status: contradicted
+predicate:
+  name: role_binding
+  params:
+    role: ic_cost_base
+    binding:
+      amount: 05_intercompany_recharges_2025__ic_transactions.cost_base_eur
+      table: 05_intercompany_recharges_2025__ic_transactions
+source_ids:
+- 01M419NW35P86PPK0TSW7W3KPT
+evidence_ids:
+- 01M419YX4NE6XTYV37QT0TGMT3
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.754495Z'
+role: ic_cost_base
+binding:
+  amount: 05_intercompany_recharges_2025__ic_transactions.cost_base_eur
+  table: 05_intercompany_recharges_2025__ic_transactions
+object_type: MappingClaim

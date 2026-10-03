@@ -1,0 +1,249 @@
+{
+  "landscape": "vessel",
+  "arm": "control",
+  "guide": "finance.yaml",
+  "questions": [],
+  "models": {
+    "v1_hypotheses": "claude-opus-5-5",
+    "role_binding": "claude-opus-5-5",
+    "v2_bind": "claude-sonnet-5-5",
+    "request": "claude-opus-5-5",
+    "v3_documents": "claude-opus-5-5"
+  },
+  "roles": 8,
+  "objects": 3,
+  "answer_types": [
+    "profit_and_loss_by_dimension",
+    "open_receivables"
+  ],
+  "stages": [
+    {
+      "stage": "scan",
+      "tables": 20,
+      "columns": 162,
+      "claims": 0,
+      "seconds": 1.3
+    },
+    {
+      "stage": "mappings",
+      "roles_with_candidates": 8,
+      "roles_total": 8,
+      "candidates": 26,
+      "by_role": {
+        "journal": [
+          "amount=02_project_cost_ledger_2025__cost_ledger.amount_local, key=02_project_cost_ledger_2025__cost_ledger.transaction_id, table=02_project_cost_ledger_2025__cost_ledger",
+          "amount=05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur, key=05_intercompany_recharges_2025__elimination_journal.journal_id, table=05_intercompany_recharges_2025__elimination_journal",
+          "amount=04_sales_invoices_and_credit_notes_2025__documents.net_amount, key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents"
+        ],
+        "amount_local": [
+          "amount=02_project_cost_ledger_2025__cost_ledger.amount_local, table=02_project_cost_ledger_2025__cost_ledger",
+          "amount=02_project_cost_ledger_2025__cost_ledger.reported_eur, table=02_project_cost_ledger_2025__cost_ledger",
+          "amount=05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur, table=05_intercompany_recharges_2025__elimination_journal"
+        ],
+        "doc_ref": [
+          "key=02_project_cost_ledger_2025__cost_ledger.invoice_number, table=02_project_cost_ledger_2025__cost_ledger",
+          "key=02_project_cost_ledger_2025__cost_ledger.po_number, table=02_project_cost_ledger_2025__cost_ledger",
+          "key=05_intercompany_recharges_2025__elimination_journal.journal_id, table=05_intercompany_recharges_2025__elimination_journal",
+          "key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents"
+        ],
+        "account": [
+          "column=02_project_cost_ledger_2025__cost_ledger.category, table=02_project_cost_ledger_2025__cost_ledger",
+          "column=02_project_cost_ledger_2025__cost_centre_map.cost_centre, table=02_project_cost_ledger_2025__cost_centre_map"
+        ],
+        "period": [
+          "column=02_project_cost_ledger_2025__cost_ledger.posting_date, table=02_project_cost_ledger_2025__cost_ledger",
+          "column=03_time_and_overhead_allocations__time_allocations.month, table=03_time_and_overhead_allocations__time_allocations",
+          "column=05_intercompany_recharges_2025__ic_transactions.date, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "entity": [
+          "column=02_project_cost_ledger_2025__cost_ledger.entity, table=02_project_cost_ledger_2025__cost_ledger",
+          "column=01_company_and_vessel_master__group_structure.entity_code, table=01_company_and_vessel_master__group_structure",
+          "column=04_sales_invoices_and_credit_notes_2025__documents.issuing_entity, table=04_sales_invoices_and_credit_notes_2025__documents",
+          "column=06_bank_receipts_and_fx_2025__bank_receipts.bank_entity, table=06_bank_receipts_and_fx_2025__bank_receipts"
+        ],
+        "subledger_ar": [
+          "amount=04_sales_invoices_and_credit_notes_2025__documents.gross_amount, key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents",
+          "amount=06_bank_receipts_and_fx_2025__bank_receipts.amount_eur, key=06_bank_receipts_and_fx_2025__bank_receipts.applied_document, table=06_bank_receipts_and_fx_2025__bank_receipts",
+          "amount=06_bank_receipts_and_fx_2025__unapplied_cash.amount_eur, key=06_bank_receipts_and_fx_2025__unapplied_cash.receipt_id, table=06_bank_receipts_and_fx_2025__unapplied_cash"
+        ],
+        "intercompany": [
+          "amount=05_intercompany_recharges_2025__ic_transactions.sender_amount_eur, key=05_intercompany_recharges_2025__ic_transactions.sender_document, table=05_intercompany_recharges_2025__ic_transactions",
+          "amount=05_intercompany_recharges_2025__ic_transactions.receiver_amount_eur, key=05_intercompany_recharges_2025__ic_transactions.receiver_document, table=05_intercompany_recharges_2025__ic_transactions",
+          "amount=05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur, key=05_intercompany_recharges_2025__elimination_journal.source_document, table=05_intercompany_recharges_2025__elimination_journal",
+          "amount=04_sales_invoices_and_credit_notes_2025__documents.net_amount, key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents"
+        ]
+      },
+      "skipped": [],
+      "usage": {
+        "input_tokens": 40380,
+        "output_tokens": 3491
+      },
+      "seconds": 31.9
+    },
+    {
+      "stage": "plans",
+      "checks_created": 6,
+      "templates": {
+        "balance": 3,
+        "ic_symmetry": 3
+      },
+      "with_filter": 0,
+      "unbindable": [
+        [
+          "role 'amount_local' is played by amount=02_project_cost_ledger_2025__cost_ledger.amount_local, table=02_project_cost_ledger_2025__cost_ledger",
+          "The 'amount_local' role only marks a measure column in local currency. Its definition implies no conservation law to test on its own."
+        ],
+        [
+          "role 'amount_local' is played by amount=02_project_cost_ledger_2025__cost_ledger.reported_eur, table=02_project_cost_ledger_2025__cost_ledger",
+          "The 'amount_local' role only marks a measure column in local currency. Its definition implies no conservation law to test on its own."
+        ],
+        [
+          "role 'subledger_ar' is played by amount=04_sales_invoices_and_credit_notes_2025__documents.gross_amount, key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents",
+          "The subledger law needs a journal with an account column and the GL account numbers for receivables. No such journal or account numbers appear in the schemas or profiles, so the account list cannot be filled."
+        ],
+        [
+          "role 'intercompany' is played by amount=05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur, key=05_intercompany_recharges_2025__elimination_journal.source_document, table=05_intercompany_recharges_2025__elimination_journal",
+          "ic_symmetry requires a period column on each side. The elimination_journal view has no date or period column, so the left_period param cannot be filled."
+        ],
+        [
+          "role 'amount_local' is played by amount=05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur, table=05_intercompany_recharges_2025__elimination_journal",
+          "The 'amount_local' role only marks a measure column in local currency. Its definition implies no conservation law to test on its own."
+        ],
+        [
+          "role 'subledger_ar' is played by amount=06_bank_receipts_and_fx_2025__bank_receipts.amount_eur, key=06_bank_receipts_and_fx_2025__bank_receipts.applied_document, table=06_bank_receipts_and_fx_2025__bank_receipts",
+          "The subledger law needs a journal with an account column and the GL account numbers for receivables or cash. Neither is available in the schemas or profiles."
+        ],
+        [
+          "role 'subledger_ar' is played by amount=06_bank_receipts_and_fx_2025__unapplied_cash.amount_eur, key=06_bank_receipts_and_fx_2025__unapplied_cash.receipt_id, table=06_bank_receipts_and_fx_2025__unapplied_cash",
+          "The subledger law needs a journal with an account column and the GL account numbers. Neither is available in the schemas or profiles."
+        ],
+        [
+          "role 'entity' is played by column=01_company_and_vessel_master__group_structure.entity_code, table=01_company_and_vessel_master__group_structure",
+          "The 'entity' role is a dimension binding. Its definition implies no conservation law."
+        ],
+        [
+          "role 'account' is played by column=02_project_cost_ledger_2025__cost_centre_map.cost_centre, table=02_project_cost_ledger_2025__cost_centre_map",
+          "The 'account' role is a dimension binding. Its definition implies no conservation law to test without chart-of-accounts knowledge."
+        ],
+        [
+          "role 'account' is played by column=02_project_cost_ledger_2025__cost_ledger.category, table=02_project_cost_ledger_2025__cost_ledger",
+          "The 'account' role is a dimension binding. Its definition implies no conservation law to test without chart-of-accounts knowledge."
+        ],
+        [
+          "role 'entity' is played by column=02_project_cost_ledger_2025__cost_ledger.entity, table=02_project_cost_ledger_2025__cost_ledger",
+          "The 'entity' role is a dimension binding. Its definition implies no conservation law."
+        ],
+        [
+          "role 'period' is played by column=02_project_cost_ledger_2025__cost_ledger.posting_date, table=02_project_cost_ledger_2025__cost_ledger",
+          "The 'period' role is a time dimension. Its definition implies no conservation law on its own."
+        ],
+        [
+          "role 'period' is played by column=03_time_and_overhead_allocations__time_allocations.month, table=03_time_and_overhead_allocations__time_allocations",
+          "The 'period' role is a time dimension. Its definition implies no conservation law on its own."
+        ],
+        [
+          "role 'entity' is played by column=04_sales_invoices_and_credit_notes_2025__documents.issuing_entity, table=04_sales_invoices_and_credit_notes_2025__documents",
+          "The 'entity' role is a dimension binding. Its definition implies no conservation law."
+        ],
+        [
+          "role 'period' is played by column=05_intercompany_recharges_2025__ic_transactions.date, table=05_intercompany_recharges_2025__ic_transactions",
+          "The 'period' role is a time dimension. Its definition implies no conservation law on its own; this column is used instead as the period param of the ic_symmetry checks for c5, c10 and c11."
+        ],
+        [
+          "role 'entity' is played by column=06_bank_receipts_and_fx_2025__bank_receipts.bank_entity, table=06_bank_receipts_and_fx_2025__bank_receipts",
+          "The 'entity' role is a dimension binding. Its definition implies no conservation law."
+        ],
+        [
+          "role 'doc_ref' is played by key=02_project_cost_ledger_2025__cost_ledger.invoice_number, table=02_project_cost_ledger_2025__cost_ledger",
+          "The 'doc_ref' role is a document reference identifier. Its definition implies no conservation law."
+        ],
+        [
+          "role 'doc_ref' is played by key=02_project_cost_ledger_2025__cost_ledger.po_number, table=02_project_cost_ledger_2025__cost_ledger",
+          "The 'doc_ref' role is a document reference identifier. Its definition implies no conservation law."
+        ],
+        [
+          "role 'doc_ref' is played by key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents",
+          "The 'doc_ref' role is a document reference identifier. Its definition implies no conservation law."
+        ],
+        [
+          "role 'doc_ref' is played by key=05_intercompany_recharges_2025__elimination_journal.journal_id, table=05_intercompany_recharges_2025__elimination_journal",
+          "The 'doc_ref' role is a document reference identifier. Its definition implies no conservation law."
+        ]
+      ],
+      "semantic_only": 0,
+      "skipped": [],
+      "unanswered": 0,
+      "failures": [],
+      "retries": 1,
+      "usage": {
+        "input_tokens": 36794,
+        "output_tokens": 3210
+      },
+      "seconds": 31.1
+    },
+    {
+      "stage": "test",
+      "executed": 6,
+      "verdicts": {
+        "fail": 6
+      },
+      "nothing_tested": [],
+      "skipped": [],
+      "statuses": {
+        "contradicted": 6,
+        "proposed": 20
+      },
+      "role_statuses": {
+        "journal: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.amount_local, 02_project_cost_ledger_2025__cost_ledger.transaction_id": "contradicted",
+        "journal: 05_intercompany_recharges_2025__elimination_journal, 05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur, 05_intercompany_recharges_2025__elimination_journal.journal_id": "contradicted",
+        "journal: 04_sales_invoices_and_credit_notes_2025__documents, 04_sales_invoices_and_credit_notes_2025__documents.document_id, 04_sales_invoices_and_credit_notes_2025__documents.net_amount": "contradicted",
+        "amount_local: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.amount_local": "proposed",
+        "amount_local: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.reported_eur": "proposed",
+        "amount_local: 05_intercompany_recharges_2025__elimination_journal, 05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur": "proposed",
+        "doc_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.invoice_number": "proposed",
+        "doc_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.po_number": "proposed",
+        "doc_ref: 05_intercompany_recharges_2025__elimination_journal, 05_intercompany_recharges_2025__elimination_journal.journal_id": "proposed",
+        "doc_ref: 04_sales_invoices_and_credit_notes_2025__documents, 04_sales_invoices_and_credit_notes_2025__documents.document_id": "proposed",
+        "account: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.category": "proposed",
+        "account: 02_project_cost_ledger_2025__cost_centre_map, 02_project_cost_ledger_2025__cost_centre_map.cost_centre": "proposed",
+        "period: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.posting_date": "proposed",
+        "period: 03_time_and_overhead_allocations__time_allocations, 03_time_and_overhead_allocations__time_allocations.month": "proposed",
+        "period: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.date": "proposed",
+        "entity: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.entity": "proposed",
+        "entity: 01_company_and_vessel_master__group_structure, 01_company_and_vessel_master__group_structure.entity_code": "proposed",
+        "entity: 04_sales_invoices_and_credit_notes_2025__documents, 04_sales_invoices_and_credit_notes_2025__documents.issuing_entity": "proposed",
+        "entity: 06_bank_receipts_and_fx_2025__bank_receipts, 06_bank_receipts_and_fx_2025__bank_receipts.bank_entity": "proposed",
+        "subledger_ar: 04_sales_invoices_and_credit_notes_2025__documents, 04_sales_invoices_and_credit_notes_2025__documents.document_id, 04_sales_invoices_and_credit_notes_2025__documents.gross_amount": "proposed",
+        "subledger_ar: 06_bank_receipts_and_fx_2025__bank_receipts, 06_bank_receipts_and_fx_2025__bank_receipts.amount_eur, 06_bank_receipts_and_fx_2025__bank_receipts.applied_document": "proposed",
+        "subledger_ar: 06_bank_receipts_and_fx_2025__unapplied_cash, 06_bank_receipts_and_fx_2025__unapplied_cash.amount_eur, 06_bank_receipts_and_fx_2025__unapplied_cash.receipt_id": "proposed",
+        "intercompany: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.sender_amount_eur, 05_intercompany_recharges_2025__ic_transactions.sender_document": "contradicted",
+        "intercompany: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.receiver_amount_eur, 05_intercompany_recharges_2025__ic_transactions.receiver_document": "contradicted",
+        "intercompany: 05_intercompany_recharges_2025__elimination_journal, 05_intercompany_recharges_2025__elimination_journal.eliminate_revenue_eur, 05_intercompany_recharges_2025__elimination_journal.source_document": "proposed",
+        "intercompany: 04_sales_invoices_and_credit_notes_2025__documents, 04_sales_invoices_and_credit_notes_2025__documents.document_id, 04_sales_invoices_and_credit_notes_2025__documents.net_amount": "contradicted"
+      },
+      "promoted_without_check_or_human": [],
+      "ai_authored_verdicts": [],
+      "seconds": 0.9
+    },
+    {
+      "stage": "clarify",
+      "role_cards": 7,
+      "questions_total": 12,
+      "questions": [
+        "02_project_cost_ledger_2025__cost_ledger does not balance per group \u2014 is an offsetting entry missing?",
+        "05_intercompany_recharges_2025__elimination_journal does not balance per group \u2014 is an offsetting entry missing?",
+        "04_sales_invoices_and_credit_notes_2025__documents does not balance per group \u2014 is an offsetting entry missing?",
+        "intercompany postings are not symmetric between 05_intercompany_recharges_2025__ic_transactions and 04_sales_invoices_and_credit_notes_2025__documents \u2014 where is the counterpart missing?",
+        "intercompany postings are not symmetric between 04_sales_invoices_and_credit_notes_2025__documents and 05_intercompany_recharges_2025__ic_transactions \u2014 where is the counterpart missing?",
+        "Which source is the authoritative 'journal'? The transactional ledger of record: one row per posting line, carrying a signed amount and a document reference; debit and credit lines balance per document. Every proposed candidate was put to the balance law, and every one of them failed it.",
+        "Which of the proposed candidates is the 'doc_ref'? The document (voucher) reference that groups journal lines into balanced postings. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'account'? The account identifier on the journal, resolvable against a chart of accounts. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'period'? The posting period on the journal, at fiscal-period granularity. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'entity'? The legal entity or company code a posting belongs to. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "What is missing before the 'subledger_ar' can be tested? The accounts-receivable open items: one row per open receivable with a signed amount, reconcilable against the journal's control account. No proposed candidate could be put to the subledger_equals_gl law at all, so nothing about it has been tested.",
+        "Which source is the authoritative 'intercompany'? Paired intercompany postings between two entities that must mirror each other per period. Every proposed candidate was put to the ic_symmetry law, and every one of them failed it."
+      ],
+      "seconds": 0.3
+    }
+  ]
+}

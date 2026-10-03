@@ -1,0 +1,13 @@
+id: 01M419TYHDDWHM4FEBVQAGYP9S
+type: declaration
+actor: system
+claim_id: 01M419S1F8S55SQTZKYQZ7T6NB
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A milestone date role implies no conservation law. Its plausibility needs
+    contract or document knowledge.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.293841Z'
+object_type: EvidenceRecord

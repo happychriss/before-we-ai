@@ -1,0 +1,19 @@
+id: 01M419X9HV386QTRZTP46H7CKM
+statement: Procurement identifies the second Baltic Surveyor steel invoice row as
+  a duplicate scan-copy.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: Baltic Surveyor steel invoice duplicate
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HWMFKNST7DQ0DK4VJF
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.107985Z'
+term: Baltic Surveyor steel invoice duplicate
+definition: The second row is a scan-copy, not another delivery.
+object_type: ConceptClaim

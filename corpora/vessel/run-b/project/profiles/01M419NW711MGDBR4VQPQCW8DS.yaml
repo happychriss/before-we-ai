@@ -1,0 +1,31 @@
+id: 01M419NW711MGDBR4VQPQCW8DS
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__unapplied_cash
+column: possible_match
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: Amber Pilot retention?
+  max: Nordlicht retention
+  len_min: 17
+  len_avg: 19.3
+  len_max: 22
+  top_values:
+  - value: Amber Pilot retention?
+    count: 1
+  - value: IC management fee
+    count: 1
+  - value: Nordlicht retention
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA AAAAAAAAAA AAA
+    count: 1
+  - mask: AAAAA AAAAA AAAAAAAAA?
+    count: 1
+  - mask: AAAAAAAAA AAAAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:11.073793Z'
+object_type: DataProfile

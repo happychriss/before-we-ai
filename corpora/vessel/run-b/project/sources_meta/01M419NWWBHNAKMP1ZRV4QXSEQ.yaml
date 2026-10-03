@@ -1,0 +1,20 @@
+id: 01M419NWWBHNAKMP1ZRV4QXSEQ
+name: 09_contracts_change_orders_and_acceptance
+kind: pdf
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/09_contracts_change_orders_and_acceptance.pdf
+description: Contract register extracts, change orders and acceptance certificates.
+fingerprint:
+  file:
+    kind: file
+    size: 18147
+    sha256: 9001cd9bbf3a4ccb115e20f04551807cc04eeea9cd33d5d747aa7d807cd2a2d6
+  chunks:
+    09_contracts_change_orders_and_acceptance:p1:0: a07531877b33c044eb2689052fc16613c458d2da666a821f13167bc44fb044d1
+    09_contracts_change_orders_and_acceptance:p1:1: ed73c81fcddff9d179b10265ce12f24a0880ea6f119592b2f6164664ea00c4d6
+    09_contracts_change_orders_and_acceptance:p1:2: d17a1ef5011ba67f0804c538689f4a90187b3da263e062125ccfa69891d077f0
+    09_contracts_change_orders_and_acceptance:p1:3: 8a3c25575469d66417f32a0055b7f93f58ef2c3752efe8616c75ba0e9f2dd437
+    09_contracts_change_orders_and_acceptance:p1:4: 36d85ec4c32cb679ad974aad1dd247afa845074915c34b0ef9dac9891e3a53b0
+    09_contracts_change_orders_and_acceptance:p2:0: 9e055d001a7f57eef42e935eb6e2f154db0ce75d648fac2c2ea4790590bb9dc3
+    09_contracts_change_orders_and_acceptance:p2:1: 35c057e082c9df6b2b836b210c15cc4ddabcbe27e3f30be06d6e4561f83348bf
+created_at: '2026-10-03T16:31:11.755840Z'
+object_type: Source

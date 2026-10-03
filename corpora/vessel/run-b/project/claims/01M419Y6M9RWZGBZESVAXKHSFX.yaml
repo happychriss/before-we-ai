@@ -1,0 +1,20 @@
+id: 01M419Y6M9RWZGBZESVAXKHSFX
+statement: The commercial reading for BALTIC-11 excludes the unsigned change order
+  CO-17 from revenue and treats it as cost only.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: CO-17 (unsigned change order, BALTIC-11)
+source_ids:
+- 01M419NWWBHNAKMP1ZRV4QXSEQ
+evidence_ids:
+- 01M419Y6M9RWZGBZESVAXKHSFY
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:43.881037Z'
+term: CO-17 (unsigned change order, BALTIC-11)
+definition: The commercial reading for BALTIC-11 counts revenue of EUR 4.00m (base
+  plus signed CO-08) and treats the unsigned CO-17 as cost only.
+object_type: ConceptClaim

@@ -1,0 +1,39 @@
+id: 01M419NVS6HSZEHMXF31WQT1D7
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__vessel_master
+column: contract_reference
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 0
+  distinct_count: 5
+  min: AP-77
+  max: NB-407
+  len_min: 5
+  len_avg: 7.2
+  len_max: 11
+  top_values:
+  - value: AP-77
+    count: 1
+  - value: BALTIC-11
+    count: 1
+  - value: ELBE-RUNNER
+    count: 1
+  - value: LOI-6
+    count: 1
+  - value: NB-407
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA-99
+    count: 1
+  - mask: AA-999
+    count: 1
+  - mask: AAA-9
+    count: 1
+  - mask: AAAA-AAAAAA
+    count: 1
+  - mask: AAAAAA-99
+    count: 1
+created_at: '2026-10-03T16:31:10.630065Z'
+object_type: DataProfile

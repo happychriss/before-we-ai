@@ -1,0 +1,19 @@
+id: 01M419Y6MJYPTBD5D7RS2V6M7V
+statement: The acceptance certificate links Amber Pilot to contract AP-77 and finance
+  project VSL-2504.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: Amber Pilot aliases
+source_ids:
+- 01M419NWWBHNAKMP1ZRV4QXSEQ
+evidence_ids:
+- 01M419Y6MKRZWBTXJR3T3Q6NRS
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:43.890837Z'
+term: Amber Pilot aliases
+definition: Amber Pilot = contract AP-77 = finance project VSL-2504.
+object_type: ConceptClaim

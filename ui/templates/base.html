@@ -9,6 +9,12 @@
 <body>
 <aside class="side">
   <a class="brand" href="/">before-we<span class="sep">|</span>ai</a>
+  <form class="switch" method="post" action="/landscape">
+    <label for="landscape">Landscape</label>
+    <select id="landscape" name="name" onchange="this.form.submit()">
+      {% for key, l in o.landscapes.items() %}<option value="{{ key }}" {{ 'selected' if key == o.active }}>{{ l.label }}</option>{% endfor %}
+    </select>
+  </form>
   {% set open_n = o.ready.open|length if o.ready else 0 %}
   <nav>
     <a href="/" class="{{ 'on' if page == 'overview' }}"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Overview</a>
@@ -20,8 +26,8 @@
     <a href="/report" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M5 20V10M10 20V4M15 20v-8M20 20v-5"/></svg>Audit report<span class="ext">↗</span></a>
   </nav>
   <div class="side-foot">
-    <div class="pill">Offline replay</div>
-    <p>Model answers are recorded, not live. Checks and decisions run for real.</p>
+    <div class="pill">{{ o.landscape.pill }}</div>
+    <p>{{ o.landscape.note }}</p>
   </div>
 </aside>
 <main>

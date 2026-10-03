@@ -1,0 +1,31 @@
+id: 01M419YWXAV1JSY2QFSF8SWPRC
+type: check_result
+actor: check
+claim_id: 01M419QXM1SF86XC4M748FRXB2
+check_plan_id: 01M419WJ8PG840DVP2ZSZ6TVS1
+verdict: pass
+population: 138
+exception_count: 0
+exception_samples: []
+payload:
+  template: duplicate
+  sql: 'SELECT "transaction_id", count(*) AS occurrences
+
+    FROM "02_project_cost_ledger_2025__cost_ledger"
+
+    GROUP BY "transaction_id"
+
+    HAVING count(*) > 1
+
+    ORDER BY occurrences DESC, "transaction_id"'
+  summary: no violations
+source_fingerprints:
+  02_project_cost_ledger_2025__cost_ledger:
+    kind: table
+    row_count: 138
+    schema_hash: 2debb58cf9b532d95cc4bbcd78212e1e47eeff776bfecc1df340e277e807137a
+    content_hash: '100665312601861361441508879742515872905'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.699844Z'
+object_type: EvidenceRecord

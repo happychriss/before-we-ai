@@ -1,0 +1,10 @@
+id: 01M419YXSFG54TMTWN8932TRDQ
+question: Which of the proposed candidates is the 'period'? The accounting period
+  to which a posting belongs at fiscal-period granularity. No check can settle this
+  — what the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1ES6439G0M05R01HFGJ
+stale: false
+created_at: '2026-10-03T16:36:07.599580Z'
+object_type: ClarificationQuestion

@@ -1,0 +1,13 @@
+id: 01M419S1TR297EF5PAJCC92VKT
+type: declaration
+actor: system
+claim_id: 01M419QXM3RH9KJ8PK2XV0K05P
+exception_samples: []
+payload:
+  decision: semantic_only
+  reason: no check definition can test predicate 'semantic_equivalent' — this claim
+    is decided by a human, not by SQL
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:32:55.128382Z'
+object_type: EvidenceRecord

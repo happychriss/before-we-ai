@@ -1,0 +1,10 @@
+id: 01M419YX0422TAHPPRR61PXJEV
+question: 06_bank_receipts_and_fx_2025__bank_receipts has entries with no counterpart
+  in 04_sales_invoices_and_credit_notes_2025__documents — is that a legitimate data
+  cut, a pending state, or an error?
+finding: 3 exceptions in 12 rows (25.0%)
+claim_ids:
+- 01M419QXMA1NRTBB6FJ4YM5MDN
+stale: false
+created_at: '2026-10-03T16:36:06.788448Z'
+object_type: ClarificationQuestion

@@ -1,0 +1,14 @@
+id: 01M419WJ8NRTDQSEJGM7YDG0CK
+type: declaration
+actor: system
+claim_id: 01M419QXM6SB27ZVXWGCCZR227
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: employee_rates has only a valid_from column and no valid_to, so validity_join
+    has no interval to test for gaps or overlaps. Whether every valid_from is 2025-01-01
+    is a constant-value check that no admissible template expresses.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:34:50.261306Z'
+object_type: EvidenceRecord

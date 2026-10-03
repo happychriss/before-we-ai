@@ -1,0 +1,12 @@
+id: 01M419TYHSFDSKMAWY6NCHARPS
+type: declaration
+actor: system
+claim_id: 01M419S1FBXWNBCP9VHHBG9DR4
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: An approval status implies no invariant.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.305585Z'
+object_type: EvidenceRecord

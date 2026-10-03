@@ -35,8 +35,11 @@ shows well — the decisions that take a verdict from *blocked* to *ready*:
 ./scripts/ui.sh                         # http://127.0.0.1:8787, offline, no API key
 ```
 
-It is a demo, not the product UI: one fixed question, recorded model answers,
-real checks and real human acts against the engine. Every status on screen is
+It is a demo, not the product UI: one fixed question per landscape, real
+checks and real human acts against the engine. The landscape switch offers the
+seeded finance corpus (model answers replayed, step by step) and the vessel
+landscape as Run B left it (`corpora/vessel/run-b/`, proposed live, re-judged
+by the current engine). Every status on screen is
 re-derived on each page load.
 
 Then take the guided tour. [`validation/README.md`](validation/README.md) drives

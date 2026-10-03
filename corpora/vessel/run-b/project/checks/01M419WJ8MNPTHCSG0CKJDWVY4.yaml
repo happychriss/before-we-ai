@@ -1,0 +1,21 @@
+id: 01M419WJ8MNPTHCSG0CKJDWVY4
+template: coverage
+claim_id: 01M419QXM6SB27ZVXWGCCZR228
+roles: []
+params:
+  expected:
+  - '2025-01-01'
+  - '2025-02-01'
+  - '2025-03-01'
+  - '2025-04-01'
+  - '2025-05-01'
+  - '2025-06-01'
+  - '2025-07-01'
+  - '2025-08-01'
+  - '2025-09-01'
+  - '2025-10-01'
+  - '2025-12-01'
+  table: 06_bank_receipts_and_fx_2025__monthly_fx_rates
+  unit_column: month
+created_at: '2026-10-03T16:34:50.260925Z'
+object_type: CheckPlan

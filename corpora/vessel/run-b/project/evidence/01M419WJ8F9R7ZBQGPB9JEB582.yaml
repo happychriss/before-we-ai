@@ -1,0 +1,15 @@
+id: 01M419WJ8F9R7ZBQGPB9JEB582
+type: declaration
+actor: system
+claim_id: 01M419QXM8GFPE4ZQT8WJC1VW6
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: The balance template needs a bare amount column, but the claim's amount
+    is the expression eliminate_revenue_eur + eliminate_cost_eur. The params also
+    group by journal_id rather than the source_document named in the claim. No bare
+    column or grouping carries the revenue-against-cost balance, so it stays untested.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:34:50.255099Z'
+object_type: EvidenceRecord

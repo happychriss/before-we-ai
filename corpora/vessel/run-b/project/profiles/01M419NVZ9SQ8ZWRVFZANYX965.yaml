@@ -1,0 +1,31 @@
+id: 01M419NVZ9SQ8ZWRVFZANYX965
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__overhead_pools
+column: location
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: Gdansk
+  max: Hamburg HQ
+  len_min: 6
+  len_avg: 7.7
+  len_max: 10
+  top_values:
+  - value: Gdansk
+    count: 1
+  - value: Hamburg
+    count: 1
+  - value: Hamburg HQ
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAAAA
+    count: 1
+  - mask: AAAAAAA
+    count: 1
+  - mask: AAAAAAA AA
+    count: 1
+created_at: '2026-10-03T16:31:10.825059Z'
+object_type: DataProfile

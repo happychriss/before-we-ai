@@ -1,0 +1,11 @@
+id: 01M419YXSH9Y4DATGE7R8NJN3T
+question: Which of the proposed candidates is the 'approval_status'? The workflow
+  status showing whether the posting was approved for use in the relevant cost view.
+  No check can settle this — what the data means is a business fact, not an arithmetic
+  one.
+finding: ''
+claim_ids:
+- 01M419S1EXAN5W3EYQJAD8V223
+stale: false
+created_at: '2026-10-03T16:36:07.601141Z'
+object_type: ClarificationQuestion

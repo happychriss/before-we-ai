@@ -1,0 +1,27 @@
+id: 01M419X9HKHYJYZDS481S9Z9RR
+type: document_anchor
+actor: ai
+claim_id: 01M419X9HJKY5PCH6M3K4MXYJF
+exception_samples: []
+payload:
+  quote: 'Baltic Surveyor
+
+    4.00
+
+    3.05
+
+    23.8%
+
+    Board pack excludes unsigned CO-17 cost and duplicate review'
+  chunk_id: 07_board_management_report_2025:p1:4
+  kind: table
+  source: 07_board_management_report_2025
+  page: 1
+source_fingerprints:
+  07_board_management_report_2025:
+    kind: chunk
+    chunk_id: 07_board_management_report_2025:p1:4
+    sha256: 701c32514c3795b1b528ba5c42940594e82c44d330bda5aca6c0c15a8f7adcf5
+stale: false
+created_at: '2026-10-03T16:35:14.099021Z'
+object_type: EvidenceRecord

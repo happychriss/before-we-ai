@@ -1,0 +1,25 @@
+id: 01M419NVWNRHAK5P361QRH61YZ
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: currency
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 2
+  min: EUR
+  max: PLN
+  len_min: 3
+  len_avg: 3.0
+  len_max: 3
+  top_values:
+  - value: EUR
+    count: 89
+  - value: PLN
+    count: 49
+  value_class: text
+  patterns:
+  - mask: AAA
+    count: 2
+created_at: '2026-10-03T16:31:10.741455Z'
+object_type: DataProfile

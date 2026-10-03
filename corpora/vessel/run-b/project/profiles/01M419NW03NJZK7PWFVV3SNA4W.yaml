@@ -1,0 +1,33 @@
+id: 01M419NW03NJZK7PWFVV3SNA4W
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__employee_rates
+column: burdened_rate
+stats:
+  duckdb_type: VARCHAR
+  row_count: 68
+  null_count: 0
+  distinct_count: 5
+  min: '42.5'
+  max: '78'
+  len_min: 2
+  len_avg: 2.4
+  len_max: 4
+  top_values:
+  - value: '48'
+    count: 16
+  - value: '55'
+    count: 15
+  - value: '78'
+    count: 14
+  - value: '42.5'
+    count: 12
+  - value: '62'
+    count: 11
+  value_class: decimal_like
+  patterns:
+  - mask: '99'
+    count: 4
+  - mask: '99.9'
+    count: 1
+created_at: '2026-10-03T16:31:10.851673Z'
+object_type: DataProfile

@@ -1,0 +1,19 @@
+id: 01M419X9HXVMTDX7368YV0E905
+statement: Late-approved December labour may be missing from the project ledger.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: December Gdansk labour
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HXVMTDX7368YV0E906
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.109340Z'
+term: December Gdansk labour
+definition: December Gdansk labour was approved after year end and may not have reached
+  the project ledger.
+object_type: ConceptClaim

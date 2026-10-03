@@ -1,0 +1,22 @@
+id: 01M419X9HGWSRHSZ2BPMTZ3HNK
+type: document_anchor
+actor: ai
+claim_id: 01M419X9HFGW3KKSN5D0GK8SMC
+exception_samples: []
+payload:
+  quote: 'The Gdansk yard carried the largest production load. Older presentations
+    still call it the Danzig
+
+    yard.'
+  chunk_id: 07_board_management_report_2025:p1:3
+  kind: text
+  source: 07_board_management_report_2025
+  page: 1
+source_fingerprints:
+  07_board_management_report_2025:
+    kind: chunk
+    chunk_id: 07_board_management_report_2025:p1:3
+    sha256: 47b8ecfff964f38b5346740d0fe1f5c78c9a688a27f4de1a1e36ebcafd0cde82
+stale: false
+created_at: '2026-10-03T16:35:14.096069Z'
+object_type: EvidenceRecord

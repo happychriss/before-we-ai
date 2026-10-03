@@ -1,0 +1,20 @@
+id: 01M419YW5R6XSHJCBXB78VC21S
+type: document_anchor
+actor: ai
+claim_id: 01M419YW5QAKVT3ZGT09X1RT6N
+exception_samples: []
+payload:
+  quote: about EUR 15,298. The project field was blank because NB-407 had already
+    been closed in the ERP.
+  chunk_id: 10_yard_operations_notes_and_email_prints:p1:2
+  kind: text
+  source: 10_yard_operations_notes_and_email_prints
+  page: 1
+source_fingerprints:
+  10_yard_operations_notes_and_email_prints:
+    kind: chunk
+    chunk_id: 10_yard_operations_notes_and_email_prints:p1:2
+    sha256: 1c2f24a31a0b61d76058e8f694604f1ee9de7f50cf2f09aab7281d821713acce
+stale: false
+created_at: '2026-10-03T16:36:05.944199Z'
+object_type: EvidenceRecord

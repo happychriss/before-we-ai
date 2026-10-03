@@ -1,0 +1,43 @@
+id: 01M419NVYENTNWNQPAVSHHV36H
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__time_allocations
+column: employee_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 47
+  null_count: 0
+  distinct_count: 33
+  min: BATCH-GD-DEC
+  max: EMP-068
+  len_min: 7
+  len_avg: 7.1
+  len_max: 12
+  top_values:
+  - value: EMP-028
+    count: 4
+  - value: EMP-067
+    count: 3
+  - value: EMP-002
+    count: 2
+  - value: EMP-019
+    count: 2
+  - value: EMP-033
+    count: 2
+  - value: EMP-035
+    count: 2
+  - value: EMP-048
+    count: 2
+  - value: EMP-050
+    count: 2
+  - value: EMP-062
+    count: 2
+  - value: EMP-063
+    count: 2
+  value_class: text
+  patterns:
+  - mask: AAA-999
+    count: 32
+  - mask: AAAAA-AA-AAA
+    count: 1
+created_at: '2026-10-03T16:31:10.798368Z'
+object_type: DataProfile

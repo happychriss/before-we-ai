@@ -1,0 +1,11 @@
+id: 01M419YXSH9Y4DATGE7R8NJN3W
+question: Which of the proposed candidates is the 'purchase_order_ref'? The purchasing
+  reference used with invoice, supplier and amount evidence to attribute and deduplicate
+  build costs. No check can settle this — what the data means is a business fact,
+  not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1EYP0GDQTDG2AZBH7YG
+stale: false
+created_at: '2026-10-03T16:36:07.601614Z'
+object_type: ClarificationQuestion

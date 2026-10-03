@@ -1,0 +1,12 @@
+id: 01M419TYHT3BYFFDY1WQS3JQPR
+type: declaration
+actor: system
+claim_id: 01M419S1FA5PQZVXAHDC5BGPKE
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A period attribute implies no invariant.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.306848Z'
+object_type: EvidenceRecord

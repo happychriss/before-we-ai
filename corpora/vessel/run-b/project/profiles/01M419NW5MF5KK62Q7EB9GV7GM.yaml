@@ -1,0 +1,49 @@
+id: 01M419NW5MF5KK62Q7EB9GV7GM
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__bank_receipts
+column: applied_document
+stats:
+  duckdb_type: VARCHAR
+  row_count: 12
+  null_count: 0
+  distinct_count: 12
+  min: DE-2024-1187
+  max: SERVICES-BATCH
+  len_min: 8
+  len_avg: 13.3
+  len_max: 25
+  top_values:
+  - value: DE-2024-1187
+    count: 1
+  - value: DE-2025-0211
+    count: 1
+  - value: DE-2025-0478
+    count: 1
+  - value: DE-2025-0777
+    count: 1
+  - value: DE-2025-1032
+    count: 1
+  - value: IC-BATCH
+    count: 1
+  - value: PL/2025/00317
+    count: 1
+  - value: PL/2025/00599;00901;01088
+    count: 1
+  - value: PL/2025/00642
+    count: 1
+  - value: PL/2025/00813
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA-9999-9999
+    count: 5
+  - mask: AA/9999/99999
+    count: 4
+  - mask: AA-AAAAA
+    count: 1
+  - mask: AA/9999/99999;99999;99999
+    count: 1
+  - mask: AAAAAAAA-AAAAA
+    count: 1
+created_at: '2026-10-03T16:31:11.028275Z'
+object_type: DataProfile

@@ -1,0 +1,27 @@
+id: 01M419NVZB2D599E0AEH3BEEMQ
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__overhead_pools
+column: pool
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 2
+  min: administration
+  max: production overhead
+  len_min: 14
+  len_avg: 17.3
+  len_max: 19
+  top_values:
+  - value: production overhead
+    count: 2
+  - value: administration
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAAAAAAAA AAAAAAAA
+    count: 1
+  - mask: AAAAAAAAAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.827022Z'
+object_type: DataProfile

@@ -41,6 +41,7 @@
           <div class="option-body">
             <div class="option-title">{{ c.binding or c.statement }} {{ chip(c.status, c.status_label) }}</div>
             {% if c.binding %}<div class="muted small">{{ c.statement }}</div>{% endif %}
+            {% if c.checks_fail %}<div class="small finding-note">{{ c.checks_fail }} data check{{ 's' if c.checks_fail != 1 }} found exceptions on this candidate — see the evidence.</div>{% endif %}
             <details class="why"><summary>Evidence ({{ c.evidence|length }})</summary>{{ evidence(c.evidence) }}</details>
           </div>
         </label>

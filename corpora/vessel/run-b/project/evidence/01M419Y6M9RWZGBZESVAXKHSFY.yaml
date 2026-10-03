@@ -1,0 +1,19 @@
+id: 01M419Y6M9RWZGBZESVAXKHSFY
+type: document_anchor
+actor: ai
+claim_id: 01M419Y6M9RWZGBZESVAXKHSFX
+exception_samples: []
+payload:
+  quote: Revenue EUR 4.00m; CO-17 cost
+  chunk_id: 09_contracts_change_orders_and_acceptance:p1:2
+  kind: table
+  source: 09_contracts_change_orders_and_acceptance
+  page: 1
+source_fingerprints:
+  09_contracts_change_orders_and_acceptance:
+    kind: chunk
+    chunk_id: 09_contracts_change_orders_and_acceptance:p1:2
+    sha256: d17a1ef5011ba67f0804c538689f4a90187b3da263e062125ccfa69891d077f0
+stale: false
+created_at: '2026-10-03T16:35:43.881730Z'
+object_type: EvidenceRecord

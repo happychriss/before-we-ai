@@ -1,0 +1,11 @@
+id: 01M419YXSM24WV6KA2GYWTD5KQ
+question: Which of the proposed candidates is the 'alias_set'? The approved set of
+  alternate project, yard-job, contract and vessel references that identify the same
+  build. No check can settle this — what the data means is a business fact, not an
+  arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1F6R73Q29SN1DCVWN5B
+stale: false
+created_at: '2026-10-03T16:36:07.604876Z'
+object_type: ClarificationQuestion

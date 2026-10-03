@@ -1,0 +1,29 @@
+id: 01M419NVQZAASARMSGCWFKZ5BZ
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__group_structure
+column: entity_code
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: BHW-PL
+  max: HVW-DE
+  len_min: 6
+  len_avg: 6.3
+  len_max: 7
+  top_values:
+  - value: BHW-PL
+    count: 1
+  - value: GD-YARD
+    count: 1
+  - value: HVW-DE
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-AA
+    count: 2
+  - mask: AA-AAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.591394Z'
+object_type: DataProfile

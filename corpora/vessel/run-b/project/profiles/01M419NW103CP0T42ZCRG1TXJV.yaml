@@ -1,0 +1,41 @@
+id: 01M419NW103CP0T42ZCRG1TXJV
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__documents
+column: due_date
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 0
+  distinct_count: 23
+  min: '2024-06-14'
+  max: '2026-01-30'
+  len_min: 10
+  len_avg: 10.0
+  len_max: 10
+  top_values:
+  - value: '2025-07-30'
+    count: 2
+  - value: '2024-06-14'
+    count: 1
+  - value: '2024-12-20'
+    count: 1
+  - value: '2025-03-02'
+    count: 1
+  - value: '2025-04-09'
+    count: 1
+  - value: '2025-04-27'
+    count: 1
+  - value: '2025-04-30'
+    count: 1
+  - value: '2025-05-30'
+    count: 1
+  - value: '2025-06-30'
+    count: 1
+  - value: '2025-07-02'
+    count: 1
+  value_class: date_like
+  patterns:
+  - mask: '9999-99-99'
+    count: 23
+created_at: '2026-10-03T16:31:10.880538Z'
+object_type: DataProfile

@@ -1,0 +1,41 @@
+id: 01M419NVVHPXC5TS9S2RVN4GKX
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: transaction_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 138
+  min: CST-00001
+  max: CST-00139
+  len_min: 9
+  len_avg: 9.0
+  len_max: 9
+  top_values:
+  - value: CST-00001
+    count: 1
+  - value: CST-00002
+    count: 1
+  - value: CST-00003
+    count: 1
+  - value: CST-00004
+    count: 1
+  - value: CST-00005
+    count: 1
+  - value: CST-00006
+    count: 1
+  - value: CST-00007
+    count: 1
+  - value: CST-00008
+    count: 1
+  - value: CST-00009
+    count: 1
+  - value: CST-00010
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-99999
+    count: 138
+created_at: '2026-10-03T16:31:10.705840Z'
+object_type: DataProfile

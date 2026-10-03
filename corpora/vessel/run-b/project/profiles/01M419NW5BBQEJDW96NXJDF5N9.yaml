@@ -1,0 +1,43 @@
+id: 01M419NW5BBQEJDW96NXJDF5N9
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__bank_receipts
+column: receipt_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 12
+  null_count: 0
+  distinct_count: 12
+  min: RCPT-250104
+  max: RCPT-251231-IC
+  len_min: 11
+  len_avg: 11.3
+  len_max: 14
+  top_values:
+  - value: RCPT-250104
+    count: 1
+  - value: RCPT-250228
+    count: 1
+  - value: RCPT-250319
+    count: 1
+  - value: RCPT-250415
+    count: 1
+  - value: RCPT-250510
+    count: 1
+  - value: RCPT-250612
+    count: 1
+  - value: RCPT-250817
+    count: 1
+  - value: RCPT-251020
+    count: 1
+  - value: RCPT-251215
+    count: 1
+  - value: RCPT-251230
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAA-999999
+    count: 11
+  - mask: AAAA-999999-AA
+    count: 1
+created_at: '2026-10-03T16:31:11.019132Z'
+object_type: DataProfile

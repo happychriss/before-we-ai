@@ -1,0 +1,36 @@
+id: 01M419YX3MB2WMAF7GRS719TWN
+type: check_result
+actor: check
+claim_id: 01M419S1EW7TGQECF3DGFM2Z7G
+check_plan_id: 01M419TYH93FKZ1XSK26DGYMK4
+verdict: fail
+population: 138
+exception_count: 1
+exception_samples:
+- grp: CST-00068
+  left_total: 31168.999700302003
+  right_total: 586464.72
+  diff: -555295.720299698
+result_ref: cache/check_runs/01M419YX3MB2WMAF7GRS719TWN.parquet
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT transaction_id AS grp, sum(CAST(amount_local AS DOUBLE)\
+    \ / CAST(pln_per_eur AS DOUBLE)) AS total\n    FROM \"02_project_cost_ledger_2025__cost_ledger\"\
+    \n    GROUP BY 1\n),\nr AS (\n    SELECT transaction_id AS grp, sum(CAST(reported_eur\
+    \ AS DOUBLE)) AS total\n    FROM \"02_project_cost_ledger_2025__cost_ledger\"\n\
+    \    GROUP BY 1\n)\nSELECT coalesce(l.grp, r.grp) AS grp,\n       l.total AS left_total,\n\
+    \       r.total AS right_total,\n       coalesce(l.total, 0) - coalesce(r.total,\
+    \ 0) AS diff\nFROM l FULL JOIN r ON l.grp = r.grp\nWHERE abs(coalesce(l.total,\
+    \ 0) - coalesce(r.total, 0)) > 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: 1 violating groups
+  establishes: false
+source_fingerprints:
+  02_project_cost_ledger_2025__cost_ledger:
+    kind: table
+    row_count: 138
+    schema_hash: 2debb58cf9b532d95cc4bbcd78212e1e47eeff776bfecc1df340e277e807137a
+    content_hash: '100665312601861361441508879742515872905'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.905136Z'
+object_type: EvidenceRecord

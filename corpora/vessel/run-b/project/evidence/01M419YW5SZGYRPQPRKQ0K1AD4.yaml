@@ -1,0 +1,20 @@
+id: 01M419YW5SZGYRPQPRKQ0K1AD4
+type: document_anchor
+actor: ai
+claim_id: 01M419YW5SZGYRPQPRKQ0K1AD3
+exception_samples: []
+payload:
+  quote: 'Ops: Danzig-11 and GD-11/B are the same build. IT: alias table has not been
+    approved.'
+  chunk_id: 10_yard_operations_notes_and_email_prints:p2:1
+  kind: text
+  source: 10_yard_operations_notes_and_email_prints
+  page: 2
+source_fingerprints:
+  10_yard_operations_notes_and_email_prints:
+    kind: chunk
+    chunk_id: 10_yard_operations_notes_and_email_prints:p2:1
+    sha256: 11ef0dce0140b228b5af19df7d92f09efd86629a07e1d27eeaf183c073d0e2b2
+stale: false
+created_at: '2026-10-03T16:36:05.945463Z'
+object_type: EvidenceRecord

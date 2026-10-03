@@ -1,0 +1,41 @@
+id: 01M419NW68B9SKAPK497XMY4A2
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__monthly_fx_rates
+column: month
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 0
+  distinct_count: 12
+  min: '2025-01-01'
+  max: '2025-12-01'
+  len_min: 10
+  len_avg: 10.0
+  len_max: 10
+  top_values:
+  - value: '2025-01-01'
+    count: 2
+  - value: '2025-02-01'
+    count: 2
+  - value: '2025-03-01'
+    count: 2
+  - value: '2025-04-01'
+    count: 2
+  - value: '2025-05-01'
+    count: 2
+  - value: '2025-06-01'
+    count: 2
+  - value: '2025-07-01'
+    count: 2
+  - value: '2025-08-01'
+    count: 2
+  - value: '2025-09-01'
+    count: 2
+  - value: '2025-10-01'
+    count: 2
+  value_class: date_like
+  patterns:
+  - mask: '9999-99-99'
+    count: 12
+created_at: '2026-10-03T16:31:11.048625Z'
+object_type: DataProfile

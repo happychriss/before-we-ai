@@ -1,0 +1,30 @@
+id: 01M419YX0702MPMTS7YBDFGVA0
+type: check_result
+actor: check
+claim_id: 01M419QXMA1NRTBB6FJ4YM5MDP
+check_plan_id: 01M419WJ8R7XEPN74XVZ8VV9EY
+verdict: pass
+population: 24
+exception_count: 0
+exception_samples: []
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT document_id AS grp, sum(CAST(net_amount AS DOUBLE)\
+    \ + CAST(vat_amount AS DOUBLE)) AS total\n    FROM \"04_sales_invoices_and_credit_notes_2025__documents\"\
+    \n    GROUP BY 1\n),\nr AS (\n    SELECT document_id AS grp, sum(CAST(gross_amount\
+    \ AS DOUBLE)) AS total\n    FROM \"04_sales_invoices_and_credit_notes_2025__documents\"\
+    \n    GROUP BY 1\n)\nSELECT coalesce(l.grp, r.grp) AS grp,\n       l.total AS\
+    \ left_total,\n       r.total AS right_total,\n       coalesce(l.total, 0) - coalesce(r.total,\
+    \ 0) AS diff\nFROM l FULL JOIN r ON l.grp = r.grp\nWHERE abs(coalesce(l.total,\
+    \ 0) - coalesce(r.total, 0)) > 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: no violations
+source_fingerprints:
+  04_sales_invoices_and_credit_notes_2025__documents:
+    kind: table
+    row_count: 24
+    schema_hash: c67fc8274736f757fb7acd022122200752e92d27a4b075a3315770b9402f4d62
+    content_hash: '221788139129796995724526853551772086622'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.794179Z'
+object_type: EvidenceRecord

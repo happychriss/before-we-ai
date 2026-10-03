@@ -1,0 +1,17 @@
+id: 01M419NVY5BMPFDKFEHJHBBFTB
+type: declaration
+actor: system
+exception_samples: []
+payload:
+  source: 03_time_and_overhead_allocations
+  rule: numeric_to_text
+  column: rate
+  example:
+    before: '39.35'
+    after: '39.35'
+  table: 03_time_and_overhead_allocations__overhead_pools
+source_fingerprints:
+  03_time_and_overhead_allocations: 7afe3bc3272087b0b0933e3a8d7ef43bb8199070b332049981048cb9df188af3
+stale: false
+created_at: '2026-10-03T16:31:10.789526Z'
+object_type: EvidenceRecord

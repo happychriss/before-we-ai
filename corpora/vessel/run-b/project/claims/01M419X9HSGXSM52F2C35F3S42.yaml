@@ -1,0 +1,12 @@
+id: 01M419X9HSGXSM52F2C35F3S42
+statement: Group eliminations of intercompany sales are EUR (1.05)m.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HSGXSM52F2C35F3S43
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.105190Z'
+object_type: Claim

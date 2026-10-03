@@ -1,0 +1,13 @@
+id: 01M419WJ8KV5X2DSKCTDS1M6GX
+type: declaration
+actor: system
+claim_id: 01M419QXM3RH9KJ8PK2XV0K05Q
+exception_samples: []
+payload:
+  decision: skipped
+  reason: 'claim c11: column ''yard_job_no'' does not exist on view ''04_sales_invoices_and_credit_notes_2025__documents''
+    (param ''key'')'
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:34:50.259096Z'
+object_type: EvidenceRecord

@@ -1,0 +1,13 @@
+id: 01M419X9HGWSRHSZ2BPMTZ3HNM
+statement: The board pack shows Nordlicht (HH-407) cost at EUR 2.70m, rounded before
+  a late class invoice.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HH6W2YTYRJ5CTVTM73
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.097000Z'
+object_type: Claim

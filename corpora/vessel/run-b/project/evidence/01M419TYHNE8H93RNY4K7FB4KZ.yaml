@@ -1,0 +1,12 @@
+id: 01M419TYHNE8H93RNY4K7FB4KZ
+type: declaration
+actor: system
+claim_id: 01M419S1EW7TGQECF3DGFM2Z7H
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: A source-system label implies no invariant.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.301568Z'
+object_type: EvidenceRecord

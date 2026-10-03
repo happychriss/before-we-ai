@@ -1,0 +1,27 @@
+id: 01M419NVYYMCHK9B50B7HH99DX
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__time_allocations
+column: comment
+stats:
+  duckdb_type: VARCHAR
+  row_count: 47
+  null_count: 45
+  distinct_count: 2
+  min: Approved 8 Jan 2026; interface to project ledger failed
+  max: Copied from offline supervisor workbook
+  len_min: 39
+  len_avg: 47.0
+  len_max: 55
+  top_values:
+  - value: Approved 8 Jan 2026; interface to project ledger failed
+    count: 1
+  - value: Copied from offline supervisor workbook
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAAAA AAAA AAAAAAA AAAAAAAAAA AAAAAAAA
+    count: 1
+  - mask: AAAAAAAA 9 AAA 9999; AAAAAAAAA AA AAAAAAA AAAAAA AAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.814835Z'
+object_type: DataProfile

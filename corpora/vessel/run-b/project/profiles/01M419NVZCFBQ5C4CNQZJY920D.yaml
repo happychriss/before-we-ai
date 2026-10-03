@@ -1,0 +1,29 @@
+id: 01M419NVZCFBQ5C4CNQZJY920D
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__overhead_pools
+column: pool_eur
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: '1150000'
+  max: '920000'
+  len_min: 6
+  len_avg: 6.3
+  len_max: 7
+  top_values:
+  - value: '1150000'
+    count: 1
+  - value: '780000'
+    count: 1
+  - value: '920000'
+    count: 1
+  value_class: integer_like
+  patterns:
+  - mask: '999999'
+    count: 2
+  - mask: '9999999'
+    count: 1
+created_at: '2026-10-03T16:31:10.828852Z'
+object_type: DataProfile

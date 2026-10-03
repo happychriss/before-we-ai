@@ -1,0 +1,13 @@
+id: 01M419Y6MSJ5BFBMMYXVNG691V
+statement: The management schedule recognizes Elbe Runner at 68% cost-to-cost. The
+  document flags this as disputed.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWWBHNAKMP1ZRV4QXSEQ
+evidence_ids:
+- 01M419Y6MSJ5BFBMMYXVNG691W
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:43.897513Z'
+object_type: Claim

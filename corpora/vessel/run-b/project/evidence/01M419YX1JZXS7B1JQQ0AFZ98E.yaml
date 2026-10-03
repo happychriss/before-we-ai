@@ -1,0 +1,73 @@
+id: 01M419YX1JZXS7B1JQQ0AFZ98E
+type: check_result
+actor: check
+claim_id: 01M419S1ENZ16WNSME77XXHMXG
+check_plan_id: 01M419TYJ5MYAA1GA1GE573A9Z
+verdict: fail
+population: 138
+exception_count: 138
+exception_samples:
+- grp: CST-00068
+  balance: 586464.72
+- grp: CST-00002
+  balance: 427397.0
+- grp: CST-00070
+  balance: 305454.0
+- grp: CST-00049
+  balance: 255000.0
+- grp: CST-00051
+  balance: 249815.0
+- grp: CST-00001
+  balance: 222603.0
+- grp: CST-00036
+  balance: 217391.0
+- grp: CST-00039
+  balance: 211419.0
+- grp: CST-00040
+  balance: 200173.0
+- grp: CST-00034
+  balance: 195652.0
+- grp: CST-00138
+  balance: 195652.0
+- grp: CST-00105
+  balance: 195448.0
+- grp: CST-00071
+  balance: 172121.0
+- grp: CST-00005
+  balance: 159087.0
+- grp: CST-00035
+  balance: 156522.0
+- grp: CST-00048
+  balance: 150845.0
+- grp: CST-00003
+  balance: 149589.0
+- grp: CST-00004
+  balance: 149589.0
+- grp: CST-00074
+  balance: 147879.0
+- grp: CST-00069
+  balance: 143377.0
+result_ref: cache/check_runs/01M419YX1JZXS7B1JQQ0AFZ98E.parquet
+payload:
+  template: balance
+  sql: 'SELECT "transaction_id" AS grp, sum(CAST(trim("reported_eur") AS DOUBLE))
+    AS balance
+
+    FROM "02_project_cost_ledger_2025__cost_ledger"
+
+    GROUP BY 1
+
+    HAVING abs(sum(CAST(trim("reported_eur") AS DOUBLE))) > 0.01
+
+    ORDER BY abs(balance) DESC, grp'
+  summary: 138 violating groups
+source_fingerprints:
+  02_project_cost_ledger_2025__cost_ledger:
+    kind: table
+    row_count: 138
+    schema_hash: 2debb58cf9b532d95cc4bbcd78212e1e47eeff776bfecc1df340e277e807137a
+    content_hash: '100665312601861361441508879742515872905'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.855690Z'
+object_type: EvidenceRecord

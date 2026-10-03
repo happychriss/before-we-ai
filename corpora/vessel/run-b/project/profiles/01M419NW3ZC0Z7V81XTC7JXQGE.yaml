@@ -1,0 +1,31 @@
+id: 01M419NW3ZC0Z7V81XTC7JXQGE
+source_id: 01M419NW35P86PPK0TSW7W3KPT
+table: 05_intercompany_recharges_2025__ic_transactions
+column: sender_amount_eur
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 0
+  distinct_count: 5
+  min: '126000'
+  max: '365000'
+  len_min: 6
+  len_avg: 6.0
+  len_max: 6
+  top_values:
+  - value: '126000'
+    count: 1
+  - value: '280000'
+    count: 1
+  - value: '300000'
+    count: 1
+  - value: '315000'
+    count: 1
+  - value: '365000'
+    count: 1
+  value_class: integer_like
+  patterns:
+  - mask: '999999'
+    count: 5
+created_at: '2026-10-03T16:31:10.975359Z'
+object_type: DataProfile

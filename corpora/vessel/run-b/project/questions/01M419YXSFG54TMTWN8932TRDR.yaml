@@ -1,0 +1,10 @@
+id: 01M419YXSFG54TMTWN8932TRDR
+question: Which of the proposed candidates is the 'entity'? The legal entity or company
+  code to whose books a posting belongs. No check can settle this — what the data
+  means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1ES6439G0M05R01HFGK
+stale: false
+created_at: '2026-10-03T16:36:07.599839Z'
+object_type: ClarificationQuestion

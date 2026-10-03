@@ -1,0 +1,10 @@
+id: 01M419YXSJ2PWQHT0YEXDN3Y3Y
+question: Which of the proposed candidates is the 'ic_buyer_entity'? The legal entity
+  receiving the intercompany resource or service. No check can settle this — what
+  the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1F1J973FRKWMT9708D5
+stale: false
+created_at: '2026-10-03T16:36:07.602950Z'
+object_type: ClarificationQuestion

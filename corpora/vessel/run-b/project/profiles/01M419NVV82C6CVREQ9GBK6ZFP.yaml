@@ -1,0 +1,31 @@
+id: 01M419NVV82C6CVREQ9GBK6ZFP
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__project_aliases
+column: mapping_status
+stats:
+  duckdb_type: VARCHAR
+  row_count: 6
+  null_count: 0
+  distinct_count: 3
+  min: LOI only
+  max: unconfirmed old yard code
+  len_min: 8
+  len_avg: 10.8
+  len_max: 25
+  top_values:
+  - value: approved
+    count: 4
+  - value: LOI only
+    count: 1
+  - value: unconfirmed old yard code
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA AAAA
+    count: 1
+  - mask: AAAAAAAA
+    count: 1
+  - mask: AAAAAAAAAAA AAA AAAA AAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.696946Z'
+object_type: DataProfile

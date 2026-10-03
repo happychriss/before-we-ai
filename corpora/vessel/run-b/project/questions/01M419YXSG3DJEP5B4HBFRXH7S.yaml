@@ -1,0 +1,10 @@
+id: 01M419YXSG3DJEP5B4HBFRXH7S
+question: Which of the proposed candidates is the 'currency'? The currency in which
+  the local posting amount is denominated. No check can settle this — what the data
+  means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1EV8X96QNTH6PV13XA9
+stale: false
+created_at: '2026-10-03T16:36:07.600368Z'
+object_type: ClarificationQuestion

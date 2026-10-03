@@ -1,0 +1,31 @@
+id: 01M419NVY2MBX5GEG5JJ256AYP
+name: 03_time_and_overhead_allocations
+kind: xlsx
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/03_time_and_overhead_allocations.xlsx
+description: Recorded labour hours and the overhead allocated onto projects.
+fingerprint:
+  file:
+    kind: file
+    size: 14622
+    sha256: 7afe3bc3272087b0b0933e3a8d7ef43bb8199070b332049981048cb9df188af3
+  tables:
+    03_time_and_overhead_allocations__time_allocations:
+      kind: table
+      row_count: 47
+      schema_hash: aa83e582c8ddc40c8862c3a04bcb725a354941cbf287c7170f261a4077341223
+      content_hash: '103940560900488189741586873328671753825'
+      max_date: null
+    03_time_and_overhead_allocations__overhead_pools:
+      kind: table
+      row_count: 3
+      schema_hash: e0411b8abce0eb5b129b888d3080c70c7307c6072d33015f5de398a752c75383
+      content_hash: '197406327796997235847631845018601361453'
+      max_date: null
+    03_time_and_overhead_allocations__employee_rates:
+      kind: table
+      row_count: 68
+      schema_hash: 3f90916b92ab8a2c01f47d732a64b64b03ccc8b47c1648557477dae54682e2a9
+      content_hash: '216718860651031418370784549979877416376'
+      max_date: null
+created_at: '2026-10-03T16:31:10.786715Z'
+object_type: Source

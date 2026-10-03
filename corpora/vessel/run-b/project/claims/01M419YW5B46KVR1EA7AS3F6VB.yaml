@@ -1,0 +1,21 @@
+id: 01M419YW5B46KVR1EA7AS3F6VB
+statement: Procurement asks for the duplicated manual-journal steel posting on GD-11/B
+  to be reversed, and reports that no reversal appears in the December export.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: duplicate Baltic steel invoice (GD-11/B)
+source_ids:
+- 01M419NWX4Y68Q54348SFZ92ZB
+evidence_ids:
+- 01M419YW5MK8BV7648HGPJVZXZ
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:36:05.931465Z'
+term: duplicate Baltic steel invoice (GD-11/B)
+definition: The second steel posting for GD-11/B is a manual-journal copy of the same
+  scanned invoice, not a second delivery, and should be reversed; no reversal is visible
+  in the December export.
+object_type: ConceptClaim

@@ -1,0 +1,11 @@
+id: 01M419YXSG3DJEP5B4HBFRXH7V
+question: Which of the proposed candidates is the 'source_system'? The originating
+  ledger, interface or manual-entry channel retained for posted-versus-adjusted reconciliation.
+  No check can settle this — what the data means is a business fact, not an arithmetic
+  one.
+finding: ''
+claim_ids:
+- 01M419S1EW7TGQECF3DGFM2Z7H
+stale: false
+created_at: '2026-10-03T16:36:07.600881Z'
+object_type: ClarificationQuestion

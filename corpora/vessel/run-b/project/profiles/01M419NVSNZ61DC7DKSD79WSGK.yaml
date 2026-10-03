@@ -1,0 +1,27 @@
+id: 01M419NVSNZ61DC7DKSD79WSGK
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__vessel_master
+column: acceptance_date
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 2
+  distinct_count: 3
+  min: '2025-03-28'
+  max: '2025-12-12'
+  len_min: 10
+  len_avg: 10.0
+  len_max: 10
+  top_values:
+  - value: '2025-03-28'
+    count: 1
+  - value: '2025-09-19'
+    count: 1
+  - value: '2025-12-12'
+    count: 1
+  value_class: date_like
+  patterns:
+  - mask: '9999-99-99'
+    count: 3
+created_at: '2026-10-03T16:31:10.645960Z'
+object_type: DataProfile

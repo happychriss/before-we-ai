@@ -1,0 +1,21 @@
+id: 01M419QXMBJZBNBWK9H4F5QG78
+statement: Management recognition revenue_2025_eur per project should reconcile to
+  revenue_by_ship total_linked_revenue.
+created_by: ai
+status: proposed
+predicate:
+  name: reconciles
+  params:
+    left: 04_sales_invoices_and_credit_notes_2025__management_recognition
+    right: 04_sales_invoices_and_credit_notes_2025__revenue_by_ship
+    left_group: project_id
+    right_group: project_id
+    left_measure: revenue_2025_eur
+    right_measure: total_linked_revenue
+source_ids:
+- 01M419NW0ETZ3PTBEKW26G3CCA
+evidence_ids: []
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.059949Z'
+object_type: Claim

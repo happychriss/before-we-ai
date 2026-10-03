@@ -1,0 +1,12 @@
+id: 01M419YXSM24WV6KA2GYWTD5KM
+question: Which of the proposed candidates is the 'ic_match_status'? The reconciliation
+  state of the sender, receiver and elimination records for an intercompany charge.
+  No check can settle this — what the data means is a business fact, not an arithmetic
+  one.
+finding: ''
+claim_ids:
+- 01M419S1F46YWB0TAFJ3ZTKEFC
+- 01M419S1F54M91WF4KTCFJCMSR
+stale: false
+created_at: '2026-10-03T16:36:07.604111Z'
+object_type: ClarificationQuestion

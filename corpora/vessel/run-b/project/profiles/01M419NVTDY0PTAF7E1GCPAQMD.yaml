@@ -1,0 +1,47 @@
+id: 01M419NVTDY0PTAF7E1GCPAQMD
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__customers
+column: legal_name
+stats:
+  duckdb_type: VARCHAR
+  row_count: 9
+  null_count: 0
+  distinct_count: 9
+  min: Baltic Hull Works sp. z o.o.
+  max: Skagerrak Marine ApS
+  len_min: 17
+  len_avg: 23.0
+  len_max: 33
+  top_values:
+  - value: Baltic Hull Works sp. z o.o.
+    count: 1
+  - value: Elbe Wind Service GmbH
+    count: 1
+  - value: Hanseatic Vessel Works Group GmbH
+    count: 1
+  - value: Helgoland Service KG
+    count: 1
+  - value: Nordsee Forschung AS
+    count: 1
+  - value: North Channel Ferries Ltd
+    count: 1
+  - value: Oresund Towage AB
+    count: 1
+  - value: Port Pilot Gdansk S.A.
+    count: 1
+  - value: Skagerrak Marine ApS
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAA AAAA AAAAAAA AAAA
+    count: 1
+  - mask: AAAA AAAAA AAAAAA A.A.
+    count: 1
+  - mask: AAAAA AAAAAAA AAAAAAA AAA
+    count: 1
+  - mask: AAAAAA AAAA AAAAA AA. A A.A.
+    count: 1
+  - mask: AAAAAAA AAAAAA AA
+    count: 1
+created_at: '2026-10-03T16:31:10.669422Z'
+object_type: DataProfile

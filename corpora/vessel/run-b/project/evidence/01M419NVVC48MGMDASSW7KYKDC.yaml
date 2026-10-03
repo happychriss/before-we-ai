@@ -1,0 +1,17 @@
+id: 01M419NVVC48MGMDASSW7KYKDC
+type: declaration
+actor: system
+exception_samples: []
+payload:
+  source: 02_project_cost_ledger_2025
+  rule: date_to_iso
+  column: posting_date
+  example:
+    before: datetime.datetime(2025, 6, 10, 0, 0)
+    after: '2025-06-10'
+  table: 02_project_cost_ledger_2025__cost_ledger
+source_fingerprints:
+  02_project_cost_ledger_2025: 8abbdc61c6368da9c3e51f8a1aebf2f4253a0fa59513373f2874bdc014afff24
+stale: false
+created_at: '2026-10-03T16:31:10.700912Z'
+object_type: EvidenceRecord

@@ -1,0 +1,53 @@
+name: vessel-main
+sources:
+- name: 01_company_and_vessel_master
+  description: 'Master data: group companies, yards, vessels and their project codes.'
+  kind: xlsx
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/01_company_and_vessel_master.xlsx
+- name: 02_project_cost_ledger_2025
+  description: "The project cost ledger for FY2025 \u2014 one row per booked cost\
+    \ line."
+  kind: xlsx
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/02_project_cost_ledger_2025.xlsx
+- name: 03_time_and_overhead_allocations
+  description: Recorded labour hours and the overhead allocated onto projects.
+  kind: xlsx
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/03_time_and_overhead_allocations.xlsx
+- name: 04_sales_invoices_and_credit_notes_2025
+  description: Sales invoices and credit notes issued in FY2025.
+  kind: xlsx
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/04_sales_invoices_and_credit_notes_2025.xlsx
+- name: 05_intercompany_recharges_2025
+  description: Recharges between the German parent and the Polish yard.
+  kind: xlsx
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/05_intercompany_recharges_2025.xlsx
+- name: 06_bank_receipts_and_fx_2025
+  description: Bank receipts and the exchange rates applied to them.
+  kind: xlsx
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/06_bank_receipts_and_fx_2025.xlsx
+- name: 07_board_management_report_2025
+  description: The FY2025 management report as drafted for the board.
+  kind: pdf
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/07_board_management_report_2025.pdf
+- name: 08_tax_and_transfer_pricing_memo_2025
+  description: Internal working paper on VAT, corporate income tax and transfer pricing.
+  kind: pdf
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/08_tax_and_transfer_pricing_memo_2025.pdf
+- name: 09_contracts_change_orders_and_acceptance
+  description: Contract register extracts, change orders and acceptance certificates.
+  kind: pdf
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/09_contracts_change_orders_and_acceptance.pdf
+- name: 10_yard_operations_notes_and_email_prints
+  description: Mixed working notes and printed e-mails from the two yards' shared
+    folders.
+  kind: pdf
+  location: /home/development/Projects/before-we-ai/corpora/vessel/data/10_yard_operations_notes_and_email_prints.pdf
+tolerances: {}
+llm:
+  domain_guide_file: /home/development/Projects/before-we-ai/corpora/vessel/guide/simulated-domain-guide.yaml
+  models:
+    request: claude-opus-5-5
+    v1_hypotheses: claude-opus-5-5
+    role_binding: claude-opus-5-5
+    v3_documents: claude-opus-5-5
+    v2_bind: claude-sonnet-5-5

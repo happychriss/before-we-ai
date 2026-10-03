@@ -1,0 +1,12 @@
+id: 01M419TYHNE8H93RNY4K7FB4KY
+template: anti_join
+claim_id: 01M419S1ETM3Y6E5WD0QEAH811
+roles:
+- build_ref
+params:
+  child: 02_project_cost_ledger_2025__cost_ledger
+  child_column: project_id
+  parent: 01_company_and_vessel_master__vessel_master
+  parent_column: project_id
+created_at: '2026-10-03T16:33:57.301266Z'
+object_type: CheckPlan

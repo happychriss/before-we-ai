@@ -1,0 +1,9 @@
+id: 01M419YX2KRBG96RECJ6RPVSYA
+question: 04_sales_invoices_and_credit_notes_2025__documents does not balance per
+  group — is an offsetting entry missing?
+finding: 23 exceptions in 24 rows (95.8%)
+claim_ids:
+- 01M419S1EPK456QP8SPAVJFVPQ
+stale: false
+created_at: '2026-10-03T16:36:06.867591Z'
+object_type: ClarificationQuestion

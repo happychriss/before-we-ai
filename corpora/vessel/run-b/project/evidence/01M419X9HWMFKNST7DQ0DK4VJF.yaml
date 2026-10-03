@@ -1,0 +1,22 @@
+id: 01M419X9HWMFKNST7DQ0DK4VJF
+type: document_anchor
+actor: ai
+claim_id: 01M419X9HV386QTRZTP46H7CKM
+exception_samples: []
+payload:
+  quote: 'One Baltic Surveyor steel invoice may have been posted twice. Procurement
+    says the second row is a
+
+    scan-copy, not another delivery.'
+  chunk_id: 07_board_management_report_2025:p2:3
+  kind: text
+  source: 07_board_management_report_2025
+  page: 2
+source_fingerprints:
+  07_board_management_report_2025:
+    kind: chunk
+    chunk_id: 07_board_management_report_2025:p2:3
+    sha256: 2eeb2faf3f1b117102c78a2350ae10fcab3f1dcaf740d8ea4d23b6735d3e2937
+stale: false
+created_at: '2026-10-03T16:35:14.108422Z'
+object_type: EvidenceRecord

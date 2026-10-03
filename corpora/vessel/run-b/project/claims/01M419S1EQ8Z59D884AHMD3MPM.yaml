@@ -1,0 +1,24 @@
+id: 01M419S1EQ8Z59D884AHMD3MPM
+statement: role 'doc_ref' is played by key=02_project_cost_ledger_2025__cost_ledger.transaction_id,
+  table=02_project_cost_ledger_2025__cost_ledger
+created_by: ai
+status: proposed
+predicate:
+  name: role_binding
+  params:
+    role: doc_ref
+    binding:
+      key: 02_project_cost_ledger_2025__cost_ledger.transaction_id
+      table: 02_project_cost_ledger_2025__cost_ledger
+source_ids:
+- 01M419NVVC48MGMDASSW7KYKDB
+evidence_ids:
+- 01M419TYJ3HSPJACVJJCDRXZZD
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.743906Z'
+role: doc_ref
+binding:
+  key: 02_project_cost_ledger_2025__cost_ledger.transaction_id
+  table: 02_project_cost_ledger_2025__cost_ledger
+object_type: MappingClaim

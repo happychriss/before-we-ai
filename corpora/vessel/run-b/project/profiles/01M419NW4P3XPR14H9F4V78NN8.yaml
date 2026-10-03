@@ -1,0 +1,31 @@
+id: 01M419NW4P3XPR14H9F4V78NN8
+source_id: 01M419NW35P86PPK0TSW7W3KPT
+table: 05_intercompany_recharges_2025__elimination_journal
+column: eliminate_cost_eur
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 0
+  distinct_count: 4
+  min: '0'
+  max: '365000'
+  len_min: 1
+  len_avg: 4.0
+  len_max: 6
+  top_values:
+  - value: '0'
+    count: 2
+  - value: '278600'
+    count: 1
+  - value: '315000'
+    count: 1
+  - value: '365000'
+    count: 1
+  value_class: integer_like
+  patterns:
+  - mask: '999999'
+    count: 3
+  - mask: '9'
+    count: 1
+created_at: '2026-10-03T16:31:10.998437Z'
+object_type: DataProfile

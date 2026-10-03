@@ -1,0 +1,27 @@
+id: 01M419NW6KTB4RC4FQQGBKM10Y
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__monthly_fx_rates
+column: note
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 11
+  distinct_count: 2
+  min: August appears inverted
+  max: 'Direction label is ambiguous: currency per EUR or EUR per currency?'
+  len_min: 23
+  len_avg: 63.6
+  len_max: 67
+  top_values:
+  - value: 'Direction label is ambiguous: currency per EUR or EUR per currency?'
+    count: 12
+  - value: August appears inverted
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAAAA AAAAAAA AAAAAAAA
+    count: 1
+  - mask: 'AAAAAAAAA AAAAA AA AAAAAAAAA: AAAAAAAA AAA AAA AA AAA AAA AAAAAAAA?'
+    count: 1
+created_at: '2026-10-03T16:31:11.059847Z'
+object_type: DataProfile

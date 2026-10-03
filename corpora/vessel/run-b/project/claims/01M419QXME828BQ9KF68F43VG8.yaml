@@ -1,0 +1,19 @@
+id: 01M419QXME828BQ9KF68F43VG8
+statement: It is unclear whether project cost includes production overhead and which
+  allocation base defines it.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params: {}
+source_ids:
+- 01M419NVY2MBX5GEG5JJ256AYP
+evidence_ids:
+- 01M419S1TWHVF8SSYHXJHRFEZK
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.062549Z'
+term: project cost
+definition: It is unclear whether project cost includes production overhead and which
+  allocation base defines it.
+object_type: ConceptClaim

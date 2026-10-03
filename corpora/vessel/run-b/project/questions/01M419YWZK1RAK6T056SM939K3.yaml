@@ -1,0 +1,10 @@
+id: 01M419YWZK1RAK6T056SM939K3
+question: 05_intercompany_recharges_2025__ic_transactions has entries with no counterpart
+  in 04_sales_invoices_and_credit_notes_2025__documents — is that a legitimate data
+  cut, a pending state, or an error?
+finding: 1 exception in 5 rows (20.0%)
+claim_ids:
+- 01M419QXM9AEX7GB2AXH208V3D
+stale: false
+created_at: '2026-10-03T16:36:06.771329Z'
+object_type: ClarificationQuestion

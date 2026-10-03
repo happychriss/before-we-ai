@@ -1,0 +1,21 @@
+id: 01M419S1F54M91WF4KTCFJCMST
+statement: role 'build' is played by table=01_company_and_vessel_master__project_aliases
+created_by: ai
+status: proposed
+predicate:
+  name: role_binding
+  params:
+    role: build
+    binding:
+      table: 01_company_and_vessel_master__project_aliases
+source_ids:
+- 01M419NVQATFX47BYPB4ACPC1T
+evidence_ids:
+- 01M419YX58FHSGXJTT0TJ7AQRS
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.757921Z'
+role: build
+binding:
+  table: 01_company_and_vessel_master__project_aliases
+object_type: MappingClaim

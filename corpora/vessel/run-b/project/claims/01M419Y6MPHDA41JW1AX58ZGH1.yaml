@@ -1,0 +1,19 @@
+id: 01M419Y6MPHDA41JW1AX58ZGH1
+statement: Hansa Tug is a cancelled pre-contract build with no binding contract.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: LOI-6 / Hansa Tug status
+source_ids:
+- 01M419NWWBHNAKMP1ZRV4QXSEQ
+evidence_ids:
+- 01M419Y6MPHDA41JW1AX58ZGH2
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:43.894499Z'
+term: LOI-6 / Hansa Tug status
+definition: Hansa Tug had no binding contract (letter of intent only) and was cancelled
+  on 30 May 2025; the EUR 0.31m reservation is refundable.
+object_type: ConceptClaim

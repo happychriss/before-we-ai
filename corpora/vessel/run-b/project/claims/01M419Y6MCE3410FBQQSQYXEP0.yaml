@@ -1,0 +1,20 @@
+id: 01M419Y6MCE3410FBQQSQYXEP0
+statement: The acceptance certificate links the vessel name Baltic Surveyor to yard
+  job GD-11/B.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: Baltic Surveyor aliases
+source_ids:
+- 01M419NWWBHNAKMP1ZRV4QXSEQ
+evidence_ids:
+- 01M419Y6MDNF4CJ21Q058GP5NR
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:43.884593Z'
+term: Baltic Surveyor aliases
+definition: Vessel 'Baltic Surveyor' corresponds to yard job GD-11/B (contract register
+  reference BALTIC-11).
+object_type: ConceptClaim

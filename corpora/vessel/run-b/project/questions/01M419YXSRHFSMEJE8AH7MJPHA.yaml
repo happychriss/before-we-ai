@@ -1,0 +1,10 @@
+id: 01M419YXSRHFSMEJE8AH7MJPHA
+question: Which of the proposed candidates is the 'overhead_allocation_base'? The
+  owner-approved driver used to allocate the pool consistently across builds. No check
+  can settle this — what the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1FE0V1VQSSNJ96Z27TH
+stale: false
+created_at: '2026-10-03T16:36:07.608290Z'
+object_type: ClarificationQuestion

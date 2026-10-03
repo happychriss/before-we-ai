@@ -1,0 +1,49 @@
+id: 01M419NVYJ34TWMDN38J38R39F
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__time_allocations
+column: project_reference
+stats:
+  duckdb_type: VARCHAR
+  row_count: 47
+  null_count: 0
+  distinct_count: 10
+  min: AMBER-77
+  max: VSL-2506
+  len_min: 5
+  len_avg: 7.6
+  len_max: 8
+  top_values:
+  - value: VSL-2407
+    count: 7
+  - value: VSL-2502
+    count: 7
+  - value: VSL-2504
+    count: 7
+  - value: VSL-2506
+    count: 7
+  - value: VSL-2411
+    count: 6
+  - value: AMBER-77
+    count: 3
+  - value: ER-02
+    count: 3
+  - value: TUG-X6
+    count: 3
+  - value: GD-11/B
+    count: 2
+  - value: HH-407
+    count: 2
+  value_class: text
+  patterns:
+  - mask: AAA-9999
+    count: 5
+  - mask: AA-99
+    count: 1
+  - mask: AA-99/A
+    count: 1
+  - mask: AA-999
+    count: 1
+  - mask: AAA-A9
+    count: 1
+created_at: '2026-10-03T16:31:10.802330Z'
+object_type: DataProfile

@@ -1,0 +1,16 @@
+id: 01M419WJ8SPV2PFD78QDFAGKC2
+type: declaration
+actor: system
+claim_id: 01M419QXM72G2HZJXT17E1NVG4
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: ic_symmetry needs two distinct sides to relate (e.g. separate sender and
+    receiver ledgers or period columns). Here sender_amount_eur and receiver_amount_eur
+    are two columns of the same ic_transactions view with the same date column, so
+    the template would compare rows to themselves and test nothing. The per-transaction
+    sender/receiver match stays untested.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:34:50.265587Z'
+object_type: EvidenceRecord

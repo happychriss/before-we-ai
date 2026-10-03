@@ -1,0 +1,25 @@
+id: 01M419NVY1QP5KQCM24V8Y57MR
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_centre_map
+column: entity
+stats:
+  duckdb_type: VARCHAR
+  row_count: 4
+  null_count: 0
+  distinct_count: 2
+  min: BHW-PL
+  max: HVW-DE
+  len_min: 6
+  len_avg: 6.0
+  len_max: 6
+  top_values:
+  - value: BHW-PL
+    count: 2
+  - value: HVW-DE
+    count: 2
+  value_class: text
+  patterns:
+  - mask: AAA-AA
+    count: 2
+created_at: '2026-10-03T16:31:10.785278Z'
+object_type: DataProfile

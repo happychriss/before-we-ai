@@ -1,0 +1,11 @@
+id: 01M419YXSRHFSMEJE8AH7MJPHB
+question: Which of the proposed candidates is the 'overhead_base_quantity'? The measured
+  quantity of the approved allocation driver for a pool or receiving build. No check
+  can settle this — what the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1FE0V1VQSSNJ96Z27TJ
+- 01M419S1FFJJC3EX2WG17JY96T
+stale: false
+created_at: '2026-10-03T16:36:07.608526Z'
+object_type: ClarificationQuestion

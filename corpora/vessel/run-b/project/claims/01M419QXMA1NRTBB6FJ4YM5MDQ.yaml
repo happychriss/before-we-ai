@@ -1,0 +1,24 @@
+id: 01M419QXMA1NRTBB6FJ4YM5MDQ
+statement: The VAT rate on sales documents decodes from the issuing entity's country
+  (DE 19%, PL 23%).
+created_by: ai
+status: proposed
+predicate:
+  name: range_mapping
+  params:
+    table: 04_sales_invoices_and_credit_notes_2025__documents
+    value_column: 04_sales_invoices_and_credit_notes_2025__documents.vat_rate
+    range_from: issuing_entity
+    range_to: issuing_entity
+    ranges:
+    - HVW-DE: '0.19'
+    - BHW-PL: '0.23'
+    where: vat_rate > 0
+source_ids:
+- 01M419NW0ETZ3PTBEKW26G3CCA
+evidence_ids:
+- 01M419WJ8VKRBAYSR3265M5AHG
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.058910Z'
+object_type: Claim

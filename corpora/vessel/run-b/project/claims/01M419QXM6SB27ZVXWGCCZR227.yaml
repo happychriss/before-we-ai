@@ -1,0 +1,19 @@
+id: 01M419QXM6SB27ZVXWGCCZR227
+statement: Employee rates are valid from 2025-01-01 per employee.
+created_by: ai
+status: proposed
+predicate:
+  name: temporal_validity
+  params:
+    table: 03_time_and_overhead_allocations__employee_rates
+    key_column: 03_time_and_overhead_allocations__employee_rates.employee_id
+    valid_from: 03_time_and_overhead_allocations__employee_rates.valid_from
+    valid_to: 03_time_and_overhead_allocations__employee_rates.valid_from
+source_ids:
+- 01M419NVY2MBX5GEG5JJ256AYP
+evidence_ids:
+- 01M419WJ8NRTDQSEJGM7YDG0CK
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.054350Z'
+object_type: Claim

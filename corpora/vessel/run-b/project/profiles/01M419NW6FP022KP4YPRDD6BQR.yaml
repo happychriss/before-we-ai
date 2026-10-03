@@ -1,0 +1,45 @@
+id: 01M419NW6FP022KP4YPRDD6BQR
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__monthly_fx_rates
+column: rate
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 0
+  distinct_count: 24
+  min: '0.2299'
+  max: '4.4143'
+  len_min: 4
+  len_avg: 5.8
+  len_max: 6
+  top_values:
+  - value: '0.2299'
+    count: 1
+  - value: '1.0176'
+    count: 1
+  - value: '1.0381'
+    count: 1
+  - value: '1.0446'
+    count: 1
+  - value: '1.0503'
+    count: 1
+  - value: '1.0535'
+    count: 1
+  - value: '1.0563'
+    count: 1
+  - value: '1.063'
+    count: 1
+  - value: '1.0646'
+    count: 1
+  - value: '1.0727'
+    count: 1
+  value_class: decimal_like
+  patterns:
+  - mask: '9.9999'
+    count: 21
+  - mask: '9.999'
+    count: 2
+  - mask: '9.99'
+    count: 1
+created_at: '2026-10-03T16:31:11.055518Z'
+object_type: DataProfile

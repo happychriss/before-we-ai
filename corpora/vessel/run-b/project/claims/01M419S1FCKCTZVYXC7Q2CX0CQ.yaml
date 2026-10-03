@@ -1,0 +1,24 @@
+id: 01M419S1FCKCTZVYXC7Q2CX0CQ
+statement: role 'overhead_location' is played by column=03_time_and_overhead_allocations__overhead_pools.location,
+  table=03_time_and_overhead_allocations__overhead_pools
+created_by: ai
+status: proposed
+predicate:
+  name: role_binding
+  params:
+    role: overhead_location
+    binding:
+      column: 03_time_and_overhead_allocations__overhead_pools.location
+      table: 03_time_and_overhead_allocations__overhead_pools
+source_ids:
+- 01M419NVY2MBX5GEG5JJ256AYP
+evidence_ids:
+- 01M419TYHQVYTS1X1J74FAPPTF
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.764662Z'
+role: overhead_location
+binding:
+  column: 03_time_and_overhead_allocations__overhead_pools.location
+  table: 03_time_and_overhead_allocations__overhead_pools
+object_type: MappingClaim

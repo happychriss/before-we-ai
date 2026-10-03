@@ -1,0 +1,41 @@
+id: 01M419NVYMYT5WHJ799NCNBPPR
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__time_allocations
+column: work_package
+stats:
+  duckdb_type: VARCHAR
+  row_count: 47
+  null_count: 0
+  distinct_count: 6
+  min: December yard close
+  max: outfitting
+  len_min: 4
+  len_avg: 8.8
+  len_max: 19
+  top_values:
+  - value: electrical
+    count: 11
+  - value: design
+    count: 9
+  - value: hull
+    count: 9
+  - value: outfitting
+    count: 9
+  - value: commissioning
+    count: 8
+  - value: December yard close
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAAAAAAAA
+    count: 2
+  - mask: AAAA
+    count: 1
+  - mask: AAAAAA
+    count: 1
+  - mask: AAAAAAAA AAAA AAAAA
+    count: 1
+  - mask: AAAAAAAAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.804345Z'
+object_type: DataProfile

@@ -1,0 +1,41 @@
+id: 01M419NVWDV22GNWDZ5AN3G8MW
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: po_number
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 137
+  min: PO-2024-14154
+  max: PO-2025-99939
+  len_min: 13
+  len_avg: 13.0
+  len_max: 13
+  top_values:
+  - value: PO-2024-43717
+    count: 2
+  - value: PO-2024-14154
+    count: 1
+  - value: PO-2024-17585
+    count: 1
+  - value: PO-2024-17679
+    count: 1
+  - value: PO-2024-21767
+    count: 1
+  - value: PO-2024-22446
+    count: 1
+  - value: PO-2024-23016
+    count: 1
+  - value: PO-2024-23113
+    count: 1
+  - value: PO-2024-23131
+    count: 1
+  - value: PO-2024-25649
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA-9999-99999
+    count: 137
+created_at: '2026-10-03T16:31:10.733309Z'
+object_type: DataProfile

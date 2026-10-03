@@ -1,0 +1,14 @@
+id: 01M419TYHB5MH9YKGARXHZM1BX
+template: reconciliation
+claim_id: 01M419S1FA5PQZVXAHDC5BGPKF
+roles:
+- labour_cost_reporting_currency
+params:
+  left: 03_time_and_overhead_allocations__time_allocations
+  left_group_expr: entry_id
+  left_measure_expr: CAST(extended_cost_eur AS DOUBLE)
+  right: 03_time_and_overhead_allocations__time_allocations
+  right_group_expr: entry_id
+  right_measure_expr: CAST(hours AS DOUBLE) * CAST(hourly_rate_eur AS DOUBLE)
+created_at: '2026-10-03T16:33:57.291116Z'
+object_type: CheckPlan

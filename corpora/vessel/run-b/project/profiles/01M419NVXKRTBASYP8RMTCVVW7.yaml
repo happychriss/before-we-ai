@@ -1,0 +1,19 @@
+id: 01M419NVXKRTBASYP8RMTCVVW7
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__pivot_export
+column: reported_eur_total
+stats:
+  duckdb_type: VARCHAR
+  row_count: 6
+  null_count: 6
+  distinct_count: 0
+  min: null
+  max: null
+  len_min: null
+  len_avg: null
+  len_max: null
+  top_values: []
+  value_class: empty
+  patterns: []
+created_at: '2026-10-03T16:31:10.771808Z'
+object_type: DataProfile

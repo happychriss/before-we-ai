@@ -1,0 +1,42 @@
+id: 01M419YWZZ2ZR9ZYP1V7K57TY8
+type: check_result
+actor: check
+claim_id: 01M419QXMA1NRTBB6FJ4YM5MDN
+check_plan_id: 01M419WJ8JR4PH39GSBVFFA4F8
+verdict: fail
+population: 12
+exception_count: 3
+exception_samples:
+- value: IC-BATCH
+  occurrences: 1
+- value: PL/2025/00599;00901;01088
+  occurrences: 1
+- value: SERVICES-BATCH
+  occurrences: 1
+result_ref: cache/check_runs/01M419YWZZ2ZR9ZYP1V7K57TY8.parquet
+payload:
+  template: anti_join
+  sql: "WITH child_keys AS (\n    SELECT NULLIF(trim(\"applied_document\"), '') AS\
+    \ k FROM \"06_bank_receipts_and_fx_2025__bank_receipts\"\n),\nparent_keys AS (\n\
+    \    SELECT DISTINCT NULLIF(trim(\"document_id\"), '') AS k FROM \"04_sales_invoices_and_credit_notes_2025__documents\"\
+    \n    WHERE NULLIF(trim(\"document_id\"), '') IS NOT NULL\n)\nSELECT c.k AS value,\
+    \ count(*) AS occurrences\nFROM child_keys c\nLEFT JOIN parent_keys p USING (k)\n\
+    WHERE c.k IS NOT NULL AND p.k IS NULL\nGROUP BY c.k\nORDER BY occurrences DESC,\
+    \ value"
+  summary: 3 violating groups
+source_fingerprints:
+  06_bank_receipts_and_fx_2025__bank_receipts:
+    kind: table
+    row_count: 12
+    schema_hash: 463ab3ab3d5b501182697f8ebcfbbaafe498604f6d98f390ed69009a17a396ff
+    content_hash: '244288924476715654906077344875814113949'
+    max_date: null
+  04_sales_invoices_and_credit_notes_2025__documents:
+    kind: table
+    row_count: 24
+    schema_hash: c67fc8274736f757fb7acd022122200752e92d27a4b075a3315770b9402f4d62
+    content_hash: '221788139129796995724526853551772086622'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.787081Z'
+object_type: EvidenceRecord

@@ -1,0 +1,39 @@
+id: 01M419YX4E5N7C6F7Y8KP0XQJR
+type: check_result
+actor: check
+claim_id: 01M419S1F1J973FRKWMT9708D3
+check_plan_id: 01M419TYHY982WB7MX4Q4PE8J3
+verdict: fail
+population: 5
+exception_count: 1
+exception_samples:
+- value: GROUP
+  occurrences: 1
+result_ref: cache/check_runs/01M419YX4E5N7C6F7Y8KP0XQJR.parquet
+payload:
+  template: anti_join
+  sql: "WITH child_keys AS (\n    SELECT NULLIF(trim(\"project_id\"), '') AS k FROM\
+    \ \"05_intercompany_recharges_2025__ic_transactions\"\n),\nparent_keys AS (\n\
+    \    SELECT DISTINCT NULLIF(trim(\"project_id\"), '') AS k FROM \"01_company_and_vessel_master__vessel_master\"\
+    \n    WHERE NULLIF(trim(\"project_id\"), '') IS NOT NULL\n)\nSELECT c.k AS value,\
+    \ count(*) AS occurrences\nFROM child_keys c\nLEFT JOIN parent_keys p USING (k)\n\
+    WHERE c.k IS NOT NULL AND p.k IS NULL\nGROUP BY c.k\nORDER BY occurrences DESC,\
+    \ value"
+  summary: 1 violating groups
+  establishes: false
+source_fingerprints:
+  05_intercompany_recharges_2025__ic_transactions:
+    kind: table
+    row_count: 5
+    schema_hash: bd32561c727be1285ffe10c8b1216d17c1006b6748798b2e5d591bfe874c6d29
+    content_hash: '5353300319382409626334155060251948785'
+    max_date: null
+  01_company_and_vessel_master__vessel_master:
+    kind: table
+    row_count: 5
+    schema_hash: 2a256c830a9bc042b582938b38155bc2fff3665f02fe715c3a790d42224d48b4
+    content_hash: '312581497740688420876797133462550306696'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.929572Z'
+object_type: EvidenceRecord

@@ -1,0 +1,27 @@
+id: 01M419NVVS6DEA2H0SFT6XJA3E
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: location
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 2
+  min: Gdansk
+  max: Hamburg
+  len_min: 6
+  len_avg: 6.3
+  len_max: 7
+  top_values:
+  - value: Gdansk
+    count: 99
+  - value: Hamburg
+    count: 39
+  value_class: text
+  patterns:
+  - mask: AAAAAA
+    count: 1
+  - mask: AAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:10.713743Z'
+object_type: DataProfile

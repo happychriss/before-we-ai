@@ -1,0 +1,13 @@
+id: 01M419WJ8MNPTHCSG0CKJDWVY3
+type: declaration
+actor: system
+claim_id: 01M419QXM4Z571RE58T30Q71YW
+exception_samples: []
+payload:
+  decision: skipped
+  reason: 'claim c12: column ''yard_job_no'' does not exist on view ''03_time_and_overhead_allocations__time_allocations''
+    (param ''key'')'
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:34:50.260018Z'
+object_type: EvidenceRecord

@@ -1,0 +1,43 @@
+id: 01M419NVW8B05NPVHMAPH8PPZV
+source_id: 01M419NVVC48MGMDASSW7KYKDB
+table: 02_project_cost_ledger_2025__cost_ledger
+column: invoice_number
+stats:
+  duckdb_type: VARCHAR
+  row_count: 138
+  null_count: 0
+  distinct_count: 137
+  min: BAL-2024-2521
+  max: STA-2025-3398
+  len_min: 11
+  len_avg: 13.0
+  len_max: 13
+  top_values:
+  - value: STA-2024-6710
+    count: 2
+  - value: BAL-2024-2521
+    count: 1
+  - value: BAL-2024-2878
+    count: 1
+  - value: BAL-2024-3356
+    count: 1
+  - value: BAL-2024-3776
+    count: 1
+  - value: BAL-2024-4450
+    count: 1
+  - value: BAL-2024-5620
+    count: 1
+  - value: BAL-2024-7587
+    count: 1
+  - value: BAL-2024-8012
+    count: 1
+  - value: BAL-2025-1027
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-9999-9999
+    count: 136
+  - mask: AA-AA99-999
+    count: 1
+created_at: '2026-10-03T16:31:10.728302Z'
+object_type: DataProfile

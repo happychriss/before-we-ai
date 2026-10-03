@@ -1,0 +1,31 @@
+id: 01M419NW55HH870J4MCWGX0CPD
+name: 06_bank_receipts_and_fx_2025
+kind: xlsx
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/06_bank_receipts_and_fx_2025.xlsx
+description: Bank receipts and the exchange rates applied to them.
+fingerprint:
+  file:
+    kind: file
+    size: 10598
+    sha256: ce9e3cec5ae1e7356b55bc8c7102d812cb58943cfe278f30db2c30f2e5ab8cb7
+  tables:
+    06_bank_receipts_and_fx_2025__bank_receipts:
+      kind: table
+      row_count: 12
+      schema_hash: 463ab3ab3d5b501182697f8ebcfbbaafe498604f6d98f390ed69009a17a396ff
+      content_hash: '244288924476715654906077344875814113949'
+      max_date: null
+    06_bank_receipts_and_fx_2025__monthly_fx_rates:
+      kind: table
+      row_count: 24
+      schema_hash: d3f7810b46348c671dbd0be3237fb3e8826c4c52aacd8ffdc8cfbbc264a9e0c1
+      content_hash: '262813752055831740250685241757192095077'
+      max_date: null
+    06_bank_receipts_and_fx_2025__unapplied_cash:
+      kind: table
+      row_count: 3
+      schema_hash: 27b2eb3691c318463789dcbb7b22f531dbec2e53730071ea128b6eb06319f740
+      content_hash: '215615117588569166031905614756655029634'
+      max_date: null
+created_at: '2026-10-03T16:31:11.013310Z'
+object_type: Source

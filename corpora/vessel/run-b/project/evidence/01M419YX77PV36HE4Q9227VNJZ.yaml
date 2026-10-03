@@ -1,0 +1,40 @@
+id: 01M419YX77PV36HE4Q9227VNJZ
+type: check_result
+actor: check
+claim_id: 01M419S1FDHHRGRS3PA519E9E8
+check_plan_id: 01M419TYHAY6K8KB9DMDB9FY5Q
+verdict: fail
+population: 3
+exception_count: 2
+exception_samples:
+- grp: administration
+  left_total: 920000.0
+  right_total: 919620.0
+  diff: 380.0
+- grp: production overhead
+  left_total: 1930000.0
+  right_total: 1929793.0
+  diff: 207.0
+result_ref: cache/check_runs/01M419YX77PV36HE4Q9227VNJZ.parquet
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT pool AS grp, sum(CAST(pool_eur AS DOUBLE)) AS total\n\
+    \    FROM \"03_time_and_overhead_allocations__overhead_pools\"\n    GROUP BY 1\n\
+    ),\nr AS (\n    SELECT pool AS grp, sum(CAST(rate AS DOUBLE) * CAST(base_quantity\
+    \ AS DOUBLE)) AS total\n    FROM \"03_time_and_overhead_allocations__overhead_pools\"\
+    \n    GROUP BY 1\n)\nSELECT coalesce(l.grp, r.grp) AS grp,\n       l.total AS\
+    \ left_total,\n       r.total AS right_total,\n       coalesce(l.total, 0) - coalesce(r.total,\
+    \ 0) AS diff\nFROM l FULL JOIN r ON l.grp = r.grp\nWHERE abs(coalesce(l.total,\
+    \ 0) - coalesce(r.total, 0)) > 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: 2 violating groups
+  establishes: false
+source_fingerprints:
+  03_time_and_overhead_allocations__overhead_pools:
+    kind: table
+    row_count: 3
+    schema_hash: e0411b8abce0eb5b129b888d3080c70c7307c6072d33015f5de398a752c75383
+    content_hash: '197406327796997235847631845018601361453'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:07.019197Z'
+object_type: EvidenceRecord

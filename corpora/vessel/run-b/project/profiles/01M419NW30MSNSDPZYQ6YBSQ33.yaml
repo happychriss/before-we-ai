@@ -1,0 +1,37 @@
+id: 01M419NW30MSNSDPZYQ6YBSQ33
+source_id: 01M419NW0ETZ3PTBEKW26G3CCA
+table: 04_sales_invoices_and_credit_notes_2025__revenue_by_ship
+column: total_linked_revenue
+stats:
+  duckdb_type: VARCHAR
+  row_count: 7
+  null_count: 0
+  distinct_count: 6
+  min: '0'
+  max: '840000'
+  len_min: 1
+  len_avg: 5.1
+  len_max: 7
+  top_values:
+  - value: '0'
+    count: 2
+  - value: '1480000'
+    count: 1
+  - value: '1540000'
+    count: 1
+  - value: '3600000'
+    count: 1
+  - value: '4000000'
+    count: 1
+  - value: '840000'
+    count: 1
+  value_class: integer_like
+  patterns:
+  - mask: '9999999'
+    count: 4
+  - mask: '9'
+    count: 1
+  - mask: '999999'
+    count: 1
+created_at: '2026-10-03T16:31:10.944024Z'
+object_type: DataProfile

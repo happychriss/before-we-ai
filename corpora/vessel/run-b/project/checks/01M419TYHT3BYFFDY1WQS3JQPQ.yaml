@@ -1,0 +1,15 @@
+id: 01M419TYHT3BYFFDY1WQS3JQPQ
+template: reconciliation
+claim_id: 01M419S1FFJJC3EX2WG17JY96T
+roles:
+- overhead_base_quantity
+params:
+  left: 03_time_and_overhead_allocations__time_allocations
+  left_group_expr: home_location
+  left_measure_expr: CAST(hours AS DOUBLE)
+  right: 03_time_and_overhead_allocations__overhead_pools
+  right_group_expr: location
+  right_measure_expr: CAST(base_quantity AS DOUBLE)
+  right_where: allocation_base = 'direct labour hours'
+created_at: '2026-10-03T16:33:57.306467Z'
+object_type: CheckPlan

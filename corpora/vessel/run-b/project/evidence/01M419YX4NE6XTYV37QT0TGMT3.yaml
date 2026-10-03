@@ -1,0 +1,44 @@
+id: 01M419YX4NE6XTYV37QT0TGMT3
+type: check_result
+actor: check
+claim_id: 01M419S1F25SFB1SDXTM7E1C55
+check_plan_id: 01M419TYHC3DXB8SJJZ5DP4913
+verdict: fail
+population: 5
+exception_count: 3
+exception_samples:
+- grp: IC-PL-25121
+  left_total: 299999.7
+  right_total: 300000.0
+  diff: -0.29999999998835847
+- grp: IC-DE-25062
+  left_total: 279999.875
+  right_total: 280000.0
+  diff: -0.125
+- grp: IC-PL-25091
+  left_total: 364999.95
+  right_total: 365000.0
+  diff: -0.04999999998835847
+result_ref: cache/check_runs/01M419YX4NE6XTYV37QT0TGMT3.parquet
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT sender_document AS grp, sum(CAST(cost_base_eur AS\
+    \ DOUBLE) * (1 + CAST(markup_rate AS DOUBLE))) AS total\n    FROM \"05_intercompany_recharges_2025__ic_transactions\"\
+    \n    GROUP BY 1\n),\nr AS (\n    SELECT sender_document AS grp, sum(CAST(sender_amount_eur\
+    \ AS DOUBLE)) AS total\n    FROM \"05_intercompany_recharges_2025__ic_transactions\"\
+    \n    GROUP BY 1\n)\nSELECT coalesce(l.grp, r.grp) AS grp,\n       l.total AS\
+    \ left_total,\n       r.total AS right_total,\n       coalesce(l.total, 0) - coalesce(r.total,\
+    \ 0) AS diff\nFROM l FULL JOIN r ON l.grp = r.grp\nWHERE abs(coalesce(l.total,\
+    \ 0) - coalesce(r.total, 0)) > 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: 3 violating groups
+  establishes: false
+source_fingerprints:
+  05_intercompany_recharges_2025__ic_transactions:
+    kind: table
+    row_count: 5
+    schema_hash: bd32561c727be1285ffe10c8b1216d17c1006b6748798b2e5d591bfe874c6d29
+    content_hash: '5353300319382409626334155060251948785'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.937887Z'
+object_type: EvidenceRecord

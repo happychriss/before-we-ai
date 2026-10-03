@@ -1,0 +1,11 @@
+id: 01M419YXSH9Y4DATGE7R8NJN3V
+question: Which of the proposed candidates is the 'invoice_ref'? The supplier-invoice
+  reference used with other evidence to identify duplicate or reversing cost postings.
+  No check can settle this — what the data means is a business fact, not an arithmetic
+  one.
+finding: ''
+claim_ids:
+- 01M419S1EXAN5W3EYQJAD8V224
+stale: false
+created_at: '2026-10-03T16:36:07.601378Z'
+object_type: ClarificationQuestion

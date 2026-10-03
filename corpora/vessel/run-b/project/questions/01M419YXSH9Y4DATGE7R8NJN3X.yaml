@@ -1,0 +1,12 @@
+id: 01M419YXSH9Y4DATGE7R8NJN3X
+question: 'What is missing before the ''subledger_ar'' can be tested? The accounts-receivable
+  open items: one row per open receivable with a signed amount, reconcilable against
+  the journal''s control account. No proposed candidate could be put to the subledger_equals_gl
+  law at all, so nothing about it has been tested.'
+finding: ''
+claim_ids:
+- 01M419S1EYP0GDQTDG2AZBH7YH
+- 01M419S1EZJG1TBVJW8E458A3B
+stale: false
+created_at: '2026-10-03T16:36:07.601880Z'
+object_type: ClarificationQuestion

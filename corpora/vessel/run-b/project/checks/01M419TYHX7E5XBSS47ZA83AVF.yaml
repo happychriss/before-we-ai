@@ -1,0 +1,14 @@
+id: 01M419TYHX7E5XBSS47ZA83AVF
+template: reconciliation
+claim_id: 01M419S1F25SFB1SDXTM7E1C56
+roles:
+- ic_markup_rate
+params:
+  left: 05_intercompany_recharges_2025__ic_transactions
+  left_group_expr: sender_document
+  left_measure_expr: CAST(cost_base_eur AS DOUBLE) * (1 + CAST(markup_rate AS DOUBLE))
+  right: 05_intercompany_recharges_2025__ic_transactions
+  right_group_expr: sender_document
+  right_measure_expr: CAST(sender_amount_eur AS DOUBLE)
+created_at: '2026-10-03T16:33:57.309709Z'
+object_type: CheckPlan

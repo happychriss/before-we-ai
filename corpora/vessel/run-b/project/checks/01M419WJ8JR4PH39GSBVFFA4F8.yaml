@@ -1,0 +1,11 @@
+id: 01M419WJ8JR4PH39GSBVFFA4F8
+template: anti_join
+claim_id: 01M419QXMA1NRTBB6FJ4YM5MDN
+roles: []
+params:
+  child: 06_bank_receipts_and_fx_2025__bank_receipts
+  child_column: applied_document
+  parent: 04_sales_invoices_and_credit_notes_2025__documents
+  parent_column: document_id
+created_at: '2026-10-03T16:34:50.258510Z'
+object_type: CheckPlan

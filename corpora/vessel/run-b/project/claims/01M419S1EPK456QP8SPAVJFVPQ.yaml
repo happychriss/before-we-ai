@@ -1,0 +1,21 @@
+id: 01M419S1EPK456QP8SPAVJFVPQ
+statement: role 'journal' is played by table=04_sales_invoices_and_credit_notes_2025__documents
+created_by: ai
+status: contradicted
+predicate:
+  name: role_binding
+  params:
+    role: journal
+    binding:
+      table: 04_sales_invoices_and_credit_notes_2025__documents
+source_ids:
+- 01M419NW0ETZ3PTBEKW26G3CCA
+evidence_ids:
+- 01M419YX2CW6PWQWWX4SY6G62K
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.742419Z'
+role: journal
+binding:
+  table: 04_sales_invoices_and_credit_notes_2025__documents
+object_type: MappingClaim

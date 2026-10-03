@@ -1,0 +1,13 @@
+id: 01M419XMM0BG722WRH8C1PX03F
+statement: The Q2 intercompany elimination pair differs by EUR 1,400, and one receiving-side
+  booking is missing.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWV33HY301980PZXJK38
+evidence_ids:
+- 01M419XMM0BG722WRH8C1PX03G
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:25.440351Z'
+object_type: Claim

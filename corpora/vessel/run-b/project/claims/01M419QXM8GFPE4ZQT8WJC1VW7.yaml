@@ -1,0 +1,17 @@
+id: 01M419QXM8GFPE4ZQT8WJC1VW7
+statement: Elimination journal source_document references the intercompany sender_document.
+created_by: ai
+status: test-supported
+predicate:
+  name: references
+  params:
+    child: 05_intercompany_recharges_2025__elimination_journal.source_document
+    parent: 05_intercompany_recharges_2025__ic_transactions.sender_document
+source_ids:
+- 01M419NW35P86PPK0TSW7W3KPT
+evidence_ids:
+- 01M419YWZ82PNCXZHDG6D7G2NN
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.056819Z'
+object_type: Claim

@@ -1,0 +1,13 @@
+id: 01M419WJ8VKRBAYSR3265M5AHF
+template: attribute_contradiction
+claim_id: 01M419QXM5J5BZNWAA72Q7THNT
+roles: []
+params:
+  left: 03_time_and_overhead_allocations__time_allocations
+  left_attr: hourly_rate_eur
+  left_key: employee_id
+  right: 03_time_and_overhead_allocations__employee_rates
+  right_attr: burdened_rate
+  right_key: employee_id
+created_at: '2026-10-03T16:34:50.267230Z'
+object_type: CheckPlan

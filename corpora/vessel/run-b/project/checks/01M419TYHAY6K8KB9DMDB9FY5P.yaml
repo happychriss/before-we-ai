@@ -1,0 +1,14 @@
+id: 01M419TYHAY6K8KB9DMDB9FY5P
+template: reconciliation
+claim_id: 01M419S1EV8X96QNTH6PV13XAA
+roles:
+- amount_reporting_currency
+params:
+  left: 02_project_cost_ledger_2025__cost_ledger
+  left_group_expr: transaction_id
+  left_measure_expr: CAST(reported_eur AS DOUBLE)
+  right: 02_project_cost_ledger_2025__cost_ledger
+  right_group_expr: transaction_id
+  right_measure_expr: CAST(amount_local AS DOUBLE) / CAST(pln_per_eur AS DOUBLE)
+created_at: '2026-10-03T16:33:57.290332Z'
+object_type: CheckPlan

@@ -1,0 +1,24 @@
+id: 01M419S1EQ8Z59D884AHMD3MPK
+statement: role 'amount_local' is played by amount=02_project_cost_ledger_2025__cost_ledger.amount_local,
+  table=02_project_cost_ledger_2025__cost_ledger
+created_by: ai
+status: contradicted
+predicate:
+  name: role_binding
+  params:
+    role: amount_local
+    binding:
+      amount: 02_project_cost_ledger_2025__cost_ledger.amount_local
+      table: 02_project_cost_ledger_2025__cost_ledger
+source_ids:
+- 01M419NVVC48MGMDASSW7KYKDB
+evidence_ids:
+- 01M419YX2PCE5A94JHTW7VTH9K
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.743367Z'
+role: amount_local
+binding:
+  amount: 02_project_cost_ledger_2025__cost_ledger.amount_local
+  table: 02_project_cost_ledger_2025__cost_ledger
+object_type: MappingClaim

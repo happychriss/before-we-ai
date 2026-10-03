@@ -1,0 +1,13 @@
+id: 01M419X9HPP3SKWTZ482DQR6SS
+statement: Hansa Tug shows EUR 0.31m, a deposit booked as order intake although the
+  LOI was cancelled.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWSG7TXQWGQPGFC8PWYM
+evidence_ids:
+- 01M419X9HPP3SKWTZ482DQR6ST
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:14.102347Z'
+object_type: Claim

@@ -1,0 +1,20 @@
+id: 01M419QXMC0DQJB8HCQ50K7335
+statement: Cost ledger entity is consistent with location (BHW-PL=Gdansk, HVW-DE=Hamburg).
+created_by: ai
+status: test-supported
+predicate:
+  name: consistent_attribute
+  params:
+    left_key: 02_project_cost_ledger_2025__cost_ledger.entity
+    left_attr: 02_project_cost_ledger_2025__cost_ledger.location
+    right_key: 01_company_and_vessel_master__group_structure.entity_code
+    right_attr: 01_company_and_vessel_master__group_structure.city
+source_ids:
+- 01M419NVQATFX47BYPB4ACPC1T
+- 01M419NVVC48MGMDASSW7KYKDB
+evidence_ids:
+- 01M419YX151WQ5WN1HCN13N0HP
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.060876Z'
+object_type: Claim

@@ -1,0 +1,19 @@
+id: 01M419QXM6SB27ZVXWGCCZR228
+statement: Monthly FX rates cover every month in which time is allocated.
+created_by: ai
+status: test-supported
+predicate:
+  name: covers
+  params:
+    table: 06_bank_receipts_and_fx_2025__monthly_fx_rates
+    unit_column: 06_bank_receipts_and_fx_2025__monthly_fx_rates.month
+    expected: 03_time_and_overhead_allocations__time_allocations.month
+source_ids:
+- 01M419NVY2MBX5GEG5JJ256AYP
+- 01M419NW55HH870J4MCWGX0CPD
+evidence_ids:
+- 01M419YWYSXP2GMRH104Z1G563
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.054771Z'
+object_type: Claim

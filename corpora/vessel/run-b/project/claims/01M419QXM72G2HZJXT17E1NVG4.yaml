@@ -1,0 +1,19 @@
+id: 01M419QXM72G2HZJXT17E1NVG4
+statement: Intercompany sender and receiver amounts should match per transaction.
+created_by: ai
+status: proposed
+predicate:
+  name: ic_symmetric
+  params:
+    left: 05_intercompany_recharges_2025__ic_transactions.sender_amount_eur
+    right: 05_intercompany_recharges_2025__ic_transactions.receiver_amount_eur
+    left_period: 05_intercompany_recharges_2025__ic_transactions.date
+    right_period: 05_intercompany_recharges_2025__ic_transactions.date
+source_ids:
+- 01M419NW35P86PPK0TSW7W3KPT
+evidence_ids:
+- 01M419WJ8SPV2PFD78QDFAGKC2
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.055985Z'
+object_type: Claim

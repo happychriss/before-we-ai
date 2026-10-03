@@ -1,0 +1,13 @@
+id: 01M419TYHG18XBFEN4XS528SHH
+type: declaration
+actor: system
+claim_id: 01M419S1ERYWRSF6YZAESA11ET
+exception_samples: []
+payload:
+  decision: unbindable
+  reason: category is a cost-category label, not account numbers. No chart of accounts
+    is available to test it against.
+source_fingerprints: {}
+stale: false
+created_at: '2026-10-03T16:33:57.296343Z'
+object_type: EvidenceRecord

@@ -22,6 +22,7 @@
     {% if e.quote %}<blockquote>{{ e.detail }}</blockquote>
     {% elif e.detail %}<div class="ev-detail">{{ e.detail }}</div>{% endif %}
     {% if e.tests %}<div class="muted small">{{ e.tests }}</div>{% endif %}
+    {% if e.weight %}<div class="small weightless">{{ e.weight }}</div>{% endif %}
     {% if e.samples %}
     <div class="small muted">Sample exceptions:</div>
     <pre class="samples">{% for row in e.samples %}{{ row }}

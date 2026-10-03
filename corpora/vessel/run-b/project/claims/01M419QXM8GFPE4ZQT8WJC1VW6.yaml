@@ -1,0 +1,18 @@
+id: 01M419QXM8GFPE4ZQT8WJC1VW6
+statement: Elimination journal entries balance revenue against cost per source document.
+created_by: ai
+status: proposed
+predicate:
+  name: balances
+  params:
+    journal: 05_intercompany_recharges_2025__elimination_journal
+    amount: eliminate_revenue_eur + eliminate_cost_eur
+    group_column: 05_intercompany_recharges_2025__elimination_journal.journal_id
+source_ids:
+- 01M419NW35P86PPK0TSW7W3KPT
+evidence_ids:
+- 01M419WJ8F9R7ZBQGPB9JEB582
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:18.056419Z'
+object_type: Claim

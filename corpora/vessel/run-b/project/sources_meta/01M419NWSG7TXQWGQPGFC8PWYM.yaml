@@ -1,0 +1,25 @@
+id: 01M419NWSG7TXQWGQPGFC8PWYM
+name: 07_board_management_report_2025
+kind: pdf
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/07_board_management_report_2025.pdf
+description: The FY2025 management report as drafted for the board.
+fingerprint:
+  file:
+    kind: file
+    size: 28214
+    sha256: 48fceae769b9e3dca4ac91970c5ebab88f40ae6d77c985583f4906e4e36121e7
+  chunks:
+    07_board_management_report_2025:p1:0: a07531877b33c044eb2689052fc16613c458d2da666a821f13167bc44fb044d1
+    07_board_management_report_2025:p1:1: 95e744f00b63f71ca142bc9a96960aae18a1a3fccd0d00c70cbb8dd53cc68ab1
+    07_board_management_report_2025:p1:2: 9184cd9aca1c5ba1dc0e6e57aeb7348da9bf7bd985cfa7916e5ff1344eb1f02e
+    07_board_management_report_2025:p1:3: 47b8ecfff964f38b5346740d0fe1f5c78c9a688a27f4de1a1e36ebcafd0cde82
+    07_board_management_report_2025:p1:4: 701c32514c3795b1b528ba5c42940594e82c44d330bda5aca6c0c15a8f7adcf5
+    07_board_management_report_2025:p1:5: f9dba95f0c1577320acd818bdf0e12eb533f6cc6ad7ef83080d1532066b31315
+    07_board_management_report_2025:p1:6: eadf62d10ad79227cc3dbd9d626ec3532c3bcf75266457ca68b447013108aa96
+    07_board_management_report_2025:p1:7: 692189791f7690587dbf6cccb02a9d5e72b35b959c659b2061ccd9d479fd4dbf
+    07_board_management_report_2025:p2:0: 9e055d001a7f57eef42e935eb6e2f154db0ce75d648fac2c2ea4790590bb9dc3
+    07_board_management_report_2025:p2:1: e48a064aac4c622e674d745e40a1ab3c02408eccdb826acf6c3ecb1f22ce06ad
+    07_board_management_report_2025:p2:2: a201a0f65bfd11bbbb4033526bdcba40312e5831cdd7c30357bbf0e3cb871eef
+    07_board_management_report_2025:p2:3: 2eeb2faf3f1b117102c78a2350ae10fcab3f1dcaf740d8ea4d23b6735d3e2937
+created_at: '2026-10-03T16:31:11.664220Z'
+object_type: Source

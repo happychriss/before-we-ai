@@ -1,0 +1,21 @@
+id: 01M419X9HRCZ9R4EX8M3R6YEFN
+type: document_anchor
+actor: ai
+claim_id: 01M419X9HQ7R1A1W3YBT5J8Y0F
+exception_samples: []
+payload:
+  quote: 'The detailed management recognition
+
+    workbook totals EUR 13.058m.'
+  chunk_id: 07_board_management_report_2025:p1:7
+  kind: text
+  source: 07_board_management_report_2025
+  page: 1
+source_fingerprints:
+  07_board_management_report_2025:
+    kind: chunk
+    chunk_id: 07_board_management_report_2025:p1:7
+    sha256: 692189791f7690587dbf6cccb02a9d5e72b35b959c659b2061ccd9d479fd4dbf
+stale: false
+created_at: '2026-10-03T16:35:14.104059Z'
+object_type: EvidenceRecord

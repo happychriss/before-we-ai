@@ -1,0 +1,41 @@
+id: 01M419NVYA8P85N50QNKA2P3BR
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__time_allocations
+column: month
+stats:
+  duckdb_type: VARCHAR
+  row_count: 47
+  null_count: 0
+  distinct_count: 11
+  min: '2025-01-01'
+  max: '2025-12-01'
+  len_min: 10
+  len_avg: 10.0
+  len_max: 10
+  top_values:
+  - value: '2025-02-01'
+    count: 6
+  - value: '2025-01-01'
+    count: 5
+  - value: '2025-03-01'
+    count: 5
+  - value: '2025-04-01'
+    count: 5
+  - value: '2025-05-01'
+    count: 5
+  - value: '2025-06-01'
+    count: 5
+  - value: '2025-07-01'
+    count: 5
+  - value: '2025-08-01'
+    count: 5
+  - value: '2025-09-01'
+    count: 3
+  - value: '2025-10-01'
+    count: 2
+  value_class: date_like
+  patterns:
+  - mask: '9999-99-99'
+    count: 11
+created_at: '2026-10-03T16:31:10.794913Z'
+object_type: DataProfile

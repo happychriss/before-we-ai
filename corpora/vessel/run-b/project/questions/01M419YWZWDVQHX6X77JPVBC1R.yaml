@@ -1,0 +1,9 @@
+id: 01M419YWZWDVQHX6X77JPVBC1R
+question: 05_intercompany_recharges_2025__ic_transactions and 05_intercompany_recharges_2025__ic_transactions
+  do not agree per group — which cutoff or accrual is missing?
+finding: 3 exceptions in 5 rows (60.0%)
+claim_ids:
+- 01M419QXM9AEX7GB2AXH208V3E
+stale: false
+created_at: '2026-10-03T16:36:06.780098Z'
+object_type: ClarificationQuestion

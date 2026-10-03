@@ -1,0 +1,31 @@
+id: 01M419NW4JKRC6J7SQD60GGZ93
+source_id: 01M419NW35P86PPK0TSW7W3KPT
+table: 05_intercompany_recharges_2025__elimination_journal
+column: source_document
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 0
+  distinct_count: 5
+  min: IC-DE-25031
+  max: IC-PL-25121
+  len_min: 11
+  len_avg: 11.0
+  len_max: 11
+  top_values:
+  - value: IC-DE-25031
+    count: 1
+  - value: IC-DE-25062
+    count: 1
+  - value: IC-DE-25122
+    count: 1
+  - value: IC-PL-25091
+    count: 1
+  - value: IC-PL-25121
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA-AA-99999
+    count: 5
+created_at: '2026-10-03T16:31:10.994348Z'
+object_type: DataProfile

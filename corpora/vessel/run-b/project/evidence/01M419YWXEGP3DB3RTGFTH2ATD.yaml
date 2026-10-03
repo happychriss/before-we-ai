@@ -1,0 +1,34 @@
+id: 01M419YWXEGP3DB3RTGFTH2ATD
+type: check_result
+actor: check
+claim_id: 01M419QXM2WJT9VJ0X91EREG1A
+check_plan_id: 01M419WJ8PG840DVP2ZSZ6TVS0
+verdict: fail
+population: 138
+exception_count: 1
+exception_samples:
+- invoice_number: STA-2024-6710
+  occurrences: 2
+result_ref: cache/check_runs/01M419YWXEGP3DB3RTGFTH2ATD.parquet
+payload:
+  template: duplicate
+  sql: 'SELECT "invoice_number", count(*) AS occurrences
+
+    FROM "02_project_cost_ledger_2025__cost_ledger"
+
+    GROUP BY "invoice_number"
+
+    HAVING count(*) > 1
+
+    ORDER BY occurrences DESC, "invoice_number"'
+  summary: 1 violating groups
+source_fingerprints:
+  02_project_cost_ledger_2025__cost_ledger:
+    kind: table
+    row_count: 138
+    schema_hash: 2debb58cf9b532d95cc4bbcd78212e1e47eeff776bfecc1df340e277e807137a
+    content_hash: '100665312601861361441508879742515872905'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.704896Z'
+object_type: EvidenceRecord

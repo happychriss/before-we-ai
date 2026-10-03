@@ -1,0 +1,23 @@
+id: 01M419NW6HQ25JS06Z9PB8PW4D
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__monthly_fx_rates
+column: source
+stats:
+  duckdb_type: VARCHAR
+  row_count: 24
+  null_count: 0
+  distinct_count: 1
+  min: Treasury upload
+  max: Treasury upload
+  len_min: 15
+  len_avg: 15.0
+  len_max: 15
+  top_values:
+  - value: Treasury upload
+    count: 24
+  value_class: text
+  patterns:
+  - mask: AAAAAAAA AAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:11.057635Z'
+object_type: DataProfile

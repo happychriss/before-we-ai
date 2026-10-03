@@ -1,0 +1,13 @@
+id: 01M419YW5N9HBW3RSK4RDCE1Q9
+statement: An engine instalment (AMBER-77 / serial HD-88421) of about EUR 195,448
+  was charged to ER-02 and should be moved to VSL-2504.
+created_by: ai
+status: proposed
+source_ids:
+- 01M419NWX4Y68Q54348SFZ92ZB
+evidence_ids:
+- 01M419YW5N9HBW3RSK4RDCE1QA
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:36:05.941417Z'
+object_type: Claim

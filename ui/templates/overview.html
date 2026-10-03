@@ -4,8 +4,9 @@
 {% if not o.started %}
 <section class="empty">
   <h1>Know what you know before an AI answers.</h1>
-  <p>This demo takes one business question and a folder of unfamiliar finance files with 32 seeded errors. It shows what is measured, what the AI only guessed, what the checks settled, and what a person still has to decide.</p>
-  <a class="btn btn-primary" href="/run">Start the run</a>
+  <p>{{ o.landscape.blurb }}</p>
+  <p>One business question, a folder of unfamiliar files. See what is measured, what the AI only guessed, what the checks settled, and what a person still has to decide.</p>
+  <a class="btn btn-primary" href="/run">{{ 'Load the recorded run' if o.landscape.mode == 'recorded' else 'Start the run' }}</a>
 </section>
 {% else %}
 <section class="hero hero-{{ o.ready.verdict if o.ready else 'none' }}">

@@ -1,0 +1,24 @@
+id: 01M419S1FE0V1VQSSNJ96Z27TH
+statement: role 'overhead_allocation_base' is played by column=03_time_and_overhead_allocations__overhead_pools.allocation_base,
+  table=03_time_and_overhead_allocations__overhead_pools
+created_by: ai
+status: proposed
+predicate:
+  name: role_binding
+  params:
+    role: overhead_allocation_base
+    binding:
+      column: 03_time_and_overhead_allocations__overhead_pools.allocation_base
+      table: 03_time_and_overhead_allocations__overhead_pools
+source_ids:
+- 01M419NVY2MBX5GEG5JJ256AYP
+evidence_ids:
+- 01M419TYHPXKM481SS64V1XQX6
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.766128Z'
+role: overhead_allocation_base
+binding:
+  column: 03_time_and_overhead_allocations__overhead_pools.allocation_base
+  table: 03_time_and_overhead_allocations__overhead_pools
+object_type: MappingClaim

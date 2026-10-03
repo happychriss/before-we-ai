@@ -1,0 +1,18 @@
+id: 01M419Y6MM8A4KPPVNFK5TZ335
+statement: Nordlicht carries yard reference HH-407.
+created_by: ai
+status: proposed
+predicate:
+  name: concept_definition
+  params:
+    term: Nordlicht aliases
+source_ids:
+- 01M419NWWBHNAKMP1ZRV4QXSEQ
+evidence_ids:
+- 01M419Y6MNZ6F08XDX5J8Q2MR0
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:35:43.892908Z'
+term: Nordlicht aliases
+definition: M/V Nordlicht = yard reference HH-407 (register NB-407).
+object_type: ConceptClaim

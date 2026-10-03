@@ -1,0 +1,858 @@
+{
+  "landscape": "vessel",
+  "arm": "main",
+  "guide": "simulated-domain-guide.yaml",
+  "questions": [
+    "What is the cost of building a vessel?"
+  ],
+  "models": {
+    "v1_hypotheses": "claude-opus-5-5",
+    "role_binding": "claude-opus-5-5",
+    "v2_bind": "claude-sonnet-5-5",
+    "request": "claude-opus-5-5",
+    "v3_documents": "claude-opus-5-5"
+  },
+  "roles": 41,
+  "objects": 6,
+  "answer_types": [
+    "profit_and_loss_by_dimension",
+    "completed_vessel_actual_build_cost",
+    "open_vessel_cost_to_date",
+    "open_vessel_forecast_cost_at_completion",
+    "precontract_or_cancelled_build_expenditure"
+  ],
+  "stages": [
+    {
+      "stage": "request",
+      "question": "What is the cost of building a vessel?",
+      "answer_type": "completed_vessel_actual_build_cost",
+      "requested_output": "The reconciled actual cost of building a completed (accepted or delivered) vessel, in the group reporting currency and labelled as actual rather than forecast.",
+      "scope": "",
+      "items_drafted": 0,
+      "skipped": [],
+      "usage": {
+        "input_tokens": 5944,
+        "output_tokens": 804
+      },
+      "seconds": 9.8
+    },
+    {
+      "stage": "scan",
+      "tables": 20,
+      "columns": 162,
+      "claims": 0,
+      "seconds": 1.4
+    },
+    {
+      "stage": "documents",
+      "documents": 4,
+      "pages": 8,
+      "passages": 36,
+      "kinds": {
+        "chart": 13,
+        "text": 17,
+        "table": 6
+      },
+      "seconds": 0.6
+    },
+    {
+      "stage": "hypotheses",
+      "claims_created": 37,
+      "deduped": 0,
+      "skipped": [],
+      "predicates": {
+        "references": 9,
+        "unique_key": 4,
+        "consistent_attribute": 3,
+        "semantic_equivalent": 5,
+        "decodes": 2,
+        "temporal_validity": 1,
+        "covers": 1,
+        "reconciles": 6,
+        "ic_symmetric": 1,
+        "balances": 1,
+        "range_mapping": 1,
+        "concept_definition": 3
+      },
+      "usage": {
+        "input_tokens": 41664,
+        "output_tokens": 8320
+      },
+      "seconds": 66.1
+    },
+    {
+      "stage": "mappings",
+      "roles_with_candidates": 41,
+      "roles_total": 41,
+      "candidates": 50,
+      "by_role": {
+        "journal": [
+          "table=02_project_cost_ledger_2025__cost_ledger",
+          "table=04_sales_invoices_and_credit_notes_2025__documents"
+        ],
+        "amount_local": [
+          "amount=02_project_cost_ledger_2025__cost_ledger.amount_local, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "doc_ref": [
+          "key=02_project_cost_ledger_2025__cost_ledger.transaction_id, table=02_project_cost_ledger_2025__cost_ledger",
+          "key=02_project_cost_ledger_2025__cost_ledger.invoice_number, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "account": [
+          "column=02_project_cost_ledger_2025__cost_ledger.category, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "period": [
+          "column=02_project_cost_ledger_2025__cost_ledger.posting_date, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "entity": [
+          "column=02_project_cost_ledger_2025__cost_ledger.entity, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "build_ref": [
+          "column=02_project_cost_ledger_2025__cost_ledger.project_id, table=02_project_cost_ledger_2025__cost_ledger",
+          "column=02_project_cost_ledger_2025__cost_ledger.yard_job_ref, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "currency": [
+          "column=02_project_cost_ledger_2025__cost_ledger.currency, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "amount_reporting_currency": [
+          "amount=02_project_cost_ledger_2025__cost_ledger.reported_eur, table=02_project_cost_ledger_2025__cost_ledger",
+          "amount=02_project_cost_ledger_2025__cost_ledger.amount_local, rate=02_project_cost_ledger_2025__cost_ledger.pln_per_eur, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "source_system": [
+          "column=02_project_cost_ledger_2025__cost_ledger.source_system, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "approval_status": [
+          "column=02_project_cost_ledger_2025__cost_ledger.approved, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "invoice_ref": [
+          "column=02_project_cost_ledger_2025__cost_ledger.invoice_number, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "purchase_order_ref": [
+          "column=02_project_cost_ledger_2025__cost_ledger.po_number, table=02_project_cost_ledger_2025__cost_ledger"
+        ],
+        "subledger_ar": [
+          "amount=04_sales_invoices_and_credit_notes_2025__documents.gross_amount, key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents",
+          "amount=06_bank_receipts_and_fx_2025__bank_receipts.amount_eur, key=06_bank_receipts_and_fx_2025__bank_receipts.applied_document, table=06_bank_receipts_and_fx_2025__bank_receipts"
+        ],
+        "intercompany": [
+          "table=05_intercompany_recharges_2025__ic_transactions",
+          "table=05_intercompany_recharges_2025__elimination_journal"
+        ],
+        "ic_build_ref": [
+          "column=05_intercompany_recharges_2025__ic_transactions.project_id, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "ic_seller_entity": [
+          "column=05_intercompany_recharges_2025__ic_transactions.seller_entity, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "ic_buyer_entity": [
+          "column=05_intercompany_recharges_2025__ic_transactions.buyer_entity, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "ic_cost_base": [
+          "amount=05_intercompany_recharges_2025__ic_transactions.cost_base_eur, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "ic_markup_rate": [
+          "column=05_intercompany_recharges_2025__ic_transactions.markup_rate, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "ic_sender_ref": [
+          "column=05_intercompany_recharges_2025__ic_transactions.sender_document, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "ic_receiver_ref": [
+          "column=05_intercompany_recharges_2025__ic_transactions.receiver_document, table=05_intercompany_recharges_2025__ic_transactions"
+        ],
+        "ic_match_status": [
+          "column=05_intercompany_recharges_2025__ic_transactions.match_status, table=05_intercompany_recharges_2025__ic_transactions",
+          "column=05_intercompany_recharges_2025__elimination_journal.status, table=05_intercompany_recharges_2025__elimination_journal"
+        ],
+        "build": [
+          "table=01_company_and_vessel_master__vessel_master",
+          "table=01_company_and_vessel_master__project_aliases"
+        ],
+        "authoritative_key": [
+          "key=01_company_and_vessel_master__vessel_master.project_id, table=01_company_and_vessel_master__vessel_master"
+        ],
+        "alias_set": [
+          "contract=01_company_and_vessel_master__project_aliases.contract_reference, finance_alias=01_company_and_vessel_master__project_aliases.finance_alias, key=01_company_and_vessel_master__project_aliases.project_id, status=01_company_and_vessel_master__project_aliases.mapping_status, table=01_company_and_vessel_master__project_aliases, vessel=01_company_and_vessel_master__project_aliases.vessel_name, yard_job=01_company_and_vessel_master__project_aliases.yard_job_no"
+        ],
+        "completion_status": [
+          "column=01_company_and_vessel_master__vessel_master.status, table=01_company_and_vessel_master__vessel_master"
+        ],
+        "acceptance_date": [
+          "column=01_company_and_vessel_master__vessel_master.acceptance_date, table=01_company_and_vessel_master__vessel_master"
+        ],
+        "forecast_cost_reporting_currency": [
+          "amount=01_company_and_vessel_master__vessel_master.latest_forecast_cost, table=01_company_and_vessel_master__vessel_master"
+        ],
+        "labour_allocation": [
+          "table=03_time_and_overhead_allocations__time_allocations"
+        ],
+        "labour_build_ref": [
+          "column=03_time_and_overhead_allocations__time_allocations.project_reference, table=03_time_and_overhead_allocations__time_allocations"
+        ],
+        "labour_period": [
+          "column=03_time_and_overhead_allocations__time_allocations.month, table=03_time_and_overhead_allocations__time_allocations"
+        ],
+        "labour_cost_reporting_currency": [
+          "amount=03_time_and_overhead_allocations__time_allocations.extended_cost_eur, table=03_time_and_overhead_allocations__time_allocations"
+        ],
+        "labour_approval_status": [
+          "column=03_time_and_overhead_allocations__time_allocations.approval_status, table=03_time_and_overhead_allocations__time_allocations"
+        ],
+        "labour_source_ref": [
+          "key=03_time_and_overhead_allocations__time_allocations.entry_id, table=03_time_and_overhead_allocations__time_allocations"
+        ],
+        "overhead_pool": [
+          "table=03_time_and_overhead_allocations__overhead_pools"
+        ],
+        "overhead_location": [
+          "column=03_time_and_overhead_allocations__overhead_pools.location, table=03_time_and_overhead_allocations__overhead_pools"
+        ],
+        "overhead_period": [
+          "column=03_time_and_overhead_allocations__overhead_pools.year, table=03_time_and_overhead_allocations__overhead_pools"
+        ],
+        "overhead_pool_amount": [
+          "amount=03_time_and_overhead_allocations__overhead_pools.pool_eur, table=03_time_and_overhead_allocations__overhead_pools"
+        ],
+        "overhead_allocation_base": [
+          "column=03_time_and_overhead_allocations__overhead_pools.allocation_base, table=03_time_and_overhead_allocations__overhead_pools"
+        ],
+        "overhead_base_quantity": [
+          "column=03_time_and_overhead_allocations__overhead_pools.base_quantity, table=03_time_and_overhead_allocations__overhead_pools",
+          "column=03_time_and_overhead_allocations__time_allocations.hours, table=03_time_and_overhead_allocations__time_allocations"
+        ]
+      },
+      "skipped": [],
+      "usage": {
+        "input_tokens": 41628,
+        "output_tokens": 4939
+      },
+      "seconds": 36.7
+    },
+    {
+      "stage": "plans",
+      "checks_created": 46,
+      "templates": {
+        "reconciliation": 19,
+        "anti_join": 13,
+        "grain": 4,
+        "balance": 2,
+        "coverage": 1,
+        "duplicate": 4,
+        "attribute_contradiction": 3
+      },
+      "with_filter": 4,
+      "unbindable": [
+        [
+          "role 'forecast_cost_reporting_currency' is played by amount=01_company_and_vessel_master__vessel_master.latest_forecast_cost, table=01_company_and_vessel_master__vessel_master",
+          "vessel_master has no FX rate or local-currency counterpart for latest_forecast_cost, so no conversion invariant can be checked against it. The only other conversion-free invariant would need external forecast data."
+        ],
+        [
+          "role 'subledger_ar' is played by amount=04_sales_invoices_and_credit_notes_2025__documents.gross_amount, key=04_sales_invoices_and_credit_notes_2025__documents.document_id, table=04_sales_invoices_and_credit_notes_2025__documents",
+          "The subledger law needs the general-ledger account numbers for receivables. Neither the profiles nor the schemas identify them, and no batch view carries an account-number column."
+        ],
+        [
+          "role 'subledger_ar' is played by amount=06_bank_receipts_and_fx_2025__bank_receipts.amount_eur, key=06_bank_receipts_and_fx_2025__bank_receipts.applied_document, table=06_bank_receipts_and_fx_2025__bank_receipts",
+          "The subledger law needs the general-ledger receivables account numbers, which are not given in the profiles. No batch view has an account column to filter a journal on."
+        ],
+        [
+          "role 'acceptance_date' is played by column=01_company_and_vessel_master__vessel_master.acceptance_date, table=01_company_and_vessel_master__vessel_master",
+          "A milestone date role implies no conservation law. Its plausibility needs contract or document knowledge."
+        ],
+        [
+          "role 'completion_status' is played by column=01_company_and_vessel_master__vessel_master.status, table=01_company_and_vessel_master__vessel_master",
+          "A status attribute role implies no testable invariant."
+        ],
+        [
+          "role 'approval_status' is played by column=02_project_cost_ledger_2025__cost_ledger.approved, table=02_project_cost_ledger_2025__cost_ledger",
+          "An approval flag role implies no testable invariant."
+        ],
+        [
+          "role 'account' is played by column=02_project_cost_ledger_2025__cost_ledger.category, table=02_project_cost_ledger_2025__cost_ledger",
+          "category is a cost-category label, not account numbers. No chart of accounts is available to test it against."
+        ],
+        [
+          "role 'currency' is played by column=02_project_cost_ledger_2025__cost_ledger.currency, table=02_project_cost_ledger_2025__cost_ledger",
+          "A currency attribute role implies no conservation law."
+        ],
+        [
+          "role 'entity' is played by column=02_project_cost_ledger_2025__cost_ledger.entity, table=02_project_cost_ledger_2025__cost_ledger",
+          "An entity attribute role implies no conservation law on its own."
+        ],
+        [
+          "role 'invoice_ref' is played by column=02_project_cost_ledger_2025__cost_ledger.invoice_number, table=02_project_cost_ledger_2025__cost_ledger",
+          "No invoice register is in scope for a supplier invoice reference to resolve against."
+        ],
+        [
+          "role 'purchase_order_ref' is played by column=02_project_cost_ledger_2025__cost_ledger.po_number, table=02_project_cost_ledger_2025__cost_ledger",
+          "No purchase-order register is in scope for the PO reference to resolve against."
+        ],
+        [
+          "role 'period' is played by column=02_project_cost_ledger_2025__cost_ledger.posting_date, table=02_project_cost_ledger_2025__cost_ledger",
+          "A period attribute role implies no testable invariant by itself."
+        ],
+        [
+          "role 'source_system' is played by column=02_project_cost_ledger_2025__cost_ledger.source_system, table=02_project_cost_ledger_2025__cost_ledger",
+          "A source-system label implies no invariant."
+        ],
+        [
+          "role 'overhead_allocation_base' is played by column=03_time_and_overhead_allocations__overhead_pools.allocation_base, table=03_time_and_overhead_allocations__overhead_pools",
+          "An allocation-base label implies no conservation law."
+        ],
+        [
+          "role 'overhead_location' is played by column=03_time_and_overhead_allocations__overhead_pools.location, table=03_time_and_overhead_allocations__overhead_pools",
+          "A location attribute implies no invariant."
+        ],
+        [
+          "role 'overhead_period' is played by column=03_time_and_overhead_allocations__overhead_pools.year, table=03_time_and_overhead_allocations__overhead_pools",
+          "A period attribute implies no invariant."
+        ],
+        [
+          "role 'labour_approval_status' is played by column=03_time_and_overhead_allocations__time_allocations.approval_status, table=03_time_and_overhead_allocations__time_allocations",
+          "An approval status implies no invariant."
+        ],
+        [
+          "role 'labour_period' is played by column=03_time_and_overhead_allocations__time_allocations.month, table=03_time_and_overhead_allocations__time_allocations",
+          "A period attribute implies no invariant."
+        ],
+        [
+          "role 'ic_match_status' is played by column=05_intercompany_recharges_2025__elimination_journal.status, table=05_intercompany_recharges_2025__elimination_journal",
+          "A match-status label implies no invariant."
+        ],
+        [
+          "role 'ic_buyer_entity' is played by column=05_intercompany_recharges_2025__ic_transactions.buyer_entity, table=05_intercompany_recharges_2025__ic_transactions",
+          "An entity attribute implies no invariant on its own."
+        ],
+        [
+          "role 'ic_match_status' is played by column=05_intercompany_recharges_2025__ic_transactions.match_status, table=05_intercompany_recharges_2025__ic_transactions",
+          "A match-status label implies no invariant."
+        ],
+        [
+          "role 'ic_receiver_ref' is played by column=05_intercompany_recharges_2025__ic_transactions.receiver_document, table=05_intercompany_recharges_2025__ic_transactions",
+          "No receiver-side document register is in scope for the reference to resolve against."
+        ],
+        [
+          "role 'ic_seller_entity' is played by column=05_intercompany_recharges_2025__ic_transactions.seller_entity, table=05_intercompany_recharges_2025__ic_transactions",
+          "An entity attribute implies no invariant on its own."
+        ],
+        [
+          "role 'ic_sender_ref' is played by column=05_intercompany_recharges_2025__ic_transactions.sender_document, table=05_intercompany_recharges_2025__ic_transactions",
+          "No sender-side document register is in scope for the reference to resolve against."
+        ],
+        [
+          "role 'doc_ref' is played by key=02_project_cost_ledger_2025__cost_ledger.invoice_number, table=02_project_cost_ledger_2025__cost_ledger",
+          "A document reference need not be unique per line, and no document register is in scope to resolve it against."
+        ],
+        [
+          "role 'doc_ref' is played by key=02_project_cost_ledger_2025__cost_ledger.transaction_id, table=02_project_cost_ledger_2025__cost_ledger",
+          "A document reference need not be unique per line, and no document register is in scope to resolve it against."
+        ],
+        [
+          "role 'labour_source_ref' is played by key=03_time_and_overhead_allocations__time_allocations.entry_id, table=03_time_and_overhead_allocations__time_allocations",
+          "No source timesheet system is in scope for the reference to resolve against."
+        ],
+        [
+          "Elimination journal entries balance revenue against cost per source document.",
+          "The balance template needs a bare amount column, but the claim's amount is the expression eliminate_revenue_eur + eliminate_cost_eur. The params also group by journal_id rather than the source_document named in the claim. No bare column or grouping carries the revenue-against-cost balance, so it stays untested."
+        ],
+        [
+          "Employee rates are valid from 2025-01-01 per employee.",
+          "employee_rates has only a valid_from column and no valid_to, so validity_join has no interval to test for gaps or overlaps. Whether every valid_from is 2025-01-01 is a constant-value check that no admissible template expresses."
+        ],
+        [
+          "Intercompany sender and receiver amounts should match per transaction.",
+          "ic_symmetry needs two distinct sides to relate (e.g. separate sender and receiver ledgers or period columns). Here sender_amount_eur and receiver_amount_eur are two columns of the same ic_transactions view with the same date column, so the template would compare rows to themselves and test nothing. The per-transaction sender/receiver match stays untested."
+        ],
+        [
+          "The VAT rate on sales documents decodes from the issuing entity's country (DE 19%, PL 23%).",
+          "range_join tests a value against from/to interval bounds. The claim is a categorical mapping from issuing entity to VAT rate (HVW-DE 0.19, BHW-PL 0.23), and the params give no real range columns, so the template does not fit. A decode-style check would suit it, but decode is not admissible here."
+        ]
+      ],
+      "semantic_only": 8,
+      "skipped": [
+        [
+          "c11",
+          "claim c11: column 'yard_job_no' does not exist on view '04_sales_invoices_and_credit_notes_2025__documents' (param 'key')"
+        ],
+        [
+          "c12",
+          "claim c12: column 'yard_job_no' does not exist on view '03_time_and_overhead_allocations__time_allocations' (param 'key')"
+        ]
+      ],
+      "unanswered": 0,
+      "failures": [],
+      "retries": 2,
+      "usage": {
+        "input_tokens": 94714,
+        "output_tokens": 14837
+      },
+      "seconds": 115.5
+    },
+    {
+      "stage": "read_documents",
+      "documents_read": 4,
+      "claims_created": 28,
+      "anchors": 28,
+      "deduped": 0,
+      "links": 1,
+      "refused": [],
+      "asked_instead": [
+        "\u201cThe board pack shows Nordlicht (HH-407) cost at EUR 2.70m, rounded before a late class invoice.\u201d \u2014 07_board_management_report_2025 p.1 gives more than one figure for the same thing (3.60, 2.70) \u2014 which one applies is a decision, not a calculation. Does this passage settle it, and for which scope?",
+        "\u201cThe board pack shows Baltic Surveyor cost at EUR 3.05m, excluding unsigned CO-17 cost and the duplicate review.\u201d \u2014 07_board_management_report_2025 p.1 gives more than one figure for the same thing (4.00, 3.05) \u2014 which one applies is a decision, not a calculation. Does this passage settle it, and for which scope?",
+        "\u201cThe board pack shows Amber Pilot / AP77 cost at EUR 1.19m. An engine instalment may be misposted to Elbe Runner.\u201d \u2014 07_board_management_report_2025 p.1 gives more than one figure for the same thing (1.48, 1.19) \u2014 which one applies is a decision, not a calculation. Does this passage settle it, and for which scope?",
+        "\u201cHansa Tug shows EUR 0.31m, a deposit booked as order intake although the LOI was cancelled.\u201d \u2014 only 07_board_management_report_2025 p.1 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cThe management recognition workbook totals EUR 13.058m, against EUR 13.10m in the chart.\u201d \u2014 only 07_board_management_report_2025 p.1 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cGroup eliminations of intercompany sales are EUR (1.05)m.\u201d \u2014 only 07_board_management_report_2025 p.2 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cThe elimination journal is incomplete by EUR 0.21m.\u201d \u2014 only 07_board_management_report_2025 p.2 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cIntercompany revenue is excluded from consolidated sales through elimination.\u201d \u2014 the only passage found for this rule sits inside a figure in 08_tax_and_transfer_pricing_memo_2025 p.1, where a reader cannot check it. Does this passage settle it, and for which scope?",
+        "\u201cThe Q2 intercompany elimination pair differs by EUR 1,400, and one receiving-side booking is missing.\u201d \u2014 the only passage found for this rule sits inside a figure in 08_tax_and_transfer_pricing_memo_2025 p.1, where a reader cannot check it. Does this passage settle it, and for which scope?",
+        "\u201cThe Nordlicht contract total is EUR 3.40m, including the signed CO-03.\u201d \u2014 only 09_contracts_change_orders_and_acceptance p.1 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cThe management schedule recognizes Elbe Runner at 68% cost-to-cost. The document flags this as disputed.\u201d \u2014 the figure in 09_contracts_change_orders_and_acceptance p.1 appears only inside a chart, so nothing on the page supports it. Does this passage settle it, and for which scope?"
+      ],
+      "narrowed": [],
+      "failures": [],
+      "usage": {
+        "input_tokens": 12530,
+        "output_tokens": 8164
+      },
+      "seconds": 75.5
+    },
+    {
+      "stage": "test",
+      "executed": 45,
+      "verdicts": {
+        "pass": 17,
+        "fail": 28
+      },
+      "nothing_tested": [],
+      "skipped": [
+        [
+          "01M419WJ8R7XEPN74XVZ8VV9EZ",
+          "execution error (ConversionException): Conversion Error: Could not convert string 'This sheet is a management schedule, not the audited revenue ledger.' to DOUBLE when casting from source column revenue_2025_eur\n\nLINE 2:     SELECT project_id AS grp, sum(CAST(revenue_2025_eur AS DOUBLE)) AS total\n                                          ^"
+        ]
+      ],
+      "statuses": {
+        "test-supported": 11,
+        "contradicted": 28,
+        "proposed": 76
+      },
+      "role_statuses": {
+        "journal: 02_project_cost_ledger_2025__cost_ledger": "contradicted",
+        "journal: 04_sales_invoices_and_credit_notes_2025__documents": "contradicted",
+        "amount_local: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.amount_local": "contradicted",
+        "doc_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.transaction_id": "proposed",
+        "doc_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.invoice_number": "proposed",
+        "account: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.category": "proposed",
+        "period: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.posting_date": "proposed",
+        "entity: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.entity": "proposed",
+        "build_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.project_id": "proposed",
+        "build_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.yard_job_ref": "proposed",
+        "currency: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.currency": "proposed",
+        "amount_reporting_currency: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.reported_eur": "contradicted",
+        "amount_reporting_currency: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.amount_local, 02_project_cost_ledger_2025__cost_ledger.pln_per_eur": "contradicted",
+        "source_system: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.source_system": "proposed",
+        "approval_status: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.approved": "proposed",
+        "invoice_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.invoice_number": "proposed",
+        "purchase_order_ref: 02_project_cost_ledger_2025__cost_ledger, 02_project_cost_ledger_2025__cost_ledger.po_number": "proposed",
+        "subledger_ar: 04_sales_invoices_and_credit_notes_2025__documents, 04_sales_invoices_and_credit_notes_2025__documents.document_id, 04_sales_invoices_and_credit_notes_2025__documents.gross_amount": "proposed",
+        "subledger_ar: 06_bank_receipts_and_fx_2025__bank_receipts, 06_bank_receipts_and_fx_2025__bank_receipts.amount_eur, 06_bank_receipts_and_fx_2025__bank_receipts.applied_document": "proposed",
+        "intercompany: 05_intercompany_recharges_2025__ic_transactions": "contradicted",
+        "intercompany: 05_intercompany_recharges_2025__elimination_journal": "contradicted",
+        "ic_build_ref: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.project_id": "contradicted",
+        "ic_seller_entity: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.seller_entity": "proposed",
+        "ic_buyer_entity: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.buyer_entity": "proposed",
+        "ic_cost_base: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.cost_base_eur": "contradicted",
+        "ic_markup_rate: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.markup_rate": "contradicted",
+        "ic_sender_ref: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.sender_document": "proposed",
+        "ic_receiver_ref: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.receiver_document": "proposed",
+        "ic_match_status: 05_intercompany_recharges_2025__ic_transactions, 05_intercompany_recharges_2025__ic_transactions.match_status": "proposed",
+        "ic_match_status: 05_intercompany_recharges_2025__elimination_journal, 05_intercompany_recharges_2025__elimination_journal.status": "proposed",
+        "build: 01_company_and_vessel_master__vessel_master": "proposed",
+        "build: 01_company_and_vessel_master__project_aliases": "proposed",
+        "authoritative_key: 01_company_and_vessel_master__vessel_master, 01_company_and_vessel_master__vessel_master.project_id": "proposed",
+        "alias_set: 01_company_and_vessel_master__project_aliases, 01_company_and_vessel_master__project_aliases.contract_reference, 01_company_and_vessel_master__project_aliases.finance_alias, 01_company_and_vessel_master__project_aliases.mapping_status, 01_company_and_vessel_master__project_aliases.project_id, 01_company_and_vessel_master__project_aliases.vessel_name, 01_company_and_vessel_master__project_aliases.yard_job_no": "proposed",
+        "completion_status: 01_company_and_vessel_master__vessel_master, 01_company_and_vessel_master__vessel_master.status": "proposed",
+        "acceptance_date: 01_company_and_vessel_master__vessel_master, 01_company_and_vessel_master__vessel_master.acceptance_date": "proposed",
+        "forecast_cost_reporting_currency: 01_company_and_vessel_master__vessel_master, 01_company_and_vessel_master__vessel_master.latest_forecast_cost": "proposed",
+        "labour_allocation: 03_time_and_overhead_allocations__time_allocations": "contradicted",
+        "labour_build_ref: 03_time_and_overhead_allocations__time_allocations, 03_time_and_overhead_allocations__time_allocations.project_reference": "contradicted",
+        "labour_period: 03_time_and_overhead_allocations__time_allocations, 03_time_and_overhead_allocations__time_allocations.month": "proposed",
+        "labour_cost_reporting_currency: 03_time_and_overhead_allocations__time_allocations, 03_time_and_overhead_allocations__time_allocations.extended_cost_eur": "contradicted",
+        "labour_approval_status: 03_time_and_overhead_allocations__time_allocations, 03_time_and_overhead_allocations__time_allocations.approval_status": "proposed",
+        "labour_source_ref: 03_time_and_overhead_allocations__time_allocations, 03_time_and_overhead_allocations__time_allocations.entry_id": "proposed",
+        "overhead_pool: 03_time_and_overhead_allocations__overhead_pools": "contradicted",
+        "overhead_location: 03_time_and_overhead_allocations__overhead_pools, 03_time_and_overhead_allocations__overhead_pools.location": "proposed",
+        "overhead_period: 03_time_and_overhead_allocations__overhead_pools, 03_time_and_overhead_allocations__overhead_pools.year": "proposed",
+        "overhead_pool_amount: 03_time_and_overhead_allocations__overhead_pools, 03_time_and_overhead_allocations__overhead_pools.pool_eur": "contradicted",
+        "overhead_allocation_base: 03_time_and_overhead_allocations__overhead_pools, 03_time_and_overhead_allocations__overhead_pools.allocation_base": "proposed",
+        "overhead_base_quantity: 03_time_and_overhead_allocations__overhead_pools, 03_time_and_overhead_allocations__overhead_pools.base_quantity": "contradicted",
+        "overhead_base_quantity: 03_time_and_overhead_allocations__time_allocations, 03_time_and_overhead_allocations__time_allocations.hours": "contradicted"
+      },
+      "promoted_without_check_or_human": [],
+      "ai_authored_verdicts": [],
+      "seconds": 1.4
+    },
+    {
+      "stage": "clarify",
+      "role_cards": 40,
+      "questions_total": 71,
+      "questions": [
+        "\u201cThe board pack shows Nordlicht (HH-407) cost at EUR 2.70m, rounded before a late class invoice.\u201d \u2014 07_board_management_report_2025 p.1 gives more than one figure for the same thing (3.60, 2.70) \u2014 which one applies is a decision, not a calculation. Does this passage settle it, and for which scope?",
+        "\u201cThe board pack shows Baltic Surveyor cost at EUR 3.05m, excluding unsigned CO-17 cost and the duplicate review.\u201d \u2014 07_board_management_report_2025 p.1 gives more than one figure for the same thing (4.00, 3.05) \u2014 which one applies is a decision, not a calculation. Does this passage settle it, and for which scope?",
+        "\u201cThe board pack shows Amber Pilot / AP77 cost at EUR 1.19m. An engine instalment may be misposted to Elbe Runner.\u201d \u2014 07_board_management_report_2025 p.1 gives more than one figure for the same thing (1.48, 1.19) \u2014 which one applies is a decision, not a calculation. Does this passage settle it, and for which scope?",
+        "\u201cHansa Tug shows EUR 0.31m, a deposit booked as order intake although the LOI was cancelled.\u201d \u2014 only 07_board_management_report_2025 p.1 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cThe management recognition workbook totals EUR 13.058m, against EUR 13.10m in the chart.\u201d \u2014 only 07_board_management_report_2025 p.1 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cGroup eliminations of intercompany sales are EUR (1.05)m.\u201d \u2014 only 07_board_management_report_2025 p.2 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cThe elimination journal is incomplete by EUR 0.21m.\u201d \u2014 only 07_board_management_report_2025 p.2 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cIntercompany revenue is excluded from consolidated sales through elimination.\u201d \u2014 the only passage found for this rule sits inside a figure in 08_tax_and_transfer_pricing_memo_2025 p.1, where a reader cannot check it. Does this passage settle it, and for which scope?",
+        "\u201cThe Q2 intercompany elimination pair differs by EUR 1,400, and one receiving-side booking is missing.\u201d \u2014 the only passage found for this rule sits inside a figure in 08_tax_and_transfer_pricing_memo_2025 p.1, where a reader cannot check it. Does this passage settle it, and for which scope?",
+        "\u201cThe Nordlicht contract total is EUR 3.40m, including the signed CO-03.\u201d \u2014 only 09_contracts_change_orders_and_acceptance p.1 carries this figure, and no check has produced it from the data. Does this passage settle it, and for which scope?",
+        "\u201cThe management schedule recognizes Elbe Runner at 68% cost-to-cost. The document flags this as disputed.\u201d \u2014 the figure in 09_contracts_change_orders_and_acceptance p.1 appears only inside a chart, so nothing on the page supports it. Does this passage settle it, and for which scope?",
+        "06_bank_receipts_and_fx_2025__bank_receipts has entries with no counterpart in 01_company_and_vessel_master__customers \u2014 is that a legitimate data cut, a pending state, or an error?",
+        "02_project_cost_ledger_2025__cost_ledger contains duplicates over (\"invoice_number\") \u2014 which records are authoritative?",
+        "04_sales_invoices_and_credit_notes_2025__documents contains duplicates over (\"document_id\") \u2014 which records are authoritative?",
+        "02_project_cost_ledger_2025__cost_ledger and 01_company_and_vessel_master__vessel_master contradict each other on linked attributes \u2014 which source leads?",
+        "03_time_and_overhead_allocations__time_allocations and 03_time_and_overhead_allocations__employee_rates contradict each other on linked attributes \u2014 which source leads?",
+        "03_time_and_overhead_allocations__time_allocations has entries with no counterpart in 03_time_and_overhead_allocations__employee_rates \u2014 is that a legitimate data cut, a pending state, or an error?",
+        "02_project_cost_ledger_2025__cost_ledger and 02_project_cost_ledger_2025__cost_ledger do not agree per group \u2014 which cutoff or accrual is missing?",
+        "05_intercompany_recharges_2025__ic_transactions has entries with no counterpart in 04_sales_invoices_and_credit_notes_2025__documents \u2014 is that a legitimate data cut, a pending state, or an error?",
+        "05_intercompany_recharges_2025__ic_transactions and 05_intercompany_recharges_2025__ic_transactions do not agree per group \u2014 which cutoff or accrual is missing?",
+        "06_bank_receipts_and_fx_2025__bank_receipts has entries with no counterpart in 04_sales_invoices_and_credit_notes_2025__documents \u2014 is that a legitimate data cut, a pending state, or an error?",
+        "02_project_cost_ledger_2025__cost_ledger and 02_project_cost_ledger_2025__pivot_export do not agree per group \u2014 which cutoff or accrual is missing?",
+        "02_project_cost_ledger_2025__cost_ledger does not balance per group \u2014 is an offsetting entry missing?",
+        "04_sales_invoices_and_credit_notes_2025__documents does not balance per group \u2014 is an offsetting entry missing?",
+        "05_intercompany_recharges_2025__elimination_journal and 05_intercompany_recharges_2025__elimination_journal do not agree per group \u2014 which cutoff or accrual is missing?",
+        "05_intercompany_recharges_2025__ic_transactions has entries with no counterpart in 01_company_and_vessel_master__vessel_master \u2014 is that a legitimate data cut, a pending state, or an error?",
+        "03_time_and_overhead_allocations__time_allocations and 03_time_and_overhead_allocations__time_allocations do not agree per group \u2014 which cutoff or accrual is missing?",
+        "03_time_and_overhead_allocations__time_allocations has entries with no counterpart in 01_company_and_vessel_master__vessel_master \u2014 is that a legitimate data cut, a pending state, or an error?",
+        "03_time_and_overhead_allocations__overhead_pools and 03_time_and_overhead_allocations__overhead_pools do not agree per group \u2014 which cutoff or accrual is missing?",
+        "03_time_and_overhead_allocations__overhead_pools and 03_time_and_overhead_allocations__time_allocations do not agree per group \u2014 which cutoff or accrual is missing?",
+        "03_time_and_overhead_allocations__time_allocations and 03_time_and_overhead_allocations__overhead_pools do not agree per group \u2014 which cutoff or accrual is missing?",
+        "Which source is the authoritative 'journal'? The transactional ledger of record: one row per posting line, carrying a signed amount and a document reference; debit and credit lines balance per document. Every proposed candidate was put to the balance law, and every one of them failed it.",
+        "Which of the proposed candidates is the 'doc_ref'? The document or voucher reference grouping posting lines into one accounting document. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'account'? The account or cost-category identifier used to decide whether a posting belongs in vessel build cost. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'period'? The accounting period to which a posting belongs at fiscal-period granularity. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'entity'? The legal entity or company code to whose books a posting belongs. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'build_ref'? The reference attributing a posting to one vessel build after resolution through the approved build-identity mapping. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'currency'? The currency in which the local posting amount is denominated. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'amount_reporting_currency'? The posting amount translated into the confirmed group reporting currency using the approved translation policy, kept distinct from the as-posted local amount. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'source_system'? The originating ledger, interface or manual-entry channel retained for posted-versus-adjusted reconciliation. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'approval_status'? The workflow status showing whether the posting was approved for use in the relevant cost view. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'invoice_ref'? The supplier-invoice reference used with other evidence to identify duplicate or reversing cost postings. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'purchase_order_ref'? The purchasing reference used with invoice, supplier and amount evidence to attribute and deduplicate build costs. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "What is missing before the 'subledger_ar' can be tested? The accounts-receivable open items: one row per open receivable with a signed amount, reconcilable against the journal's control account. No proposed candidate could be put to the subledger_equals_gl law at all, so nothing about it has been tested.",
+        "Which source is the authoritative 'intercompany'? Paired intercompany resource charges between legal entities whose sender and receiver sides must reconcile before group build cost can retain the underlying resource cost once and eliminate internal markup. Every proposed candidate was put to the ic_symmetry law, and every one of them failed it.",
+        "Which of the proposed candidates is the 'ic_build_ref'? The vessel build to which an intercompany resource charge is attributable after approved identity resolution. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'ic_seller_entity'? The legal entity providing the intercompany resource or service. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'ic_buyer_entity'? The legal entity receiving the intercompany resource or service. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'ic_cost_base'? The underlying resource cost before intercompany markup. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'ic_markup_rate'? The markup applied to the intercompany cost base under the applicable transfer-pricing policy. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'ic_sender_ref'? The sender-side document reference used to pair an intercompany charge. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'ic_receiver_ref'? The receiver-side document reference used to pair an intercompany charge. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'ic_match_status'? The reconciliation state of the sender, receiver and elimination records for an intercompany charge. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'build'? One governed vessel-construction undertaking, including its approved identity, aliases and lifecycle state, to which costs can be attributed. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'authoritative_key'? The owner-confirmed stable business identifier for one vessel build. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'alias_set'? The approved set of alternate project, yard-job, contract and vessel references that identify the same build. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'completion_status'? The governed lifecycle state distinguishing accepted or delivered builds, work in progress, and cancelled or pre-contract activity. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'acceptance_date'? The effective date on which the completed vessel was accepted under the confirmed completion policy. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'forecast_cost_reporting_currency'? The latest approved estimate of total cost at completion in the group reporting currency, distinct from cost incurred to date. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'labour_allocation'? An approved allocation of labour effort and burdened cost to a vessel build, including allocations not yet interfaced to the journal. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'labour_build_ref'? The vessel build receiving the labour allocation after approved alias resolution. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'labour_period'? The period in which the allocated labour was performed. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'labour_cost_reporting_currency'? The approved burdened labour cost in the group reporting currency. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'labour_approval_status'? The workflow state establishing whether the allocation is approved for accrual or posting. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'labour_source_ref'? The stable source reference used to reconcile an allocation to its journal posting and prevent duplicate accrual. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'overhead_pool'? A governed pool of indirect production cost eligible for allocation to vessel builds under a confirmed allocation policy. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'overhead_location'? The operating location whose indirect production cost forms the pool. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'overhead_period'? The fiscal period for which the overhead pool is measured. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'overhead_pool_amount'? The eligible indirect production cost amount before allocation to builds. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'overhead_allocation_base'? The owner-approved driver used to allocate the pool consistently across builds. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one.",
+        "Which of the proposed candidates is the 'overhead_base_quantity'? The measured quantity of the approved allocation driver for a pool or receiving build. No check can settle this \u2014 what the data means is a business fact, not an arithmetic one."
+      ],
+      "seconds": 0.5
+    },
+    {
+      "stage": "readiness",
+      "verdict": "blocked",
+      "reason": "The answer cannot be produced: 'build', 'build.authoritative_key', 'build.alias_set', 'build.completion_status', 'build.acceptance_date', 'journal', 'journal.amount_local', 'journal.amount_reporting_currency', 'journal.currency', 'journal.build_ref', 'journal.account', 'journal.period', 'journal.entity', 'journal.doc_ref', 'journal.invoice_ref', 'journal.purchase_order_ref', 'journal.source_system', 'journal.approval_status', 'labour_allocation', 'labour_allocation.labour_build_ref', 'labour_allocation.labour_period', 'labour_allocation.labour_cost_reporting_currency', 'labour_allocation.labour_approval_status', 'labour_allocation.labour_source_ref', 'overhead_pool', 'overhead_pool.overhead_location', 'overhead_pool.overhead_period', 'overhead_pool.overhead_pool_amount', 'overhead_pool.overhead_allocation_base', 'overhead_pool.overhead_base_quantity', 'intercompany', 'intercompany.ic_build_ref', 'intercompany.ic_cost_base', 'intercompany.ic_markup_rate' and 'intercompany.ic_match_status' are unsupported, and the figures are computed from them. The dependency list was expanded from the answer type 'completed_vessel_actual_build_cost', but nobody has confirmed that this question depends on nothing more.",
+      "satisfied": 0,
+      "total": 46,
+      "items": [
+        {
+          "ref": "build",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 2 candidates are proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "build.authoritative_key",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "build.alias_set",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "build.completion_status",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "build.acceptance_date",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 2 candidates were tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "journal.amount_local",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "journal.amount_reporting_currency",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 2 candidates were tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "journal.currency",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.build_ref",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 2 candidates are proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.account",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.period",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.entity",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.doc_ref",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 2 candidates are proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.invoice_ref",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.purchase_order_ref",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.source_system",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "journal.approval_status",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "labour_allocation",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "labour_allocation.labour_build_ref",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "labour_allocation.labour_period",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "labour_allocation.labour_cost_reporting_currency",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "labour_allocation.labour_approval_status",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "labour_allocation.labour_source_ref",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "overhead_pool",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "overhead_pool.overhead_location",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "overhead_pool.overhead_period",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "overhead_pool.overhead_pool_amount",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "overhead_pool.overhead_allocation_base",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "overhead_pool.overhead_base_quantity",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 2 candidates were tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "intercompany",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 2 candidates were tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "intercompany.ic_build_ref",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "intercompany.ic_cost_base",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "intercompany.ic_markup_rate",
+          "satisfied": false,
+          "ground": "all_contradicted",
+          "because": "Not supported: all 1 candidate was tested and contradicted. This is not a missing answer but a wrong one \u2014 the data itself has to change."
+        },
+        {
+          "ref": "intercompany.ic_match_status",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 2 candidates are proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "requested vessel population and aggregation grain",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "versioned vessel-build cost-category inclusion map",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "build-identity alias resolution and approval",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "measurement cut-off and late-cost accrual",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "duplicate reversal and adjustment matching",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "misposting and unattributed-cost re-attribution",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "unsigned change-order cost treatment",
+          "satisfied": false,
+          "ground": "undecided",
+          "because": "Not supported: 1 candidate is proposed and none is settled \u2014 a human has to answer, or a check has to run."
+        },
+        {
+          "ref": "currency translation source and FX direction",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "production-overhead pool and allocation base",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "consolidated intercompany elimination and imbalance treatment",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        },
+        {
+          "ref": "pre-contract post-delivery and cancelled-build boundary",
+          "satisfied": false,
+          "ground": "nothing_proposed",
+          "because": "Not supported: nothing in this project is linked to it."
+        }
+      ],
+      "seconds": 0.3
+    }
+  ]
+}

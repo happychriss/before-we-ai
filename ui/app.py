@@ -134,8 +134,8 @@ def report():
     if not pipeline.exists():
         return RedirectResponse("/run", status_code=303)
     with LOCK:
-        path = write_project_view(pipeline.PROJECT,
-                                  pipeline.DATA / "report.html")
+        path = write_project_view(pipeline.project_dir(),
+                                  pipeline.workdir() / "report.html")
     return HTMLResponse(Path(path).read_text(encoding="utf-8"))
 
 
@@ -152,6 +152,24 @@ def run_step(key: str):
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
     return {"ok": True, "summary": summary,
             "next": upcoming.key if upcoming else ""}
+
+
+@app.post("/api/load")
+def load_recorded():
+    """Load the store a live run left behind, re-judged by today's engine."""
+    try:
+        with LOCK:
+            pipeline.load_recorded()
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    return {"ok": True}
+
+
+@app.post("/landscape")
+def choose_landscape(name: str = Form(...)):
+    with LOCK:
+        pipeline.set_active(name)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/reset")

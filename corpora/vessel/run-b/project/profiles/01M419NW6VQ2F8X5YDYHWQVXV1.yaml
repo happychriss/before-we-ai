@@ -1,0 +1,31 @@
+id: 01M419NW6VQ2F8X5YDYHWQVXV1
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__unapplied_cash
+column: payer_text
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: BALTIC HULL
+  max: PORT PILOT DANZIG
+  len_min: 11
+  len_avg: 14.7
+  len_max: 17
+  top_values:
+  - value: BALTIC HULL
+    count: 1
+  - value: NORDSEE RESEARCH
+    count: 1
+  - value: PORT PILOT DANZIG
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAA AAAAA AAAAAA
+    count: 1
+  - mask: AAAAAA AAAA
+    count: 1
+  - mask: AAAAAAA AAAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:11.067569Z'
+object_type: DataProfile

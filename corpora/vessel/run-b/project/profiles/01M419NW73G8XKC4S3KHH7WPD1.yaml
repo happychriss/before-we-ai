@@ -1,0 +1,31 @@
+id: 01M419NW73G8XKC4S3KHH7WPD1
+source_id: 01M419NW55HH870J4MCWGX0CPD
+table: 06_bank_receipts_and_fx_2025__unapplied_cash
+column: status
+stats:
+  duckdb_type: VARCHAR
+  row_count: 3
+  null_count: 0
+  distinct_count: 3
+  min: intercompany
+  max: unresolved
+  len_min: 10
+  len_avg: 18.7
+  len_max: 34
+  top_values:
+  - value: intercompany
+    count: 1
+  - value: name mismatch prevented auto-match
+    count: 1
+  - value: unresolved
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAAA AAAAAAAA AAAAAAAAA AAAA-AAAAA
+    count: 1
+  - mask: AAAAAAAAAA
+    count: 1
+  - mask: AAAAAAAAAAAA
+    count: 1
+created_at: '2026-10-03T16:31:11.075752Z'
+object_type: DataProfile

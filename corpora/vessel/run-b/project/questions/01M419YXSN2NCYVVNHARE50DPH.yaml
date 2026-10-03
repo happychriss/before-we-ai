@@ -1,0 +1,11 @@
+id: 01M419YXSN2NCYVVNHARE50DPH
+question: Which of the proposed candidates is the 'completion_status'? The governed
+  lifecycle state distinguishing accepted or delivered builds, work in progress, and
+  cancelled or pre-contract activity. No check can settle this — what the data means
+  is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1F7H4RJAF5XQ00ZCCQW
+stale: false
+created_at: '2026-10-03T16:36:07.605121Z'
+object_type: ClarificationQuestion

@@ -1,0 +1,12 @@
+id: 01M419YXSG3DJEP5B4HBFRXH7R
+question: Which of the proposed candidates is the 'build_ref'? The reference attributing
+  a posting to one vessel build after resolution through the approved build-identity
+  mapping. No check can settle this — what the data means is a business fact, not
+  an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1ETM3Y6E5WD0QEAH811
+- 01M419S1ETM3Y6E5WD0QEAH812
+stale: false
+created_at: '2026-10-03T16:36:07.600098Z'
+object_type: ClarificationQuestion

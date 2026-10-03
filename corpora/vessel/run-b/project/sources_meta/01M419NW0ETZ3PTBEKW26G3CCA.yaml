@@ -1,0 +1,31 @@
+id: 01M419NW0ETZ3PTBEKW26G3CCA
+name: 04_sales_invoices_and_credit_notes_2025
+kind: xlsx
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/04_sales_invoices_and_credit_notes_2025.xlsx
+description: Sales invoices and credit notes issued in FY2025.
+fingerprint:
+  file:
+    kind: file
+    size: 13278
+    sha256: b5901def8fc09f24310ccf8f9b03a33d9ccbd13568f7fc1a3f0cca8b25370fc0
+  tables:
+    04_sales_invoices_and_credit_notes_2025__documents:
+      kind: table
+      row_count: 24
+      schema_hash: c67fc8274736f757fb7acd022122200752e92d27a4b075a3315770b9402f4d62
+      content_hash: '221788139129796995724526853551772086622'
+      max_date: null
+    04_sales_invoices_and_credit_notes_2025__management_recognition:
+      kind: table
+      row_count: 9
+      schema_hash: 08209ec518e3972f562b89003155efd7a51f87b11348939d0b16d3c837f28f42
+      content_hash: '168163398400221094764649324044536499888'
+      max_date: null
+    04_sales_invoices_and_credit_notes_2025__revenue_by_ship:
+      kind: table
+      row_count: 7
+      schema_hash: 3130d7c85eff06c73a980eff503863f9f1024bcd538fd5b84f5f024001b3f008
+      content_hash: '279543384048775017006405196160578178039'
+      max_date: null
+created_at: '2026-10-03T16:31:10.862860Z'
+object_type: Source

@@ -1,0 +1,10 @@
+id: 01M419YXSPA4ZM58WTXR4TFGNW
+question: Which of the proposed candidates is the 'labour_build_ref'? The vessel build
+  receiving the labour allocation after approved alias resolution. No check can settle
+  this — what the data means is a business fact, not an arithmetic one.
+finding: ''
+claim_ids:
+- 01M419S1F96D5J1KBYRGTRVPFR
+stale: false
+created_at: '2026-10-03T16:36:07.606149Z'
+object_type: ClarificationQuestion

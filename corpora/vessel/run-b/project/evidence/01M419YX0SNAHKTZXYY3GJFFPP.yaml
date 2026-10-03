@@ -1,0 +1,61 @@
+id: 01M419YX0SNAHKTZXYY3GJFFPP
+type: check_result
+actor: check
+claim_id: 01M419QXMC0DQJB8HCQ50K7334
+check_plan_id: 01M419WJ8QS44WJQFHPKZ3D1BD
+verdict: fail
+population: 138
+exception_count: 6
+exception_samples:
+- grp: VSL-2411
+  left_total: 3572552.0
+  right_total: null
+  diff: 3572552.0
+- grp: VSL-2407
+  left_total: 2703102.0
+  right_total: null
+  diff: 2703102.0
+- grp: VSL-2502
+  left_total: 2299408.7199999997
+  right_total: null
+  diff: 2299408.7199999997
+- grp: VSL-2504
+  left_total: 1019152.0
+  right_total: null
+  diff: 1019152.0
+- grp: VSL-2506
+  left_total: 84500.0
+  right_total: null
+  diff: 84500.0
+- grp: null
+  left_total: 15298.0
+  right_total: null
+  diff: 15298.0
+result_ref: cache/check_runs/01M419YX0SNAHKTZXYY3GJFFPP.parquet
+payload:
+  template: reconciliation
+  sql: "WITH l AS (\n    SELECT project_id AS grp, sum(CAST(reported_eur AS DOUBLE))\
+    \ AS total\n    FROM \"02_project_cost_ledger_2025__cost_ledger\"\n    GROUP BY\
+    \ 1\n),\nr AS (\n    SELECT project_id AS grp, sum(CAST(reported_eur_total AS\
+    \ DOUBLE)) AS total\n    FROM \"02_project_cost_ledger_2025__pivot_export\"\n\
+    \    GROUP BY 1\n)\nSELECT coalesce(l.grp, r.grp) AS grp,\n       l.total AS left_total,\n\
+    \       r.total AS right_total,\n       coalesce(l.total, 0) - coalesce(r.total,\
+    \ 0) AS diff\nFROM l FULL JOIN r ON l.grp = r.grp\nWHERE abs(coalesce(l.total,\
+    \ 0) - coalesce(r.total, 0)) > 0.01\nORDER BY abs(diff) DESC, grp"
+  summary: 6 violating groups
+source_fingerprints:
+  02_project_cost_ledger_2025__cost_ledger:
+    kind: table
+    row_count: 138
+    schema_hash: 2debb58cf9b532d95cc4bbcd78212e1e47eeff776bfecc1df340e277e807137a
+    content_hash: '100665312601861361441508879742515872905'
+    max_date: null
+  02_project_cost_ledger_2025__pivot_export:
+    kind: table
+    row_count: 6
+    schema_hash: 155d7a912db97cdced83f2e1ec369dc59e6a7d50caf0d20d01e9dd3e67587abf
+    content_hash: '337149330199394059093841505986967367715'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.816247Z'
+object_type: EvidenceRecord

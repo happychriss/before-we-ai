@@ -1,0 +1,31 @@
+id: 01M419NW3V0TK5TXE04Y3JTTQY
+source_id: 01M419NW35P86PPK0TSW7W3KPT
+table: 05_intercompany_recharges_2025__ic_transactions
+column: cost_base_eur
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 0
+  distinct_count: 5
+  min: '120000'
+  max: '347619'
+  len_min: 6
+  len_avg: 6.0
+  len_max: 6
+  top_values:
+  - value: '120000'
+    count: 1
+  - value: '260465'
+    count: 1
+  - value: '285714'
+    count: 1
+  - value: '300000'
+    count: 1
+  - value: '347619'
+    count: 1
+  value_class: integer_like
+  patterns:
+  - mask: '999999'
+    count: 5
+created_at: '2026-10-03T16:31:10.971153Z'
+object_type: DataProfile

@@ -1,0 +1,38 @@
+id: 01M419YWYHGYY4SPDS6V2EZCRX
+type: check_result
+actor: check
+claim_id: 01M419QXM5J5BZNWAA72Q7THNV
+check_plan_id: 01M419WJ8HZ6SDHQJ4NMG6EXSA
+verdict: fail
+population: 47
+exception_count: 1
+exception_samples:
+- value: BATCH-GD-DEC
+  occurrences: 1
+result_ref: cache/check_runs/01M419YWYHGYY4SPDS6V2EZCRX.parquet
+payload:
+  template: anti_join
+  sql: "WITH child_keys AS (\n    SELECT NULLIF(trim(\"employee_id\"), '') AS k FROM\
+    \ \"03_time_and_overhead_allocations__time_allocations\"\n),\nparent_keys AS (\n\
+    \    SELECT DISTINCT NULLIF(trim(\"employee_id\"), '') AS k FROM \"03_time_and_overhead_allocations__employee_rates\"\
+    \n    WHERE NULLIF(trim(\"employee_id\"), '') IS NOT NULL\n)\nSELECT c.k AS value,\
+    \ count(*) AS occurrences\nFROM child_keys c\nLEFT JOIN parent_keys p USING (k)\n\
+    WHERE c.k IS NOT NULL AND p.k IS NULL\nGROUP BY c.k\nORDER BY occurrences DESC,\
+    \ value"
+  summary: 1 violating groups
+source_fingerprints:
+  03_time_and_overhead_allocations__time_allocations:
+    kind: table
+    row_count: 47
+    schema_hash: aa83e582c8ddc40c8862c3a04bcb725a354941cbf287c7170f261a4077341223
+    content_hash: '103940560900488189741586873328671753825'
+    max_date: null
+  03_time_and_overhead_allocations__employee_rates:
+    kind: table
+    row_count: 68
+    schema_hash: 3f90916b92ab8a2c01f47d732a64b64b03ccc8b47c1648557477dae54682e2a9
+    content_hash: '216718860651031418370784549979877416376'
+    max_date: null
+stale: false
+created_at: '2026-10-03T16:36:06.740970Z'
+object_type: EvidenceRecord

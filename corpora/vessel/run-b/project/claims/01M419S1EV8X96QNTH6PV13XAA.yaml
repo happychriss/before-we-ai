@@ -1,0 +1,24 @@
+id: 01M419S1EV8X96QNTH6PV13XAA
+statement: role 'amount_reporting_currency' is played by amount=02_project_cost_ledger_2025__cost_ledger.reported_eur,
+  table=02_project_cost_ledger_2025__cost_ledger
+created_by: ai
+status: contradicted
+predicate:
+  name: role_binding
+  params:
+    role: amount_reporting_currency
+    binding:
+      amount: 02_project_cost_ledger_2025__cost_ledger.reported_eur
+      table: 02_project_cost_ledger_2025__cost_ledger
+source_ids:
+- 01M419NVVC48MGMDASSW7KYKDB
+evidence_ids:
+- 01M419YX3CCKAJV886D4XWGR15
+depends_on: []
+open_assumptions: []
+created_at: '2026-10-03T16:32:54.747931Z'
+role: amount_reporting_currency
+binding:
+  amount: 02_project_cost_ledger_2025__cost_ledger.reported_eur
+  table: 02_project_cost_ledger_2025__cost_ledger
+object_type: MappingClaim

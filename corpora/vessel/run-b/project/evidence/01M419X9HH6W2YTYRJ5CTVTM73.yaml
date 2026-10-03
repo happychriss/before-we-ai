@@ -1,0 +1,27 @@
+id: 01M419X9HH6W2YTYRJ5CTVTM73
+type: document_anchor
+actor: ai
+claim_id: 01M419X9HGWSRHSZ2BPMTZ3HNM
+exception_samples: []
+payload:
+  quote: 'Nordlicht (HH-407)
+
+    3.60
+
+    2.70
+
+    25.0%
+
+    Includes 0.20 upgrade; cost rounded before late class invoice'
+  chunk_id: 07_board_management_report_2025:p1:4
+  kind: table
+  source: 07_board_management_report_2025
+  page: 1
+source_fingerprints:
+  07_board_management_report_2025:
+    kind: chunk
+    chunk_id: 07_board_management_report_2025:p1:4
+    sha256: 701c32514c3795b1b528ba5c42940594e82c44d330bda5aca6c0c15a8f7adcf5
+stale: false
+created_at: '2026-10-03T16:35:14.097313Z'
+object_type: EvidenceRecord

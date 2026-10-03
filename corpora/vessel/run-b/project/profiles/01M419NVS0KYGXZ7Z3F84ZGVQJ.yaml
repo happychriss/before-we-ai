@@ -1,0 +1,31 @@
+id: 01M419NVS0KYGXZ7Z3F84ZGVQJ
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__vessel_master
+column: project_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 0
+  distinct_count: 5
+  min: VSL-2407
+  max: VSL-2506
+  len_min: 8
+  len_avg: 8.0
+  len_max: 8
+  top_values:
+  - value: VSL-2407
+    count: 1
+  - value: VSL-2411
+    count: 1
+  - value: VSL-2502
+    count: 1
+  - value: VSL-2504
+    count: 1
+  - value: VSL-2506
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-9999
+    count: 5
+created_at: '2026-10-03T16:31:10.624727Z'
+object_type: DataProfile

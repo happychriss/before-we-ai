@@ -1,0 +1,41 @@
+id: 01M419NVZX7RMDRR27E8CB40MD
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__employee_rates
+column: employee_id
+stats:
+  duckdb_type: VARCHAR
+  row_count: 68
+  null_count: 0
+  distinct_count: 68
+  min: EMP-001
+  max: EMP-068
+  len_min: 7
+  len_avg: 7.0
+  len_max: 7
+  top_values:
+  - value: EMP-001
+    count: 1
+  - value: EMP-002
+    count: 1
+  - value: EMP-003
+    count: 1
+  - value: EMP-004
+    count: 1
+  - value: EMP-005
+    count: 1
+  - value: EMP-006
+    count: 1
+  - value: EMP-007
+    count: 1
+  - value: EMP-008
+    count: 1
+  - value: EMP-009
+    count: 1
+  - value: EMP-010
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA-999
+    count: 68
+created_at: '2026-10-03T16:31:10.845962Z'
+object_type: DataProfile

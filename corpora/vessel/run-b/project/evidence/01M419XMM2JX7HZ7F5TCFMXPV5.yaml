@@ -1,0 +1,24 @@
+id: 01M419XMM2JX7HZ7F5TCFMXPV5
+type: document_anchor
+actor: ai
+claim_id: 01M419XMM1VYAXYETP9HGGAYG2
+exception_samples: []
+payload:
+  quote: '''Danzig
+
+    branch'' is an old operational label, not a third legal entity, even though several
+    ledgers use GD-YARD
+
+    as if it were an entity code.'
+  chunk_id: 08_tax_and_transfer_pricing_memo_2025:p1:3
+  kind: text
+  source: 08_tax_and_transfer_pricing_memo_2025
+  page: 1
+source_fingerprints:
+  08_tax_and_transfer_pricing_memo_2025:
+    kind: chunk
+    chunk_id: 08_tax_and_transfer_pricing_memo_2025:p1:3
+    sha256: 58e2f4f165aecddb2b97e4eb63160de1635c6f38b2b7bad59e34fe8fc6480ccf
+stale: false
+created_at: '2026-10-03T16:35:25.442430Z'
+object_type: EvidenceRecord

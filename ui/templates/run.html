@@ -4,10 +4,12 @@
 <div class="page-head">
   <div>
     <h1>Run</h1>
-    <p class="muted">Eleven steps over the seeded finance landscape. Each one changes what is known, and one actor is responsible for it.</p>
+    <p class="muted">{{ o.landscape.blurb }} Each step changes what is known, and one actor is responsible for it.</p>
   </div>
   <div class="actions">
-    {% if not o.complete %}
+    {% if not o.complete and o.landscape.mode == 'recorded' %}
+    <button class="btn btn-primary" id="run-load">Load the recorded run</button>
+    {% elif not o.complete %}
     <button class="btn" id="run-next" data-next="{{ o.next }}">Run next step</button>
     <button class="btn btn-primary" id="run-all" data-next="{{ o.next }}">Run all</button>
     {% else %}

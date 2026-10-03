@@ -1,0 +1,29 @@
+id: 01M419NW43X45NY91DG7M59QPV
+source_id: 01M419NW35P86PPK0TSW7W3KPT
+table: 05_intercompany_recharges_2025__ic_transactions
+column: receiver_document
+stats:
+  duckdb_type: VARCHAR
+  row_count: 5
+  null_count: 1
+  distinct_count: 4
+  min: IC-DE-1905
+  max: IC-PL-6205
+  len_min: 10
+  len_avg: 10.0
+  len_max: 10
+  top_values:
+  - value: IC-DE-1905
+    count: 1
+  - value: IC-PL-2212
+    count: 1
+  - value: IC-PL-3103
+    count: 1
+  - value: IC-PL-6205
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AA-AA-9999
+    count: 4
+created_at: '2026-10-03T16:31:10.979431Z'
+object_type: DataProfile

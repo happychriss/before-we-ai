@@ -1,0 +1,19 @@
+id: 01M419NWX4Y68Q54348SFZ92ZB
+name: 10_yard_operations_notes_and_email_prints
+kind: pdf
+location: /home/development/Projects/before-we-ai/corpora/vessel/data/10_yard_operations_notes_and_email_prints.pdf
+description: Mixed working notes and printed e-mails from the two yards' shared folders.
+fingerprint:
+  file:
+    kind: file
+    size: 8700
+    sha256: 60b92a4414931ea66d2469474e82908df13182ae6b96a122dcd1dd7ca8b66d5e
+  chunks:
+    10_yard_operations_notes_and_email_prints:p1:0: a07531877b33c044eb2689052fc16613c458d2da666a821f13167bc44fb044d1
+    10_yard_operations_notes_and_email_prints:p1:1: af5c9948e52ad76c669335698a77d5d24894a18a2cc8193c9d9fd626156da633
+    10_yard_operations_notes_and_email_prints:p1:2: 1c2f24a31a0b61d76058e8f694604f1ee9de7f50cf2f09aab7281d821713acce
+    10_yard_operations_notes_and_email_prints:p2:0: 9e055d001a7f57eef42e935eb6e2f154db0ce75d648fac2c2ea4790590bb9dc3
+    10_yard_operations_notes_and_email_prints:p2:1: 11ef0dce0140b228b5af19df7d92f09efd86629a07e1d27eeaf183c073d0e2b2
+    10_yard_operations_notes_and_email_prints:p2:2: 9f55441a0c574c896d892447385b1e5bbab7f7925d97e577a5eb89dbddd576d8
+created_at: '2026-10-03T16:31:11.780583Z'
+object_type: Source

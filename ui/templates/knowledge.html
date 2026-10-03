@@ -17,7 +17,7 @@
   <details class="claim">
     <summary>
       {{ chip(c.status, c.status_label) }}
-      <span class="claim-text">{{ c.statement }}</span>
+      <span class="claim-text">{{ c.statement }}{% for l in c.limits %}<span class="limit">{{ l }}</span>{% endfor %}</span>
       <span class="claim-meta">{{ c.kind }}{% if c.checks_pass or c.checks_fail %} · {{ c.checks_pass }} pass, {{ c.checks_fail }} fail{% endif %}</span>
     </summary>
     <div class="claim-body">

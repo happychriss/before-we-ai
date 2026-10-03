@@ -1,0 +1,23 @@
+id: 01M419NW0AAMM77BPQKBESS8XF
+source_id: 01M419NVY2MBX5GEG5JJ256AYP
+table: 03_time_and_overhead_allocations__employee_rates
+column: valid_from
+stats:
+  duckdb_type: VARCHAR
+  row_count: 68
+  null_count: 0
+  distinct_count: 1
+  min: '2025-01-01'
+  max: '2025-01-01'
+  len_min: 10
+  len_avg: 10.0
+  len_max: 10
+  top_values:
+  - value: '2025-01-01'
+    count: 68
+  value_class: date_like
+  patterns:
+  - mask: '9999-99-99'
+    count: 1
+created_at: '2026-10-03T16:31:10.858364Z'
+object_type: DataProfile

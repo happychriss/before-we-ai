@@ -1,0 +1,17 @@
+id: 01M419NW36EX95261FCYS5TMA0
+type: declaration
+actor: system
+exception_samples: []
+payload:
+  source: 05_intercompany_recharges_2025
+  rule: date_to_iso
+  column: date
+  example:
+    before: datetime.datetime(2025, 3, 31, 0, 0)
+    after: '2025-03-31'
+  table: 05_intercompany_recharges_2025__ic_transactions
+source_fingerprints:
+  05_intercompany_recharges_2025: 775bd9fc907a212f7ced63539dbd0e5ca38769405408d4d9e7cb55388b7b98b4
+stale: false
+created_at: '2026-10-03T16:31:10.950429Z'
+object_type: EvidenceRecord

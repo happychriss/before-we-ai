@@ -1,0 +1,41 @@
+id: 01M419NVQG2RBD1MX98W0KG4QR
+source_id: 01M419NVQATFX47BYPB4ACPC1T
+table: 01_company_and_vessel_master__read_me_first
+column: master_data_export
+stats:
+  duckdb_type: VARCHAR
+  row_count: 6
+  null_count: 0
+  distinct_count: 6
+  min: 'Export owner: Group Controlling, Hamburg'
+  max: 'Warning: yard job numbers and contract references are not project IDs.'
+  len_min: 32
+  len_avg: 57.0
+  len_max: 77
+  top_values:
+  - value: 'Export owner: Group Controlling, Hamburg'
+    count: 1
+  - value: 'Reporting date: 31 December 2025'
+    count: 1
+  - value: The Project_Aliases sheet is hidden because it was marked 'work in progress'.
+    count: 1
+  - value: VAT IDs and every company/customer in this corpus are fictional.
+    count: 1
+  - value: 'Warning: Danzig and Gdansk are both used in legacy systems.'
+    count: 1
+  - value: 'Warning: yard job numbers and contract references are not project IDs.'
+    count: 1
+  value_class: text
+  patterns:
+  - mask: AAA AAA AAA AAAAA AAAAAAA/AAAAAAAA AA AAAA AAAAAA AAA AAAAAAAAA.
+    count: 1
+  - mask: AAA AAAAAAA_AAAAAAA AAAAA AA AAAAAA AAAAAAA AA AAA AAAAAA 'AAAA AA AAAAAAAA'.
+    count: 1
+  - mask: 'AAAAAA AAAAA: AAAAA AAAAAAAAAAA, AAAAAAA'
+    count: 1
+  - mask: 'AAAAAAA: AAAA AAA AAAAAAA AAA AAAAAAAA AAAAAAAAAA AAA AAA AAAAAAA AAA.'
+    count: 1
+  - mask: 'AAAAAAA: AAAAAA AAA AAAAAA AAA AAAA AAAA AA AAAAAA AAAAAAA.'
+    count: 1
+created_at: '2026-10-03T16:31:10.576176Z'
+object_type: DataProfile

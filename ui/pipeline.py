@@ -20,8 +20,6 @@ import yaml
 
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "ui-data"
-PROJECT = DATA / "project"
-RUN_LOG = DATA / "run.json"
 SCENARIO = "finance"  # shared with the recorded fixtures
 # byte-identical to DEMO_QUESTION in validation/scripts/_steps.py — the
 # recorded classification belongs to exactly these words
@@ -55,17 +53,89 @@ from before_we_ai.store import ProjectStore  # noqa: E402
 
 TELL_STATEMENTS = CORPUS / "tell_statements.yaml"
 
+from corpora import load as load_landscape  # noqa: E402
+
+VESSEL = load_landscape("vessel")
+RECORDED = VESSEL.root / "run-b"
+
+# The two things this app can show. `replay` runs the pipeline step by step
+# on recorded model answers; `recorded` loads the store a live run left
+# behind and re-judges it — its model stages cannot be replayed, because a
+# recording answers the input it was recorded for.
+LANDSCAPES = {
+    "finance": {
+        "label": "Finance — seeded corpus",
+        "mode": "replay",
+        "blurb": "The landscape the tool grew up on: a two-entity ERP export "
+                 "with 32 seeded errors. Model answers are replayed.",
+        "pill": "Offline replay",
+        "note": "Model answers are recorded, not live. Checks and decisions "
+                "run for real.",
+    },
+    "vessel": {
+        "label": "Vessel — Run B, recorded live",
+        "mode": "recorded",
+        "blurb": "A shipbuilder's ten documents, built by someone else. "
+                 "Proposed live on 2026-10-03 by Opus 5.5 and Sonnet 5.5; "
+                 "judged here by the current engine.",
+        "pill": "Recorded run",
+        "note": "Proposals are the live run's, unedited. Checks were re-run "
+                "with today's engine; decisions run for real.",
+    },
+}
+
+
+def active() -> str:
+    marker = DATA / "active"
+    name = marker.read_text(encoding="utf-8").strip() if marker.is_file() else ""
+    return name if name in LANDSCAPES else "finance"
+
+
+def set_active(name: str) -> None:
+    if name not in LANDSCAPES:
+        raise ValueError(f"unknown landscape {name!r}")
+    DATA.mkdir(parents=True, exist_ok=True)
+    (DATA / "active").write_text(name, encoding="utf-8")
+
+
+def landscape() -> dict:
+    return LANDSCAPES[active()]
+
+
+def workdir() -> Path:
+    return DATA / active()
+
+
+def project_dir() -> Path:
+    return workdir() / "project"
+
+
+def run_log() -> Path:
+    return workdir() / "run.json"
+
 
 def guide():
+    if active() == "vessel":
+        return load_domain_guide(VESSEL.guide_file)
     return load_domain_guide(DOMAIN_GUIDE_FILE)
 
 
+def sources() -> list[dict]:
+    return VESSEL.declarations() if active() == "vessel" else SOURCES
+
+
+def question() -> str:
+    if active() == "vessel":
+        return _recorded_summary()["questions"][0]
+    return DEMO_QUESTION
+
+
 def store() -> ProjectStore:
-    return ProjectStore(PROJECT)
+    return ProjectStore(project_dir())
 
 
 def exists() -> bool:
-    return (PROJECT / "before-ai.yaml").is_file()
+    return (project_dir() / "before-ai.yaml").is_file()
 
 
 def _plural(n: int, word: str) -> str:
@@ -76,8 +146,8 @@ def _plural(n: int, word: str) -> str:
 
 
 def _inputs() -> str:
-    DATA.mkdir(parents=True, exist_ok=True)
-    build_corpus_project(PROJECT, offline=True, scan_now=False)
+    workdir().mkdir(parents=True, exist_ok=True)
+    build_corpus_project(project_dir(), offline=True, scan_now=False)
     g = guide()
     laws = sum(1 for spec in REGISTRY.values() if spec.domain)
     return (f"{_plural(len(SOURCES), 'source')} declared, a domain guide with "
@@ -87,7 +157,7 @@ def _inputs() -> str:
 
 
 def _request() -> str:
-    report = ask(PROJECT, DEMO_QUESTION, guide=guide(), store=store(),
+    report = ask(project_dir(), DEMO_QUESTION, guide=guide(), store=store(),
                  scenario=SCENARIO)
     if report.failure:
         raise RuntimeError(report.failure)
@@ -95,10 +165,10 @@ def _request() -> str:
 
 
 def _scan() -> str:
-    scan(PROJECT)
+    scan(project_dir())
     s = store()
     tables = {p.table for p in s.profiles.values()}
-    matrix = load_matrix(PROJECT)
+    matrix = load_matrix(project_dir())
     return (f"{_plural(len(tables), 'table')}, "
             f"{_plural(len(s.profiles), 'column')} profiled, "
             f"{len(matrix['candidates'])} overlaps kept of "
@@ -106,21 +176,21 @@ def _scan() -> str:
 
 
 def _documents() -> str:
-    result = read_documents(PROJECT)
+    result = read_documents(project_dir())
     return (f"{_plural(result.profiles_written, 'document')}, "
             f"{_plural(result.pages, 'page')}, "
             f"{_plural(result.chunks, 'passage')} — 0 claims")
 
 
 def _hypotheses() -> str:
-    report = hypothesize(PROJECT, store=store(), scenario=SCENARIO)
+    report = hypothesize(project_dir(), store=store(), scenario=SCENARIO)
     if report.failure:
         raise RuntimeError(report.failure)
     return f"{len(report.claims_created)} hypotheses proposed, none promoted"
 
 
 def _mappings() -> str:
-    report = propose_mappings(PROJECT, roles=guide(), store=store(),
+    report = propose_mappings(project_dir(), roles=guide(), store=store(),
                               scenario=SCENARIO)
     if report.failure:
         raise RuntimeError(report.failure)
@@ -129,13 +199,13 @@ def _mappings() -> str:
 
 
 def _plans() -> str:
-    report = plan_checks(PROJECT, store=store(), scenario=SCENARIO)
+    report = plan_checks(project_dir(), store=store(), scenario=SCENARIO)
     return (f"{_plural(len(report.check_plans_created), 'check')} planned, "
             f"{len(report.unbindable)} claims the model said it cannot test")
 
 
 def _read_documents() -> str:
-    report = interpret_documents(PROJECT, guide=guide(), store=store(),
+    report = interpret_documents(project_dir(), guide=guide(), store=store(),
                                  scenario=SCENARIO)
     return (f"{_plural(len(report.claims_created), 'claim')} read from "
             f"documents with {_plural(report.anchors, 'quote')}, "
@@ -144,7 +214,7 @@ def _read_documents() -> str:
 
 def _test() -> str:
     s = store()
-    con = open_catalog(PROJECT)
+    con = open_catalog(project_dir())
     try:
         report = run_ready(s, con)
     finally:
@@ -165,7 +235,7 @@ def _tell() -> str:
     spec = yaml.safe_load(TELL_STATEMENTS.read_text(encoding="utf-8"))
     parked = claims = 0
     for entry in spec["statements"]:
-        report = tell(PROJECT, entry["text"], guide=guide(), store=store(),
+        report = tell(project_dir(), entry["text"], guide=guide(), store=store(),
                       scenario=f"{SCENARIO}_{entry['id'].lower()}")
         if report.failure:
             raise RuntimeError(report.failure)
@@ -216,24 +286,121 @@ STEPS: tuple[Step, ...] = (
 BY_KEY = {step.key: step for step in STEPS}
 
 
+# ---------------------------------------------------------------- recorded
+
+
+def _recorded_summary() -> dict:
+    return json.loads((RECORDED / "summary.json").read_text(encoding="utf-8"))
+
+
+def _tokens(stage: dict) -> str:
+    usage = stage.get("usage") or {}
+    if not usage:
+        return ""
+    return (f" · {usage.get('input_tokens', 0):,} tokens in, "
+            f"{usage.get('output_tokens', 0):,} out, {stage['seconds']:.0f}s")
+
+
+def load_recorded() -> dict[str, str]:
+    """Copy the store the live run left behind, and judge it again.
+
+    Stages 2 and 4 are re-runnable by design, so the copy is re-read and
+    re-checked with the engine as it is now. The proposals — every claim,
+    candidate, check plan and quote — are the live run's, untouched.
+    """
+    if exists():
+        raise ValueError("the recorded run is already loaded — reset first")
+    recorded = {s["stage"]: s for s in _recorded_summary()["stages"]}
+    workdir().mkdir(parents=True, exist_ok=True)
+    shutil.copytree(RECORDED / "project", project_dir())
+    # the recording carries the paths of the machine it ran on
+    config_file = project_dir() / "before-ai.yaml"
+    config = yaml.safe_load(config_file.read_text(encoding="utf-8"))
+    config["sources"] = VESSEL.declarations()
+    config["llm"] = {"domain_guide_file": str(VESSEL.guide_file)}
+    config_file.write_text(yaml.safe_dump(config, sort_keys=False),
+                           encoding="utf-8")
+
+    before = Counter(c.status.value for c in store().claims.values())
+    scan(project_dir())
+    read_documents(project_dir())
+    s = store()
+    con = open_catalog(project_dir())
+    try:
+        report = run_ready(s, con)
+    finally:
+        con.close()
+    resolve_mappings(store(), guide())
+    s = store()
+    after = Counter(c.status.value for c in s.claims.values())
+    verdicts = Counter(e.verdict.value for e in report.executed if e.verdict)
+    g = guide()
+
+    r = recorded
+    log = {
+        "inputs": (f"{_plural(len(VESSEL.declarations()), 'source')} declared, "
+                   f"a guide with {_plural(len(g.objects), 'business object')} "
+                   f"and {_plural(len(g.answer_types), 'answer type')}"),
+        "request": (f"classified as '{r['request']['answer_type']}'"
+                    + _tokens(r["request"])),
+        "scan": (f"{r['scan']['tables']} tables, {r['scan']['columns']} "
+                 "columns profiled — 0 claims"),
+        "documents": (f"{r['documents']['documents']} documents, "
+                      f"{r['documents']['pages']} pages, "
+                      f"{r['documents']['passages']} passages — 0 claims"),
+        "hypotheses": (f"{r['hypotheses']['claims_created']} hypotheses "
+                       "proposed, none promoted" + _tokens(r["hypotheses"])),
+        "mappings": (f"{r['mappings']['candidates']} candidates for "
+                     f"{r['mappings']['roles_with_candidates']} of "
+                     f"{r['mappings']['roles_total']} roles"
+                     + _tokens(r["mappings"])),
+        "plans": (f"{r['plans']['checks_created']} checks planned, "
+                  f"{r['plans']['with_filter']} with a filter the model wrote"
+                  + _tokens(r["plans"])),
+        "read_documents": (f"{r['read_documents']['claims_created']} claims "
+                           f"read from documents, each with a validated quote"
+                           + _tokens(r["read_documents"])),
+        "test": (f"on the day: {r['test']['verdicts'].get('pass', 0)} pass, "
+                 f"{r['test']['verdicts'].get('fail', 0)} fail, "
+                 f"{r['test']['statuses'].get('contradicted', 0)} claims "
+                 f"contradicted. Re-judged now: {verdicts.get('pass', 0)} pass, "
+                 f"{verdicts.get('fail', 0)} fail, "
+                 f"{verdicts.get('inconclusive', 0)} inconclusive, "
+                 f"{after.get('contradicted', 0)} contradicted"),
+        "clarify": f"{_plural(len(s.questions), 'question')} open",
+    }
+    assert before  # the recording is never empty
+    run_log().write_text(json.dumps(log, indent=2), encoding="utf-8")
+    return log
+
+
 # ---------------------------------------------------------------- run log
+
+
+def steps() -> tuple[Step, ...]:
+    """Nobody has volunteered anything about the vessel landscape."""
+    if active() == "vessel":
+        return tuple(step for step in STEPS if step.key != "tell")
+    return STEPS
 
 
 def done() -> dict[str, str]:
     """step key -> the sentence it left behind, for the steps already run."""
-    if not exists() or not RUN_LOG.is_file():
+    if not exists() or not run_log().is_file():
         return {}
-    return json.loads(RUN_LOG.read_text(encoding="utf-8"))
+    return json.loads(run_log().read_text(encoding="utf-8"))
 
 
 def next_step() -> Step | None:
     finished = done()
-    return next((step for step in STEPS if step.key not in finished), None)
+    return next((step for step in steps() if step.key not in finished), None)
 
 
 def run_step(key: str) -> str:
     """Run exactly the next step. Offline, a proposal step runs once: its
     recorded answers belong to that one input."""
+    if landscape()["mode"] != "replay":
+        raise ValueError("a recorded run is loaded whole, not stepped through")
     step = next_step()
     if step is None:
         raise ValueError("the run is complete — reset to start over")
@@ -241,13 +408,14 @@ def run_step(key: str) -> str:
         raise ValueError(f"the next step is '{step.key}', not '{key}'")
     summary = step.run()
     log = done() | {key: summary}
-    RUN_LOG.write_text(json.dumps(log, indent=2), encoding="utf-8")
+    run_log().write_text(json.dumps(log, indent=2), encoding="utf-8")
     return summary
 
 
 def reset() -> None:
-    if DATA.is_dir():
-        shutil.rmtree(DATA)
+    """Delete the active landscape's project and every decision made in it."""
+    if workdir().is_dir():
+        shutil.rmtree(workdir())
 
 
 def ai_claims(s: ProjectStore) -> list:
