@@ -20,30 +20,25 @@ of that day is `docs/case-study-notes.md`; this is only what to do next.
   `main` there still holds the old container-era history (190 commits) and was
   left untouched. The old working folder also holds the uncommitted guide
   builder; it is not in this repository.
-- **In flight: the affiliate landscape** (`corpora/affiliate/`). A small pharma
-  distribution affiliate with its own ERP; goods receipt, invoice verification,
-  manual clearings. Built by a separate agent from
-  `docs/draft-thoughts/affiliate-landscape-scenario.md`. **Do not open
-  `corpora/affiliate/answer-key/` or `generator/`** until the results are
-  committed. Predictions are committed: `corpora/affiliate/predictions-run-a.md`.
-- **Next, in this order** (the four arms the predictions name):
-  A. `python scripts/run-landscape.py affiliate` — does it read at all;
-  B. the plain model, three fresh agents, the three questions, nothing else —
-     copy `data/` to a clean directory outside the repository first, as was
-     done for the vessel baseline;
-  C. the low-AI flow: `foundation.discover` → `foundation.match.propose` →
-     a person reviews the proposed binding → `foundation.evaluate` with
-     `foundations/procure-to-pay/foundation.docx`; report rules that hold,
-     rules that break, and the exceptions;
-  D. `answer_check` over B's answers, and the document's reconciliation rules
-     over the result.
-  Then write `corpora/affiliate/results-run-a.md` blind, commit, and only then
-  ask the owner whether to open the key.
-- **Not built yet:** a report page for arm C in the web app; a status in
-  `answer_check` for a correction that rests on a general rule rather than a
-  quote about that record; date comparisons and cross-object row rules in the
-  rule language (the procure-to-pay author lists seven rules it could not
-  express); a minimum number of records for a rule to count.
+- **The affiliate landscape is done and scored (2026-10-03).** Results:
+  `corpora/affiliate/results-run-a.md` (blind) and `results-run-a-scored.md`.
+  Three plain-model runs: all three questions right, all 18 seeded errors
+  found. The low-AI flow (tie discovery, signed rules, hand binding): one tie
+  in twelve tables, 7 of 18 errors clearly surfaced, about one exception in
+  ten real. The key has been opened; the landscape is no longer blind.
+- **Where that leaves the project.** As a gate before the model: not needed
+  on anything tested. As rules after the model: nothing added on the
+  affiliate landscape. What still stands: nobody without a key can tell the
+  model's right answer from a wrong one. **The open question is no longer how
+  to build it but what to test it on** — both hard landscapes were made by a
+  model and solved by one. Next candidates, owner to choose: (a) data whose
+  mess nobody designed (public messy datasets, or real data on the owner's
+  side, never in this repository); (b) the same landscapes at 100x the rows,
+  where a model can no longer read everything; (c) stop testing and write up.
+- **Not built, and now doubtful whether worth building:** a report page for
+  the low-AI flow; date comparisons and cross-object rules; a claim status for
+  "rests on a general rule". `answer_check` does not fit a balance made of
+  open items across tables (arm D was not run for that reason).
 - **After that:** the write-up, from `docs/case-study-notes.md`.
 
 ## Where we are

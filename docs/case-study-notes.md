@@ -124,6 +124,29 @@ Every seeded error had a note in a PDF explaining it, and a master-data column
 held the right answer. Much of finding 4 is owed to that. The affiliate
 landscape exists because of it.
 
+### 11. On the landscape built to be hard, the plain model was right again
+
+The affiliate landscape has no document explaining any error. Three plain-model
+runs gave the year-end balance **exact to the euro**, the same nine invoices,
+the right lateness figure with the right restriction — and cited all 18 seeded
+errors and all 5 undecidable cases. Seven of twelve predictions were wrong, all
+in the same direction: the model was underestimated and the rules
+overestimated (`corpora/affiliate/results-run-a-scored.md`).
+
+### 12. The low-AI flow did not survive realistic data
+
+Finding ties by arithmetic works on spreadsheets with everything on one row.
+On normalised ERP extracts it found one tie in twelve tables. With a binding
+written by hand, the signed rules surfaced 7 of 18 errors clearly, buried 4
+more among ordinary events, and missed 7; about one exception in ten pointed
+at an error.
+
+### 13. The confound that remains
+
+Both hard landscapes were written by a model and solved by a model of the same
+family. Seeded errors are the errors a model thinks of. And in every run we
+knew the answer was right only because we held the key.
+
 ## What the project is now
 
 The three parts ended in an order that is not the one they were built in:
@@ -145,9 +168,9 @@ home of domain rules.
 
 ## What is not established
 
-- Whether any of this holds on realistic data. That is what the affiliate
-  landscape is for; its predictions are in
-  `corpora/affiliate/predictions-run-a.md`.
+- Whether any of this holds on data whose mess nobody designed. The
+  affiliate landscape was meant to be that and was solved outright; it is
+  still synthetic, small, and model-made.
 - Whether a weaker model would have failed where the current one succeeded.
   The "tipping point" is an impression; only one side of it was measured.
 - Whether a foundation document given to a model as plain context does as
