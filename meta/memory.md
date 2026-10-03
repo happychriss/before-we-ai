@@ -6,6 +6,26 @@
 
 ## Where we are
 
+- **Direction changed 2026-10-03 (owner decision): this is a case study, not
+  a product.** The project moved out of the dev container into this folder
+  (fresh git history, no remote; GitHub still holds the old history and was
+  not updated). The guide builder stayed behind in the old folder. What the
+  case study still needs, in order: (1) close the vacuous-pass hole — a
+  model-supplied `where` filter or an empty population lets a check pass and
+  promote (`checks/verdicts.py` `empty_expected`, `llm/vocabulary.py` exempts
+  `*where` from validation); (2) a **small local web app** (owner choice:
+  dashboard of the run plus the clickable blocked-to-ready loop, offline on
+  recorded answers, POC but good-looking; mockup in
+  `docs/draft-thoughts/example_visual_screen.png`); (3) Run B; (4) the
+  write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
+  layout-analyser swap are dropped** — the roadmap below predates this and
+  is kept for reference only. **First open step for the web app:** establish
+  whether human acts (`answer_question` with a pick, `confirm_claim`,
+  `waive_item`, `confirm_classification`) can move the finance walkthrough
+  from blocked to ready offline — that decides what the workflow can show.
+  No API key exists on this machine (`~/.config/before-we-ai/api-key` was
+  inside the container), so Run B needs a new one.
+
 - **Built:** M0 corpus · M1 core · M2 ingestion · M3 checks & engine ·
   M4 LLM contracts V1/V2 · readiness report · M6 question flow +
   ReadinessMap · **answer types** (the guide declares what a family of
