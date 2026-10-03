@@ -20,7 +20,19 @@
   entries inside `decode`'s `pairs` are not validated; and "False-Promotion
   0" still measures authorship, not whether a promoted claim is correct; (2) ~~a small local web app~~ **built 2026-10-03** — `ui/`, started by
   `scripts/ui.sh` (dashboard, step-by-step run, decisions, readiness; offline
-  on recorded answers); (3) Run B; (4) the write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
+  on recorded answers); (3) ~~Run B~~ **done 2026-10-03**, blind,
+  on Opus 5.5 / Sonnet 5.5 — `corpora/vessel/results-run-b.md`. Verdict
+  `blocked` (0 of 46), negative control elected nothing, no AI-authored
+  promotion. **One failure condition fired:** a promoted claim that is false
+  as stated, because a model-written filter narrowed the test and not the
+  claim. **The larger finding:** the AI can *contradict* by choice of check —
+  15 role candidates refuted by checks about something else, several on
+  rounding. Open engine decisions that follow, none taken yet: a filtered
+  pass must scope the claim or not promote; a generic check should not refute
+  a role binding on dirty rows; a crashed check must leave evidence; an
+  unevaluated formula must not read as a contradiction. The answer key is
+  still unopened — opening it to score trap recall is the owner's call;
+  (4) the write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
   layout-analyser swap are dropped** — the roadmap below predates this and
   is kept for reference only. **What building the web app showed about the engine**, each worth a
   decision before the write-up: (a) none of the three candidates offered for
