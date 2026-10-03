@@ -1,0 +1,91 @@
+# Where the shipbuilding foundation document's objects and quantities live in
+# the vessel landscape — and which guide role each one would settle.
+#
+# Written by hand, 2026-10-03, by someone who had seen the data and the answer
+# key. That is the honest status of this file: the *document* is blind (its
+# author saw nothing), the *binding* is not. Binding is deliberately not left
+# to a model here — a model choosing what a law is tested on is the hole Run B
+# found.
+#
+# Objects the document describes and this landscape simply does not have are
+# left out, and the rules that need them are reported as not applicable:
+# change orders, payment milestones, purchase order lines, material issues,
+# the chart of accounts, journal vouchers and general ledger lines.
+
+parameters:
+  STATUS_DELIVERED: delivered
+  STATUS_IN_BUILD: work in progress
+
+objects:
+  legal_entity:             {view: 01_company_and_vessel_master__group_structure}
+  customer:                 {view: 01_company_and_vessel_master__customers}
+  vessel_project:           {view: 01_company_and_vessel_master__vessel_master, role: build}
+  shipbuilding_contract:    {view: 01_company_and_vessel_master__vessel_master}
+  sales_invoice:            {view: 04_sales_invoices_and_credit_notes_2025__documents}
+  cost_ledger_entry:        {view: 02_project_cost_ledger_2025__cost_ledger, role: journal}
+  project_cost_summary:     {view: 02_project_cost_ledger_2025__pivot_export}
+  employee:                 {view: 03_time_and_overhead_allocations__employee_rates}
+  timesheet_entry:          {view: 03_time_and_overhead_allocations__time_allocations, role: labour_allocation}
+  intercompany_transaction: {view: 05_intercompany_recharges_2025__ic_transactions, role: intercompany}
+
+quantities:
+  legal_entity.entity_id:                 {column: entity_code}
+  legal_entity.functional_currency:       {column: functional_currency}
+  customer.customer_id:                   {column: customer_id}
+
+  vessel_project.project_id:              {column: project_id, role: authoritative_key}
+  vessel_project.hull_number:             {column: yard_job_no}
+  vessel_project.entity_id:               {column: build_yard}
+  vessel_project.vessel_type:             {column: vessel_type}
+  vessel_project.project_status:          {column: status, role: completion_status}
+  vessel_project.delivery_date:           {column: acceptance_date, role: acceptance_date}
+
+  shipbuilding_contract.contract_id:      {column: contract_reference}
+  shipbuilding_contract.project_id:       {column: project_id}
+  shipbuilding_contract.customer_id:      {column: customer_id}
+  shipbuilding_contract.contract_currency: {column: contract_currency}
+  shipbuilding_contract.contract_price_current: {column: contract_value}
+
+  sales_invoice.invoice_id:               {column: document_id}
+  sales_invoice.invoice_number:           {column: document_id}
+  sales_invoice.entity_id:                {column: issuing_entity}
+  sales_invoice.contract_id:              {column: project_reference}
+  sales_invoice.invoice_date:             {column: document_date}
+  sales_invoice.invoice_currency:         {column: currency}
+  sales_invoice.net_amount:               {column: net_amount}
+  sales_invoice.tax_amount:               {column: vat_amount}
+  sales_invoice.gross_amount:             {column: gross_amount}
+
+  cost_ledger_entry.cost_entry_id:        {column: transaction_id, role: doc_ref}
+  cost_ledger_entry.entity_id:            {column: entity, role: entity}
+  cost_ledger_entry.project_id:           {column: project_id, role: build_ref}
+  cost_ledger_entry.cost_category:        {column: category, role: account}
+  cost_ledger_entry.posting_date:         {column: posting_date, role: period}
+  cost_ledger_entry.transaction_currency: {column: currency, role: currency}
+  cost_ledger_entry.amount_transaction:   {column: amount_local, role: amount_local}
+  # FX_RATE_DIRECTION = INDIRECT: the ledger stores PLN per EUR, the document's
+  # rule multiplies. The company parameter the document asks for, applied.
+  cost_ledger_entry.fx_rate:              {column: pln_per_eur, invert: true}
+  cost_ledger_entry.amount_functional:    {column: reported_eur, role: amount_reporting_currency}
+  cost_ledger_entry.source_document:      {column: invoice_number, role: invoice_ref}
+
+  project_cost_summary.project_id:        {column: project_id}
+  project_cost_summary.total_cost:        {column: reported_eur_total}
+
+  employee.employee_id:                   {column: employee_id}
+
+  timesheet_entry.timesheet_id:           {column: entry_id, role: labour_source_ref}
+  timesheet_entry.employee_id:            {column: employee_id}
+  timesheet_entry.project_id:             {column: project_reference, role: labour_build_ref}
+  timesheet_entry.work_date:              {column: month, role: labour_period}
+  timesheet_entry.total_hours:            {column: hours}
+  timesheet_entry.hourly_rate:            {column: hourly_rate_eur}
+  timesheet_entry.labour_cost:            {column: extended_cost_eur, role: labour_cost_reporting_currency}
+
+  intercompany_transaction.ic_id:             {column: sender_document, role: ic_sender_ref}
+  intercompany_transaction.selling_entity_id: {column: seller_entity, role: ic_seller_entity}
+  intercompany_transaction.buying_entity_id:  {column: buyer_entity, role: ic_buyer_entity}
+  intercompany_transaction.project_id:        {column: project_id, role: ic_build_ref}
+  intercompany_transaction.transaction_date:  {column: date}
+  intercompany_transaction.amount_seller:     {column: sender_amount_eur}
+  intercompany_transaction.amount_buyer:      {column: receiver_amount_eur}

@@ -128,6 +128,30 @@ def readiness(request: Request):
     return _page(request, "readiness")
 
 
+@app.get("/foundation", response_class=HTMLResponse)
+def foundation(request: Request):
+    def result(s):
+        f = pipeline.foundation_result() if s else None
+        if f:
+            counts = {}
+            for rule in f["rules"]:
+                counts[rule["state"]] = counts.get(rule["state"], 0) + 1
+            f["counts"] = counts
+            f["settled"] = sorted({r for rule in f["rules"]
+                                   for r in rule["settled"]})
+        return f
+    return _page(request, "foundation", f=result,
+                 available=lambda s: bool(s) and pipeline.foundation_available())
+
+
+@app.post("/apply-foundation")
+def apply_foundation(request: Request):
+    return _act(request, "/foundation",
+                "The document was read and its rules measured. Statuses "
+                "and the verdict were re-derived.",
+                pipeline.apply_foundation)
+
+
 @app.get("/report", response_class=HTMLResponse)
 def report():
     """The full audit report — the existing readiness report, unchanged."""

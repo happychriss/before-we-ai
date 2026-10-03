@@ -374,6 +374,83 @@ def load_recorded() -> dict[str, str]:
     return log
 
 
+# ---------------------------------------------------------------- foundation
+
+FOUNDATION_DOC = REPO / "foundations" / "shipbuilding" / "foundation.docx"
+FOUNDATION_BINDING = VESSEL.root / "foundation-binding.yaml"
+# the vessel guide borrowed finance's balance law for a single-sided cost
+# ledger; the foundation document replaces it
+RETIRED_LAWS = {"balance": "a ledger law borrowed from finance"}
+
+
+def foundation_available() -> bool:
+    return active() == "vessel" and FOUNDATION_DOC.is_file()
+
+
+def foundation_log() -> Path:
+    return workdir() / "foundation.json"
+
+
+def apply_foundation() -> dict:
+    """Read the Word document, measure its rules, write what they settle."""
+    from before_we_ai.foundation import Binding, apply, read_foundation, retire
+
+    if not foundation_available():
+        raise ValueError("no foundation document for this landscape")
+    document = read_foundation(FOUNDATION_DOC)
+    binding = Binding.from_dict(
+        yaml.safe_load(FOUNDATION_BINDING.read_text(encoding="utf-8")))
+    retire(store(), RETIRED_LAWS)
+    con = open_catalog(project_dir())
+    try:
+        applied = apply(store(), con, document, binding)
+    finally:
+        con.close()
+    rules = []
+    for a in applied:
+        r, rule = a.result, a.result.rule
+        if not r.applicable:
+            state = "not_applicable"
+        elif r.error:
+            state = "error"
+        elif not r.evaluable:
+            state = "not_evaluable"
+        else:
+            state = "holds" if a.holds else "fails"
+        rules.append({
+            "id": rule.id, "name": rule.name, "statement": rule.statement,
+            "kind": rule.kind, "formal": rule.formal,
+            "tolerance": rule.tolerance, "why": rule.why,
+            "exception_means": rule.exception_means, "state": state,
+            "reason": r.reason or r.error,
+            "satisfied": r.satisfied, "evaluable": r.evaluable,
+            "blank": r.not_evaluable, "share": round(100 * r.share, 1),
+            "samples": r.samples, "sql": r.sql,
+            "settled": a.settled, "no_candidate": a.no_candidate,
+        })
+    log = {
+        "document": str(FOUNDATION_DOC.relative_to(REPO)),
+        "binding": str(FOUNDATION_BINDING.relative_to(REPO)),
+        "min_share": document.min_share,
+        "objects": len(document.objects),
+        "quantities": len(document.quantities),
+        "tolerances": [{"name": t.name, "absolute": t.absolute,
+                        "relative": t.relative, "applies_to": t.applies_to}
+                       for t in document.tolerances.values()],
+        "open_questions": document.open_questions,
+        "refused": document.refused,
+        "rules": rules,
+    }
+    foundation_log().write_text(json.dumps(log, indent=2), encoding="utf-8")
+    return log
+
+
+def foundation_result() -> dict | None:
+    if not foundation_log().is_file():
+        return None
+    return json.loads(foundation_log().read_text(encoding="utf-8"))
+
+
 # ---------------------------------------------------------------- run log
 
 

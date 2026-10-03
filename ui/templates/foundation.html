@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chip %}
+{% set LABEL = {'holds': 'Holds', 'fails': 'Does not hold', 'not_applicable': 'No such data', 'not_evaluable': 'Nothing to evaluate', 'error': 'Could not run'} %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Foundation document</h1>
+    <p class="muted">What must be true of the data if it is what it claims to be — written by a person, in general, before any file is seen. A rule that holds settles the columns in it. The records where it does not hold are findings.</p>
+  </div>
+  <div class="actions">
+    {% if available %}<form method="post" action="/apply-foundation"><button class="btn btn-primary">{{ 'Read and apply again' if f else 'Read the document and apply it' }}</button></form>{% endif %}
+  </div>
+</div>
+
+{% if not available %}
+<div class="card"><p>There is no foundation document for this landscape. Switch to the vessel landscape and load its recorded run: a shipbuilding document was written for it by an author who saw none of the data.</p></div>
+{% elif not f %}
+<div class="card">
+  <h2>foundations/shipbuilding/foundation.docx</h2>
+  <p>A Word document a finance lead can read and sign. Its author was told only what kind of company this is, and opened no file. Applying it reads the document, measures every rule on the vessel data, and writes the result onto the role candidates as check evidence.</p>
+  <p class="muted small">Which column each of the document's terms means in this landscape is in <code>corpora/vessel/foundation-binding.yaml</code>. That mapping was written by hand, by someone who had seen the data. No model is involved anywhere on this page.</p>
+</div>
+{% else %}
+<section class="tiles">
+  <div class="tile"><div class="tile-n">{{ f.rules|length }}</div><div class="tile-l">Rules in the document</div><div class="tile-s">{{ f.objects }} objects · {{ f.quantities }} quantities</div></div>
+  <div class="tile"><div class="tile-n">{{ f.rules|length - f.counts.get('not_applicable', 0) }}</div><div class="tile-l">Apply to this data</div><div class="tile-s">{{ f.counts.get('not_applicable', 0) }} speak of data it lacks</div></div>
+  <div class="tile"><div class="tile-n">{{ f.counts.get('holds', 0) }}</div><div class="tile-l">Hold</div><div class="tile-s">at least {{ (f.min_share * 100)|round|int }}% of records</div></div>
+  <div class="tile"><div class="tile-n">{{ f.counts.get('fails', 0) }}</div><div class="tile-l">Do not hold</div><div class="tile-s">findings, not verdicts</div></div>
+  <div class="tile"><div class="tile-n">{{ f.settled|length }}</div><div class="tile-l">Roles settled</div><div class="tile-s">no person asked</div></div>
+  <a class="tile" href="/readiness"><div class="tile-n">{% if o.ready %}{{ o.ready.settled|length }}/{{ o.ready['items']|length }}{% endif %}</div><div class="tile-l">Dependencies settled</div><div class="tile-s">see readiness</div></a>
+</section>
+
+<section>
+  <h2>Rules that apply to this data</h2>
+  {% for r in f.rules if r.state != 'not_applicable' %}
+  <details class="rule">
+    <summary>
+      <span class="rule-id">{{ r.id }}</span>
+      <span><span class="chip chip-s-{{ r.state }}">{{ LABEL[r.state] }}</span></span>
+      <span class="rule-name"><b>{{ r.name }}</b><span>{{ r.statement }}</span></span>
+      <span class="rule-share">{% if r.evaluable %}{{ r.satisfied }} of {{ r.evaluable }} records · {{ r.share }}%<div class="meter{{ ' fails' if r.state == 'fails' }}"><i style="width:{{ r.share }}%"></i></div>{% else %}—{% endif %}</span>
+    </summary>
+    <div class="rule-body">
+      <p><span class="formal">{{ r.formal }}</span> &nbsp; tolerance <span class="formal">{{ r.tolerance }}</span></p>
+      {% if r.settled %}<p><b>Settles:</b> {{ r.settled|join(', ') }}</p>{% endif %}
+      {% if r.no_candidate %}<p class="muted">The run proposed no candidate on these columns, so nothing was settled for: {{ r.no_candidate|join(', ') }}</p>{% endif %}
+      {% if r.blank %}<p class="muted">{{ r.blank }} record{{ 's' if r.blank != 1 }} could not be evaluated because a value is blank.</p>{% endif %}
+      {% if r.reason %}<p class="muted">{{ r.reason }}</p>{% endif %}
+      {% if r.samples %}
+      <p><b>Where it does not hold</b> <span class="muted">— the document says this usually means: {{ r.exception_means }}</span></p>
+      <pre class="samples">{% for row in r.samples %}{{ row }}
+{% endfor %}</pre>
+      {% endif %}
+      <p class="muted small">{{ r.why }}</p>
+    </div>
+  </details>
+  {% endfor %}
+</section>
+
+<section class="na">
+  <h2>Rules about data this landscape does not have</h2>
+  {% for r in f.rules if r.state == 'not_applicable' %}
+  <details class="rule">
+    <summary>
+      <span class="rule-id">{{ r.id }}</span>
+      <span><span class="chip chip-s-{{ r.state }}">{{ LABEL[r.state] }}</span></span>
+      <span class="rule-name"><b>{{ r.name }}</b><span>{{ r.statement }}</span></span>
+      <span class="rule-share"></span>
+    </summary>
+    <div class="rule-body"><p><span class="formal">{{ r.formal }}</span></p><p class="muted">{{ r.reason }}</p></div>
+  </details>
+  {% endfor %}
+</section>
+
+<section class="two">
+  <div class="card">
+    <h2>Tolerances, by class</h2>
+    <table class="kv">
+      {% for t in f.tolerances %}<tr><td><b>{{ t.name }}</b><div class="small">{{ t.applies_to }}</div></td><td>{% if t.absolute is not none %}± {{ t.absolute }}{% endif %}{% if t.absolute is not none and t.relative is not none %} or {% endif %}{% if t.relative is not none %}{{ (t.relative * 100)|round(2) }}%{% endif %}{% if t.absolute is none and t.relative is none %}exact{% endif %}</td></tr>{% endfor %}
+    </table>
+  </div>
+  <div class="card">
+    <h2>What the document says it cannot decide</h2>
+    <ul class="plain small">{% for q in f.open_questions[1:] %}<li style="margin-bottom:6px">{{ q }}</li>{% endfor %}</ul>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

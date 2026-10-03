@@ -233,6 +233,22 @@ blockquote { margin: 6px 0 0; padding: 4px 0 4px 12px; border-left: 3px solid va
 .f-head form { margin: 0; flex: none; }
 .f-head p { margin: 0; }
 
+/* foundation */
+.rule { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; }
+.rule > summary { display: grid; grid-template-columns: 44px 150px minmax(0, 1fr) 190px; gap: 12px; align-items: center; padding: 11px 16px; list-style: none; }
+.rule > summary::-webkit-details-marker { display: none; }
+.rule-id { font-weight: 700; color: var(--mute); }
+.rule-name b { display: block; } .rule-name span { font-size: 13px; color: var(--mute); }
+.rule-share { font-size: 13px; text-align: right; }
+.meter { height: 6px; border-radius: 3px; background: var(--grey-soft); margin-top: 4px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--ok); }
+.meter.fails i { background: var(--bad); }
+.rule-body { padding: 4px 16px 14px 72px; font-size: 14px; }
+.rule-body code, .formal { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--grey-soft); padding: 2px 6px; border-radius: 5px; }
+.chip-s-holds { background: var(--ok-soft); color: #14653f; } .chip-s-fails { background: var(--bad-soft); color: #a52f2f; }
+.chip-s-not_applicable, .chip-s-not_evaluable { background: var(--grey-soft); color: #555a69; } .chip-s-error { background: var(--warn-soft); color: #8a5f00; }
+.na summary { opacity: .65; }
+
 /* readiness */
 .deps td { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 .deps tr:last-child td { border-bottom: 0; }

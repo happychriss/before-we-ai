@@ -44,7 +44,26 @@
   blank keys silently (VT12 was certified absent by a check and found by a
   document); document claims are not linked to dependencies (1 of 28); a
   dependency list is drafted even when no answer type fits;
-  (4) the write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
+  (4) the write-up.
+- **Foundation documents — experiment, 2026-10-03 (owner idea).** The tool
+  is safe and defensive: 0 of 46 vessel dependencies settled by machine,
+  because only three borrowed finance laws may confirm anything. A
+  *foundation document* is domain knowledge a person signs and a machine
+  applies: rules that tie several columns together, measured by share with a
+  tolerance class, exceptions reported as findings. `foundations/shipbuilding/
+  foundation.docx` was written by an agent that saw no file (32 rules, 6
+  tolerance classes, MIN_SHARE 0.95); `before_we_ai/foundation/` reads the
+  Word file and applies it; the binding of its terms to vessel columns is
+  hand-written and **not** blind (`corpora/vessel/foundation-binding.yaml`).
+  Result on the vessel run: 13 of 32 rules apply, 9 hold, 3 do not, 9 of 46
+  dependencies settle. What it showed: the FX rule needed the company's rate
+  direction; the labour rule failed only because the generic money tolerance
+  (5 cents) is tighter than a company that rounds to whole euros; two rules
+  ran on 1 and 3 records; the format cannot express inequalities, filtered
+  totals or cross-object identities. Shown in the web app under Foundation.
+  Open: who binds (a model would reopen the Run B hole), a minimum population
+  for a rule to count, and whether a holding rule should settle roles at all
+  given the standing "data can refute, never confirm" principle. **M7.4, M8 as specified, M9, guide-builder integration and the
   layout-analyser swap are dropped** — the roadmap below predates this and
   is kept for reference only. **What building the web app showed about the engine**, each worth a
   decision before the write-up: (a) none of the three candidates offered for
