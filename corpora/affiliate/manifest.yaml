@@ -1,0 +1,104 @@
+# The affiliate landscape — a small country affiliate with its own local ERP.
+#
+# Meridia Pharma Norvania d.o.o.: a fictional sales and distribution company of
+# the fictional Meridia Pharma Group, in the fictional Republic of Norvania
+# (currency NVK). Nine extracts from its local ERP as they arrive in the group
+# data warehouse, and three documents. Fiscal year 2025; on 1 July 2025 the
+# affiliate changed its document numbering and its account mapping and did not
+# restate the earlier months.
+#
+# Why it exists: realistic in the way that matters — not everything fits, and
+# nobody wrote down why.
+
+name: affiliate
+domain: finance
+frozen: true
+seed: 20251003
+
+# This landscape is read with a foundation document rather than a domain guide;
+# the packaged finance pack is named here only because the manifest requires one.
+domain_guide:
+  packaged: finance
+
+# DO NOT OPEN. The answer key states which cases were seeded and what the right
+# answers are; the generator contains the same in code. Reading either one ends
+# the blind evaluation permanently.
+answer_key: answer-key/ANSWER_KEY.md
+generator: generator/generate_affiliate.py
+
+questions:
+  - "What is the balance of goods received but not yet invoiced at year end, in EUR?"
+  - "Which vendor invoices were paid without a goods receipt, and for how much?"
+  - "How much of the purchase volume was delivered late?"
+
+sources:
+  - name: vendors
+    kind: csv
+    path: vendors.csv
+    sha256: f41d1b519dfbd35a58f70a57489becd80626c3439e4372697655d2733ab82bf7
+    description: "Vendor master of the affiliate, including the group supply company."
+  - name: materials
+    kind: csv
+    path: materials.csv
+    sha256: 9ee105f282ef9aa520e2fafaa50debe6c6002b39688c3ccc62a69b9e97332ba0
+    description: "Material master with base unit, order unit and the conversion between them."
+  - name: po_header
+    kind: csv
+    path: po_header.csv
+    sha256: 1415bdaac03dcb358e448363c1c3e5e0714022b3ffc0f7ae48e0c85acf09fd56
+    description: "Purchase order headers: vendor, order date, currency."
+  - name: po_lines
+    kind: csv
+    path: po_lines.csv
+    sha256: f8a459e701f3fb4e209827668b4a152bc24cf996f6061894dc6dd54cbbd91a15
+    description: "Purchase order lines: material, quantity in order unit, price, delivery date."
+  - name: goods_receipts
+    kind: csv
+    path: goods_receipts.csv
+    sha256: 930bef40bf32575713b477402219a91cacdfa1a7b01b462f43a8acbe13f49037
+    description: "Goods receipt lines against purchase order lines, including reversals."
+  - name: inv_header
+    kind: csv
+    path: inv_header.csv
+    sha256: d1695f223413d821327d2028fa6f137cae2470e95ba0c72914833c7f5d315943
+    description: "Vendor invoice and credit note headers, with and without purchase order."
+  - name: inv_lines
+    kind: csv
+    path: inv_lines.csv
+    sha256: 7ae2ee52665a82df095140368a4b19214d8575af4221aa8cd52b13b7d100e9c7
+    description: "Vendor invoice and credit note lines."
+  - name: payments
+    kind: csv
+    path: payments.csv
+    sha256: d95580501884b0287262666f39f43dde603c288a35a1fde086768c7af2280440
+    description: "Payment runs and the invoices and credit notes they settled."
+  - name: gl_lines
+    kind: csv
+    path: gl_lines.csv
+    sha256: 5ec3bdfd52df15fad8126d9cd581e5b4fba6adbc789de95b43f7bd561203ed31
+    description: "Ledger lines on the inventory, clearing, vendor and difference accounts, automatic and manual."
+  - name: acct_mapping
+    kind: xlsx
+    path: acct_mapping.xlsx
+    sha256: 98bcbf97045eb3e2c795194fb564804a3a3edcd7f9adf2eac1a3f8cb8b7d0a82
+    description: "Mapping of local accounts to group accounts, with validity dates."
+  - name: fx_rates
+    kind: csv
+    path: fx_rates.csv
+    sha256: e6a25305fdd72a3c4ca9fb87ee2d6ac2e60d3b80058939826722b5928a09cd90
+    description: "Monthly exchange rates NVK per EUR for FY2025: booking rate and month-end rate."
+  - name: posting_instruction_local
+    kind: pdf
+    path: posting_instruction_local.pdf
+    sha256: df9d8b1dfc0a6344ce16652493da057777901b8aac76baaa5297aca3e724d456
+    description: "The affiliate's local posting instruction for purchasing, goods receipt and invoice verification."
+  - name: group_accounting_manual_ch7
+    kind: pdf
+    path: group_accounting_manual_ch7.pdf
+    sha256: 174d33e0f935e5edf39451178871189e7091df877e8dc9bd5c76e1bb713cc77b
+    description: "Extract of the group accounting manual: goods receipt, invoice verification, clearing account, manual journals."
+  - name: handover_note_accounting
+    kind: pdf
+    path: handover_note_accounting.pdf
+    sha256: db31ee2ecc45f7b5052226853d762f26023f2155c96ee567183e32e254273588
+    description: "Handover note of the accountant who left the affiliate at the end of July 2025."
