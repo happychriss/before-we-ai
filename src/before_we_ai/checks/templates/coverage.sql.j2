@@ -1,0 +1,11 @@
+SELECT count(*) FROM (VALUES {{ expected_values }})
+-- ::exceptions::
+WITH expected(unit) AS (VALUES {{ expected_values }}),
+actual AS (
+    SELECT DISTINCT {{ unit_expr }} AS unit FROM "{{ table }}"
+)
+SELECT e.unit AS missing_unit
+FROM expected e
+LEFT JOIN actual a USING (unit)
+WHERE a.unit IS NULL
+ORDER BY missing_unit

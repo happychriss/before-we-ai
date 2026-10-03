@@ -1,0 +1,16 @@
+SELECT count(*) FROM "{{ child }}"
+-- ::exceptions::
+WITH child_keys AS (
+    SELECT DISTINCT {{ child_expr }} AS k FROM "{{ child }}" WHERE {{ child_expr }} IS NOT NULL
+),
+parent_all AS (
+    SELECT {{ parent_expr }} AS k FROM "{{ parent }}" WHERE {{ parent_expr }} IS NOT NULL
+),
+parent_keys AS (
+    SELECT DISTINCT k FROM parent_all
+)
+SELECT
+    (SELECT count(*) FROM child_keys)                              AS child_distinct,
+    (SELECT count(*) FROM parent_keys)                             AS parent_distinct,
+    (SELECT count(*) FROM parent_all)                              AS parent_rows,
+    (SELECT count(*) FROM child_keys c JOIN parent_keys p USING (k)) AS overlap

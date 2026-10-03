@@ -1,0 +1,137 @@
+"""Phase 0–1 orchestration: connect, normalize, fingerprint, measure.
+
+``scan(root)`` is the seam the M8 CLI command will wrap. It reads the
+source declarations from ``before-ai.yaml``, builds the disposable
+analysis catalog in ``cache/``, records every normalization decision as
+declaration evidence, saves Source metadata and column profiles, and
+writes the candidate matrix. It creates **no claims** — scanning is
+measurement, and measurement cannot promote anything.
+
+Idempotent: re-scanning refreshes profiles and matrix in place (stable
+IDs per source/table/column) and appends declarations only for decisions
+not already on record for the same source fingerprint.
+
+Re-scanning is also when the store learns that its data moved: the fresh
+fingerprints are compared against every record that was read from the old
+ones, and what no longer describes the data is marked stale
+(`before_we_ai.staleness`). Measurement still creates no claims — but it
+is allowed to notice that an earlier reading has been outrun.
+"""
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import duckdb
+
+from before_we_ai.core.enums import Actor, EvidenceType
+from before_we_ai.core.objects import EvidenceRecord, Source
+from before_we_ai.profile.candidates import build_matrix, write_matrix
+from before_we_ai.profile.columns import profile_view
+from before_we_ai.sources.attach import build_catalog, load_specs
+from before_we_ai.sources.discover import DiscoveryResult, discover
+from before_we_ai.staleness import StalenessReport, refresh
+from before_we_ai.store.repository import ProjectStore
+
+
+@dataclass
+class ScanResult:
+    source_ids: dict[str, str] = field(default_factory=dict)  # source name -> id
+    views: list[str] = field(default_factory=list)
+    profiles_written: int = 0
+    declarations_added: int = 0
+    candidates: int = 0
+    matrix_path: Path | None = None
+    warnings: list[str] = field(default_factory=list)
+    #: Records whose data moved under them, flagged by this scan. Reported
+    #: rather than silent: a scan that quietly demotes half the claims is
+    #: the kind of surprise a reader has to be told about at the moment it
+    #: happens, not discover in the verdict three stages later.
+    stale: StalenessReport = field(default_factory=StalenessReport)
+    #: What walking `sources/` added to the config before this scan read
+    #: it. Carried on the result rather than logged, because a source
+    #: that appeared without anyone declaring it is exactly the kind of
+    #: thing a reader must be told about.
+    discovered: DiscoveryResult = field(default_factory=DiscoveryResult)
+
+
+def scan(root: str | Path) -> ScanResult:
+    root = Path(root)
+    store = ProjectStore(root)
+    # "Drop files, press scan" becomes literally true here: walk the
+    # drop directory first, merge what is new into the config, and only
+    # then read it. Merge never overwrites, so a hand-authored entry is
+    # safe and re-running adds nothing twice.
+    discovered = discover(root)
+    specs = load_specs(root)
+    result = ScanResult(discovered=discovered)
+
+    (root / "cache").mkdir(exist_ok=True)
+    con = duckdb.connect(str(root / "cache" / "analysis.duckdb"))
+    try:
+        entries = build_catalog(root, specs, con)
+
+        sources_by_name = {s.name: s for s in store.sources.values()}
+        profile_ids = {
+            (p.source_id, p.table, p.column): p.id for p in store.profiles.values()
+        }
+        existing_declarations = {
+            (str(e.payload), str(e.source_fingerprints))
+            for e in store.evidence.values()
+            if e.type is EvidenceType.DECLARATION
+        }
+
+        all_profiles = []
+        for entry in entries:
+            spec = entry.spec
+            fingerprint = {"file": entry.file_fingerprint, "tables": entry.views}
+            existing = sources_by_name.get(spec.name)
+            source = (
+                existing.model_copy(update={"fingerprint": fingerprint,
+                                            "scope": spec.scope,
+                                            "description": spec.description})
+                if existing
+                else Source(
+                    name=spec.name, kind=spec.kind, location=spec.location,
+                    description=spec.description, scope=spec.scope,
+                    fingerprint=fingerprint,
+                )
+            )
+            store.save_source(source)
+            result.source_ids[spec.name] = source.id
+
+            stamp = {spec.name: entry.file_fingerprint["sha256"]}
+            for decision in entry.decisions:
+                payload = {"source": spec.name, **decision}
+                if (str(payload), str(stamp)) in existing_declarations:
+                    continue
+                store.add_evidence(EvidenceRecord(
+                    type=EvidenceType.DECLARATION,
+                    actor=Actor.SYSTEM,
+                    payload=payload,
+                    source_fingerprints=stamp,
+                ))
+                result.declarations_added += 1
+
+            for view in entry.views:
+                result.views.append(view)
+                for profile in profile_view(con, view, source.id):
+                    known = profile_ids.get((source.id, profile.table, profile.column))
+                    if known:
+                        profile = profile.model_copy(update={"id": known})
+                    store.save_profile(profile)
+                    all_profiles.append(profile)
+                    result.profiles_written += 1
+
+        matrix = build_matrix(con, all_profiles)
+        result.matrix_path = write_matrix(matrix, root / "profiles")
+        result.candidates = len(matrix["candidates"])
+        result.warnings = list(matrix["warnings"])
+    finally:
+        con.close()
+
+    # The sources have just been re-fingerprinted, which makes this the one
+    # moment the store can tell that its data moved. Anything read against
+    # the old data stops counting here — before any later stage reads a
+    # status and believes it.
+    result.stale = refresh(store)
+    return result

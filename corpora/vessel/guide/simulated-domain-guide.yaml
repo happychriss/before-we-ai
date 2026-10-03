@@ -1,0 +1,457 @@
+# SIMULATED GUIDE — REVIEW ONLY
+#
+# Compiled from:
+# - the fixed finance foundation;
+# - pass-a-document-draft.json;
+# - simulated-user-answers.yaml; and
+# - additive findings in pass-b-landscape-challenge.json.
+#
+# This file demonstrates the shape of a possible Guide Builder output. It is
+# not published product truth. Entries added or changed by this experiment are
+# drafted-by-ai and still require explicit owner review. Physical filenames,
+# table names, column names, vessel names and transaction values are excluded.
+#
+# Deliberately still unresolved as required rules/clarifications:
+# - requested vessel population (one build, all builds, typical/range/average);
+# - versioned cost-category inclusion map;
+# - reporting-currency FX source and direction;
+# - production-overhead pools and allocation base;
+# - treatment of unresolved intercompany imbalances;
+# - evidence threshold for duplicates, mispostings and blank-project costs; and
+# - source and deduplication of approved but uninterfaced labour.
+
+domain: finance
+
+objects:
+  journal:
+    decided_by: balance
+    provenance: confirmed-by-human
+    definition: >-
+      The transactional ledger of record: one row per posting line, carrying a
+      signed amount and a document reference; debit and credit lines balance
+      per document.
+    fields:
+      amount_local:
+        decided_by: slot
+        fills: amount
+        provenance: confirmed-by-human
+        definition: >-
+          The signed posting amount in its transaction or functional currency.
+      doc_ref:
+        decided_by: clarification
+        provenance: confirmed-by-human
+        definition: >-
+          The document or voucher reference grouping posting lines into one
+          accounting document.
+      account:
+        decided_by: clarification
+        provenance: confirmed-by-human
+        definition: >-
+          The account or cost-category identifier used to decide whether a
+          posting belongs in vessel build cost.
+      period:
+        decided_by: clarification
+        provenance: confirmed-by-human
+        definition: >-
+          The accounting period to which a posting belongs at fiscal-period
+          granularity.
+      entity:
+        decided_by: clarification
+        provenance: confirmed-by-human
+        definition: >-
+          The legal entity or company code to whose books a posting belongs.
+      build_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The reference attributing a posting to one vessel build after
+          resolution through the approved build-identity mapping.
+      currency:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The currency in which the local posting amount is denominated.
+      amount_reporting_currency:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The posting amount translated into the confirmed group reporting
+          currency using the approved translation policy, kept distinct from
+          the as-posted local amount.
+      source_system:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The originating ledger, interface or manual-entry channel retained
+          for posted-versus-adjusted reconciliation.
+      approval_status:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The workflow status showing whether the posting was approved for use
+          in the relevant cost view.
+      invoice_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The supplier-invoice reference used with other evidence to identify
+          duplicate or reversing cost postings.
+      purchase_order_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The purchasing reference used with invoice, supplier and amount
+          evidence to attribute and deduplicate build costs.
+
+  subledger_ar:
+    decided_by: subledger_equals_gl
+    provenance: confirmed-by-human
+    definition: >-
+      The accounts-receivable open items: one row per open receivable with a
+      signed amount, reconcilable against the journal's control account.
+
+  intercompany:
+    decided_by: ic_symmetry
+    provenance: confirmed-by-human
+    definition: >-
+      Paired intercompany resource charges between legal entities whose sender
+      and receiver sides must reconcile before group build cost can retain the
+      underlying resource cost once and eliminate internal markup.
+    fields:
+      ic_build_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The vessel build to which an intercompany resource charge is
+          attributable after approved identity resolution.
+      ic_seller_entity:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The legal entity providing the intercompany resource or service.
+      ic_buyer_entity:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The legal entity receiving the intercompany resource or service.
+      ic_cost_base:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The underlying resource cost before intercompany markup.
+      ic_markup_rate:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The markup applied to the intercompany cost base under the applicable
+          transfer-pricing policy.
+      ic_sender_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The sender-side document reference used to pair an intercompany
+          charge.
+      ic_receiver_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The receiver-side document reference used to pair an intercompany
+          charge.
+      ic_match_status:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The reconciliation state of the sender, receiver and elimination
+          records for an intercompany charge.
+
+  build:
+    decided_by: clarification
+    provenance: drafted-by-ai
+    definition: >-
+      One governed vessel-construction undertaking, including its approved
+      identity, aliases and lifecycle state, to which costs can be attributed.
+    fields:
+      authoritative_key:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The owner-confirmed stable business identifier for one vessel build.
+      alias_set:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The approved set of alternate project, yard-job, contract and vessel
+          references that identify the same build.
+      completion_status:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The governed lifecycle state distinguishing accepted or delivered
+          builds, work in progress, and cancelled or pre-contract activity.
+      acceptance_date:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The effective date on which the completed vessel was accepted under
+          the confirmed completion policy.
+      forecast_cost_reporting_currency:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The latest approved estimate of total cost at completion in the group
+          reporting currency, distinct from cost incurred to date.
+
+  labour_allocation:
+    decided_by: clarification
+    provenance: drafted-by-ai
+    definition: >-
+      An approved allocation of labour effort and burdened cost to a vessel
+      build, including allocations not yet interfaced to the journal.
+    fields:
+      labour_build_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The vessel build receiving the labour allocation after approved alias
+          resolution.
+      labour_period:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The period in which the allocated labour was performed.
+      labour_cost_reporting_currency:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The approved burdened labour cost in the group reporting currency.
+      labour_approval_status:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The workflow state establishing whether the allocation is approved
+          for accrual or posting.
+      labour_source_ref:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The stable source reference used to reconcile an allocation to its
+          journal posting and prevent duplicate accrual.
+
+  overhead_pool:
+    decided_by: clarification
+    provenance: drafted-by-ai
+    definition: >-
+      A governed pool of indirect production cost eligible for allocation to
+      vessel builds under a confirmed allocation policy.
+    fields:
+      overhead_location:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The operating location whose indirect production cost forms the pool.
+      overhead_period:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The fiscal period for which the overhead pool is measured.
+      overhead_pool_amount:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The eligible indirect production cost amount before allocation to
+          builds.
+      overhead_allocation_base:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The owner-approved driver used to allocate the pool consistently
+          across builds.
+      overhead_base_quantity:
+        decided_by: clarification
+        provenance: drafted-by-ai
+        definition: >-
+          The measured quantity of the approved allocation driver for a pool or
+          receiving build.
+
+answer_types:
+  profit_and_loss_by_dimension:
+    definition: >-
+      The result of a period — income less expense — broken out by one or more
+      dimensions the postings carry, such as legal entity, month or segment.
+    requires:
+      - object: journal
+        why: >-
+          Actuals are summed from the transactional ledger of record.
+      - field: journal.amount_local
+        why: >-
+          The answer must use the signed posting amount.
+      - field: journal.entity
+        why: >-
+          Each posting must belong to a legal entity for an entity break-out.
+      - field: journal.period
+        why: >-
+          Postings require a trustworthy fiscal period.
+      - field: journal.account
+        why: >-
+          Profit-and-loss accounts must be distinguished from balance-sheet
+          accounts.
+      - rule: which accounts are profit and loss
+      - rule: sign convention for income and expense
+      - rule: month cut-off for late postings
+      - object: intercompany
+
+  completed_vessel_actual_build_cost:
+    definition: >-
+      The reconciled actual economic cost attributable to one accepted or
+      delivered vessel build over its governed construction life, stated in the
+      group reporting currency and labelled separately from forecast cost.
+    requires:
+      - object: build
+      - field: build.authoritative_key
+      - field: build.alias_set
+      - field: build.completion_status
+      - field: build.acceptance_date
+      - object: journal
+      - field: journal.amount_local
+      - field: journal.amount_reporting_currency
+      - field: journal.currency
+      - field: journal.build_ref
+      - field: journal.account
+      - field: journal.period
+      - field: journal.entity
+      - field: journal.doc_ref
+      - field: journal.invoice_ref
+      - field: journal.purchase_order_ref
+      - field: journal.source_system
+      - field: journal.approval_status
+      - object: labour_allocation
+      - field: labour_allocation.labour_build_ref
+      - field: labour_allocation.labour_period
+      - field: labour_allocation.labour_cost_reporting_currency
+      - field: labour_allocation.labour_approval_status
+      - field: labour_allocation.labour_source_ref
+      - object: overhead_pool
+      - field: overhead_pool.overhead_location
+      - field: overhead_pool.overhead_period
+      - field: overhead_pool.overhead_pool_amount
+      - field: overhead_pool.overhead_allocation_base
+      - field: overhead_pool.overhead_base_quantity
+      - object: intercompany
+      - field: intercompany.ic_build_ref
+      - field: intercompany.ic_cost_base
+      - field: intercompany.ic_markup_rate
+      - field: intercompany.ic_match_status
+      - rule: requested vessel population and aggregation grain
+      - rule: versioned vessel-build cost-category inclusion map
+      - rule: build-identity alias resolution and approval
+      - rule: measurement cut-off and late-cost accrual
+      - rule: duplicate reversal and adjustment matching
+      - rule: misposting and unattributed-cost re-attribution
+      - rule: unsigned change-order cost treatment
+      - rule: currency translation source and FX direction
+      - rule: production-overhead pool and allocation base
+      - rule: consolidated intercompany elimination and imbalance treatment
+      - rule: pre-contract post-delivery and cancelled-build boundary
+
+  open_vessel_cost_to_date:
+    definition: >-
+      The reconciled actual economic cost attributable to one open vessel build
+      from inception through a confirmed cut-off, stated in the group reporting
+      currency and labelled as cost incurred rather than total expected cost.
+    requires:
+      - object: build
+      - field: build.authoritative_key
+      - field: build.alias_set
+      - field: build.completion_status
+      - object: journal
+      - field: journal.amount_local
+      - field: journal.amount_reporting_currency
+      - field: journal.currency
+      - field: journal.build_ref
+      - field: journal.account
+      - field: journal.period
+      - field: journal.entity
+      - field: journal.doc_ref
+      - field: journal.invoice_ref
+      - field: journal.purchase_order_ref
+      - field: journal.source_system
+      - field: journal.approval_status
+      - object: labour_allocation
+      - field: labour_allocation.labour_build_ref
+      - field: labour_allocation.labour_period
+      - field: labour_allocation.labour_cost_reporting_currency
+      - field: labour_allocation.labour_approval_status
+      - field: labour_allocation.labour_source_ref
+      - object: overhead_pool
+      - field: overhead_pool.overhead_location
+      - field: overhead_pool.overhead_period
+      - field: overhead_pool.overhead_pool_amount
+      - field: overhead_pool.overhead_allocation_base
+      - field: overhead_pool.overhead_base_quantity
+      - object: intercompany
+      - field: intercompany.ic_build_ref
+      - field: intercompany.ic_cost_base
+      - field: intercompany.ic_markup_rate
+      - field: intercompany.ic_match_status
+      - rule: requested vessel population and aggregation grain
+      - rule: versioned vessel-build cost-category inclusion map
+      - rule: build-identity alias resolution and approval
+      - rule: measurement cut-off and late-cost accrual
+      - rule: duplicate reversal and adjustment matching
+      - rule: misposting and unattributed-cost re-attribution
+      - rule: unsigned change-order cost treatment
+      - rule: currency translation source and FX direction
+      - rule: production-overhead pool and allocation base
+      - rule: consolidated intercompany elimination and imbalance treatment
+      - rule: pre-contract post-delivery and cancelled-build boundary
+
+  open_vessel_forecast_cost_at_completion:
+    definition: >-
+      The latest approved estimate of total economic cost at completion for one
+      open vessel build, combining reconciled cost incurred to date with a
+      governed estimate of remaining cost and labelling the result as forecast.
+    requires:
+      - object: build
+      - field: build.authoritative_key
+      - field: build.alias_set
+      - field: build.completion_status
+      - field: build.forecast_cost_reporting_currency
+      - object: journal
+      - field: journal.amount_reporting_currency
+      - field: journal.build_ref
+      - field: journal.period
+      - object: labour_allocation
+      - object: overhead_pool
+      - object: intercompany
+      - rule: requested vessel population and aggregation grain
+      - rule: approved forecast version and effective date
+      - rule: forecast remaining-cost methodology
+      - rule: forecast-to-actual reconciliation
+      - rule: versioned vessel-build cost-category inclusion map
+      - rule: build-identity alias resolution and approval
+      - rule: currency translation source and FX direction
+      - rule: production-overhead pool and allocation base
+      - rule: consolidated intercompany elimination and imbalance treatment
+      - rule: unsigned change-order cost treatment
+
+  precontract_or_cancelled_build_expenditure:
+    definition: >-
+      The separately labelled expenditure associated with a proposed or
+      cancelled vessel build that has not become the cost of a completed vessel.
+    requires:
+      - object: build
+      - field: build.authoritative_key
+      - field: build.alias_set
+      - field: build.completion_status
+      - object: journal
+      - field: journal.amount_reporting_currency
+      - field: journal.currency
+      - field: journal.build_ref
+      - field: journal.account
+      - field: journal.period
+      - field: journal.doc_ref
+      - rule: requested vessel population and aggregation grain
+      - rule: pre-contract post-delivery and cancelled-build boundary
+      - rule: versioned vessel-build cost-category inclusion map
+      - rule: build-identity alias resolution and approval
+      - rule: currency translation source and FX direction

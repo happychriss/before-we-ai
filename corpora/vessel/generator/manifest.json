@@ -1,0 +1,64 @@
+{
+  "corpus": "corpus-vessel",
+  "fictional_company": "Hanseatic Vessel Works Group GmbH",
+  "seed": 20250802,
+  "generated_at": "2026-01-15T09:30:00+00:00",
+  "source_document_count": 10,
+  "source_documents": [
+    {
+      "name": "01_company_and_vessel_master.xlsx",
+      "bytes": 13665,
+      "sha256": "79bdbbf558f1bdfc5e1835d129ed75cfa0ec776c6603f574abb2886465af7d0d"
+    },
+    {
+      "name": "02_project_cost_ledger_2025.xlsx",
+      "bytes": 22764,
+      "sha256": "8abbdc61c6368da9c3e51f8a1aebf2f4253a0fa59513373f2874bdc014afff24"
+    },
+    {
+      "name": "03_time_and_overhead_allocations.xlsx",
+      "bytes": 14622,
+      "sha256": "7afe3bc3272087b0b0933e3a8d7ef43bb8199070b332049981048cb9df188af3"
+    },
+    {
+      "name": "04_sales_invoices_and_credit_notes_2025.xlsx",
+      "bytes": 13278,
+      "sha256": "b5901def8fc09f24310ccf8f9b03a33d9ccbd13568f7fc1a3f0cca8b25370fc0"
+    },
+    {
+      "name": "05_intercompany_recharges_2025.xlsx",
+      "bytes": 9518,
+      "sha256": "775bd9fc907a212f7ced63539dbd0e5ca38769405408d4d9e7cb55388b7b98b4"
+    },
+    {
+      "name": "06_bank_receipts_and_fx_2025.xlsx",
+      "bytes": 10598,
+      "sha256": "ce9e3cec5ae1e7356b55bc8c7102d812cb58943cfe278f30db2c30f2e5ab8cb7"
+    },
+    {
+      "name": "07_board_management_report_2025.pdf",
+      "bytes": 28214,
+      "sha256": "48fceae769b9e3dca4ac91970c5ebab88f40ae6d77c985583f4906e4e36121e7"
+    },
+    {
+      "name": "08_tax_and_transfer_pricing_memo_2025.pdf",
+      "bytes": 19272,
+      "sha256": "a8ea35f80bee57f99a137e6e359a8b3d65623685ca4e59ea033968cf5e8ea4af"
+    },
+    {
+      "name": "09_contracts_change_orders_and_acceptance.pdf",
+      "bytes": 18147,
+      "sha256": "9001cd9bbf3a4ccb115e20f04551807cc04eeea9cd33d5d747aa7d807cd2a2d6"
+    },
+    {
+      "name": "10_yard_operations_notes_and_email_prints.pdf",
+      "bytes": 8700,
+      "sha256": "60b92a4414931ea66d2469474e82908df13182ae6b96a122dcd1dd7ca8b66d5e"
+    }
+  ],
+  "questions": [
+    "What is the cost of building a vessel?",
+    "What were our sales in FY2025?",
+    "What is revenue per ship?"
+  ]
+}

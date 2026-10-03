@@ -1,0 +1,154 @@
+# Finance domain guide — curated data, not code (Regel der Drei: no ontology,
+# no plugin framework before a third domain forces one).
+#
+# CLEAN BY CONSTRUCTION: definitions only — no examples, no source names,
+# no hints. The definitions are passed into LLM prompts; anything
+# corpus-specific here would teach to the test and invalidate
+# Seeded-Recall. The corpus generator's own roles.yaml
+# (corpora/finance/spec/) is NOT usable at runtime for exactly that
+# reason.
+#
+# Business objects carry fields. An object is what a domain law judges; a
+# field is carried inside its object's law or decided by a human — a field
+# can never declare a law, the schema does not allow it.
+#
+# decided_by declares each entry's settlement path (linted on load; it never
+# enters a prompt): for an object the domain law that can elect it, or
+# "clarification" — no arithmetic can decide what a column *means*, the
+# candidates go to the humans. For a field "slot" (plus fills: which slot of
+# its object's law it is — the passing run settles it with the column it
+# consumed) or "clarification". Every object and every clarification-decided
+# field ends in a check verdict or a clarification question, never in nothing.
+domain: finance
+objects:
+  journal:
+    decided_by: balance
+    definition: >-
+      The transactional ledger of record: one row per posting line, carrying a
+      signed amount and a document reference; debit and credit lines balance
+      per document.
+    fields:
+      amount_local:
+        decided_by: slot
+        fills: amount
+        definition: >-
+          The signed posting amount in local currency on the journal — the column
+          that must sum to zero per document.
+      doc_ref:
+        # not a slot: a journal balances per document AND per period AND per
+        # year, so a passing balance run never proves what its grouping
+        # column *means*.
+        decided_by: clarification
+        definition: >-
+          The document (voucher) reference that groups journal lines into balanced
+          postings.
+      account:
+        decided_by: clarification
+        definition: >-
+          The account identifier on the journal, resolvable against a chart of
+          accounts.
+      period:
+        decided_by: clarification
+        definition: >-
+          The posting period on the journal, at fiscal-period granularity.
+      entity:
+        decided_by: clarification
+        definition: >-
+          The legal entity or company code a posting belongs to.
+  subledger_ar:
+    decided_by: subledger_equals_gl
+    definition: >-
+      The accounts-receivable open items: one row per open receivable with a
+      signed amount, reconcilable against the journal's control account.
+  intercompany:
+    decided_by: ic_symmetry
+    definition: >-
+      Paired intercompany postings between two entities that must mirror each
+      other per period.
+
+# Answer types: per family of business question, what an answer to it depends
+# on. Reviewed once and reused, so the model classifies rather than invents —
+# what it cannot forget it cannot silently omit. The engine expands `requires`
+# deterministically; a reference that does not resolve refuses to load.
+#
+# Variants are separate types, never a condition inside one: the choice
+# between them is then part of the classification, which is visible on the
+# page and confirmed by a human.
+answer_types:
+  profit_and_loss_by_dimension:
+    definition: >-
+      The result of a period — income less expense — broken out by one or more
+      dimensions the postings carry, such as legal entity, month or segment.
+    requires:
+      - object: journal
+        why: >-
+          Actuals are summed from the transactional ledger of record. If the
+          wrong table plays this part, every figure is wrong while looking
+          plausible.
+      - field: journal.amount_local
+        why: >-
+          This is the number that gets summed. Reading the wrong amount column
+          silently produces a result in the wrong currency or the wrong sign.
+      - field: journal.entity
+        why: >-
+          Each posting has to be attributable to one legal entity for the
+          break-out to mean anything.
+      - field: journal.period
+        why: >-
+          Without a trustworthy period column, postings land in the wrong
+          month.
+      - field: journal.account
+        why: >-
+          A result contains only profit-and-loss accounts. Without the account
+          on each posting, balance-sheet movements cannot be excluded.
+      - rule: which accounts are profit and loss
+        why: >-
+          Nothing in the column layout says which accounts belong in a result
+          rather than a balance sheet. Guessing this inflates or deflates every
+          line.
+      - rule: sign convention for income and expense
+        why: >-
+          Whether income is stored negative or positive decides whether the
+          same magnitude reads as a profit or a loss. The data cannot reveal
+          the intent.
+      - rule: month cut-off for late postings
+        why: >-
+          A posting entered after period end may belong to the closed period or
+          the open one. The rule is a policy, not a property of the rows.
+      - object: intercompany
+        why: >-
+          Per-entity actuals include intercompany traffic; whether the
+          requested figures are gross or net of it changes each entity's
+          result.
+  open_receivables:
+    definition: >-
+      What is still owed to the business: the receivable items outstanding at
+      a point in time, and what they total once they tie to the ledger.
+    requires:
+      - object: subledger_ar
+        why: >-
+          The open items are the answer. If the wrong table plays this part,
+          the total is a number about something else.
+      - object: journal
+        why: >-
+          A subledger is only worth reading once it ties to the ledger of
+          record. Without the journal there is nothing to tie it to, and an
+          unreconciled receivables list is a claim, not a figure.
+      - field: journal.account
+        why: >-
+          The tie runs through one control account. Without the account on
+          each posting, the ledger side of the comparison cannot be isolated.
+      - field: journal.amount_local
+        why: >-
+          The amount that is compared against the subledger's. Reading the
+          wrong column compares two unrelated numbers and calls the
+          difference a discrepancy.
+      - rule: which account carries receivables
+        why: >-
+          Nothing in the column layout says which account is the receivables
+          control account. Pick the wrong one and the reconciliation fails
+          against an account that was never supposed to match.
+      - rule: when a receivable counts as open
+        why: >-
+          Cash received but not yet applied, disputed items and credit notes
+          are each either open or not by policy. The rows cannot say which.

@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "finance__management_report",
+ "input_sha256": "19cf6716a65a0124647f8cbb20665b394e6e28be2ed8a9bc621a36be142cc052",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T105254Z_v3_documents_01KZ11NX8V9BVFPJ6Y3FQQB1YV.json",
+ "source_log": "/tmp/refresh-1go1t1w6/project/cache/llm_log/20260802T105254Z_v3_documents_01KZ11NX8V9BVFPJ6Y3FQQB1YV.json",
+ "response_text": "{\"findings\": [{\"chunk_id\": \"management_report:p1:1\", \"quote\": \"2024 Q1\\n8,312,504\", \"reads_as\": \"figure\", \"statement\": \"2024 Q1 revenue in EUR equivalent was 8,312,504.\", \"rationale\": \"Row in the quarterly revenue table.\", \"value\": \"8,312,504\", \"answers\": null}, {\"chunk_id\": \"management_report:p1:1\", \"quote\": \"2025 Q4\\n9,284,391\", \"reads_as\": \"figure\", \"statement\": \"2025 Q4 revenue in EUR equivalent was 9,284,391.\", \"rationale\": \"Row in the quarterly revenue table.\", \"value\": \"9,284,391\", \"answers\": null}, {\"chunk_id\": \"management_report:p1:3\", \"quote\": \"EUR 2,847,000\", \"reads_as\": \"figure\", \"statement\": \"Q3 revenue by region figure of EUR 2,847,000.\", \"rationale\": \"Number carried in the chart region.\", \"value\": \"EUR 2,847,000\", \"answers\": null}, {\"chunk_id\": \"management_report:p1:4\", \"quote\": \"Prior year Q1 2023 revenue: EUR 3,200,000 (restated from EUR 3,050,000).\", \"reads_as\": \"figure\", \"statement\": \"Prior year Q1 2023 revenue was EUR 3,200,000, restated from EUR 3,050,000.\", \"rationale\": \"Stated prior-year revenue figure.\", \"value\": \"EUR 3,200,000\", \"answers\": null}]}"
+}

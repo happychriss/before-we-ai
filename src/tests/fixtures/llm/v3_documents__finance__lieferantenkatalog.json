@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "finance__lieferantenkatalog",
+ "input_sha256": "973cbeeed06f314262d2592c1440039c7fc89cedd8f74ebf0e52cf89ee0042f0",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T105244Z_v3_documents_01KZ11NKNV7V3CAACB0K0G8XG9.json",
+ "source_log": "/tmp/refresh-1go1t1w6/project/cache/llm_log/20260802T105244Z_v3_documents_01KZ11NKNV7V3CAACB0K0G8XG9.json",
+ "response_text": "{\"findings\": []}"
+}

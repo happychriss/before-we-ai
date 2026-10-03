@@ -1,0 +1,15 @@
+SELECT count(*) FROM "{{ encoded }}"
+-- ::exceptions::
+SELECT * FROM (
+{% for pair in pairs %}
+    SELECT '{{ pair.decode_column }}' AS level,
+           {{ pair.part_expr }} AS code,
+           count(DISTINCT d."{{ pair.decode_column }}") AS decoded_values
+    FROM "{{ encoded }}" e
+    JOIN "{{ decode }}" d ON e."{{ key }}" = d."{{ key }}"
+    GROUP BY 2
+    HAVING count(DISTINCT d."{{ pair.decode_column }}") > 1
+    {% if not loop.last %}UNION ALL{% endif %}
+{% endfor %}
+)
+ORDER BY level, code

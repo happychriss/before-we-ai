@@ -1,0 +1,11 @@
+statements:
+- id: TELL_F28
+  text: Wir beliefern nur Apotheken und Grosshaendler.
+  source: sales_team
+  related_trap: F28
+  verifiable: false
+- id: TELL_F29
+  text: Geschaeftsjahr laeuft Mai bis April.
+  scope: US_entity
+  related_trap: F29
+  verifiable: false

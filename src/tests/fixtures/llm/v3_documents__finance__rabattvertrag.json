@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "finance__rabattvertrag",
+ "input_sha256": "8df12030ff72dbd3aeb83e28aabe86ceeac0cb105a2721f54c4312c39cb3042e",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T105301Z_v3_documents_01KZ11P42JJDVCVC9AN6TWWEWM.json",
+ "source_log": "/tmp/refresh-1go1t1w6/project/cache/llm_log/20260802T105301Z_v3_documents_01KZ11P42JJDVCVC9AN6TWWEWM.json",
+ "response_text": "{\"findings\": [{\"chunk_id\": \"rabattvertrag:p1:0\", \"quote\": \"Jahresvolumen > EUR 500.000 je Kundengruppe -> 2% Retroaktivrabatt.\", \"reads_as\": \"figure\", \"statement\": \"An annual volume exceeding EUR 500.000 per customer group yields a 2% retroactive rebate.\", \"rationale\": \"States the volume threshold figure.\", \"value\": \"500.000\"}]}"
+}

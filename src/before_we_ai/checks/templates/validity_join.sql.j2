@@ -1,0 +1,12 @@
+SELECT count(*) FROM "{{ table }}"
+-- ::exceptions::
+WITH v AS (
+    SELECT {{ key_expr }} AS k,
+           "{{ valid_from }}" AS vf,
+           coalesce("{{ valid_to }}", DATE '9999-12-31') AS vt
+    FROM "{{ table }}"
+)
+SELECT a.k AS key, a.vf AS a_from, a.vt AS a_to, b.vf AS b_from, b.vt AS b_to
+FROM v a
+JOIN v b ON a.k = b.k AND (a.vf < b.vf OR (a.vf = b.vf AND a.vt < b.vt)) AND a.vt >= b.vf
+ORDER BY key, a_from

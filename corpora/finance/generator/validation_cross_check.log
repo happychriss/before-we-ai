@@ -1,0 +1,120 @@
+Validation cross-check report (seed=0)
+============================================================
+✅ DE 2024-01: sum=0.0 -> balanced
+✅ DE 2024-02: sum=0.0 -> balanced
+✅ DE 2024-03: sum=0.0 -> balanced
+✅ DE 2024-04: sum=0.0 -> balanced
+✅ DE 2024-05: sum=0.0 -> balanced
+✅ DE 2024-06: sum=0.0 -> balanced
+✅ DE 2024-07: sum=0.0 -> balanced
+✅ DE 2024-08: sum=0.0 -> balanced
+✅ DE 2024-09: sum=0.0 -> balanced
+✅ DE 2024-10: sum=0.0 -> balanced
+✅ DE 2024-11: sum=0.0 -> balanced
+✅ DE 2024-12: sum=0.0 -> balanced
+✅ DE 2025-01: sum=0.0 -> balanced
+✅ DE 2025-02: sum=0.0 -> balanced
+✅ DE 2025-03: sum=0.0 -> balanced
+✅ DE 2025-04: sum=0.0 -> balanced
+✅ DE 2025-05: sum=0.0 -> balanced
+✅ DE 2025-06: sum=0.0 -> balanced
+✅ DE 2025-07: sum=0.0 -> balanced
+✅ DE 2025-08: sum=0.0 -> balanced
+✅ DE 2025-09: sum=0.0 -> balanced
+✅ DE 2025-10: sum=0.0 -> balanced
+✅ DE 2025-11: sum=0.0 -> balanced
+✅ DE 2025-12: sum=0.0 -> balanced
+✅ US 2024-01: sum=0.0 -> balanced
+✅ US 2024-02: sum=0.0 -> balanced
+✅ US 2024-03: sum=0.0 -> balanced
+✅ US 2024-04: sum=0.0 -> balanced
+✅ US 2024-05: sum=0.0 -> balanced
+✅ US 2024-06: sum=50000.0 -> OK (expected break)
+✅ US 2024-07: sum=0.0 -> balanced
+✅ US 2024-08: sum=0.0 -> balanced
+✅ US 2024-09: sum=0.0 -> balanced
+✅ US 2024-10: sum=0.0 -> balanced
+✅ US 2024-11: sum=0.0 -> balanced
+✅ US 2024-12: sum=0.0 -> balanced
+✅ US 2025-01: sum=0.0 -> balanced
+✅ US 2025-02: sum=0.0 -> balanced
+✅ US 2025-03: sum=0.0 -> balanced
+✅ US 2025-04: sum=0.0 -> balanced
+✅ US 2025-05: sum=0.0 -> balanced
+✅ US 2025-06: sum=0.0 -> balanced
+✅ US 2025-07: sum=0.0 -> balanced
+✅ US 2025-08: sum=0.0 -> balanced
+✅ US 2025-09: sum=0.0 -> balanced
+✅ US 2025-10: sum=0.0 -> balanced
+✅ US 2025-11: sum=0.0 -> balanced
+✅ US 2025-12: sum=0.0 -> balanced
+
+Subledger check (AR open items vs unpaid invoices)
+✅ DE: AR open items (unpaid invoice refs) sum = 8228423.56
+✅ US: AR open items (unpaid invoice refs) sum = 3488134.17
+
+IC symmetry check (9001 DE vs 9002 US)
+✅ 2024-01: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-02: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-03: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-04: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-05: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-06: DE=50000.0 US=0.0 -> expected asymmetry (F22 break)
+✅ 2024-07: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-08: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-09: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-10: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-11: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2024-12: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-01: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-02: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-03: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-04: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-05: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-06: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-07: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-08: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-09: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-10: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-11: DE=50000.0 US=-50000.0 -> symmetric
+✅ 2025-12: DE=50000.0 US=-50000.0 -> symmetric
+
+Trap presence checks
+✅ F1: {"count": 20}
+✅ F2: {"count": 30}
+✅ F3: {"count": 15}
+✅ F4: {"legacy_count": 18, "new_type_g_count": 63}
+✅ F5: {"new_customer_count": 5}
+✅ F6: {"rows_for_1005": 2}
+✅ F7: {}
+✅ F8: {}
+✅ F9: {}
+✅ F10: {"count": 5}
+✅ F11: {"count": 68}
+✅ F12: {"count": 27}
+✅ F13: {"count": 5}
+✅ F14: {}
+✅ F15: {}
+✅ F16: {"count": 1144}
+✅ F17: {}
+✅ F18: {"missing_b_periods": ["2024-03", "2024-09", "2025-06"]}
+✅ F19: {}
+✅ F20: {"unapplied_cash": 10, "unpaid_invoices": 655}
+✅ F21: {"count": 201}
+✅ F22: {"us_2024_06_sum": 50000.0}
+✅ F23: {}
+✅ F24: {}
+✅ F25: {"accruals": [{"key_account_id": "KA_001", "year": 2024, "annual_revenue": 1490649.16}, {"key_account_id": "KA_001", "year": 2025, "annual_revenue": 1682109.32}, {"key_account_id": "KA_002", "year": 2024, "annual_revenue": 2550465.31}, {"key_account_id": "KA_002", "year": 2025, "annual_revenue": 2242358.24}, {"key_account_id": "KA_003", "year": 2024, "annual_revenue": 1792250.8}, {"key_account_id": "KA_003", "year": 2025, "annual_revenue": 2013447.25}, {"key_account_id": "KA_004", "year": 2024, "annual_revenue": 2114128.26}, {"key_account_id": "KA_004", "year": 2025, "annual_revenue": 2104072.42}, {"key_account_id": "KA_005", "year": 2024, "annual_revenue": 3349507.27}, {"key_account_id": "KA_005", "year": 2025, "annual_revenue": 3100891.91}, {"key_account_id": "KA_006", "year": 2024, "annual_revenue": 1823659.46}, {"key_account_id": "KA_006", "year": 2025, "annual_revenue": 1981598.63}, {"key_account_id": "KA_007", "year": 2024, "annual_revenue": 2675083.61}, {"key_account_id": "KA_007", "year": 2025, "annual_revenue": 3054282.36}, {"key_account_id": "KA_008", "year": 2024, "annual_revenue": 2109972.56}, {"key_account_id": "KA_008", "year": 2025, "annual_revenue": 1897917.08}, {"key_account_id": "KA_009", "year": 2024, "annual_revenue": 3234695.68}, {"key_account_id": "KA_009", "year": 2025, "annual_revenue": 2971678.77}, {"key_account_id": "KA_010", "year": 2024, "annual_revenue": 2557062.66}, {"key_account_id": "KA_010", "year": 2025, "annual_revenue": 2548360.9}]}
+✅ F26: {"deny": true}
+✅ F27: {}
+✅ F28: {}
+✅ F29: {}
+✅ BLIND_1: {"count": 3, "docs": ["DE-INV-0000519", "DE-INV-0002542", "DE-INV-0001763"]}
+✅ BLIND_2: {"row_count": 2}
+✅ BLIND_3: {}
+
+Z1-Z4 reference computations
+✅ Z1_naive_revenue_including_IC: {'DE': 50728198.4, 'US': 25165797.66}
+✅ Z2_external_revenue_excl_IC_and_rebates: {'DE': 46354368.37, 'US': 23621377.5}
+✅ Z3_group_revenue_correct_fx_M_rate: {'US_in_EUR': 21854415.47, 'group_total_EUR': 68208783.84}
+✅ Z4_consolidated_group_revenue: {'group_total_EUR': 68208783.84}

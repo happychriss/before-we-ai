@@ -1,0 +1,121 @@
+# The finance landscape — the frozen one.
+#
+# Generated before the tool existed, so the traps are what an author thought of
+# rather than what the implementation happens to handle. Every recorded number
+# in this repository is scored against these bytes; `sha256` per source is the
+# freeze, checked by src/tests/corpus_driven/test_corpus_is_frozen.py.
+#
+# The descriptions are not decoration: they are declared into `before-ai.yaml`
+# and reach the model. Changing one changes a prompt, which changes a recorded
+# fixture's input hash and turns the drift guard red — which is the intended
+# behaviour, not a nuisance.
+
+name: finance
+domain: finance
+frozen: true
+seed: 0
+
+# The product's own packaged domain pack, not a landscape-local file. It is
+# clean by construction: definitions only, nothing corpus-specific, or it would
+# be teaching to the test.
+domain_guide:
+  packaged: finance
+
+# Do not open either of these. answer_key holds the expected verdict per trap;
+# generator/ holds the code that seeded them, including the definitions of the
+# blind traps the owner holds back. Reading them does not break a rule so much
+# as destroy the measurement they exist to make possible.
+answer_key: answer-key/expected_verdicts.yaml
+generator: generator/generator_seed_0.py
+
+# Specification both the generator and the grading harness build against —
+# sources, trap classes K1-K8, the Z1-Z4 target questions, role definitions.
+spec: spec/
+
+held_out: [BLIND_1, BLIND_2, BLIND_3]
+
+# Two, deliberately: with one answer type declared, classification had nothing
+# to get wrong. The second is a near neighbour — also money in the ledger,
+# naming no table, sharing three dependencies with the first.
+questions:
+  - "Can these files reliably produce actual P&L by entity and month?"
+  - "What is still outstanding from our customers?"
+
+# Declared to the pipeline, in this order. The three noise documents are
+# declared on purpose: a document pipeline that only ever sees relevant
+# documents has not been tested.
+sources:
+  - name: de_erp
+    kind: duckdb
+    path: DE/erp.duckdb
+    sha256: 6ad0d146f6952d1046b6b0b023a42851c42fd99034c00a3561d3fd0467f6c1bb
+    description: "The DE entity's ERP database as exported by IT — ledger, invoices, receivables, master data."
+  - name: us_erp
+    kind: duckdb
+    path: US/erp.duckdb
+    sha256: bc0ccae45db8d2bb382e20add9c3ab916f1f241928bd8261536f8d4034b1c83e
+    description: "The US entity's ERP database, same export, same shapes."
+  - name: kunden_migration
+    kind: xlsx
+    path: kunden_migration.xlsx
+    sha256: a606866d15303fcb9107fd68c33983f04c072f594cb429ac056be24a9e252f85
+    description: "Spreadsheet from the customer-number migration: which old number became which new one."
+  - name: marketing_grouping
+    kind: xlsx
+    path: marketing_grouping.xlsx
+    sha256: e5ae045172ab0bc4b684ef354559c5a48c83701318a97425c5335aa337e93ecb
+    description: "Marketing's own product grouping, maintained outside the ERP."
+  - name: kontakte_aussendienst
+    kind: xlsx
+    path: kontakte_aussendienst.xlsx
+    sha256: 002963417dd7c4951e2a484e43725eb751946693f234d2159edee04553105698
+    description: "Field-sales contact list kept by the sales office."
+  - name: buchungen_report
+    kind: csv
+    path: buchungen_report.csv
+    sha256: 47c341b299a5bc2882c5b4370dc15a8ebcc62582c4854f3139ae69f65bbec9e9
+    description: "A posting report exported from a reporting tool, not from the ledger itself."
+  - name: management_report
+    kind: pdf
+    path: management_report.pdf
+    sha256: c31b6cf9b4218c845e8e660e638c951ad79ccb75a166facaaece45a8cc018acd
+    description: "Quarterly management report, as circulated to the board."
+  - name: buchhaltungsrichtlinie
+    kind: pdf
+    path: buchhaltungsrichtlinie.pdf
+    sha256: a3676cb3e1f55c28993505e1eeb0c8c184ee8a95b99e1fed312df17c4b286ee8
+    description: "The accounting policy in force: sign conventions, revenue definition, cut-off."
+  - name: rabattvertrag
+    kind: pdf
+    path: rabattvertrag.pdf
+    sha256: 355b77cfda52bdc759a008d275020feb8e2a17bb41b5afe204daf2398fb6844b
+    description: "A signed master rebate agreement with a customer."
+  - name: lieferantenkatalog
+    kind: pdf
+    path: noise/lieferantenkatalog.pdf
+    sha256: bd87f11b5b6db631ef9c4be3d74ebbd557a06ae18647294c37f6b492466bef63
+    description: "A supplier catalogue that happened to be in the same folder."
+  - name: pressemitteilung_2022_divested_unit
+    kind: pdf
+    path: noise/pressemitteilung_2022_divested_unit.pdf
+    sha256: 317c0162ca6141c7c34058c79148efda1a74378941ca0afd30a5a88b86666b17
+    description: "A 2022 press release about a business unit that has since been sold."
+  - name: reisekostenrichtlinie
+    kind: pdf
+    path: noise/reisekostenrichtlinie.pdf
+    sha256: 39fd7ca99066616ea3acfa526cdd82fe035f1ad2b0d710716132ad441c05d10e
+    description: "The travel expense policy."
+
+# In data/ but never declared as a source, so they are listed separately and
+# still covered by the freeze:
+#   tell_statements.yaml  F28/F29 scripted domain statements, fed through `tell`
+#   hard/acme_annual_extract.pdf   built by src/corpus/build_hard_document.py
+#   real/bosch-geschaeftsbericht-2025.pdf   a genuine published annual report,
+#       third-party content — see NOTICE
+undeclared:
+  - path: tell_statements.yaml
+    sha256: 842d77546eb7a2d348bb48f974cc7187c96a530123d70ff4cd9f553d42de0dee
+  - path: hard/acme_annual_extract.pdf
+    sha256: cb6ee9684e0fc486e913f11bae0f3bbda0fd1647551b098f477c00e8502f7958
+  - path: real/bosch-geschaeftsbericht-2025.pdf
+    sha256: 3438bd025585e564d8a09996745fe364b36b0bd4ca00fb173a6a68c7a8ef0926

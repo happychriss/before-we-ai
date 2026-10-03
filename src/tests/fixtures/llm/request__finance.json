@@ -1,0 +1,10 @@
+{
+ "contract": "request",
+ "scenario": "finance",
+ "input_sha256": "19506d91bf4e2809dbcc35a907ea4f480a039278c92afc8b2e486e7d01afff58",
+ "system_sha256": "dd04dd9a08a579c5b55ea6fb5005dbe2d5472b8d1dab8f9e8b6ab0782d7569f1",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T190656Z_request_01KZ1XYGTAM5NX6PVTYVJVZ9AH.json",
+ "source_log": "/tmp/refresh-wath5bra/project/cache/llm_log/20260802T190656Z_request_01KZ1XYGTAM5NX6PVTYVJVZ9AH.json",
+ "response_text": "{\"answer_type\": \"profit_and_loss_by_dimension\", \"rationale\": \"The question asks whether the files can reliably produce actual P&L broken out by entity and month — exactly income-less-expense by the legal-entity and period dimensions the postings carry. The declared type covers this, including the P&L account classification, sign convention, month cut-off, and intercompany elimination it names. The 'reliably' framing is a feasibility check on the same underlying answer, so no delta is added.\", \"requested_output\": \"A yes/no feasibility verdict on whether the journal supports actual P&L by legal entity and fiscal month, with the P&L amounts (income less expense) broken out by entity and month.\", \"scope\": {\"entity\": null, \"period\": null, \"segment\": null}}"
+}

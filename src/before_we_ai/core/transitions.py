@@ -1,0 +1,225 @@
+"""State machine and promotion rules — pure functions, no IO.
+
+The epistemic laws implemented here:
+
+* AI can only create ``proposed`` claims; nothing an AI authors ever
+  changes a status.
+* Only check results and human confirmations promote.
+* Conflicting evidence forces ``unresolved`` — conflict is never averaged
+  away and never silently resolved by recency.
+* A confirmation on a testimonial claim must carry an explicit scope
+  (mirror-loop); without it the confirmation is inadmissible.
+* Stale evidence carries no epistemic weight.
+
+Status is always *derived* from the evidence list via ``resolve_status``;
+the stored status field is a cached rendering of that derivation.
+"""
+
+from before_we_ai.core.enums import Actor, ClaimStatus, EvidenceType, CheckVerdict
+from before_we_ai.core.objects import (
+    Claim,
+    EvidenceRecord,
+    Predicate,
+    Scope,
+    Validity,
+)
+
+
+class PromotionError(Exception):
+    """Raised when evidence would violate a promotion rule."""
+
+
+def create_claim(
+    statement: str,
+    created_by: Actor,
+    *,
+    predicate: Predicate | None = None,
+    scope: Scope | None = None,
+    validity: Validity | None = None,
+    source_ids: list[str] | None = None,
+    depends_on: list[str] | None = None,
+    open_assumptions: list[str] | None = None,
+) -> Claim:
+    """Create a claim. Every claim starts ``proposed`` — no exceptions.
+
+    Promotion happens only afterwards, through evidence.
+    """
+    return Claim(
+        statement=statement,
+        created_by=created_by,
+        status=ClaimStatus.PROPOSED,
+        predicate=predicate,
+        scope=scope,
+        validity=validity,
+        source_ids=source_ids or [],
+        depends_on=depends_on or [],
+        open_assumptions=open_assumptions or [],
+    )
+
+
+def escalate_exception(
+    parent: Claim,
+    evidence: EvidenceRecord,
+    *,
+    statement: str,
+    created_by: Actor,
+    predicate: Predicate | None = None,
+    scope: Scope | None = None,
+    validity: Validity | None = None,
+) -> Claim:
+    """Promote a materially different exception into a claim of its own.
+
+    Most exceptions stay what they are — bounded counterexamples inside
+    the parent's evidence. But when a pattern in the exceptions is a rule
+    in itself (a migrated ID range, a re-parented hierarchy branch), it
+    becomes a *new* claim: scoped to the exception and linked to its
+    origin via ``derived_from`` / ``derived_from_evidence``. That link is
+    provenance, not status-bearing evidence — the child starts at
+    ``proposed`` with an empty evidence list and must earn its own status.
+    Escalation is a hypothesis, not a promotion.
+    """
+    if evidence.id not in parent.evidence_ids:
+        raise ValueError(
+            f"evidence {evidence.id} is not attached to parent claim {parent.id}"
+        )
+    child = create_claim(
+        statement,
+        created_by,
+        predicate=predicate,
+        scope=scope or parent.scope,
+        validity=validity or parent.validity,
+        source_ids=list(parent.source_ids),
+    )
+    return child.model_copy(
+        update={"derived_from": parent.id, "derived_from_evidence": evidence.id}
+    )
+
+
+def is_testimonial(claim: Claim, evidence: list[EvidenceRecord]) -> bool:
+    """A claim is testimonial if it rests on a user statement."""
+    return any(
+        e.type is EvidenceType.TESTIMONIAL and not e.stale
+        for e in _for_claim(claim, evidence)
+    )
+
+
+def _for_claim(claim: Claim, evidence: list[EvidenceRecord]) -> list[EvidenceRecord]:
+    ids = set(claim.evidence_ids)
+    return [e for e in evidence if e.id in ids]
+
+
+def confirmation_admissible(
+    record: EvidenceRecord, claim: Claim, evidence: list[EvidenceRecord]
+) -> bool:
+    """Mirror-loop rule: confirming a testimonial claim requires explicit scope.
+
+    Public because the readiness report has to say *why* a claim sits
+    where it does, and the one way to be sure the explanation matches the
+    law is to ask the law. It used to count confirmations itself and got
+    it wrong — reporting "1 confirmation" under "nothing stronger than
+    proposed evidence is live yet", which is the exact contradiction a
+    reader cannot resolve.
+    """
+    if record.type is not EvidenceType.CONFIRMATION:
+        return True
+    if not is_testimonial(claim, evidence):
+        return True
+    return record.scope is not None and record.scope.is_explicit()
+
+
+def admit_evidence(
+    claim: Claim, record: EvidenceRecord, evidence: list[EvidenceRecord]
+) -> None:
+    """Check a new evidence record against the claim before attaching it.
+
+    Raises PromotionError if the record is inadmissible. ``evidence`` is
+    the claim's existing evidence (the new record not yet attached).
+    """
+    if not confirmation_admissible(record, claim, evidence):
+        raise PromotionError(
+            "confirmation of a testimonial claim requires an explicit scope "
+            "(mirror-loop): entity, period or segment must be stated"
+        )
+
+
+def establishing(record: EvidenceRecord) -> bool:
+    """Can this check's PASS make a claim true, or only break it?
+
+    Almost always both — that is what a check is. The exception is a
+    **generic** data check standing against a **role** binding, and the
+    asymmetry there is logic rather than caution.
+
+    Take `account` tested by referential integrity against a chart of
+    accounts. Values with no matching account are decisive: whatever that
+    column is, it is not the account. But full coverage establishes
+    nothing about *meaning* — measured on the corpus, all three
+    candidates have zero orphans, the deliberate decoy included.
+    Promoting on that would hand one role three test-supported winners
+    and settle a question of meaning with arithmetic, which is the
+    "too-loose law" path in `docs/architecture.md`.
+
+    A domain law is different, and that is the whole point of a domain
+    pack: `balance` passing over a candidate journal *is* evidence that
+    the thing is a journal, because balancing to zero per document is
+    what being one means.
+
+    The runner writes the flag from `CheckDefinition.domain` (owner
+    decision 2026-08-02). Absent, it defaults true — every record
+    written before this distinction existed keeps its meaning.
+    """
+    return bool(record.payload.get("establishes", True))
+
+
+def resolve_status(claim: Claim, evidence: list[EvidenceRecord]) -> ClaimStatus:
+    """Derive the claim's status from its non-stale evidence.
+
+    Order-independent: the same evidence set always yields the same status,
+    regardless of arrival order. Weak evidence (document anchors,
+    declarations, the testimonial statement itself) never promotes.
+    """
+    live = [e for e in _for_claim(claim, evidence) if not e.stale]
+
+    check_pass = any(
+        e.type is EvidenceType.CHECK_RESULT and e.verdict is CheckVerdict.PASS
+        and establishing(e)
+        for e in live
+    )
+    check_fail = any(
+        e.type is EvidenceType.CHECK_RESULT and e.verdict is CheckVerdict.FAIL
+        for e in live
+    )
+    testimonial = any(e.type is EvidenceType.TESTIMONIAL for e in live)
+    confirmed = any(
+        e.type is EvidenceType.CONFIRMATION
+        and confirmation_admissible(e, claim, evidence)
+        for e in live
+    )
+
+    if check_fail and (check_pass or confirmed or testimonial):
+        # Conflict: contradicting check vs. supporting check, human
+        # confirmation, or user statement. Conflict forces unresolved —
+        # this is also the only expiry of business-confirmed claims.
+        return ClaimStatus.UNRESOLVED
+    if check_fail:
+        return ClaimStatus.CONTRADICTED
+    if confirmed:
+        return ClaimStatus.BUSINESS_CONFIRMED
+    if check_pass:
+        return ClaimStatus.TEST_SUPPORTED
+    return ClaimStatus.PROPOSED
+
+
+def attach_evidence(
+    claim: Claim, record: EvidenceRecord, evidence: list[EvidenceRecord]
+) -> Claim:
+    """Attach a record to the claim and recompute its status.
+
+    Returns an updated copy; raises PromotionError if inadmissible.
+    ``evidence`` is the claim's existing evidence records.
+    """
+    admit_evidence(claim, record, evidence)
+    updated = claim.model_copy(
+        update={"evidence_ids": [*claim.evidence_ids, record.id]}
+    )
+    updated.status = resolve_status(updated, [*evidence, record])
+    return updated

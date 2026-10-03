@@ -1,0 +1,10 @@
+{
+ "contract": "v3_documents",
+ "scenario": "finance__buchhaltungsrichtlinie",
+ "input_sha256": "3fe2c1bb196aa62f72f2cf76a1d9699bc177d2050e6a7a8cc5b4d7ee3ee6c2ac",
+ "system_sha256": "48bdba1d2b476bc6fc02971842a9eee0fe1af08c93f1f2b06e48ad21f66aa88f",
+ "model": "claude-opus-4-8",
+ "recorded_at": "20260802T105243Z_v3_documents_01KZ11NJ9DAKT09SMT12A9KFFB.json",
+ "source_log": "/tmp/refresh-1go1t1w6/project/cache/llm_log/20260802T105243Z_v3_documents_01KZ11NJ9DAKT09SMT12A9KFFB.json",
+ "response_text": "{\"findings\": [{\"chunk_id\": \"buchhaltungsrichtlinie:p1:0\", \"quote\": \"Haben-Betraege werden als negative Zahlen gebucht (Haben-Konvention).\", \"reads_as\": \"definition\", \"statement\": \"Credit amounts are booked as negative numbers (credit convention).\", \"rationale\": \"States the sign convention distinguishing credit (income) from debit (expense) postings.\", \"answers\": \"sign convention for income and expense\", \"term\": \"Haben-Konvention\", \"definition\": \"Credit amounts (Haben-Betraege) are booked as negative numbers.\"}, {\"chunk_id\": \"buchhaltungsrichtlinie:p1:0\", \"quote\": \"Umsatzerloese = Konten 4000-4999 abzueglich Erloesschmaelerungen (4800-4899).\", \"reads_as\": \"definition\", \"statement\": \"Revenue equals accounts 4000-4999 less sales deductions (4800-4899).\", \"rationale\": \"Defines which accounts constitute revenue, relevant to which accounts are profit and loss.\", \"answers\": \"which accounts are profit and loss\", \"term\": \"Umsatzerloese\", \"definition\": \"Accounts 4000-4999 less sales deductions in 4800-4899.\"}, {\"chunk_id\": \"buchhaltungsrichtlinie:p1:0\", \"quote\": \"Intercompany-Umsaetze (Konten 4300-4399) sind aus dem externen Umsatz auszuschliessen.\", \"reads_as\": \"definition\", \"statement\": \"Intercompany revenues (accounts 4300-4399) are excluded from external revenue.\", \"rationale\": \"Defines exclusion of intercompany accounts from external revenue.\", \"answers\": null, \"term\": \"Intercompany-Umsaetze\", \"definition\": \"Accounts 4300-4399 are excluded from external revenue.\"}]}"
+}

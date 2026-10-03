@@ -1,0 +1,9 @@
+SELECT count(*) FROM "{{ left }}"
+-- ::exceptions::
+SELECT {{ left_key_expr }} AS key,
+       {{ left_attr_expr }} AS left_value,
+       {{ right_attr_expr }} AS right_value
+FROM "{{ left }}" l
+JOIN "{{ right }}" r ON {{ left_key_expr }} = {{ right_key_expr }}
+WHERE {{ left_attr_expr }} IS DISTINCT FROM {{ right_attr_expr }}
+ORDER BY key

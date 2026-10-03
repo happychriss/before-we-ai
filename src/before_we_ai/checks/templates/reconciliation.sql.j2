@@ -1,0 +1,19 @@
+SELECT count(*) FROM "{{ left }}"
+-- ::exceptions::
+WITH l AS (
+    SELECT {{ left_group_expr }} AS grp, sum({{ left_measure_expr }}) AS total
+    FROM "{{ left }}"{% if left_where %} WHERE {{ left_where }}{% endif %}
+    GROUP BY 1
+),
+r AS (
+    SELECT {{ right_group_expr }} AS grp, sum({{ right_measure_expr }}) AS total
+    FROM "{{ right }}"{% if right_where %} WHERE {{ right_where }}{% endif %}
+    GROUP BY 1
+)
+SELECT coalesce(l.grp, r.grp) AS grp,
+       l.total AS left_total,
+       r.total AS right_total,
+       coalesce(l.total, 0) - coalesce(r.total, 0) AS diff
+FROM l FULL JOIN r ON l.grp = r.grp
+WHERE abs(coalesce(l.total, 0) - coalesce(r.total, 0)) > {{ tolerance }}
+ORDER BY abs(diff) DESC, grp
