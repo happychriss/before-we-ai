@@ -22,7 +22,7 @@ from xml.etree import ElementTree
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
-KINDS = ("IDENTITY", "UNIQUE", "REFERENCE", "CONDITION", "TOTAL")
+KINDS = ("IDENTITY", "UNIQUE", "REFERENCE", "CONDITION", "TOTAL", "DIFFERENCE")
 _NAME = r"[a-z][a-z0-9_]*"
 _PARAM = r"[A-Z][A-Z0-9_]*"
 
@@ -133,21 +133,50 @@ def _number(text: str) -> float | None:
 # ---------------------------------------------------------------- rules
 
 
+_OP = r"(<=|>=|=)"
+_SUM = (rf"sum\(({_NAME})\.({_NAME})"
+        rf"(?:\s+where\s+({_NAME})\.({_NAME})\s*(!=|=)\s*({_PARAM}))?\)"
+        rf"\s+by\s+({_NAME})\.({_NAME})")
+_STORED = rf"({_NAME})\.({_NAME})\s+by\s+({_NAME})\.({_NAME})"
+
+
+def _sum_term(groups) -> dict:
+    """One `sum(object.quantity [where object.status = PARAM]) by object.key`."""
+    obj, measure, f_obj, f_quantity, f_op, f_param, k_obj, key = groups
+    if k_obj != obj or (f_obj and f_obj != obj):
+        raise ValueError("a sum, its filter and its key must stay within "
+                         "one object")
+    term = {"object": obj, "measure": measure, "key": key, "stored": False,
+            "filter": None}
+    if f_quantity:
+        term["filter"] = {"quantity": f_quantity, "op": f_op, "parameter": f_param}
+    return term
+
+
+def _term_names(term: dict) -> tuple[list, list]:
+    quantities = [(term["object"], term["measure"]), (term["object"], term["key"])]
+    parameters = []
+    if term.get("filter"):
+        quantities.append((term["object"], term["filter"]["quantity"]))
+        parameters.append(term["filter"]["parameter"])
+    return quantities, parameters
+
+
 def _parse_formal(kind: str, formal: str) -> dict:
     """The formal line as its parts. Raises ValueError with the reason."""
     formal = " ".join(formal.split())
     if kind == "IDENTITY":
-        match = re.fullmatch(rf"({_NAME}):\s*(.+?)\s*=\s*(.+)", formal)
+        match = re.fullmatch(rf"({_NAME}):\s*(.+?)\s*{_OP}\s*(.+)", formal)
         if not match:
-            raise ValueError("expected `object: left = right`")
-        obj, left, right = match.groups()
+            raise ValueError("expected `object: left = right` (or <=, >=)")
+        obj, left, op, right = match.groups()
         for side in (left, right):
             if re.search(r"[^a-z0-9_+\-*/(). ]", side):
                 raise ValueError(
                     f"`{side}` uses something other than quantity names, "
                     "numbers, + - * / and parentheses")
         names = sorted(set(re.findall(_NAME, left + " " + right)))
-        return {"object": obj, "left": left, "right": right,
+        return {"object": obj, "left": left, "right": right, "op": op,
                 "quantities": [(obj, n) for n in names]}
     if kind == "UNIQUE":
         match = re.fullmatch(rf"({_NAME}):\s*({_NAME}(?:\s*,\s*{_NAME})*)", formal)
@@ -180,20 +209,44 @@ def _parse_formal(kind: str, formal: str) -> dict:
                 "quantities": [(obj, status), (obj, quantity)],
                 "parameters": [param]}
     if kind == "TOTAL":
-        match = re.fullmatch(
-            rf"sum\(({_NAME})\.({_NAME})\)\s+by\s+({_NAME})\.({_NAME})\s*=\s*"
-            rf"({_NAME})\.({_NAME})\s+by\s+({_NAME})\.({_NAME})", formal)
+        match = re.fullmatch(rf"{_SUM}\s*{_OP}\s*{_SUM}", formal)
+        if match:
+            g = match.groups()
+            left, op, right = _sum_term(g[:8]), g[8], _sum_term(g[9:])
+        else:
+            match = re.fullmatch(rf"{_SUM}\s*{_OP}\s*{_STORED}", formal)
+            if not match:
+                raise ValueError(
+                    "expected `sum(object.quantity) by object.key = "
+                    "other.quantity by other.key`, or a sum on both sides")
+            g = match.groups()
+            left, op = _sum_term(g[:8]), g[8]
+            t_obj, t_q, t_obj2, t_key = g[9:]
+            if t_obj != t_obj2:
+                raise ValueError("each side must stay within one object")
+            right = {"object": t_obj, "measure": t_q, "key": t_key,
+                     "stored": True, "filter": None}
+        quantities, parameters = [], []
+        for term in (left, right):
+            q, p = _term_names(term)
+            quantities += q
+            parameters += p
+        return {"terms": [left, right], "op": op, "detail": left["object"],
+                "quantities": quantities, "parameters": parameters}
+    if kind == "DIFFERENCE":
+        match = re.fullmatch(rf"{_SUM}\s*-\s*{_SUM}\s*=\s*{_SUM}", formal)
         if not match:
-            raise ValueError(
-                "expected `sum(object.quantity) by object.key = "
-                "other.quantity by other.key`")
-        d_obj, d_q, d_obj2, d_key, t_obj, t_q, t_obj2, t_key = match.groups()
-        if d_obj != d_obj2 or t_obj != t_obj2:
-            raise ValueError("each side must stay within one object")
-        return {"detail": d_obj, "detail_measure": d_q, "detail_key": d_key,
-                "total": t_obj, "total_measure": t_q, "total_key": t_key,
-                "quantities": [(d_obj, d_q), (d_obj, d_key),
-                               (t_obj, t_q), (t_obj, t_key)]}
+            raise ValueError("expected `sum(..) by .. - sum(..) by .. = "
+                             "sum(..) by ..`")
+        g = match.groups()
+        terms = [_sum_term(g[0:8]), _sum_term(g[8:16]), _sum_term(g[16:24])]
+        quantities, parameters = [], []
+        for term in terms:
+            q, p = _term_names(term)
+            quantities += q
+            parameters += p
+        return {"terms": terms, "op": "=", "detail": terms[0]["object"],
+                "quantities": quantities, "parameters": parameters}
     raise ValueError(f"unknown kind {kind!r} — one of {', '.join(KINDS)}")
 
 

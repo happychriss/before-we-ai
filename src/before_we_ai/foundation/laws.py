@@ -118,7 +118,10 @@ def _blank(column: str) -> str:
     return f"({_q(column)} IS NULL OR trim(CAST({_q(column)} AS VARCHAR)) = '')"
 
 
-def _within(left: str, right: str, tolerance) -> str:
+def _within(left: str, right: str, tolerance, op: str = "=") -> str:
+    """`left OP right`, allowing for the rule's tolerance. For <= and >= the
+    tolerance widens the permitted side: "at most" means at most, give or
+    take rounding."""
     tests = []
     if tolerance.absolute is not None:
         tests.append(f"abs(({left}) - ({right})) <= {tolerance.absolute}")
@@ -128,7 +131,27 @@ def _within(left: str, right: str, tolerance) -> str:
             f"greatest(abs({left}), abs({right}))")
     if not tests:  # exact — allowing for floating-point noise only
         tests.append(f"abs(({left}) - ({right})) <= 1e-9")
-    return "(" + " OR ".join(tests) + ")"
+    close = "(" + " OR ".join(tests) + ")"
+    if op == "<=":
+        return f"(({left}) <= ({right}) OR {close})"
+    if op == ">=":
+        return f"(({left}) >= ({right}) OR {close})"
+    return close
+
+
+def _term_sql(term: dict, binding: "Binding") -> str:
+    """One side of a TOTAL or DIFFERENCE as `SELECT k, v ... GROUP BY k`."""
+    obj = term["object"]
+    where = ""
+    if term.get("filter"):
+        f = term["filter"]
+        value = binding.parameters[f["parameter"]].replace("'", "''")
+        column = _q(binding.column(obj, f["quantity"]))
+        compare = "=" if f["op"] == "=" else "IS DISTINCT FROM"
+        where = f" WHERE CAST({column} AS VARCHAR) {compare} '{value}'"
+    return (f"SELECT CAST({_q(binding.column(obj, term['key']))} AS VARCHAR) AS k, "
+            f"sum({binding.number(obj, term['measure'])}) AS v "
+            f"FROM {_q(binding.view(obj))}{where} GROUP BY 1")
 
 
 def _expression(text: str, obj: str, binding: Binding) -> str:
@@ -144,7 +167,7 @@ def _compile(rule: Rule, binding: Binding, foundation: Foundation) -> tuple[str,
         view = _q(binding.view(p["object"]))
         left = _expression(p["left"], p["object"], binding)
         right = _expression(p["right"], p["object"], binding)
-        ok = _within(left, right, tolerance)
+        ok = _within(left, right, tolerance, p.get("op", "="))
         evaluable = f"({left}) IS NOT NULL AND ({right}) IS NOT NULL"
         columns = ", ".join(_q(binding.column(o, q)) for o, q in rule.quantities)
         return (
@@ -196,27 +219,37 @@ def _compile(rule: Rule, binding: Binding, foundation: Foundation) -> tuple[str,
             f"SELECT {status}, {_q(target)} FROM {view} "
             f"WHERE {applies} AND NOT ({ok})",
         )
-    if rule.kind == "TOTAL":
-        detail, total = _q(binding.view(p["detail"])), _q(binding.view(p["total"]))
-        d_key = _q(binding.column(p["detail"], p["detail_key"]))
-        t_key = _q(binding.column(p["total"], p["total_key"]))
-        d_sum = f"sum({_num(binding.column(p['detail'], p['detail_measure']))})"
-        t_sum = f"sum({_num(binding.column(p['total'], p['total_measure']))})"
-        joined = (
-            f"SELECT coalesce(d.k, t.k) AS key, d.v AS summed, t.v AS stated "
-            f"FROM (SELECT CAST({d_key} AS VARCHAR) AS k, {d_sum} AS v "
-            f"FROM {detail} GROUP BY 1) d FULL JOIN "
-            f"(SELECT CAST({t_key} AS VARCHAR) AS k, {t_sum} AS v "
-            f"FROM {total} GROUP BY 1) t ON d.k = t.k")
-        evaluable = "summed IS NOT NULL AND stated IS NOT NULL"
-        ok = _within("summed", "stated", tolerance)
+    if rule.kind in ("TOTAL", "DIFFERENCE"):
+        terms = p["terms"]
+        names = [f"t{i}" for i in range(len(terms))]
+        joined = f"({_term_sql(terms[0], binding)}) t0"
+        key = "t0.k"
+        for i in range(1, len(terms)):
+            joined += (f" FULL JOIN ({_term_sql(terms[i], binding)}) t{i} "
+                       f"ON {key} = t{i}.k")
+            key = f"coalesce({key}, t{i}.k)"
+        # A sum over no records is zero: an order line nobody has received
+        # against has received nothing. A *stored* figure that is absent is
+        # not zero — there is nothing to compare with.
+        values = [f"{n}.v" if t["stored"] else f"coalesce({n}.v, 0)"
+                  for n, t in zip(names, terms)]
+        columns = ", ".join(f"{v} AS v{i}" for i, v in enumerate(values))
+        base = f"SELECT {key} AS key, {columns} FROM {joined}"
+        if rule.kind == "DIFFERENCE":
+            left, right = "(v0 - v1)", "v2"
+        else:
+            left, right = "v0", "v1"
+        evaluable = " AND ".join(f"v{i} IS NOT NULL" for i in range(len(terms)))
+        ok = _within(left, right, tolerance, p["op"])
+        shown = ", ".join(f"round(v{i}, 2) AS {t['object']}_{t['measure']}"
+                          for i, t in enumerate(terms))
         return (
             f"SELECT count(*) FILTER (WHERE {evaluable}), "
             f"count(*) FILTER (WHERE {evaluable} AND {ok}), "
-            f"count(*) FILTER (WHERE NOT ({evaluable})) FROM ({joined})",
-            f"SELECT key, summed, stated, round(summed - stated, 2) AS difference "
-            f"FROM ({joined}) WHERE {evaluable} AND NOT {ok} "
-            f"ORDER BY abs(summed - stated) DESC",
+            f"count(*) FILTER (WHERE NOT ({evaluable})) FROM ({base})",
+            f"SELECT key, {shown}, round({left} - {right}, 2) AS difference "
+            f"FROM ({base}) WHERE {evaluable} AND NOT {ok} "
+            f"ORDER BY abs({left} - {right}) DESC",
         )
     raise ValueError(f"unknown rule kind {rule.kind!r}")
 
