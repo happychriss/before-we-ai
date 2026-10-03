@@ -45,6 +45,18 @@
   document); document claims are not linked to dependencies (1 of 28); a
   dependency list is drafted even when no answer type fits;
   (4) the write-up.
+- **The control run, 2026-10-03 — the result that reframes the project.** A
+  plain model with no framework, given the ten vessel files and the cost
+  question, returned six figures in about seven tool calls: five exact
+  against the answer key, the sixth off by 0.3% with the right figure named
+  as its doubt. It found and corrected all five cost-relevant seeded errors.
+  The framework on the same question: `blocked`, no number, 46 decisions.
+  `corpora/vessel/results-baseline.md`. Caveats: one run, a landscape built
+  to be solvable, and nobody without the key could tell the answer is right.
+  **Owner's reading: "no number that I know the why of, against a number I
+  cannot be sure of."** Direction this points to (not decided): stop gating
+  the model, verify its answer instead — each correction it makes is a claim
+  a deterministic query can check.
 - **Foundation documents — experiment, 2026-10-03 (owner idea).** The tool
   is safe and defensive: 0 of 46 vessel dependencies settled by machine,
   because only three borrowed finance laws may confirm anything. A
