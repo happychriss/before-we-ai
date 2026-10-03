@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, PackageLoader
 
-from before_we_ai.core.enums import Actor, EvidenceType
+from before_we_ai.core.enums import Actor, CheckVerdict, EvidenceType
 from before_we_ai.core.ids import new_id
 from before_we_ai.core.objects import (
     MAX_EXCEPTION_SAMPLES,
@@ -23,6 +23,7 @@ from before_we_ai.core.objects import (
 )
 from before_we_ai.core.transitions import attach_evidence
 from before_we_ai.checks.library import REGISTRY
+from before_we_ai.checks.verdicts import Assessment
 from before_we_ai.sources.fingerprint import table_fingerprint
 from before_we_ai.store.layout import CONFIG_FILE
 from before_we_ai.store.repository import ProjectStore
@@ -72,6 +73,41 @@ def _establishes(store: ProjectStore, check: CheckPlan, spec) -> bool:
     return not isinstance(claim, MappingClaim)
 
 
+def _tested(con, ctx: dict) -> list[dict]:
+    """Per view, how many rows actually entered the check.
+
+    Only templates that take a filter declare ``tested``; for the others the
+    population query already is the answer.
+    """
+    out = []
+    for view, where in ctx.get("tested", ()):
+        total = con.execute(f'SELECT count(*) FROM "{view}"').fetchone()[0]
+        rows = total if not where else con.execute(
+            f'SELECT count(*) FROM "{view}" WHERE {where}').fetchone()[0]
+        out.append({"view": view, "filter": where, "rows": rows, "of": total})
+    return out
+
+
+def _nothing_tested(population: int, tested: list[dict]) -> str:
+    """Why a clean result means nothing here, or "" if it means something.
+
+    "No violations" among no rows is not a finding. Without this, an empty
+    table or a filter that selects nothing passes every exception-counting
+    check — and a pass promotes. The verdict becomes INCONCLUSIVE, which
+    neither promotes nor contradicts: the claim stays where it was and the
+    evidence says why.
+    """
+    for side in tested:
+        if side["rows"] == 0 and side["filter"]:
+            return (f"nothing was tested: the filter {side['filter']!r} "
+                    f"leaves none of the {side['of']} rows of {side['view']}")
+        if side["rows"] == 0:
+            return f"nothing was tested: {side['view']} has no rows"
+    if not population:
+        return "nothing was tested: there are no rows to check"
+    return ""
+
+
 def run_check(
     store: ProjectStore,
     con,
@@ -92,6 +128,10 @@ def run_check(
     rows = cursor.fetchall()
 
     assessment = spec.verdict(rows, columns, ctx)
+    tested = _tested(con, ctx)
+    nothing = _nothing_tested(population, tested)
+    if nothing and assessment.verdict is CheckVerdict.PASS:
+        assessment = Assessment(CheckVerdict.INCONCLUSIVE, [], nothing)
 
     record_id = new_id()
     result_ref = None
@@ -121,6 +161,9 @@ def run_check(
             "template": check.template,
             "sql": exceptions_sql,
             "summary": assessment.summary,
+            # how much of each view a filter let through — a check that
+            # passed on 12 of 4,000 rows passed on 12 rows
+            **({"tested": tested} if any(t["filter"] for t in tested) else {}),
             # A generic data check may break a role binding but never make
             # one — see `core.transitions.establishing`. Written here
             # because this is the one place holding both halves: the check

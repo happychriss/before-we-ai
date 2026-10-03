@@ -244,3 +244,45 @@ class TestATwoSidedCheckMustHaveTwoSides:
             allowed = TEMPLATE_PARAMS[template].allowed
             assert set(left) | set(right) <= allowed, template
             assert len(left) == len(right), template
+
+
+class TestAModelWrittenFilterHasToNameAColumn:
+    """`*where` and `*_expr` are where raw SQL from the model reaches a
+    check. They are held to "which rows, by what they contain"."""
+
+    BASE = {"left": "a", "right": "b",
+            "left_group_expr": "grp", "right_group_expr": "grp",
+            "left_measure_expr": "amount", "right_measure_expr": "amount"}
+
+    def _errors(self, **params):
+        return check_template_params("reconciliation", {**self.BASE, **params})
+
+    def test_an_honest_filter_is_accepted(self):
+        assert self._errors(left_where="status = 'open' AND amount > 0",
+                            right_where="entity IN ('DE', 'US')") == []
+
+    @pytest.mark.parametrize("constant", ["1=0", "true", "1 = 1", "'a' = 'b'"])
+    def test_a_filter_naming_no_column_is_refused(self, constant):
+        [error] = self._errors(left_where=constant)
+        assert "names no column" in error
+
+    @pytest.mark.parametrize("smuggled", [
+        "grp IN (SELECT grp FROM b)",
+        "grp = 'x'; DROP TABLE a",
+        "grp = 'x' -- and nothing else",
+    ])
+    def test_a_filter_may_not_carry_a_query(self, smuggled):
+        [error] = self._errors(left_where=smuggled)
+        assert "no subquery, statement or comment" in error
+
+    def test_a_filter_may_not_call_a_function(self):
+        [error] = self._errors(left_where="length(grp) > 100")
+        assert "no function calls" in error
+
+    def test_an_expression_naming_no_column_is_refused(self):
+        [error] = self._errors(left_measure_expr="0")
+        assert "names no column" in error
+
+    def test_an_expression_may_still_cast_and_concatenate(self):
+        assert self._errors(
+            left_group_expr="entity || '-' || CAST(period AS VARCHAR)") == []

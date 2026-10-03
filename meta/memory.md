@@ -10,10 +10,15 @@
   a product.** The project moved out of the dev container into this folder
   (fresh git history, no remote; GitHub still holds the old history and was
   not updated). The guide builder stayed behind in the old folder. What the
-  case study still needs, in order: (1) close the vacuous-pass hole — a
-  model-supplied `where` filter or an empty population lets a check pass and
-  promote (`checks/verdicts.py` `empty_expected`, `llm/vocabulary.py` exempts
-  `*where` from validation); (2) ~~a small local web app~~ **built 2026-10-03** — `ui/`, started by
+  case study still needs, in order: (1) ~~close the vacuous-pass hole~~ **closed 2026-10-03**: a
+  model-written `*where` / `*_expr` must name a column and may carry no
+  subquery (`llm/vocabulary.py` `_row_expression_errors`), and a check that
+  tested zero rows ends INCONCLUSIVE instead of PASS (`engine/runner.py`
+  `_nothing_tested`), with the filtered row counts kept on the evidence.
+  **Residual, stated rather than fixed:** an expression that names a column
+  and is still constant (`amount * 0`) passes `balance`; the `part_expr`
+  entries inside `decode`'s `pairs` are not validated; and "False-Promotion
+  0" still measures authorship, not whether a promoted claim is correct; (2) ~~a small local web app~~ **built 2026-10-03** — `ui/`, started by
   `scripts/ui.sh` (dashboard, step-by-step run, decisions, readiness; offline
   on recorded answers); (3) Run B; (4) the write-up. **M7.4, M8 as specified, M9, guide-builder integration and the
   layout-analyser swap are dropped** — the roadmap below predates this and

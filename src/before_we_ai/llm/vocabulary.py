@@ -267,6 +267,61 @@ _AGGREGATES = ("sum(", "count(", "avg(", "min(", "max(")
 
 _IDENTIFIER = re.compile(r"\w+")
 
+# What a model-written filter or expression may not contain. These params are
+# the one place raw SQL from the model reaches a check, and a check is what
+# promotes — so a filter is held to "which rows, by what they contain" and
+# nothing more.
+_NOT_A_ROW_EXPRESSION = re.compile(
+    r";|--|/\*|\b(select|from|union|join|exists|with|pragma|attach|copy|"
+    r"insert|update|delete|drop|create)\b",
+    re.IGNORECASE,
+)
+_STRING_LITERAL = re.compile(r"'(?:[^']|'')*'")
+_CALL = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
+_NAME = re.compile(r"[A-Za-z_]\w*")
+# words that are SQL, not a column: keywords, and the type names a cast uses
+_SQL_WORDS = frozenset(
+    "and or not in is null like ilike between true false as case when then "
+    "else end integer bigint int double decimal numeric varchar text date "
+    "timestamp boolean".split()
+)
+
+
+def _row_expression_errors(template: str, key: str, value: str) -> list[str]:
+    """Why a model-written filter or expression may not reach a check.
+
+    The hole this closes: `left_where: "1=0"` leaves a reconciliation with
+    no rows, no rows produce no exceptions, and no exceptions is a PASS that
+    promotes the claim — the model promoting its own proposal through a
+    check it parameterised. Refusing a filter that names no column stops
+    the constant ones here; a filter that names a column and still selects
+    nothing is caught where it can be measured, in `engine.runner`.
+    """
+    is_filter = key.endswith("where")
+    kind = "a row filter" if is_filter else "a row-level expression"
+    if _NOT_A_ROW_EXPRESSION.search(value):
+        return [
+            f"template {template!r}: param {key!r} must be {kind} over the "
+            f"view's own columns — no subquery, statement or comment, got "
+            f"{value!r}"
+        ]
+    bare = _STRING_LITERAL.sub("", value)
+    calls = {name.lower() for name in _CALL.findall(bare)}
+    if is_filter and calls - _SQL_WORDS:
+        return [
+            f"template {template!r}: param {key!r} must compare columns to "
+            f"values — no function calls in a filter, got {value!r}"
+        ]
+    names = [name for name in _NAME.findall(bare)
+             if name.lower() not in _SQL_WORDS and name.lower() not in calls]
+    if not names:
+        return [
+            f"template {template!r}: param {key!r} names no column, so it is "
+            f"the same for every row — {kind} has to depend on what a row "
+            f"contains, got {value!r}"
+        ]
+    return []
+
 # Param names that must name a catalog view.
 # The one predicate that makes a hypothesis a concept claim. A
 # hypothesis's kind is derived from this and never asked for.
@@ -554,7 +609,10 @@ def check_template_params(template: str, params: dict) -> list[str]:
                         f"row-level expression — the template aggregates for "
                         f"itself, got {value!r}"
                     )
-        elif not key.endswith("where") and not _IDENTIFIER.fullmatch(value):
+            errors += _row_expression_errors(template, key, value)
+        elif key.endswith("where"):
+            errors += _row_expression_errors(template, key, value)
+        elif not _IDENTIFIER.fullmatch(value):
             errors.append(
                 f"template {template!r}: param {key!r} must be a bare "
                 f"view/column identifier, got {value!r}"

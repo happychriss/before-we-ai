@@ -96,3 +96,64 @@ def test_checks_round_trip_and_integrity(store, con, tmp_path):
                             verdict=CheckVerdict.PASS, check_plan_id="01XXXXXXXXXXXXXXXXXXXXXXXX")
     reloaded.add_evidence(orphan)
     assert any("dangling check reference" in f for f in check_integrity(reloaded))
+
+
+class TestACheckThatTestedNothingHasNotPassed:
+    """"No violations" among no rows is not a finding.
+
+    Every exception-counting check passes on zero rows, and a pass promotes.
+    The model writes the filter, so without this it could promote its own
+    claim by choosing a filter that selects nothing.
+    """
+
+    @pytest.fixture
+    def ledgers(self):
+        con = duckdb.connect()
+        con.execute("CREATE TABLE a (grp VARCHAR, amount DOUBLE)")
+        con.execute("CREATE TABLE b (grp VARCHAR, amount DOUBLE)")
+        con.execute("INSERT INTO a VALUES ('x', 10), ('y', 5)")
+        con.execute("INSERT INTO b VALUES ('x', 999), ('y', 5)")
+        return con
+
+    def _reconcile(self, store, con, **filters):
+        claim = store.add_claim(create_claim("a reconciles with b", Actor.AI))
+        check = CheckPlan(template="reconciliation", claim_id=claim.id, params={
+            "left": "a", "right": "b",
+            "left_group_expr": "grp", "right_group_expr": "grp",
+            "left_measure_expr": "amount", "right_measure_expr": "amount",
+            **filters})
+        return run_check(store, con, check), claim.id
+
+    def test_unfiltered_the_disagreement_is_found(self, store, ledgers):
+        record, claim_id = self._reconcile(store, ledgers)
+        assert record.verdict is CheckVerdict.FAIL
+        assert store.claims[claim_id].status is ClaimStatus.CONTRADICTED
+
+    def test_a_filter_that_selects_nothing_does_not_promote(self, store, ledgers):
+        record, claim_id = self._reconcile(
+            store, ledgers, left_where="grp = 'nobody'",
+            right_where="grp = 'nobody'")
+        assert record.verdict is CheckVerdict.INCONCLUSIVE
+        assert "nothing was tested" in record.payload["summary"]
+        assert store.claims[claim_id].status is ClaimStatus.PROPOSED
+
+    def test_a_filter_that_keeps_rows_still_passes_and_says_how_many(
+            self, store, ledgers):
+        record, claim_id = self._reconcile(
+            store, ledgers, left_where="grp = 'y'", right_where="grp = 'y'")
+        assert record.verdict is CheckVerdict.PASS
+        assert store.claims[claim_id].status is ClaimStatus.TEST_SUPPORTED
+        assert record.payload["tested"] == [
+            {"view": "a", "filter": "grp = 'y'", "rows": 1, "of": 2},
+            {"view": "b", "filter": "grp = 'y'", "rows": 1, "of": 2},
+        ]
+
+    def test_an_empty_table_does_not_promote(self, store):
+        con = duckdb.connect()
+        con.execute("CREATE TABLE t (id BIGINT)")
+        claim = store.add_claim(create_claim("t.id is unique", Actor.AI))
+        record = run_check(store, con, CheckPlan(
+            template="duplicate", claim_id=claim.id,
+            params={"table": "t", "key_columns": ["id"]}))
+        assert record.verdict is CheckVerdict.INCONCLUSIVE
+        assert store.claims[claim.id].status is ClaimStatus.PROPOSED

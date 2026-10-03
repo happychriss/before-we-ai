@@ -80,6 +80,10 @@ def evidence_view(s: ProjectStore, record) -> dict:
             f"{record.population or 0:,} rows — {payload.get('summary', '')}"
         )
         view["tests"] = spec.tests if spec else ""
+        narrowed = [f"{side['rows']:,} of {side['of']:,} rows of {side['view']}"
+                    for side in payload.get("tested", []) if side["filter"]]
+        if narrowed:
+            view["detail"] += " · filtered to " + ", ".join(narrowed)
         view["sql"] = payload.get("sql", "")
         view["samples"] = record.exception_samples[:3]
     elif record.type is EvidenceType.DOCUMENT_ANCHOR:

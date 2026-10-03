@@ -253,6 +253,8 @@ def _prep_reconciliation(con, p, tol):
                                            p["right_measure_expr"]),
         "left_where": p.get("left_where"),
         "right_where": p.get("right_where"),
+        "tested": [(p["left"], p.get("left_where")),
+                   (p["right"], p.get("right_where"))],
         "tolerance": tol["absolute"],
         "views": [p["left"], p["right"]],
     }
@@ -276,6 +278,7 @@ def _prep_range_join(con, p, tol):
         "range_from": _ident(p["range_from"]),
         "range_to": _ident(p["range_to"]),
         "where": p.get("where"),  # claim scope, e.g. external customers only
+        "tested": [(p["table"], p.get("where"))],
         "views": [p["table"], p["ranges"]],
     }
 
